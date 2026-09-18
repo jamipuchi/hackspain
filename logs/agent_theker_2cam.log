@@ -1,0 +1,6 @@
+camera A calibrated from markers [1, 2, 3]: 0.57 mm reprojection error
+camera B calibrated from markers [1, 2, 3]: 0.62 mm reprojection error
+build=theker_v1 planner=gpt-6-astra seed=4 run=/Users/jaumepuig/robotics/magnet_sorter/runs/20260919-011314
+ground truth (hidden from GPT-6): screw_m3x20_zinc→screws, screw_m4x20_zinc→screws, screw_m4x20_black→screws, nut_m3_zinc→nuts, nut_m4_zinc→nuts, nut_m4_zinc_b→nuts, washer_m3_zinc→washers, washer_m4_zinc→washers, washer_m4_zinc_b→washers, screw_m4x16_brass→leave
+viewer open: watch the run in the MuJoCo window
+agent mode: 2 camera(s) ['A', 'B'], effort=medium, max 45 steps, budget $3.50

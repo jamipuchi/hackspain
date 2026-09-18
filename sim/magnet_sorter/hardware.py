@@ -233,7 +233,7 @@ class SimArduino:
             axial = float(np.dot(v, normal))  # >0 below the face
             lateral = float(np.linalg.norm(v - axial * normal))
             gap = max(0.0, axial - self.half_h[name])
-            reach = sd.MAGNET_RADIUS + 0.004  # small parts are drawn in from just beyond the pole face
+            reach = sd.MAGNET_RADIUS + 0.002  # small parts are drawn in from just beyond the pole face
             if gap > 0.02 or lateral > reach:
                 continue
             f_axial = self.magnet_coil * sd.MAGNET_HOLD_FORCE / (1.0 + (gap / sd.MAGNET_D0) ** 2) ** 1.5

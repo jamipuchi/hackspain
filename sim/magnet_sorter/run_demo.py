@@ -98,7 +98,7 @@ def park(model, data, b, k: int) -> None:
 def scatter(model, data, pieces, rng: np.random.Generator, region: str = "workspace", y_center: float | None = None) -> None:
     """Random non-touching layout. region: 'workspace' (arm sector), 'belt' (conveyor pick zone / spawn)."""
     placed = []
-    spacing = 0.042 if sd.BUILD == "hobby_v1" else 0.032
+    spacing = 0.042 if sd.BUILD == "hobby_v1" else 0.038  # the shopping sheet: "spread parts in one layer with gaps"
     for b in pieces:
         for _ in range(400):
             if region == "belt":
