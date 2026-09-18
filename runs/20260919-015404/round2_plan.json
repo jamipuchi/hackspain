@@ -1,0 +1,40 @@
+{
+  "pieces": [
+    {
+      "id": "p1",
+      "u": 666,
+      "v": 293,
+      "kind": "screw",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p2",
+      "u": 665,
+      "v": 295,
+      "kind": "nut",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p3",
+      "u": 529,
+      "v": 699,
+      "kind": "nut",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    }
+  ],
+  "program": [],
+  "done": true,
+  "message": "oracle: 0 parts to move"
+}

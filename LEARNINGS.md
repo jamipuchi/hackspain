@@ -46,6 +46,11 @@ extra use cases for the demo.
     with its pickup log. Counting-by-feedback is the hard part of kitting: a wrong pick corrupts the count.
     Next: verify by looking INTO the cup after each place (second camera), and reject the drop if the cup shows
     a duplicate; spread parts ≥ 4 cm.
+  - taras_grading (screws by length: short / long, rusty → reject; 2 cameras, seed 4, dense layout): **4/9** in 50
+    steps, $3.63. Length grading itself worked (the two screws it lifted cleanly went to the right cup; a black M4×25
+    correctly read as long; rusty correctly rejected). Same layout bug as kitting: parts 0.6–2 cm apart → 5 failed
+    picks and a short screw carried into the long cup. GPT-6's final report again listed the exceptions instead of
+    claiming success. Re-run pending with the fixed layout + waves.
   - Cost/step ≈ $0.06–0.08 with two 1280×960 images per step at medium effort.
 
 ## Layout bug found 19 Sep 01:50 — the real cause of the co-picks

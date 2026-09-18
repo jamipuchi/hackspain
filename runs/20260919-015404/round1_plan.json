@@ -1,0 +1,74 @@
+{
+  "pieces": [
+    {
+      "id": "p1",
+      "u": 647,
+      "v": 400,
+      "kind": "screw",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "kit_A",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p2",
+      "u": 657,
+      "v": 545,
+      "kind": "nut",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "kit_A",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p3",
+      "u": 713,
+      "v": 465,
+      "kind": "nut",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "kit_C",
+      "confidence": 1.0,
+      "reason": "oracle"
+    }
+  ],
+  "program": [
+    {
+      "op": "pick",
+      "u": 647,
+      "v": 400,
+      "piece": "p1"
+    },
+    {
+      "op": "place",
+      "target": "kit_A"
+    },
+    {
+      "op": "pick",
+      "u": 657,
+      "v": 545,
+      "piece": "p2"
+    },
+    {
+      "op": "place",
+      "target": "kit_A"
+    },
+    {
+      "op": "pick",
+      "u": 713,
+      "v": 465,
+      "piece": "p3"
+    },
+    {
+      "op": "place",
+      "target": "kit_C"
+    },
+    {
+      "op": "home"
+    }
+  ],
+  "done": false,
+  "message": "oracle: 3 parts to move"
+}

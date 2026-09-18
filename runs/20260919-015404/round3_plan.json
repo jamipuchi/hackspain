@@ -1,0 +1,118 @@
+{
+  "pieces": [
+    {
+      "id": "p1",
+      "u": 666,
+      "v": 293,
+      "kind": "screw",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p2",
+      "u": 665,
+      "v": 296,
+      "kind": "nut",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p3",
+      "u": 703,
+      "v": 464,
+      "kind": "washer",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "kit_A",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p4",
+      "u": 721,
+      "v": 575,
+      "kind": "screw",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "kit_C",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p5",
+      "u": 529,
+      "v": 699,
+      "kind": "nut",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p6",
+      "u": 665,
+      "v": 386,
+      "kind": "washer",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "kit_C",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p7",
+      "u": 612,
+      "v": 531,
+      "kind": "washer",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "unknown",
+      "confidence": 1.0,
+      "reason": "oracle"
+    }
+  ],
+  "program": [
+    {
+      "op": "pick",
+      "u": 703,
+      "v": 464,
+      "piece": "p3"
+    },
+    {
+      "op": "place",
+      "target": "kit_A"
+    },
+    {
+      "op": "pick",
+      "u": 721,
+      "v": 575,
+      "piece": "p4"
+    },
+    {
+      "op": "place",
+      "target": "kit_C"
+    },
+    {
+      "op": "pick",
+      "u": 665,
+      "v": 386,
+      "piece": "p6"
+    },
+    {
+      "op": "place",
+      "target": "kit_C"
+    },
+    {
+      "op": "home"
+    }
+  ],
+  "done": false,
+  "message": "oracle: 3 parts to move"
+}
