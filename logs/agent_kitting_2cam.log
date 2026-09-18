@@ -48,3 +48,10 @@ agent mode: 2 camera(s) ['A', 'B'], effort=medium, max 50 steps, budget $4.00
      ✗ pick at (9.4, 4.0) cm FAILED: the spot looks unchanged in camera A,B (part still there: not ferrous, or the magnet missed it); released over the conta
   → take_photo({"camera": "B", "zoom_x_cm": 9.4, "zoom_y_cm": 4})  [2.7s]
      ✓ photo taken; magnet face now at (13.1, -0.1, z=7.0) cm, magnet off
+  → take_photo({"camera": "A", "zoom_x_cm": null, "zoom_y_cm": null})  [2.8s]
+     ✓ photo taken; magnet face now at (13.1, -0.1, z=7.0) cm, magnet off
+  → home({})  [3.9s]
+     ✓ parked; magnet face now at (3.4, 4.7, z=10.3) cm, magnet off
+  → take_photo({"camera": "B", "zoom_x_cm": 8.5, "zoom_y_cm": 3.5})  [3.2s]
+     ✓ photo taken; magnet face now at (3.4, 4.7, z=10.3) cm, magnet off
+  → pick_at({"x_cm": 8.5, "y_cm": 4})  [3.1s]
