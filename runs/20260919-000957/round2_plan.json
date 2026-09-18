@@ -1,0 +1,162 @@
+{
+  "pieces": [
+    {
+      "id": "p1",
+      "u": 627,
+      "v": 481,
+      "kind": "screw",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p2",
+      "u": 448,
+      "v": 416,
+      "kind": "screw",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p3",
+      "u": 487,
+      "v": 416,
+      "kind": "screw",
+      "material": "steel_black",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p4",
+      "u": 592,
+      "v": 447,
+      "kind": "nut",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "nuts",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p5",
+      "u": 652,
+      "v": 398,
+      "kind": "nut",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "nuts",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p6",
+      "u": 614,
+      "v": 421,
+      "kind": "nut",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "nuts",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p7",
+      "u": 549,
+      "v": 431,
+      "kind": "washer",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "washers",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p8",
+      "u": 599,
+      "v": 462,
+      "kind": "washer",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "washers",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p9",
+      "u": 591,
+      "v": 459,
+      "kind": "washer",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "washers",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p10",
+      "u": 668,
+      "v": 487,
+      "kind": "screw",
+      "material": "brass",
+      "ferrous": false,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p11",
+      "u": 732,
+      "v": 509,
+      "kind": "washer",
+      "material": "aluminum",
+      "ferrous": false,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    }
+  ],
+  "program": [
+    {
+      "op": "pick",
+      "u": 627,
+      "v": 481,
+      "piece": "p1"
+    },
+    {
+      "op": "place",
+      "target": "screws"
+    },
+    {
+      "op": "pick",
+      "u": 592,
+      "v": 447,
+      "piece": "p4"
+    },
+    {
+      "op": "place",
+      "target": "nuts"
+    },
+    {
+      "op": "pick",
+      "u": 614,
+      "v": 421,
+      "piece": "p6"
+    },
+    {
+      "op": "place",
+      "target": "nuts"
+    },
+    {
+      "op": "home"
+    }
+  ],
+  "done": false,
+  "message": "oracle: 3 parts to move"
+}

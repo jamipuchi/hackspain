@@ -1,0 +1,151 @@
+{
+  "pieces": [
+    {
+      "id": "p1",
+      "u": 471,
+      "v": 393,
+      "kind": "screw",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p2",
+      "u": 458,
+      "v": 418,
+      "kind": "screw",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p3",
+      "u": 472,
+      "v": 408,
+      "kind": "screw",
+      "material": "steel_black",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p4",
+      "u": 553,
+      "v": 543,
+      "kind": "nut",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "nuts",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p5",
+      "u": 568,
+      "v": 533,
+      "kind": "nut",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "nuts",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p6",
+      "u": 549,
+      "v": 431,
+      "kind": "washer",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "washers",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p7",
+      "u": 599,
+      "v": 461,
+      "kind": "washer",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "washers",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p8",
+      "u": 595,
+      "v": 454,
+      "kind": "washer",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "washers",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p9",
+      "u": 736,
+      "v": 450,
+      "kind": "screw",
+      "material": "brass",
+      "ferrous": false,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p10",
+      "u": 732,
+      "v": 509,
+      "kind": "washer",
+      "material": "aluminum",
+      "ferrous": false,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    }
+  ],
+  "program": [
+    {
+      "op": "pick",
+      "u": 549,
+      "v": 431,
+      "piece": "p6"
+    },
+    {
+      "op": "place",
+      "target": "washers"
+    },
+    {
+      "op": "pick",
+      "u": 599,
+      "v": 461,
+      "piece": "p7"
+    },
+    {
+      "op": "place",
+      "target": "washers"
+    },
+    {
+      "op": "pick",
+      "u": 595,
+      "v": 454,
+      "piece": "p8"
+    },
+    {
+      "op": "place",
+      "target": "washers"
+    },
+    {
+      "op": "home"
+    }
+  ],
+  "done": false,
+  "message": "oracle: 3 parts to move"
+}

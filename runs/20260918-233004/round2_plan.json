@@ -1,0 +1,96 @@
+{
+  "pieces": [
+    {
+      "id": "p1",
+      "u": 489,
+      "v": 504,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "kit_A",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p2",
+      "u": 490,
+      "v": 494,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "kit_A",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p3",
+      "u": 621,
+      "v": 480,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "kit_A",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p4",
+      "u": 635,
+      "v": 450,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "kit_A",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p5",
+      "u": 619,
+      "v": 444,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "kit_A",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    }
+  ],
+  "program": [
+    {
+      "op": "pick",
+      "u": 489,
+      "v": 504,
+      "piece": "p1"
+    },
+    {
+      "op": "place",
+      "target": "kit_A"
+    },
+    {
+      "op": "pick",
+      "u": 490,
+      "v": 494,
+      "piece": "p2"
+    },
+    {
+      "op": "place",
+      "target": "kit_A"
+    },
+    {
+      "op": "pick",
+      "u": 621,
+      "v": 480,
+      "piece": "p3"
+    },
+    {
+      "op": "place",
+      "target": "kit_A"
+    },
+    {
+      "op": "home"
+    }
+  ],
+  "done": false,
+  "message": "mock: 5 grey blobs, trying 3"
+}

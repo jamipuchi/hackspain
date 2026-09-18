@@ -1,0 +1,107 @@
+{
+  "pieces": [
+    {
+      "id": "p1",
+      "u": 621,
+      "v": 600,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": false,
+      "target": "screws",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p2",
+      "u": 541,
+      "v": 561,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": false,
+      "target": "screws",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p3",
+      "u": 745,
+      "v": 562,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": false,
+      "target": "screws",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p4",
+      "u": 722,
+      "v": 509,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p5",
+      "u": 485,
+      "v": 507,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p6",
+      "u": 428,
+      "v": 459,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    }
+  ],
+  "program": [
+    {
+      "op": "pick",
+      "u": 722,
+      "v": 509,
+      "piece": "p4"
+    },
+    {
+      "op": "place",
+      "target": "screws"
+    },
+    {
+      "op": "pick",
+      "u": 485,
+      "v": 507,
+      "piece": "p5"
+    },
+    {
+      "op": "place",
+      "target": "screws"
+    },
+    {
+      "op": "pick",
+      "u": 428,
+      "v": 459,
+      "piece": "p6"
+    },
+    {
+      "op": "place",
+      "target": "screws"
+    },
+    {
+      "op": "home"
+    }
+  ],
+  "done": false,
+  "message": "mock: 6 grey blobs, trying 3"
+}

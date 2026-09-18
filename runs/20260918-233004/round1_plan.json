@@ -1,0 +1,184 @@
+{
+  "pieces": [
+    {
+      "id": "p1",
+      "u": 777,
+      "v": 574,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "kit_A",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p2",
+      "u": 541,
+      "v": 562,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "kit_A",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p3",
+      "u": 703,
+      "v": 513,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "kit_A",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p4",
+      "u": 694,
+      "v": 524,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "kit_A",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p5",
+      "u": 489,
+      "v": 504,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "kit_A",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p6",
+      "u": 611,
+      "v": 496,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "kit_A",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p7",
+      "u": 489,
+      "v": 494,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "kit_A",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p8",
+      "u": 711,
+      "v": 488,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "kit_A",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p9",
+      "u": 694,
+      "v": 486,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "kit_A",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p10",
+      "u": 703,
+      "v": 470,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "kit_A",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p11",
+      "u": 694,
+      "v": 470,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "kit_A",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p12",
+      "u": 634,
+      "v": 449,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "kit_A",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p13",
+      "u": 619,
+      "v": 444,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "kit_A",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    }
+  ],
+  "program": [
+    {
+      "op": "pick",
+      "u": 777,
+      "v": 574,
+      "piece": "p1"
+    },
+    {
+      "op": "place",
+      "target": "kit_A"
+    },
+    {
+      "op": "pick",
+      "u": 541,
+      "v": 562,
+      "piece": "p2"
+    },
+    {
+      "op": "place",
+      "target": "kit_A"
+    },
+    {
+      "op": "pick",
+      "u": 703,
+      "v": 513,
+      "piece": "p3"
+    },
+    {
+      "op": "place",
+      "target": "kit_A"
+    },
+    {
+      "op": "home"
+    }
+  ],
+  "done": false,
+  "message": "mock: 13 grey blobs, trying 3"
+}

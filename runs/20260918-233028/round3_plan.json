@@ -1,0 +1,129 @@
+{
+  "pieces": [
+    {
+      "id": "p1",
+      "u": 584,
+      "v": 450,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "short",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p2",
+      "u": 655,
+      "v": 433,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "short",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p3",
+      "u": 664,
+      "v": 408,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "short",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p4",
+      "u": 620,
+      "v": 413,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "short",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p5",
+      "u": 639,
+      "v": 407,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "short",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p6",
+      "u": 592,
+      "v": 403,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "short",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p7",
+      "u": 572,
+      "v": 419,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "short",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p8",
+      "u": 583,
+      "v": 388,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "short",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    }
+  ],
+  "program": [
+    {
+      "op": "pick",
+      "u": 584,
+      "v": 450,
+      "piece": "p1"
+    },
+    {
+      "op": "place",
+      "target": "short"
+    },
+    {
+      "op": "pick",
+      "u": 655,
+      "v": 433,
+      "piece": "p2"
+    },
+    {
+      "op": "place",
+      "target": "short"
+    },
+    {
+      "op": "pick",
+      "u": 664,
+      "v": 408,
+      "piece": "p3"
+    },
+    {
+      "op": "place",
+      "target": "short"
+    },
+    {
+      "op": "home"
+    }
+  ],
+  "done": false,
+  "message": "mock: 8 grey blobs, trying 3"
+}

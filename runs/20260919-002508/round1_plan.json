@@ -1,0 +1,118 @@
+{
+  "pieces": [
+    {
+      "id": "p1",
+      "u": 721,
+      "v": 487,
+      "kind": "screw",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p2",
+      "u": 615,
+      "v": 455,
+      "kind": "screw",
+      "material": "steel_black",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p3",
+      "u": 657,
+      "v": 498,
+      "kind": "nut",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "nuts",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p4",
+      "u": 553,
+      "v": 432,
+      "kind": "nut",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "nuts",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p5",
+      "u": 611,
+      "v": 422,
+      "kind": "washer",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "washers",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p6",
+      "u": 636,
+      "v": 470,
+      "kind": "washer",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "washers",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p7",
+      "u": 677,
+      "v": 485,
+      "kind": "screw",
+      "material": "brass",
+      "ferrous": false,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    }
+  ],
+  "program": [
+    {
+      "op": "pick",
+      "u": 721,
+      "v": 487,
+      "piece": "p1"
+    },
+    {
+      "op": "place",
+      "target": "screws"
+    },
+    {
+      "op": "pick",
+      "u": 615,
+      "v": 455,
+      "piece": "p2"
+    },
+    {
+      "op": "place",
+      "target": "screws"
+    },
+    {
+      "op": "pick",
+      "u": 657,
+      "v": 498,
+      "piece": "p3"
+    },
+    {
+      "op": "place",
+      "target": "nuts"
+    },
+    {
+      "op": "home"
+    }
+  ],
+  "done": false,
+  "message": "oracle: 3 parts to move"
+}

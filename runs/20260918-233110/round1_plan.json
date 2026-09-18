@@ -1,0 +1,217 @@
+{
+  "pieces": [
+    {
+      "id": "p1",
+      "u": 640,
+      "v": 581,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p2",
+      "u": 616,
+      "v": 567,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p3",
+      "u": 549,
+      "v": 567,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p4",
+      "u": 569,
+      "v": 556,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p5",
+      "u": 549,
+      "v": 576,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p6",
+      "u": 614,
+      "v": 547,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p7",
+      "u": 518,
+      "v": 536,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p8",
+      "u": 617,
+      "v": 529,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p9",
+      "u": 468,
+      "v": 526,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p10",
+      "u": 628,
+      "v": 523,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p11",
+      "u": 512,
+      "v": 520,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p12",
+      "u": 794,
+      "v": 504,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p13",
+      "u": 660,
+      "v": 514,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p14",
+      "u": 787,
+      "v": 451,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p15",
+      "u": 629,
+      "v": 405,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    },
+    {
+      "id": "p16",
+      "u": 652,
+      "v": 388,
+      "kind": "other",
+      "material": "unknown",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 0.4,
+      "reason": "grey blob"
+    }
+  ],
+  "program": [
+    {
+      "op": "pick",
+      "u": 640,
+      "v": 581,
+      "piece": "p1"
+    },
+    {
+      "op": "place",
+      "target": "screws"
+    },
+    {
+      "op": "pick",
+      "u": 616,
+      "v": 567,
+      "piece": "p2"
+    },
+    {
+      "op": "place",
+      "target": "screws"
+    },
+    {
+      "op": "pick",
+      "u": 549,
+      "v": 567,
+      "piece": "p3"
+    },
+    {
+      "op": "place",
+      "target": "screws"
+    },
+    {
+      "op": "home"
+    }
+  ],
+  "done": false,
+  "message": "mock: 16 grey blobs, trying 3"
+}

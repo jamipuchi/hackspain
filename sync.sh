@@ -1,6 +1,8 @@
 #!/bin/zsh
 # Sync the robotics simulator code + learnings into this repo and push. Run by hand or in a loop.
+setopt +o nomatch 2>/dev/null || true
 set -e
+setopt NULL_GLOB
 REPO=~/hackspain
 SRC=~/robotics
 cd "$REPO"
