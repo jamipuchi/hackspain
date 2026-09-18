@@ -1,0 +1,98 @@
+{
+  "pieces": [
+    {
+      "id": "p1",
+      "u": 688,
+      "v": 374,
+      "kind": "bolt",
+      "material": "stainless",
+      "ferrous": false,
+      "target": "iron_bin",
+      "confidence": 0.67,
+      "reason": "P(ferrous)=0.33 stainless 0.81 bolt 0.86 \u2192 iron_bin 1.00; 27x14 mm; the magnet was tried once and the part stayed on the table; "
+    },
+    {
+      "id": "p2",
+      "u": 614,
+      "v": 375,
+      "kind": "bolt",
+      "material": "stainless",
+      "ferrous": false,
+      "target": "leave",
+      "confidence": 0.46,
+      "reason": "P(ferrous)=0.03 stainless 0.95 bolt 0.46 \u2192 iron_bin 1.00; 32x23 mm; the magnet was lowered onto it and energised 2 times and the"
+    },
+    {
+      "id": "p3",
+      "u": 566,
+      "v": 426,
+      "kind": "bolt",
+      "material": "stainless",
+      "ferrous": false,
+      "target": "leave",
+      "confidence": 0.79,
+      "reason": "P(ferrous)=0.03 stainless 0.94 bolt 0.79 \u2192 iron_bin 1.00; 28x13 mm; the magnet was lowered onto it and energised 2 times and the"
+    },
+    {
+      "id": "p4",
+      "u": 772,
+      "v": 427,
+      "kind": "washer",
+      "material": "copper",
+      "ferrous": false,
+      "target": "leave",
+      "confidence": 0.73,
+      "reason": "P(ferrous)=0.27 copper 0.95 washer 0.97 \u2192 iron_bin 1.00; 18x17 mm; not tried yet"
+    },
+    {
+      "id": "p5",
+      "u": 675,
+      "v": 444,
+      "kind": "nut",
+      "material": "stainless",
+      "ferrous": false,
+      "target": "leave",
+      "confidence": 0.53,
+      "reason": "P(ferrous)=0.03 stainless 0.97 nut 0.53 \u2192 iron_bin 1.00; 17x11 mm; the magnet was lowered onto it and energised 2 times and the"
+    },
+    {
+      "id": "p6",
+      "u": 764,
+      "v": 477,
+      "kind": "nut",
+      "material": "brass",
+      "ferrous": false,
+      "target": "leave",
+      "confidence": 0.73,
+      "reason": "P(ferrous)=0.09 brass 0.95 nut 0.73 \u2192 iron_bin 1.00; 23x17 mm; not tried yet"
+    },
+    {
+      "id": "p7",
+      "u": 950,
+      "v": 514,
+      "kind": "bolt",
+      "material": "stainless",
+      "ferrous": false,
+      "target": "leave",
+      "confidence": 0.62,
+      "reason": "P(ferrous)=0.04 stainless 0.97 bolt 0.62 \u2192 iron_bin 1.00; 31x22 mm; the magnet was lowered onto it and energised 2 times and the"
+    }
+  ],
+  "program": [
+    {
+      "op": "pick",
+      "u": 688,
+      "v": 374,
+      "piece": "p1"
+    },
+    {
+      "op": "place",
+      "target": "iron_bin"
+    },
+    {
+      "op": "home"
+    }
+  ],
+  "done": false,
+  "message": "Jev: 7 parts seen, 0 judged ferrous, 1 worth a try, trying 1"
+}

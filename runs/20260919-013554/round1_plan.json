@@ -1,0 +1,151 @@
+{
+  "pieces": [
+    {
+      "id": "p1",
+      "u": 627,
+      "v": 336,
+      "kind": "washer",
+      "material": "zinc_steel",
+      "ferrous": false,
+      "target": "iron_bin",
+      "confidence": 0.46,
+      "reason": "P(ferrous)=0.46 zinc_steel 0.46 washer 0.97 \u2192 iron_bin 1.00; 22x17 mm; not tried yet"
+    },
+    {
+      "id": "p2",
+      "u": 688,
+      "v": 374,
+      "kind": "bolt",
+      "material": "zinc_steel",
+      "ferrous": false,
+      "target": "iron_bin",
+      "confidence": 0.5,
+      "reason": "P(ferrous)=0.46 zinc_steel 0.50 bolt 0.90 \u2192 iron_bin 1.00; 26x14 mm; not tried yet"
+    },
+    {
+      "id": "p3",
+      "u": 614,
+      "v": 375,
+      "kind": "bolt",
+      "material": "zinc_steel",
+      "ferrous": false,
+      "target": "iron_bin",
+      "confidence": 0.4,
+      "reason": "P(ferrous)=0.42 zinc_steel 0.40 bolt 0.64 \u2192 iron_bin 1.00; 32x23 mm; not tried yet"
+    },
+    {
+      "id": "p4",
+      "u": 566,
+      "v": 426,
+      "kind": "bolt",
+      "material": "zinc_steel",
+      "ferrous": true,
+      "target": "iron_bin",
+      "confidence": 0.5,
+      "reason": "P(ferrous)=0.50 zinc_steel 0.50 bolt 0.91 \u2192 iron_bin 1.00; 28x13 mm; not tried yet"
+    },
+    {
+      "id": "p5",
+      "u": 772,
+      "v": 427,
+      "kind": "washer",
+      "material": "copper",
+      "ferrous": false,
+      "target": "leave",
+      "confidence": 0.75,
+      "reason": "P(ferrous)=0.25 copper 0.96 washer 0.95 \u2192 iron_bin 1.00; 19x16 mm; not tried yet"
+    },
+    {
+      "id": "p6",
+      "u": 675,
+      "v": 444,
+      "kind": "nut",
+      "material": "zinc_steel",
+      "ferrous": true,
+      "target": "iron_bin",
+      "confidence": 0.53,
+      "reason": "P(ferrous)=0.53 zinc_steel 0.57 nut 0.61 \u2192 iron_bin 1.00; 16x11 mm; not tried yet"
+    },
+    {
+      "id": "p7",
+      "u": 846,
+      "v": 454,
+      "kind": "nut",
+      "material": "black_steel",
+      "ferrous": true,
+      "target": "iron_bin",
+      "confidence": 0.58,
+      "reason": "P(ferrous)=0.69 black_steel 0.58 nut 0.67 \u2192 iron_bin 1.00; 20x12 mm; not tried yet"
+    },
+    {
+      "id": "p8",
+      "u": 764,
+      "v": 477,
+      "kind": "bolt",
+      "material": "brass",
+      "ferrous": false,
+      "target": "leave",
+      "confidence": 0.64,
+      "reason": "P(ferrous)=0.09 brass 0.94 bolt 0.64 \u2192 iron_bin 1.00; 24x15 mm; not tried yet"
+    },
+    {
+      "id": "p9",
+      "u": 951,
+      "v": 514,
+      "kind": "bolt",
+      "material": "zinc_steel",
+      "ferrous": true,
+      "target": "iron_bin",
+      "confidence": 0.52,
+      "reason": "P(ferrous)=0.52 zinc_steel 0.53 bolt 0.76 \u2192 iron_bin 1.00; 30x22 mm; not tried yet"
+    },
+    {
+      "id": "p10",
+      "u": 701,
+      "v": 515,
+      "kind": "bolt",
+      "material": "zinc_steel",
+      "ferrous": true,
+      "target": "iron_bin",
+      "confidence": 0.52,
+      "reason": "P(ferrous)=0.52 zinc_steel 0.53 bolt 0.73 \u2192 iron_bin 1.00; 26x15 mm; not tried yet"
+    }
+  ],
+  "program": [
+    {
+      "op": "pick",
+      "u": 846,
+      "v": 454,
+      "piece": "p7"
+    },
+    {
+      "op": "place",
+      "target": "iron_bin"
+    },
+    {
+      "op": "pick",
+      "u": 675,
+      "v": 444,
+      "piece": "p6"
+    },
+    {
+      "op": "place",
+      "target": "iron_bin"
+    },
+    {
+      "op": "pick",
+      "u": 951,
+      "v": 514,
+      "piece": "p9"
+    },
+    {
+      "op": "place",
+      "target": "iron_bin"
+    },
+    {
+      "op": "home"
+    }
+  ],
+  "done": false,
+  "message": "Jev: 10 parts seen, 5 judged ferrous, 8 worth a try, trying 3"
+}

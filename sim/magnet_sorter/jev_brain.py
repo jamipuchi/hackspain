@@ -292,8 +292,8 @@ def questions_for(kinds: list[str], materials: list[str]) -> dict:
     return {
         "kind": {"type": "choice", "instructions": "What kind of hardware part is described in `part`? Use the shape, the centre and the size.", "criteria": {k: KIND_HINTS.get(k, k) for k in kinds}},
         "material": {"type": "choice", "instructions": "What is the part made of? Use colour, brightness and finish in `part` as priors; `magnet_feedback` is ground truth and overrides appearance when present.", "criteria": {m: MATERIAL_HINTS.get(m, m) for m in materials}},
-        "ferrous": {"type": "noul", "instructions": "Will the electromagnet lift this part? True only for carbon steel (zinc-plated, black-oxide or rusty). If `magnet_feedback` says the part stayed on the table after a centred attempt, answer false.",
-                    "criteria": {"true": "carbon steel: the magnet lifts it", "false": "brass, copper, aluminium or stainless: the magnet does not lift it; or the magnet already tried and the part stayed"}},
+        "ferrous": {"type": "noul", "instructions": "Will the electromagnet lift this part? True only for carbon steel (zinc-plated, black-oxide or rusty). If `magnet_feedback` says the part is NOT ferrous, answer false; a single inconclusive miss should only lower your answer a little.",
+                    "criteria": {"true": "carbon steel: the magnet lifts it", "false": "brass, copper, aluminium or stainless: the magnet does not lift it; or the magnet tried repeatedly and the part always stayed"}},
         # whether to move the part at all is decided by code from P(ferrous) + feedback; Jev only says where it belongs
         "target": {"type": "choice", "instructions": "Assume the electromagnet CAN lift this part. According to `task`, which container should the arm drop it in? Decide from the kind of part (and its size/finish if the task grades by those).", "criteria": _target_criteria()},
     }
@@ -349,10 +349,12 @@ class JevPlanner:
     def _feedback_text(rec: dict | None) -> str:
         if not rec or not rec["outcomes"]:
             return "not tried yet"
-        words = []
-        for o in rec["outcomes"]:
-            words.append({"lifted": "the magnet lifted it (it left its spot) but a part is at this spot again", "stayed": "the magnet was lowered onto it and energised, the part STAYED on the table (not lifted)", "unclear": "an attempt was made, the cameras could not tell whether it moved"}[o])
-        return f"{len(rec['outcomes'])} attempt(s) so far: " + "; ".join(words)
+        stayed = sum(1 for o in rec["outcomes"] if o == "stayed")
+        if stayed >= 2:
+            return f"the magnet was lowered onto it and energised {stayed} times and the part STAYED on the table every time: it is NOT ferrous"
+        if stayed == 1:
+            return "the magnet was tried once and the part stayed on the table; a single miss is inconclusive (the magnet may have been off-centre), the part may still be steel"
+        return f"{len(rec['outcomes'])} attempt(s): " + "; ".join({"lifted": "the magnet lifted it (it left its spot) but a part is at this spot again", "unclear": "the cameras could not tell whether it moved"}[o] for o in rec["outcomes"])
 
     # -------------------------------------------------- Jev
     def _judge(self, part: dict, rec: dict | None) -> dict:
