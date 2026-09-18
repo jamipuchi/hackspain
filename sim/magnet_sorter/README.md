@@ -69,6 +69,29 @@ Each run writes `runs/<timestamp>/`: `roundN_photo.png` (what GPT-6 saw), `round
 (its answer), `phone/*.png` (raw Cycles frames), `serial.log`, `trajectory.npz` + `events.json`.
 The OpenAI key is read from `OPENAI_API_KEY`, `OPEN_AI_KEY`, or `~/Documents/leads-gpt/api/.env`.
 
+## TypeSafe Jev brain (`--planner jev`)
+
+```bash
+../.venv/bin/python run_demo.py --planner jev --phone mujoco          # any build; program brain, one plan per photo
+```
+
+[Jev](https://docs.typesafe.ai) is TypeSafe's "System One" model: text in, typed answers out (Choice / Score /
+yes-no) with calibrated probabilities. It reads no images, writes no text and calls no tools, so it cannot
+take GPT-6's seat one-for-one. `jev_brain.py` splits the job the way TypeSafe recommends (code in control,
+the model answers narrow questions):
+
+| stage | who | what |
+| --- | --- | --- |
+| perception | code | background-difference blobs inside the arm's workspace, footprint measured on the table plane through the ArUco homography (mm, elongation, hole, colour cast vs the board, brightness, shine) → a short English record per part |
+| judgement | Jev | one request per part, four questions in parallel: kind, material, *will the magnet lift it?*, which container. The arm's feedback on that part (`stayed` / `lifted`) is part of the state and overrides appearance |
+| control | code | tries every part Jev does not rule out (P(ferrous) ≥ 0.3), best-supported first, three per photo, at most two attempts per part; a low-confidence container falls back to the build's `unknown` tray when it has one |
+
+Appearance alone cannot separate zinc from stainless (Jev says so: P ≈ 0.5), so like GPT-6 it learns from the
+magnet. A round costs about 0.05 ¢ and 2–4 s for eleven parts (jev-latest: $0.042 per million input tokens,
+output free, 64k tokens per request, 429/529 → backoff). The key is read from `TYPESAFE_API_KEY`, else
+`~/.config/typesafe/api_key`. Plain HTTP (`urllib`), no SDK needed; `pip install typesafe-sdk` exists if you
+want the typed client.
+
 ## Recorded run (seed 11): 4/4 ferrous parts in the tray, 4 rounds, $0.29
 
 | round | GPT-6 said | what happened |
@@ -107,6 +130,7 @@ Arduino GND. Full pinout in the sketch header.
 | `controller.py` | 3-DOF inverse kinematics, pick/place ops, camera-diff pickup verification |
 | `camera.py` | ArUco homography calibration, phone-look post-processing, MuJoCo/real cameras |
 | `brain.py` | GPT-6 prompt + strict JSON schema (Responses API); `MockPlanner` for offline runs |
+| `jev_brain.py` | TypeSafe Jev planner: model-free part detector + per-part Choice/Noul questions + confidence-gated program |
 | `run_demo.py` | the loop; records trajectory + events for the video |
 | `blender/scene_builder.py` | builds the PBR Blender scene from scene_def |
 | `blender/render_server.py` · `blender_client.py` | Blender kept alive as a render server (Cycles, Metal) |

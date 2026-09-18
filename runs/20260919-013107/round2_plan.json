@@ -1,0 +1,75 @@
+{
+  "pieces": [
+    {
+      "id": "p1",
+      "u": 578,
+      "v": 507,
+      "kind": "other",
+      "material": "stainless",
+      "ferrous": false,
+      "target": "leave",
+      "confidence": 0.47,
+      "reason": "P(ferrous)=0.05 stainless 1.00 other 0.78 \u2192 nuts 0.47; 8x6 mm; 1 attempt(s) so far: the magnet was lowered onto it and ener"
+    },
+    {
+      "id": "p2",
+      "u": 686,
+      "v": 520,
+      "kind": "screw",
+      "material": "stainless",
+      "ferrous": true,
+      "target": "washers",
+      "confidence": 0.43,
+      "reason": "P(ferrous)=0.51 stainless 0.73 screw 0.43 \u2192 washers 0.48; 14x4 mm; not tried yet"
+    },
+    {
+      "id": "p3",
+      "u": 638,
+      "v": 556,
+      "kind": "other",
+      "material": "stainless",
+      "ferrous": true,
+      "target": "unknown",
+      "confidence": 0.35,
+      "reason": "P(ferrous)=0.58 stainless 0.52 other 0.67 \u2192 screws 0.35; 27x23 mm; not tried yet"
+    },
+    {
+      "id": "p4",
+      "u": 602,
+      "v": 623,
+      "kind": "screw",
+      "material": "stainless",
+      "ferrous": false,
+      "target": "leave",
+      "confidence": 0.77,
+      "reason": "P(ferrous)=0.05 stainless 0.77 screw 0.88 \u2192 screws 0.97; 6x1 mm; 1 attempt(s) so far: the magnet was lowered onto it and ener"
+    }
+  ],
+  "program": [
+    {
+      "op": "pick",
+      "u": 638,
+      "v": 556,
+      "piece": "p3"
+    },
+    {
+      "op": "place",
+      "target": "unknown"
+    },
+    {
+      "op": "pick",
+      "u": 686,
+      "v": 520,
+      "piece": "p2"
+    },
+    {
+      "op": "place",
+      "target": "washers"
+    },
+    {
+      "op": "home"
+    }
+  ],
+  "done": false,
+  "message": "Jev: 4 parts seen, 2 judged ferrous, trying 2"
+}

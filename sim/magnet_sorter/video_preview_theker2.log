@@ -1,0 +1,19 @@
+3062 frames (122 s), renderer=mujoco
+  composed 0/3062
+  composed 200/3062
+  composed 400/3062
+  composed 600/3062
+  composed 800/3062
+  composed 1000/3062
+  composed 1200/3062
+  composed 1400/3062
+  composed 1600/3062
+  composed 1800/3062
+  composed 2000/3062
+  composed 2200/3062
+  composed 2400/3062
+  composed 2600/3062
+  composed 2800/3062
+  composed 3000/3062
+video: runs/20260919-011314/video_preview.mp4
+exit=0

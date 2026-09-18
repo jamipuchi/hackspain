@@ -164,11 +164,13 @@ def find_parts(frame_bgr: np.ndarray, cal) -> list[dict]:
         if not _strict_workspace(x, y):
             continue
         mm = _mm_per_px(cal, u, v)
-        (cx, cy), (rw, rh), _ang = cv2.minAreaRect(c)
-        long_mm, short_mm = max(rw, rh) * mm, min(rw, rh) * mm
+        # footprint measured on the table plane (undoes the oblique view): contour → table mm → min-area rectangle
+        tbl = cv2.perspectiveTransform(c.astype(np.float32).reshape(-1, 1, 2), cal.H.astype(np.float64)).reshape(-1, 2) * 1000.0
+        (_tx, _ty), (rw, rh), _ang = cv2.minAreaRect(tbl.astype(np.float32))
+        long_mm, short_mm = max(rw, rh), min(rw, rh)
         if long_mm < 2.5 or long_mm > 45 or short_mm > 30:
             continue
-        fill = area / max(rw * rh, 1.0)
+        fill = abs(cv2.contourArea(tbl.astype(np.float32))) / max(rw * rh, 1.0)
         if fill < 0.25 or long_mm / max(short_mm, 0.1) > 8:
             continue  # a scratch, a cable or a grid remnant, not a part
         cm = np.zeros((h, w), np.uint8)
@@ -177,6 +179,12 @@ def find_parts(frame_bgr: np.ndarray, cal) -> list[dict]:
         hsv = cv2.cvtColor(pix.reshape(-1, 1, 3), cv2.COLOR_BGR2HSV).reshape(-1, 3)
         bgpix = bg[v, u].astype(np.int16)
         bg_hsv = cv2.cvtColor(bg[v, u].reshape(1, 1, 3), cv2.COLOR_BGR2HSV)[0, 0]
+        # colour cast relative to the board (cancels the lamp's warm light): Lab a/b offsets of the mid-tone pixels
+        plab = lab[cm > 0]
+        mid = plab[(plab[:, 0] > 40) & (plab[:, 0] < np.percentile(plab[:, 0], 85))] if len(plab) > 8 else plab
+        mid = mid if len(mid) else plab
+        da = float(mid[:, 1].mean() - bg_lab[v, u, 1])
+        db = float(mid[:, 2].mean() - bg_lab[v, u, 2])
         rr = max(2, int(round(short_mm * 0.18 / mm)))
         core = img[max(0, v - rr) : v + rr, max(0, u - rr) : u + rr].reshape(-1, 3).astype(np.int16)
         core_bg = float((np.abs(core - bgpix).sum(axis=1) < 45).mean()) if core.size else 0.0
@@ -185,6 +193,7 @@ def find_parts(frame_bgr: np.ndarray, cal) -> list[dict]:
             u=u, v=v, x=float(x), y=float(y), area_px=int(area), long_mm=round(long_mm, 1), short_mm=round(short_mm, 1), aspect=round(long_mm / max(short_mm, 0.1), 2), fill=round(fill, 2),
             hue=int(np.median(hsv[:, 0])), sat=int(np.median(hsv[:, 1])), val=int(np.median(hsv[:, 2])), val_p90=int(np.percentile(hsv[:, 2], 90)), val_std=int(hsv[:, 2].std()),
             bg_val=int(bg_hsv[2]), bg_sat=int(bg_hsv[1]), core_bg=round(core_bg, 2), core_dark=round(core_dark, 2),
+            L=int(np.median(plab[:, 0])), da=round(da, 1), db=round(db, 1),
         ))
     parts.sort(key=lambda p: (p["v"], p["u"]))
     return parts
@@ -210,25 +219,28 @@ def describe(p: dict) -> dict:
     # size words (footprint on the table, mm)
     L = p["long_mm"]
     size = "tiny (under 6 mm)" if L < 6 else "small (6-10 mm)" if L < 10 else "medium (10-16 mm)" if L < 16 else "large (16-24 mm)" if L < 24 else "long (over 24 mm)"
-    # colour
-    hue, sat, val = p["hue"], p["sat"], p["val"]
-    if sat >= 45 and 5 <= hue <= 15:
-        colour = "reddish-orange, coppery"
-    elif sat >= 45 and 15 < hue <= 35:
-        colour = "yellow-gold, brass-like"
-    elif sat >= 45 and hue < 5 or sat >= 45 and hue > 160:
-        colour = "reddish-brown"
-    elif sat >= 45:
-        colour = "coloured (not a plain metal grey)"
-    elif sat >= 25:
-        colour = "grey with a warm/yellowish tint" if 10 <= hue <= 35 else "grey with a slight colour cast"
-    elif 90 <= hue <= 130 and sat >= 12:
-        colour = "grey with a bluish tint"
+    # colour: cast relative to the board, so the lamp's warm light does not turn every part brass
+    val = p["val"]
+    da, db = p["da"], p["db"]
+    chroma = math.hypot(da, db)
+    if val < 90 or p["L"] < 95:
+        colour = "dark grey to black, no real colour visible"
+    elif chroma < 1.5:
+        colour = "neutral grey/silver, the same colour cast as the board"
+    elif chroma < 4.5:
+        tint = "yellowish/warm" if db > abs(da) else "bluish/cool (whiter)" if db < -abs(da) else "reddish" if da > 0 else "greenish"
+        colour = f"grey/silver with a slight {tint} tint"
+    elif db > 1.4 * abs(da):
+        colour = "distinctly yellow-gold (much yellower than the board)"
+    elif da > 0.5 * abs(db) and db > 0:
+        colour = "distinctly reddish-orange (much redder than the board)"
+    elif da > 0:
+        colour = "distinctly reddish/pink"
     else:
-        colour = "neutral grey/silver, no colour cast"
+        colour = "distinctly bluish/cool grey"
     # brightness vs board and shine
     dv = val - p["bg_val"]
-    if val < 70:
+    if val < 90:
         bright = "dark, almost black"
     elif dv > 12:
         bright = "brighter than the board around it"
@@ -273,9 +285,7 @@ MATERIAL_HINTS = {
 
 
 def _target_criteria() -> dict:
-    crit = {name: t["label"] for name, t in sd.TARGETS.items()}
-    crit["leave"] = "leave it on the table: the electromagnet cannot lift it (brass, copper, aluminium, stainless) or the task does not want it moved"
-    return crit
+    return {name: t["label"] for name, t in sd.TARGETS.items()}
 
 
 def questions_for(kinds: list[str], materials: list[str]) -> dict:
@@ -284,7 +294,8 @@ def questions_for(kinds: list[str], materials: list[str]) -> dict:
         "material": {"type": "choice", "instructions": "What is the part made of? Use colour, brightness and finish in `part` as priors; `magnet_feedback` is ground truth and overrides appearance when present.", "criteria": {m: MATERIAL_HINTS.get(m, m) for m in materials}},
         "ferrous": {"type": "noul", "instructions": "Will the electromagnet lift this part? True only for carbon steel (zinc-plated, black-oxide or rusty). If `magnet_feedback` says the part stayed on the table after a centred attempt, answer false.",
                     "criteria": {"true": "carbon steel: the magnet lifts it", "false": "brass, copper, aluminium or stainless: the magnet does not lift it; or the magnet already tried and the part stayed"}},
-        "target": {"type": "choice", "instructions": "According to `task`, where should the arm put this part? Choose `leave` if the magnet cannot lift it or the task says to leave it.", "criteria": _target_criteria()},
+        # whether to move the part at all is decided by code from P(ferrous) + feedback; Jev only says where it belongs
+        "target": {"type": "choice", "instructions": "Assume the electromagnet CAN lift this part. According to `task`, which container should the arm drop it in? Decide from the kind of part (and its size/finish if the task grades by those).", "criteria": _target_criteria()},
     }
 
 
@@ -294,13 +305,14 @@ class JevPlanner:
 
     name = MODEL
 
-    def __init__(self, cal, model: str = MODEL, max_picks: int = 3, max_attempts: int = 2, min_ferrous: float = 0.5, min_target: float = 0.4, workers: int = 8):
+    def __init__(self, cal, model: str = MODEL, max_picks: int = 3, max_attempts: int = 2, min_ferrous: float = 0.5, try_ferrous: float = 0.3, min_target: float = 0.4, workers: int = 8):
         self.cal = cal
         self.client = JevClient(model=model)
         self.name = f"typesafe-{self.client.model}"
         self.max_picks = max_picks
         self.max_attempts = max_attempts
-        self.min_ferrous = min_ferrous
+        self.min_ferrous = min_ferrous  # label a part ferrous
+        self.try_ferrous = try_ferrous  # worth an attempt: appearance alone cannot separate zinc from stainless, the magnet can
         self.min_target = min_target
         self.workers = workers
         self.usage = self.client.usage  # shared list: run_demo sums it
@@ -381,14 +393,15 @@ class JevPlanner:
             pid = f"p{i}"
             attempts = rec["attempts"] if rec else 0
             target = j["target"]
-            if target != "leave" and j["target_p"] < self.min_target and "unknown" in sd.TARGETS:
-                target = "unknown"
+            if j["target_p"] < self.min_target and "unknown" in sd.TARGETS:
+                target = "unknown"  # confidence-gated: the task's own fallback container
             ferrous = j["ferrous_p"] >= self.min_ferrous
             conf = min(j["kind_p"], j["material_p"], j["target_p"], j["ferrous_p"] if ferrous else 1 - j["ferrous_p"])
             fb = self._feedback_text(rec)
             reason = f"P(ferrous)={j['ferrous_p']:.2f} {j['material']} {j['material_p']:.2f} {j['kind']} {j['kind_p']:.2f} → {j['target']} {j['target_p']:.2f}; {p['long_mm']:.0f}x{p['short_mm']:.0f} mm; {fb[:60]}"
-            pieces.append({"id": pid, "u": p["u"], "v": p["v"], "kind": j["kind"], "material": j["material"], "ferrous": ferrous, "target": target if ferrous else "leave", "confidence": round(conf, 2), "reason": reason})
-            if ferrous and target != "leave" and attempts < self.max_attempts:
+            worth_a_try = j["ferrous_p"] >= self.try_ferrous and attempts < self.max_attempts
+            pieces.append({"id": pid, "u": p["u"], "v": p["v"], "kind": j["kind"], "material": j["material"], "ferrous": ferrous, "target": target if (ferrous or worth_a_try) else "leave", "confidence": round(conf, 2), "reason": reason})
+            if worth_a_try:
                 score = j["ferrous_p"] * (0.5 + 0.5 * j["target_p"]) * (0.6 if attempts else 1.0)
                 candidates.append((score, pid, p, target))
         candidates.sort(key=lambda t: -t[0])
@@ -401,8 +414,7 @@ class JevPlanner:
         if program:
             program.append({"op": "home"})
         n_fe = sum(1 for q in pieces if q["ferrous"])
-        n_left = sum(1 for q in pieces if q["ferrous"] and q["target"] != "leave")
-        message = f"Jev: {len(pieces)} parts seen, {n_fe} judged ferrous, trying {len(program) // 2}" + ("" if program else ("; nothing left worth trying" if pieces else "; no loose parts in reach"))
+        message = f"Jev: {len(pieces)} parts seen, {n_fe} judged ferrous, {len(candidates)} worth a try, trying {len(program) // 2}" + ("" if program else ("; nothing left worth trying" if pieces else "; no loose parts in reach"))
         self.last_input_text = self._input_text(round_no, frame_bgr.shape, parts, recs, judged)
         return {"pieces": pieces, "program": program, "done": not program, "message": message}
 

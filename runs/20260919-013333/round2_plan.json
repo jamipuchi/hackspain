@@ -1,0 +1,85 @@
+{
+  "pieces": [
+    {
+      "id": "p1",
+      "u": 677,
+      "v": 359,
+      "kind": "washer",
+      "material": "zinc_steel",
+      "ferrous": true,
+      "target": "washers",
+      "confidence": 0.36,
+      "reason": "P(ferrous)=0.54 zinc_steel 0.36 washer 0.90 \u2192 washers 0.65; 4x4 mm; not tried yet"
+    },
+    {
+      "id": "p2",
+      "u": 689,
+      "v": 520,
+      "kind": "screw",
+      "material": "zinc_steel",
+      "ferrous": true,
+      "target": "washers",
+      "confidence": 0.44,
+      "reason": "P(ferrous)=0.51 zinc_steel 0.44 screw 0.47 \u2192 washers 0.54; 12x6 mm; not tried yet"
+    },
+    {
+      "id": "p3",
+      "u": 629,
+      "v": 567,
+      "kind": "screw",
+      "material": "stainless",
+      "ferrous": false,
+      "target": "leave",
+      "confidence": 0.86,
+      "reason": "P(ferrous)=0.05 stainless 0.94 screw 0.86 \u2192 screws 0.98; 34x12 mm; 1 attempt(s) so far: the magnet was lowered onto it and ener"
+    },
+    {
+      "id": "p4",
+      "u": 604,
+      "v": 611,
+      "kind": "screw",
+      "material": "zinc_steel",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 0.43,
+      "reason": "P(ferrous)=0.57 zinc_steel 0.43 screw 0.98 \u2192 screws 1.00; 13x7 mm; not tried yet"
+    }
+  ],
+  "program": [
+    {
+      "op": "pick",
+      "u": 604,
+      "v": 611,
+      "piece": "p4"
+    },
+    {
+      "op": "place",
+      "target": "screws"
+    },
+    {
+      "op": "pick",
+      "u": 677,
+      "v": 359,
+      "piece": "p1"
+    },
+    {
+      "op": "place",
+      "target": "washers"
+    },
+    {
+      "op": "pick",
+      "u": 689,
+      "v": 520,
+      "piece": "p2"
+    },
+    {
+      "op": "place",
+      "target": "washers"
+    },
+    {
+      "op": "home"
+    }
+  ],
+  "done": false,
+  "message": "Jev: 4 parts seen, 3 judged ferrous, 3 worth a try, trying 3"
+}

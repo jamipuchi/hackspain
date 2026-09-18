@@ -1,0 +1,96 @@
+{
+  "pieces": [
+    {
+      "id": "p1",
+      "u": 652,
+      "v": 439,
+      "kind": "screw",
+      "material": "black_steel",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 0.56,
+      "reason": "P(ferrous)=0.66 black_steel 0.56 screw 0.86 \u2192 screws 0.61; 40x25 mm; not tried yet"
+    },
+    {
+      "id": "p2",
+      "u": 576,
+      "v": 503,
+      "kind": "screw",
+      "material": "stainless",
+      "ferrous": true,
+      "target": "screws",
+      "confidence": 0.62,
+      "reason": "P(ferrous)=0.62 stainless 0.73 screw 0.97 \u2192 screws 0.98; 10x3 mm; not tried yet"
+    },
+    {
+      "id": "p3",
+      "u": 686,
+      "v": 520,
+      "kind": "screw",
+      "material": "stainless",
+      "ferrous": true,
+      "target": "washers",
+      "confidence": 0.46,
+      "reason": "P(ferrous)=0.54 stainless 0.61 screw 0.47 \u2192 washers 0.46; 14x4 mm; not tried yet"
+    },
+    {
+      "id": "p4",
+      "u": 639,
+      "v": 556,
+      "kind": "other",
+      "material": "stainless",
+      "ferrous": true,
+      "target": "unknown",
+      "confidence": 0.36,
+      "reason": "P(ferrous)=0.55 stainless 0.60 other 0.65 \u2192 nuts 0.36; 27x23 mm; not tried yet"
+    },
+    {
+      "id": "p5",
+      "u": 604,
+      "v": 622,
+      "kind": "screw",
+      "material": "zinc_steel",
+      "ferrous": true,
+      "target": "washers",
+      "confidence": 0.33,
+      "reason": "P(ferrous)=0.58 zinc_steel 0.33 screw 0.35 \u2192 washers 0.70; 6x1 mm; not tried yet"
+    }
+  ],
+  "program": [
+    {
+      "op": "pick",
+      "u": 576,
+      "v": 503,
+      "piece": "p2"
+    },
+    {
+      "op": "place",
+      "target": "screws"
+    },
+    {
+      "op": "pick",
+      "u": 652,
+      "v": 439,
+      "piece": "p1"
+    },
+    {
+      "op": "place",
+      "target": "screws"
+    },
+    {
+      "op": "pick",
+      "u": 604,
+      "v": 622,
+      "piece": "p5"
+    },
+    {
+      "op": "place",
+      "target": "washers"
+    },
+    {
+      "op": "home"
+    }
+  ],
+  "done": false,
+  "message": "Jev: 5 parts seen, 5 judged ferrous, trying 3"
+}
