@@ -173,6 +173,47 @@ TARAS_V1 = BuildConfig(
     cameras=_TARAS_CAMS,
 )
 
+_LID = dict(size=(0.020, 0.020, 0.012), shape="lid")
+THEKER_V1 = _derive(
+    TARAS_V1,
+    name="theker_v1",
+    title="THEKER shopping sheet v4 · wood 10×10 links on a lazy-susan · 2× MG90S + MG946R · Uno + sensor shield · 5 V relay · Ø20 magnet · 3 shallow lids",
+    L1=0.070,
+    L2=0.070,
+    HANG=0.035,
+    SHOULDER_Z=0.080,
+    TURRET_Z=0.026,
+    magnet=dict(radius=0.010, height=0.015, hold_force=25.0, d0=0.0025, max_accel=20.0, mass=0.025, voltage=12, switch="relay", relay_delay_s=0.010),
+    workspace=dict(r=(0.055, 0.108), yaw=(math.radians(-40), math.radians(40))),
+    travel_z=0.055,  # lids are 1.2 cm tall: a 2 cm screw hanging under the magnet still clears them
+    pick_z=0.011,
+    targets={
+        "screws": dict(pos=_polar(0.125, -40), drop_z=0.040, label="shallow white lid for screws", **_LID),
+        "nuts": dict(pos=_polar(0.128, 0), drop_z=0.040, label="shallow white lid for nuts", **_LID),
+        "washers": dict(pos=_polar(0.125, 40), drop_z=0.040, label="shallow white lid for washers", **_LID),
+        "unknown": dict(pos=_polar(0.070, -85), drop_z=0.040, size=(0.028, 0.02, 0.010), shape="tray", label="small matte tray beside the arm base for parts you cannot identify"),
+    },
+    board=dict(size=(0.35, 0.25, 0.018), center=(0.09, 0.0), material="wood"),  # wooden chopping board, clamped to the table
+    markers={0: (0.035, -0.10), 1: (0.195, -0.10), 2: (0.195, 0.10), 3: (0.035, 0.10)},
+    marker_size=0.025,
+    phone_cam=dict(pos=(0.085, 0.0, 0.27), fovy_deg=52.0, width=1280, height=960),
+    cine_cam=dict(pos=(0.40, -0.34, 0.26), lookat=(0.08, 0.01, 0.03), fovy_deg=36.0, width=1200, height=900),
+    cameras={
+        "A": dict(pos=(0.085, 0.0, 0.27), lookat=(0.085, 0.0, 0.0), fovy_deg=52.0, width=1280, height=960),  # phone on the gooseneck, straight down over the tray
+        "B": dict(pos=(0.02, -0.30, 0.28), lookat=(0.085, 0.0, 0.0), fovy_deg=36.0, width=1280, height=960),  # optional second phone, right side
+    },
+    task=dict(
+        goal='Sort the steel hardware on the blue card by TYPE: screws into the "screws" lid, nuts into the "nuts" lid, washers into the "washers" lid. A part you cannot identify goes to the "unknown" tray. A part may be brass or another non-magnetic metal: the magnet cannot lift it; after one failed centred attempt leave it.',
+        scene="the wooden arm with the small servos is the robot (ignore it), the three shallow white lids beyond the card are the targets (see the container list), the small tray beside the arm base is for unknown parts, the black-and-white squares are calibration markers (ignore them). Only list loose parts lying on the blue card.",
+        kinds=["screw", "nut", "washer", "other"],
+        materials=["zinc_steel", "black_steel", "stainless", "aluminum", "brass", "copper", "unknown"],
+        targets_help="screws / nuts / washers: the three shallow lids; unknown: the small tray.",
+    ),
+    pieces="m3_m4",
+    home_servo=(150, 125, 75),
+)
+
+
 TARAS_CONVEYOR = _derive(
     TARAS_V1,
     name="taras_conveyor",
@@ -212,10 +253,10 @@ TARAS_KITTING = _derive(
     },
     task=dict(
         goal='Assemble hardware KITS: each of the three cups (kit_A, kit_B, kit_C) must end up with exactly ONE screw, ONE nut and ONE washer. Fill kits one at a time in order A, B, C. Keep count of what you already dropped in each cup using the feedback; a cup that already has a nut must not get a second nut. Parts left over after all kits are complete go to the "unknown" tray. Non-steel parts cannot be lifted; leave them after one failed attempt.',
-        scene=TARAS_V1.task["scene"],
+        scene=THEKER_V1.task["scene"],
         kinds=["screw", "nut", "washer", "other"],
         materials=["zinc_steel", "black_steel", "stainless", "aluminum", "brass", "copper", "unknown"],
-        targets_help="kit_A / kit_B / kit_C: the three clear cups; unknown: the small tray.",
+        targets_help="kit_A / kit_B / kit_C: the three shallow lids; unknown: the small tray.",
     ),
     pieces="kitting_set",
 )
@@ -232,52 +273,12 @@ TARAS_GRADING = _derive(
     },
     task=dict(
         goal='Quality-grade the steel screws on the pad. Estimate each screw\'s length from the image (the calibration markers are 25 mm squares: use them as a scale): screws up to 16 mm go to "short", screws 25 mm or longer go to "long". Any screw with visible rust or a damaged head goes to "reject" regardless of length. Anything that is not a screw goes to "unknown".',
-        scene=TARAS_V1.task["scene"],
+        scene=THEKER_V1.task["scene"],
         kinds=["screw", "nut", "washer", "other"],
         materials=["zinc_steel", "black_steel", "rusty_steel", "stainless", "aluminum", "brass", "unknown"],
-        targets_help="short / long / reject: the three clear cups; unknown: the small tray.",
+        targets_help="short / long / reject: the three shallow lids; unknown: the small tray.",
     ),
     pieces="grading_set",
-)
-
-_LID = dict(size=(0.020, 0.020, 0.012), shape="lid")
-THEKER_V1 = _derive(
-    TARAS_V1,
-    name="theker_v1",
-    title="THEKER shopping sheet v4 · wood 10×10 links on a lazy-susan · 2× MG90S + MG946R · Uno + sensor shield · 5 V relay · Ø20 magnet · 3 shallow lids",
-    L1=0.070,
-    L2=0.070,
-    HANG=0.035,
-    SHOULDER_Z=0.080,
-    TURRET_Z=0.026,
-    magnet=dict(radius=0.010, height=0.015, hold_force=25.0, d0=0.0025, max_accel=20.0, mass=0.025, voltage=12, switch="relay", relay_delay_s=0.010),
-    workspace=dict(r=(0.055, 0.108), yaw=(math.radians(-40), math.radians(40))),
-    travel_z=0.055,  # lids are 1.2 cm tall: a 2 cm screw hanging under the magnet still clears them
-    pick_z=0.011,
-    targets={
-        "screws": dict(pos=_polar(0.125, -40), drop_z=0.040, label="shallow white lid for screws", **_LID),
-        "nuts": dict(pos=_polar(0.128, 0), drop_z=0.040, label="shallow white lid for nuts", **_LID),
-        "washers": dict(pos=_polar(0.125, 40), drop_z=0.040, label="shallow white lid for washers", **_LID),
-        "unknown": dict(pos=_polar(0.070, -85), drop_z=0.040, size=(0.028, 0.02, 0.010), shape="tray", label="small matte tray beside the arm base for parts you cannot identify"),
-    },
-    board=dict(size=(0.35, 0.25, 0.018), center=(0.09, 0.0), material="wood"),  # wooden chopping board, clamped to the table
-    markers={0: (0.035, -0.10), 1: (0.195, -0.10), 2: (0.195, 0.10), 3: (0.035, 0.10)},
-    marker_size=0.025,
-    phone_cam=dict(pos=(0.085, 0.0, 0.27), fovy_deg=52.0, width=1280, height=960),
-    cine_cam=dict(pos=(0.40, -0.34, 0.26), lookat=(0.08, 0.01, 0.03), fovy_deg=36.0, width=1200, height=900),
-    cameras={
-        "A": dict(pos=(0.085, 0.0, 0.27), lookat=(0.085, 0.0, 0.0), fovy_deg=52.0, width=1280, height=960),  # phone on the gooseneck, straight down over the tray
-        "B": dict(pos=(0.02, -0.30, 0.28), lookat=(0.085, 0.0, 0.0), fovy_deg=36.0, width=1280, height=960),  # optional second phone, right side
-    },
-    task=dict(
-        goal='Sort the steel hardware on the blue card by TYPE: screws into the "screws" lid, nuts into the "nuts" lid, washers into the "washers" lid. A part you cannot identify goes to the "unknown" tray. A part may be brass or another non-magnetic metal: the magnet cannot lift it; after one failed centred attempt leave it.',
-        scene="the wooden arm with the small servos is the robot (ignore it), the three shallow white lids beyond the card are the targets (see the container list), the small tray beside the arm base is for unknown parts, the black-and-white squares are calibration markers (ignore them). Only list loose parts lying on the blue card.",
-        kinds=["screw", "nut", "washer", "other"],
-        materials=["zinc_steel", "black_steel", "stainless", "aluminum", "brass", "copper", "unknown"],
-        targets_help="screws / nuts / washers: the three shallow lids; unknown: the small tray.",
-    ),
-    pieces="m3_m4",
-    home_servo=(150, 125, 75),
 )
 
 BUILDS = {b.name: b for b in (HOBBY_V1, TARAS_V1, TARAS_CONVEYOR, TARAS_KITTING, TARAS_GRADING, THEKER_V1)}
@@ -620,7 +621,7 @@ def pieces_screws_nuts_washers() -> list[Body]:
 def pieces_kitting_set() -> list[Body]:
     out = []
     for k in "ABC":
-        out.append(screw(f"screw_m4x16_{k}", 0.0075, 0.0026, 0.004, 0.016, "steel_zinc", 0.0028, target=None, extra={"kit_part": "screw"}))
+        out.append(screw(f"screw_m4x20_{k}", 0.0070, 0.0026, 0.004, 0.020, "steel_zinc", 0.0032, target=None, extra={"kit_part": "screw"}))
         out.append(hexnut(f"nut_m4_{k}", 0.007, 0.0032, "steel_zinc", 0.0008, target=None, extra={"kit_part": "nut"}))
         out.append(washer(f"washer_m4_{k}", 0.009, 0.0008, "steel_zinc", 0.0003, target=None, extra={"kit_part": "washer"}))
     out.append(washer("washer_m4_extra", 0.009, 0.0008, "steel_zinc", 0.0003, target="unknown", extra={"kit_part": "washer"}))
@@ -749,7 +750,7 @@ def build_taras(cfg: BuildConfig) -> list[Body]:
     """The Madrid shopping-list build: wood, MG90S/MG946R, relay, 24 V magnet, cups (+ optional conveyor)."""
     bodies: list[Body] = []
     world = _common_static(cfg)
-    if cfg.conveyor is None and cfg.name == "theker_v1":
+    if cfg.conveyor is None and cfg.name in ("theker_v1", "taras_kitting", "taras_grading"):
         # matte blue card covering the working half of the board (parts lie on it), taped down
         world.geoms.append(Geom("box", (0.060, 0.082, 0.0004), (0.115, 0.0, 0.0004), material="card_blue", name="pad"))
     elif cfg.conveyor is None:
@@ -784,7 +785,7 @@ def build_taras(cfg: BuildConfig) -> list[Body]:
         Geom("box", (0.027, 0.017, 0.011), (-0.125, -0.085, 0.011), material="psu_black", name="psu_24v"),
         Geom("box", (0.012, 0.005, 0.005), (-0.030, 0.160, 0.005), material="wire_grey", collide=False, name="terminal_block"),
     ]
-    if cfg.name == "theker_v1":
+    if cfg.name in ("theker_v1", "taras_kitting", "taras_grading"):
         # sensor shield V5 stacked on the Uno, 5 V 8 A brick, terminal strip, inline fuse + switch, Wago 221 blocks, capacitor
         world.geoms += [
             Geom("box", (0.0343, 0.0267, 0.0015), (ax, ay, 0.0165), material="shield_blue", collide=False, name="sensor_shield"),
@@ -845,12 +846,12 @@ def build_taras(cfg: BuildConfig) -> list[Body]:
     j = cfg.joints
     turret = Body("turret", pos=(0, 0, cfg.TURRET_Z), parent="world", joint=dict(name="base", type="hinge", axis=(0, 0, 1), range=j["base"]["range"], damping=0.02, armature=0.0005))
     post_h = cfg.SHOULDER_Z - cfg.TURRET_Z
-    disc_r = 0.035 if cfg.name == "theker_v1" else 0.030
+    disc_r = 0.035 if cfg.name in ("theker_v1", "taras_kitting", "taras_grading") else 0.030
     turret.geoms += [
         Geom("cylinder", (disc_r, 0.004), (0, 0, 0.004), material="wood", collide=False, name="turret_disc"),
         Geom("box", (0.010, 0.010, post_h / 2), (0.0, 0.030, post_h / 2 + 0.004), material="wood", collide=False, name="post"),
     ]
-    if cfg.name == "theker_v1":
+    if cfg.name in ("theker_v1", "taras_kitting", "taras_grading"):
         turret.geoms.append(Geom("cylinder", (disc_r + 0.002, 0.003), (0, 0, -0.003), material="tin", collide=False, name="lazy_susan"))
     # MG946R bolted to the post, output horn facing -y so the horn face is on the base-axis plane
     turret.geoms += servo_geoms("shoulder", "MG946R", (0.0, 0.0105 + SERVO_MODELS["MG946R"]["h"] / 2 - 0.0215 + 0.011, post_h), quat=quat_x(90))

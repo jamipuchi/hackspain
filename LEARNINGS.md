@@ -33,7 +33,12 @@ extra use cases for the demo.
     too (nut into the screws lid, washer + nut into unknown). GPT-6 noticed the mismatch in the final photo
     and reported the exceptions honestly instead of claiming success. Fixes queued: parts spaced ≥ 3.8 cm
     (the sheet's "gaps between parts"), magnet lateral reach radius + 2 mm.
-  - Cost/step ≈ $0.06–0.07 with two 1280×960 images per step at medium effort.
+  - theker_v1, **2 phones** (top-down A + side B), same seed: **7/9** correct in 36 steps, $2.91. Two cameras
+    beat one clearly (7/9 vs 4/9): the side view disambiguates parts the top-down view hides under the arm or
+    behind a lid rim. Remaining misses were both co-picks (a screw carried into the washers lid, a nut into the
+    screws lid). GPT-6 tried to recover the mis-sorted nut from the lid but the lids sit outside the pick
+    sector (r ≤ 10.8 cm), so it reported the exception for manual correction — correct behaviour.
+  - Cost/step ≈ $0.06–0.08 with two 1280×960 images per step at medium effort.
 
 ## Cameras
 - One or two oblique phones ≤ 50 cm work; two views help when the arm hides a spot. The final sheet

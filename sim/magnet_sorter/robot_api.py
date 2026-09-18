@@ -110,7 +110,7 @@ class RobotAPI:
     def pick_at(self, x_cm: float, y_cm: float) -> ToolResult:
         self.actions += 1
         res = self.ctrl.pick(x_cm / 100, y_cm / 100)
-        self.magnet_on = True
+        self.magnet_on = bool(res.ok)
         return ToolResult(res.ok, f"{res.detail}; {self._fmt_state()}")
 
     def place_in(self, target: str) -> ToolResult:
