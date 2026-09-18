@@ -70,6 +70,7 @@ class BuildConfig:
     pieces: str  # piece-set builder name
     conveyor: dict | None = None
     home_servo: tuple = (90, 110, 40)
+    wave_size: int = 6  # parts the operator puts on the card at once (the pick sector is ~57 cm²; more cannot keep 2.8 cm gaps)
     wrist_y: float = 0.0
     cameras: dict | None = None  # name -> dict(pos, lookat, fovy_deg, width, height); oblique phone positions  # lateral offset of the wrist/magnet plane from the base axis (servo horn side)
 

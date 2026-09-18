@@ -62,3 +62,24 @@ viewer open: watch the run in the MuJoCo window
     ✓ pick at (6.7, 3.1) cm succeeded: the spot changed in camera A,B (part left it); released in the container
     ✓ home
   (evaluator) correctly placed: 1/3, misplaced: ["kit_B:{'screw': 2, 'nut': 2, 'washer': 1}"]
+
+=== round 4 (0.0s) oracle: 0 parts to move
+   p1 ( 600, 483) screw   steel_zinc  fe=T → leave    conf=1.00 | screw_m4x20_A (steel_zinc, screw) → kind ok, target ok
+   p2 ( 673, 292) nut     steel_zinc  fe=T → leave    conf=1.00 | nut_m4_A (steel_zinc, nut) → kind ok, target ok
+   p3 ( 665, 298) washer  steel_zinc  fe=T → leave    conf=1.00 | washer_m4_A (steel_zinc, washer) → kind ok, target ok
+   p4 ( 550, 531) screw   steel_zinc  fe=T → leave    conf=1.00 | screw_m4x20_B (steel_zinc, screw) → kind ok, target ok
+   p5 ( 482, 460) nut     steel_zinc  fe=T → leave    conf=1.00 | nut_m4_B (steel_zinc, nut) → kind ok, target ok
+   p6 ( 576, 534) washer  steel_zinc  fe=T → leave    conf=1.00 | washer_m4_B (steel_zinc, washer) → kind ok, target ok
+   p7 ( 640, 306) screw   steel_zinc  fe=T → leave    conf=1.00 | screw_m4x20_C (steel_zinc, screw) → kind ok, target ok
+   p8 ( 498, 446) nut     steel_zinc  fe=T → leave    conf=1.00 | nut_m4_C (steel_zinc, nut) → kind ok, target ok
+   p9 ( 527, 699) washer  steel_zinc  fe=T → leave    conf=1.00 | washer_m4_C (steel_zinc, washer) → kind ok, target ok
+  p10 ( 926, 369) washer  steel_zinc  fe=T → unknown  conf=1.00 | washer_m4_extra (steel_zinc, washer) → kind ok, target ok
+  program: (empty)
+GPT-6 says it is done.
+
+result: 1/3 correctly placed, 17 feedback lines, 182s wall, 81s sim
+misplaced (should be none): ["kit_B:{'screw': 2, 'nut': 2, 'washer': 1}"]
+  not complete: kit_B
+  not complete: kit_C
+trajectory: 2744 frames (110 s) → /Users/jaumepuig/robotics/magnet_sorter/runs/20260919-014214
+exit=0

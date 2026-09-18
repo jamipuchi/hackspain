@@ -95,27 +95,47 @@ def park(model, data, b, k: int) -> None:
     data.qvel[model.jnt_dofadr[model.joint(f"{b.name}_free").id] :][:6] = 0
 
 
-def scatter(model, data, pieces, rng: np.random.Generator, region: str = "workspace", y_center: float | None = None) -> None:
-    """Random non-touching layout. region: 'workspace' (arm sector), 'belt' (conveyor pick zone / spawn)."""
-    placed = []
-    spacing = 0.042 if sd.BUILD == "hobby_v1" else 0.038  # the shopping sheet: "spread parts in one layer with gaps"
+def scatter(model, data, pieces, rng: np.random.Generator, region: str = "workspace", y_center: float | None = None) -> list:
+    """Random non-touching layout. region: 'workspace' (arm sector), 'belt' (conveyor pick zone / spawn).
+    Guarantees a minimum centre distance between parts (relaxing from the sheet's 3.8 cm down to 2.8 cm) and keeps
+    parts out of the container footprints; parts that still do not fit are parked off-stage for the next wave.
+    Returns the pieces actually placed."""
+    placed, done = [], []
+    want = 0.042 if sd.BUILD == "hobby_v1" else 0.038  # the shopping sheet: "spread parts in one layer with gaps"
+    floor = 0.028  # a Ø20 magnet reaches ~1.2 cm sideways: 2.8 cm between centres is the physical minimum
+    keep_out = [(t["pos"][0], t["pos"][1], max(t["size"][0], t["size"][1]) + 0.015) for t in sd.TARGETS.values()] if region == "workspace" else []
     for b in pieces:
-        for _ in range(400):
-            if region == "belt":
-                c = sd.CONVEYOR
-                x = rng.uniform(c["x"] - c["width"] / 2 + 0.012, c["x"] + c["width"] / 2 - 0.012)
-                y = y_center + rng.uniform(-0.035, 0.035)
-            else:
-                r = rng.uniform(sd.WORKSPACE["r"][0] + 0.008, sd.WORKSPACE["r"][1] - 0.008)
-                yaw = rng.uniform(sd.WORKSPACE["yaw"][0] + 0.10, sd.WORKSPACE["yaw"][1] - 0.10)
-                x, y = r * np.cos(yaw), r * np.sin(yaw)
-            if all(np.hypot(x - px, y - py) > spacing for px, py in placed):
-                break
+        found = None
+        spacing = want
+        while found is None and spacing >= floor - 1e-9:
+            for _ in range(300):
+                if region == "belt":
+                    c = sd.CONVEYOR
+                    x = rng.uniform(c["x"] - c["width"] / 2 + 0.012, c["x"] + c["width"] / 2 - 0.012)
+                    y = y_center + rng.uniform(-0.035, 0.035)
+                else:
+                    r = rng.uniform(sd.WORKSPACE["r"][0] + 0.008, sd.WORKSPACE["r"][1] - 0.010)
+                    yaw = rng.uniform(sd.WORKSPACE["yaw"][0] + 0.10, sd.WORKSPACE["yaw"][1] - 0.10)
+                    x, y = r * np.cos(yaw), r * np.sin(yaw)
+                if any(np.hypot(x - kx, y - ky) < kr for kx, ky, kr in keep_out):
+                    continue
+                if all(np.hypot(x - px, y - py) > spacing for px, py in placed):
+                    found = (x, y)
+                    break
+            spacing -= 0.002
+        if found is None:
+            continue
+        x, y = found
         placed.append((x, y))
+        done.append(b)
         adr = model.jnt_qposadr[model.joint(f"{b.name}_free").id]
         yaw_q = rng.uniform(0, np.pi)
         data.qpos[adr : adr + 7] = [x, y, sd.SURFACE_Z + sd.piece_half_height(b) + 0.004, np.cos(yaw_q / 2), 0, 0, np.sin(yaw_q / 2)]
     mujoco.mj_forward(model, data)
+    if len(placed) > 1:
+        nn = min(np.hypot(px - qx, py - qy) for i, (px, py) in enumerate(placed) for j, (qx, qy) in enumerate(placed) if i != j)
+        print(f"layout: {len(done)}/{len(pieces)} parts on the {region}, closest pair {nn * 100:.1f} cm" + (f" ({len(pieces) - len(done)} wait for the next wave)" if len(done) < len(pieces) else ""))
+    return done
 
 
 def main() -> None:
@@ -213,7 +233,13 @@ def main() -> None:
         hopper = hopper[batch:]
         scatter(model, data, onstage, rng, region="belt", y_center=0.0)
     else:
-        scatter(model, data, pieces, rng)
+        wave = max(1, int(getattr(sd.CFG, "wave_size", 6)))
+        for k, b in enumerate(hopper):
+            park(model, data, b, k)
+        onstage = scatter(model, data, hopper[:wave], rng)
+        hopper = [b for b in hopper if b not in onstage]
+        if hopper:
+            print(f"waves: {len(onstage)} parts on the card now, {len(hopper)} more arrive when GPT-6 finishes this batch")
     step(400)
     ard.write("H")
     step(600)
@@ -349,7 +375,23 @@ def main() -> None:
             elif kind == "agent_text":
                 print(f"  GPT-6: {payload['text'][:200]}")
 
-        agent = GPT6Agent(robot, {cn: cams[cn].grab for cn in cams}, cals, run_dir, on_event=on_event, effort=args.effort, max_steps=args.max_steps, budget_usd=args.budget)
+        def refill() -> str | None:
+            """Called when GPT-6 confirms done. Static builds: the operator puts the next wave of parts on the card."""
+            nonlocal hopper
+            if sd.CONVEYOR or not hopper:
+                return None
+            ctrl.home()
+            wave = max(1, int(getattr(sd.CFG, "wave_size", 6)))
+            newp = scatter(model, data, hopper[:wave], rng)
+            hopper = [b for b in hopper if b not in newp]
+            step(400)
+            if rec:
+                rec.event("phase", text=f"batch done: the operator puts {len(newp)} more parts on the card")
+                rec.hold(1.5)
+            print(f"  ↻ refill: {len(newp)} new parts on the card, {len(hopper)} still waiting")
+            return f"This batch is accepted. The operator has put {len(newp)} NEW parts on the card ({len(hopper)} more will follow later). Take a photo, rebuild your inventory with note_parts and continue the same task with the new parts."
+
+        agent = GPT6Agent(robot, {cn: cams[cn].grab for cn in cams}, cals, run_dir, on_event=on_event, effort=args.effort, max_steps=args.max_steps, budget_usd=args.budget, refill=refill)
         print(f"agent mode: {len(cams)} camera(s) {list(cams)}, effort={args.effort}, max {args.max_steps} steps, budget ${args.budget:.2f}")
         result = agent.run_loop()
         correct, expected, todo, wrong = score()
@@ -430,6 +472,17 @@ def main() -> None:
                     if rec:
                         rec.event("op_done", round=round_no, index=1, ok=res.ok, detail=res.detail)
                 belt_cycles_left -= 1
+                continue
+            if hopper and not sd.CONVEYOR:
+                ctrl.home()
+                wave = max(1, int(getattr(sd.CFG, "wave_size", 6)))
+                newp = scatter(model, data, hopper[:wave], rng)
+                hopper = [b for b in hopper if b not in newp]
+                step(400)
+                history.append(f"round {round_no}: batch finished, the operator put {len(newp)} new parts on the card")
+                print(f"GPT-6 is done with this batch → {len(newp)} new parts on the card")
+                if rec:
+                    rec.event("phase", text=f"batch done: the operator puts {len(newp)} more parts on the card")
                 continue
             print("GPT-6 says it is done.")
             if rec:

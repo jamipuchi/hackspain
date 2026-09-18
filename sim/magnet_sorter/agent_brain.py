@@ -69,6 +69,8 @@ How to work:
 - Two parts within ~1 cm of each other may come up together on the magnet; if a container receives a
   wrong part you can pick it back out of the container if it is reachable, otherwise note it.
 - A part that does not lift after a centred attempt is not steel: leave it and say so.
+- Parts arrive in BATCHES: the operator puts a handful on the card at a time. When your done is accepted and more
+  parts exist, the operator adds the next batch and you are told so; rebuild the inventory and continue.
 - Before calling done, take a final photo and check every part is where the task wants it.
   done() is only accepted after that check; you will be shown the final photos once more to confirm.
 Keep each tool call purposeful; there is a budget of about {robot.budget_actions} actions."""
@@ -126,7 +128,7 @@ class AgentRun:
 
 
 class GPT6Agent:
-    def __init__(self, robot: RobotAPI, cameras: dict[str, Callable[[], np.ndarray]], calibrations: dict[str, TableCalibration], run_dir, on_event: Callable[[str, dict], None] | None = None, effort: str = "low", max_steps: int = 60, budget_usd: float = 4.0, model: str = MODEL):
+    def __init__(self, robot: RobotAPI, cameras: dict[str, Callable[[], np.ndarray]], calibrations: dict[str, TableCalibration], run_dir, on_event: Callable[[str, dict], None] | None = None, effort: str = "low", max_steps: int = 60, budget_usd: float = 4.0, model: str = MODEL, refill=None):
         self.robot = robot
         self.cameras = cameras
         self.cal = calibrations
@@ -144,6 +146,8 @@ class GPT6Agent:
         self.photo_n = 0
         self.run = AgentRun()
         self.awaiting_done_confirm = False
+        self.refill = refill  # optional: called on confirmed done; returns a message if new parts arrived (then we continue)
+        self.batches_done = 0
         self.history: list[str] = []  # compact text log replaces chained context (keeps cost linear)
         self.consecutive_photos = 0
         self.unproductive = 0  # consecutive take_photo / home / note_parts calls
@@ -300,6 +304,20 @@ class GPT6Agent:
                         inputs.append({"type": "function_call_output", "call_id": call.call_id, "output": json.dumps({"ok": False, "message": "Not accepted yet: inspect the final photos from every camera. If every part is where the task wants it, call done again; otherwise continue working."})})
                         photo_parts += parts
                         note = "Final check photos from every camera:"
+                        continue
+                    more = self.refill() if self.refill else None
+                    if more:
+                        self.batches_done += 1
+                        self.awaiting_done_confirm = False
+                        self.inventory = []
+                        self.consecutive_photos = 0
+                        self.unproductive = 0
+                        self.on_event("tool_result", {"step": self.run.steps, "name": "done", "ok": True, "text": f"batch {self.batches_done} accepted: {args.get('summary', '')[:120]} | " + more, "files": []})
+                        self.history.append(f"step {self.run.steps}: batch {self.batches_done} accepted ({args.get('summary', '')[:100]}). New parts arrived on the card; inventory reset.")
+                        inputs.append({"type": "function_call_output", "call_id": call.call_id, "output": json.dumps({"ok": True, "message": more, "state": self.robot.state()})})
+                        parts, files = self.photo("all")
+                        photo_parts += parts
+                        note = "New parts on the card (photos from every camera):"
                         continue
                     self.run.finished = True
                     self.run.summary = args.get("summary", "")

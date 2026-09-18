@@ -48,6 +48,18 @@ extra use cases for the demo.
     a duplicate; spread parts ≥ 4 cm.
   - Cost/step ≈ $0.06–0.08 with two 1280×960 images per step at medium effort.
 
+## Layout bug found 19 Sep 01:50 — the real cause of the co-picks
+- The pick sector of a 7+7 cm arm is only ~57 cm² (r 5.5–10.8 cm, ±38°). Ten parts can never sit 3.8 cm apart
+  there, and the old `scatter()` silently gave up: in the kitting/theker runs the closest pairs were **0.6–1.9 cm**,
+  not 3.8. Every "co-pick" in the results above was this, not the magnet model. Worse, the cups' rims reach 1 cm
+  into the sector, so 3 parts spawned inside kit B's footprint and were counted as already in the cup.
+- Fix (in `run_demo.py`): guaranteed spacing (3.8 cm, relaxing to a 2.8 cm floor = magnet reach), keep-out circles
+  around every container, and **waves**: `BuildConfig.wave_size` (6) parts on the card at once; when GPT-6's `done` is
+  accepted, the operator puts the next batch on the card and the agent continues (the tool result says so, the
+  inventory is reset). This is also how the physical demo will run — a human refills the card.
+- Lesson: always print the achieved layout (`layout: n parts, closest pair x cm`) and check it before blaming
+  perception or physics. Mechanics ceilings above (7/9 etc.) need re-measuring with the new layout.
+
 ## Cameras
 - One or two oblique phones ≤ 50 cm work; two views help when the arm hides a spot. The final sheet
   puts one phone on a gooseneck 25–30 cm straight above the tray: `theker_v1` camera A.
