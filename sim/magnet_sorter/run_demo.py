@@ -121,7 +121,7 @@ def scatter(model, data, pieces, rng: np.random.Generator, region: str = "worksp
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--build", default=_build, choices=sorted(sd.BUILDS), help="which physical build / task to simulate")
-    ap.add_argument("--planner", choices=["gpt6", "mock", "oracle"], default="gpt6")
+    ap.add_argument("--planner", choices=["gpt6", "jev", "mock", "oracle"], default="gpt6", help="gpt6: OpenAI GPT-6 (vision); jev: TypeSafe Jev decides per part, code does the vision (program brain only)")
     ap.add_argument("--viewer", action="store_true", help="open the MuJoCo viewer and run at wall-clock speed (needs mjpython on macOS)")
     ap.add_argument("--brain", choices=["program", "agent"], default="agent", help="program: one batch program per photo (legacy); agent: GPT-6 tool calls step by step with a photo after each motion")
     ap.add_argument("--cameras", default="A,B", help="which cameras of the build to use, e.g. A or A,B")
@@ -160,9 +160,9 @@ def main() -> None:
 
     viewer = None
     if args.viewer:
-        import mujoco.viewer
+        from mujoco import viewer as mjviewer
 
-        viewer = mujoco.viewer.launch_passive(model, data, show_left_ui=False, show_right_ui=False)
+        viewer = mjviewer.launch_passive(model, data, show_left_ui=False, show_right_ui=False)
         cx, cy, cz = sd.CINE_CAM["pos"]
         lx, ly, lz = sd.CINE_CAM["lookat"]
         viewer.cam.lookat[:] = [lx, ly, lz]
@@ -254,6 +254,12 @@ def main() -> None:
         from brain import GPT6Planner
 
         planner = GPT6Planner()
+    elif args.planner == "jev":
+        from jev_brain import JevPlanner
+
+        planner = JevPlanner(cal)
+        if args.brain == "agent":
+            print("planner jev: Jev is text-only and has no tool calling, using the program brain (one plan per photo)")
     elif args.planner == "oracle":
         from brain import OraclePlanner
 
@@ -352,7 +358,10 @@ def main() -> None:
         if wrong:
             print("misplaced (should be none):", wrong)
         for name in todo:
-            print(f"  not done: {name} at {np.round(data.body(name).xpos, 3)} (in {container_of(name)})")
+            if name in {b.name for b in pieces}:
+                print(f"  not done: {name} at {np.round(data.body(name).xpos, 3)} (in {container_of(name)})")
+            else:
+                print(f"  not complete: {name}")
         print(f"GPT-6 usage: {result.usage_in} in / {result.usage_out} out tokens ≈ ${result.cost_usd():.2f}")
         if rec:
             rec.event("score", binned=correct, total=expected)
@@ -450,7 +459,10 @@ def main() -> None:
     if wrong:
         print("misplaced (should be none):", wrong)
     for name in todo:
-        print(f"  not done: {name} at {np.round(data.body(name).xpos, 3)} (in {container_of(name)})")
+        if name in {b.name for b in pieces}:
+            print(f"  not done: {name} at {np.round(data.body(name).xpos, 3)} (in {container_of(name)})")
+        else:
+            print(f"  not complete: {name}")
     if sim_ard.velocity_clamps:
         print(f"physics guard clamped a piece velocity {sim_ard.velocity_clamps} times")
     if planner.usage:
