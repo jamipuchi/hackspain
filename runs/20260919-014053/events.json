@@ -1,0 +1,402 @@
+[
+ {
+  "frame": 50,
+  "kind": "phase",
+  "text": "calibrating cameras from the ArUco markers"
+ },
+ {
+  "frame": 50,
+  "kind": "calibration",
+  "markers": [
+   1,
+   2,
+   3
+  ],
+  "error_mm": 0.5600065785591362,
+  "cameras": [
+   "A",
+   "B"
+  ]
+ },
+ {
+  "frame": 50,
+  "kind": "phase",
+  "text": "round 1: taking phone photo"
+ },
+ {
+  "frame": 70,
+  "kind": "photo",
+  "round": 1,
+  "file": "round1_photo.png",
+  "render_s": 0.0
+ },
+ {
+  "frame": 70,
+  "kind": "phase",
+  "text": "round 1: GPT-6 is looking at the photo"
+ },
+ {
+  "frame": 95,
+  "kind": "plan",
+  "round": 1,
+  "plan": {
+   "pieces": [
+    {
+     "id": "p1",
+     "u": 600,
+     "v": 483,
+     "kind": "screw",
+     "material": "steel_zinc",
+     "ferrous": true,
+     "target": "leave",
+     "confidence": 1.0,
+     "reason": "oracle"
+    },
+    {
+     "id": "p2",
+     "u": 622,
+     "v": 603,
+     "kind": "nut",
+     "material": "steel_zinc",
+     "ferrous": true,
+     "target": "leave",
+     "confidence": 1.0,
+     "reason": "oracle"
+    },
+    {
+     "id": "p3",
+     "u": 676,
+     "v": 402,
+     "kind": "washer",
+     "material": "steel_zinc",
+     "ferrous": true,
+     "target": "leave",
+     "confidence": 1.0,
+     "reason": "oracle"
+    },
+    {
+     "id": "p4",
+     "u": 581,
+     "v": 529,
+     "kind": "screw",
+     "material": "steel_zinc",
+     "ferrous": true,
+     "target": "leave",
+     "confidence": 1.0,
+     "reason": "oracle"
+    },
+    {
+     "id": "p5",
+     "u": 624,
+     "v": 571,
+     "kind": "nut",
+     "material": "steel_zinc",
+     "ferrous": true,
+     "target": "leave",
+     "confidence": 1.0,
+     "reason": "oracle"
+    },
+    {
+     "id": "p6",
+     "u": 591,
+     "v": 542,
+     "kind": "washer",
+     "material": "steel_zinc",
+     "ferrous": true,
+     "target": "leave",
+     "confidence": 1.0,
+     "reason": "oracle"
+    },
+    {
+     "id": "p7",
+     "u": 706,
+     "v": 494,
+     "kind": "screw",
+     "material": "steel_zinc",
+     "ferrous": true,
+     "target": "leave",
+     "confidence": 1.0,
+     "reason": "oracle"
+    },
+    {
+     "id": "p8",
+     "u": 631,
+     "v": 542,
+     "kind": "nut",
+     "material": "steel_zinc",
+     "ferrous": true,
+     "target": "leave",
+     "confidence": 1.0,
+     "reason": "oracle"
+    },
+    {
+     "id": "p9",
+     "u": 747,
+     "v": 421,
+     "kind": "washer",
+     "material": "steel_zinc",
+     "ferrous": true,
+     "target": "leave",
+     "confidence": 1.0,
+     "reason": "oracle"
+    },
+    {
+     "id": "p10",
+     "u": 678,
+     "v": 565,
+     "kind": "washer",
+     "material": "steel_zinc",
+     "ferrous": true,
+     "target": "unknown",
+     "confidence": 1.0,
+     "reason": "oracle"
+    }
+   ],
+   "program": [
+    {
+     "op": "pick",
+     "u": 678,
+     "v": 565,
+     "piece": "p10"
+    },
+    {
+     "op": "place",
+     "target": "unknown"
+    },
+    {
+     "op": "home"
+    }
+   ],
+   "done": false,
+   "message": "oracle: 1 parts to move"
+  },
+  "seconds": 0.0003867149353027344,
+  "input_text": "",
+  "cost_usd": 0.0,
+  "file": "round1_plan.png"
+ },
+ {
+  "frame": 95,
+  "kind": "phase",
+  "text": "round 1: plan received (0.0 s)"
+ },
+ {
+  "frame": 170,
+  "kind": "op_start",
+  "round": 1,
+  "index": 0,
+  "op": {
+   "op": "pick",
+   "u": 678,
+   "v": 565,
+   "piece": "p10"
+  }
+ },
+ {
+  "frame": 313,
+  "kind": "op_done",
+  "round": 1,
+  "index": 0,
+  "ok": true,
+  "detail": "pick at (0.067,0.031) done, magnet on, arm lifted"
+ },
+ {
+  "frame": 320,
+  "kind": "op_start",
+  "round": 1,
+  "index": 1,
+  "op": {
+   "op": "place",
+   "target": "unknown"
+  }
+ },
+ {
+  "frame": 447,
+  "kind": "op_done",
+  "round": 1,
+  "index": 1,
+  "ok": true,
+  "detail": "pick at (6.7, 3.1) cm succeeded: the spot changed in camera A,B (part left it); released in the container"
+ },
+ {
+  "frame": 454,
+  "kind": "op_start",
+  "round": 1,
+  "index": 2,
+  "op": {
+   "op": "home"
+  }
+ },
+ {
+  "frame": 497,
+  "kind": "op_done",
+  "round": 1,
+  "index": 2,
+  "ok": true,
+  "detail": "home"
+ },
+ {
+  "frame": 504,
+  "kind": "score",
+  "binned": 0,
+  "total": 3
+ },
+ {
+  "frame": 504,
+  "kind": "phase",
+  "text": "round 2: taking phone photo"
+ },
+ {
+  "frame": 524,
+  "kind": "photo",
+  "round": 2,
+  "file": "round2_photo.png",
+  "render_s": 0.0
+ },
+ {
+  "frame": 524,
+  "kind": "phase",
+  "text": "round 2: GPT-6 is looking at the photo"
+ },
+ {
+  "frame": 549,
+  "kind": "plan",
+  "round": 2,
+  "plan": {
+   "pieces": [
+    {
+     "id": "p1",
+     "u": 600,
+     "v": 483,
+     "kind": "screw",
+     "material": "steel_zinc",
+     "ferrous": true,
+     "target": "leave",
+     "confidence": 1.0,
+     "reason": "oracle"
+    },
+    {
+     "id": "p2",
+     "u": 622,
+     "v": 603,
+     "kind": "nut",
+     "material": "steel_zinc",
+     "ferrous": true,
+     "target": "leave",
+     "confidence": 1.0,
+     "reason": "oracle"
+    },
+    {
+     "id": "p3",
+     "u": 676,
+     "v": 402,
+     "kind": "washer",
+     "material": "steel_zinc",
+     "ferrous": true,
+     "target": "leave",
+     "confidence": 1.0,
+     "reason": "oracle"
+    },
+    {
+     "id": "p4",
+     "u": 584,
+     "v": 526,
+     "kind": "screw",
+     "material": "steel_zinc",
+     "ferrous": true,
+     "target": "leave",
+     "confidence": 1.0,
+     "reason": "oracle"
+    },
+    {
+     "id": "p5",
+     "u": 621,
+     "v": 570,
+     "kind": "nut",
+     "material": "steel_zinc",
+     "ferrous": true,
+     "target": "leave",
+     "confidence": 1.0,
+     "reason": "oracle"
+    },
+    {
+     "id": "p6",
+     "u": 592,
+     "v": 539,
+     "kind": "washer",
+     "material": "steel_zinc",
+     "ferrous": true,
+     "target": "leave",
+     "confidence": 1.0,
+     "reason": "oracle"
+    },
+    {
+     "id": "p7",
+     "u": 706,
+     "v": 494,
+     "kind": "screw",
+     "material": "steel_zinc",
+     "ferrous": true,
+     "target": "leave",
+     "confidence": 1.0,
+     "reason": "oracle"
+    },
+    {
+     "id": "p8",
+     "u": 631,
+     "v": 542,
+     "kind": "nut",
+     "material": "steel_zinc",
+     "ferrous": true,
+     "target": "leave",
+     "confidence": 1.0,
+     "reason": "oracle"
+    },
+    {
+     "id": "p9",
+     "u": 747,
+     "v": 421,
+     "kind": "washer",
+     "material": "steel_zinc",
+     "ferrous": true,
+     "target": "leave",
+     "confidence": 1.0,
+     "reason": "oracle"
+    },
+    {
+     "id": "p10",
+     "u": 926,
+     "v": 369,
+     "kind": "washer",
+     "material": "steel_zinc",
+     "ferrous": true,
+     "target": "unknown",
+     "confidence": 1.0,
+     "reason": "oracle"
+    }
+   ],
+   "program": [],
+   "done": true,
+   "message": "oracle: 0 parts to move"
+  },
+  "seconds": 0.00040793418884277344,
+  "input_text": "",
+  "cost_usd": 0.0,
+  "file": "round2_plan.png"
+ },
+ {
+  "frame": 549,
+  "kind": "phase",
+  "text": "round 2: plan received (0.0 s)"
+ },
+ {
+  "frame": 624,
+  "kind": "phase",
+  "text": "GPT-6 reports done"
+ },
+ {
+  "frame": 661,
+  "kind": "phase",
+  "text": "done: 0/3 correctly placed"
+ }
+]

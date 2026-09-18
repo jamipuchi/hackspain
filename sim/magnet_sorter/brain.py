@@ -222,10 +222,46 @@ class OraclePlanner:
         self.last_input_text = ""
         self.tried: dict[str, int] = {}
 
+    def _container_of(self, p):
+        for tname, t in sd.TARGETS.items():
+            tx, ty = t["pos"]
+            if abs(p[0] - tx) < t["size"][0] + 0.01 and abs(p[1] - ty) < t["size"][1] + 0.01:
+                return tname
+        return None
+
+    def _kit_targets(self) -> dict[str, str]:
+        """Kitting builds: parts carry `kit_part` and no fixed target. Fill kits in order, one of each
+        part per kit, counting what is already inside each cup."""
+        kits = [k for k in sd.TARGETS if k.startswith("kit_")]
+        if not kits:
+            return {}
+        have = {k: {"screw": 0, "nut": 0, "washer": 0} for k in kits}
+        loose = []
+        for b in self.pieces:
+            part = b.piece.get("kit_part")
+            if not part or b.piece.get("target"):
+                continue
+            c = self._container_of(self.data.body(b.name).xpos)
+            if c in have:
+                have[c][part] += 1
+            else:
+                loose.append((b, part))
+        out = {}
+        for b, part in loose:
+            for k in kits:
+                if have[k][part] == 0:
+                    have[k][part] += 1
+                    out[b.name] = k
+                    break
+            else:
+                out[b.name] = "unknown"
+        return out
+
     def plan(self, frame_bgr, history, round_no):
         pieces, program = [], []
+        kit_targets = self._kit_targets()
         for b in self.pieces:
-            want = b.piece.get("target")
+            want = b.piece.get("target") or kit_targets.get(b.name)
             p = self.data.body(b.name).xpos
             if p[2] < -0.05:
                 continue

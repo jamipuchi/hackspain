@@ -38,6 +38,14 @@ extra use cases for the demo.
     behind a lid rim. Remaining misses were both co-picks (a screw carried into the washers lid, a nut into the
     screws lid). GPT-6 tried to recover the mis-sorted nut from the lid but the lids sit outside the pick
     sector (r ≤ 10.8 cm), so it reported the exception for manual correction — correct behaviour.
+  - taras_kitting (1 screw + 1 nut + 1 washer per cup, 2 cameras, seed 4): **1/3** kits complete in 50 steps,
+    $4.08 (budget hit). Kit A correct; kit B ended with 2 nuts + 2 washers and no screw. Four of eight picks were
+    reported by the verifier as "spot unchanged" — GPT-6 aimed 0.5–1 cm off on the dense 10-part card and the magnet
+    lifted a neighbour instead (the neighbour then landed in the kit, hence the duplicates). GPT-6 did NOT claim
+    success: its `done` summary listed exactly which kits were incomplete and that kit B's contents conflicted
+    with its pickup log. Counting-by-feedback is the hard part of kitting: a wrong pick corrupts the count.
+    Next: verify by looking INTO the cup after each place (second camera), and reject the drop if the cup shows
+    a duplicate; spread parts ≥ 4 cm.
   - Cost/step ≈ $0.06–0.08 with two 1280×960 images per step at medium effort.
 
 ## Cameras
@@ -60,6 +68,10 @@ extra use cases for the demo.
 - Wrist mass must sit on the magnet geom, or the hanger has no gravity torque.
 - Wrist hinge range ±1.55 rad (±1.2 was hit at steep poses).
 - Servo firmware: trapezoidal profile (200°/s cruise, 700°/s² accel) for both sim and `.ino`.
+- The oracle planner now understands kitting (assigns each loose part to the first kit missing that part,
+  counting what is already in each cup), so every use case has a mechanics ceiling to compare GPT-6 against.
+- `mjpython` + viewer can segfault (exit 139) when Blender Cycles is rendering at the same time; run the
+  live sims with `--phone mujoco` while a Cycles video renders, or wait for the render.
 - Oracle (ground-truth) planner scores: taras_v1 6/6, 5/6, 5/6; theker_v1 7/9 (one part carried along,
   one nudged off the card). Parts closer than ~3 cm come up together: separation matters (sheet agrees).
 

@@ -1,1 +1,64 @@
-Blender scene built in 12.2s (Cycles, Metal GPU); cameras ['A', 'B']
+camera A calibrated from markers [1, 2, 3]: 0.56 mm reprojection error
+camera B calibrated from markers [0, 1, 2, 3]: 0.50 mm reprojection error
+build=taras_kitting planner=oracle-ground-truth seed=4 run=/Users/jaumepuig/robotics/magnet_sorter/runs/20260919-014214
+ground truth (hidden from GPT-6): screw_m4x20_A→leave, nut_m4_A→leave, washer_m4_A→leave, screw_m4x20_B→leave, nut_m4_B→leave, washer_m4_B→leave, screw_m4x20_C→leave, nut_m4_C→leave, washer_m4_C→leave, washer_m4_extra→unknown
+viewer open: watch the run in the MuJoCo window
+
+=== round 1 (0.0s) oracle: 3 parts to move
+   p1 ( 600, 483) screw   steel_zinc  fe=T → leave    conf=1.00 | screw_m4x20_A (steel_zinc, screw) → kind ok, target ok
+   p2 ( 622, 603) nut     steel_zinc  fe=T → leave    conf=1.00 | nut_m4_A (steel_zinc, nut) → kind ok, target ok
+   p3 ( 676, 402) washer  steel_zinc  fe=T → kit_A    conf=1.00 | washer_m4_A (steel_zinc, washer) → kind ok, target WRONG (leave)
+   p4 ( 581, 529) screw   steel_zinc  fe=T → leave    conf=1.00 | screw_m4x20_B (steel_zinc, screw) → kind ok, target ok
+   p5 ( 624, 571) nut     steel_zinc  fe=T → kit_A    conf=1.00 | nut_m4_B (steel_zinc, nut) → kind ok, target WRONG (leave)
+   p6 ( 591, 542) washer  steel_zinc  fe=T → leave    conf=1.00 | washer_m4_B (steel_zinc, washer) → kind ok, target ok
+   p7 ( 706, 494) screw   steel_zinc  fe=T → kit_A    conf=1.00 | screw_m4x20_C (steel_zinc, screw) → kind ok, target WRONG (leave)
+   p8 ( 631, 542) nut     steel_zinc  fe=T → kit_B    conf=1.00 | nut_m4_C (steel_zinc, nut) → kind ok, target WRONG (leave)
+   p9 ( 747, 421) washer  steel_zinc  fe=T → kit_C    conf=1.00 | washer_m4_C (steel_zinc, washer) → kind ok, target WRONG (leave)
+  p10 ( 678, 565) washer  steel_zinc  fe=T → unknown  conf=1.00 | washer_m4_extra (steel_zinc, washer) → kind ok, target ok
+  program: pick(676,402) → place → pick(624,571) → place → pick(706,494) → place → home
+    ✓ pick at (0.080,-0.035) done, magnet on, arm lifted
+    ✓ pick at (8.0, -3.5) cm succeeded: the spot changed in camera A,B (part left it); released in the container
+    ✓ pick at (0.081,0.037) done, magnet on, arm lifted
+    ✓ pick at (8.1, 3.7) cm succeeded: the spot changed in camera A,B (part left it); released in the container
+    ✓ pick at (0.064,0.002) done, magnet on, arm lifted
+    ✓ pick at (6.4, 0.2) cm succeeded: the spot changed in camera A,B (part left it); released in the container
+    ✓ home
+  (evaluator) correctly placed: 1/3, misplaced: ["kit_B:{'screw': 2, 'nut': 0, 'washer': 1}"]
+
+=== round 2 (0.0s) oracle: 3 parts to move
+   p1 ( 600, 483) screw   steel_zinc  fe=T → leave    conf=1.00 | screw_m4x20_A (steel_zinc, screw) → kind ok, target ok
+   p2 ( 673, 292) nut     steel_zinc  fe=T → leave    conf=1.00 | nut_m4_A (steel_zinc, nut) → kind ok, target ok
+   p3 ( 665, 298) washer  steel_zinc  fe=T → leave    conf=1.00 | washer_m4_A (steel_zinc, washer) → kind ok, target ok
+   p4 ( 551, 531) screw   steel_zinc  fe=T → leave    conf=1.00 | screw_m4x20_B (steel_zinc, screw) → kind ok, target ok
+   p5 ( 618, 568) nut     steel_zinc  fe=T → kit_B    conf=1.00 | nut_m4_B (steel_zinc, nut) → kind ok, target WRONG (leave)
+   p6 ( 576, 534) washer  steel_zinc  fe=T → leave    conf=1.00 | washer_m4_B (steel_zinc, washer) → kind ok, target ok
+   p7 ( 640, 306) screw   steel_zinc  fe=T → leave    conf=1.00 | screw_m4x20_C (steel_zinc, screw) → kind ok, target ok
+   p8 ( 629, 548) nut     steel_zinc  fe=T → kit_C    conf=1.00 | nut_m4_C (steel_zinc, nut) → kind ok, target WRONG (leave)
+   p9 ( 747, 421) washer  steel_zinc  fe=T → kit_C    conf=1.00 | washer_m4_C (steel_zinc, washer) → kind ok, target WRONG (leave)
+  p10 ( 678, 565) washer  steel_zinc  fe=T → unknown  conf=1.00 | washer_m4_extra (steel_zinc, washer) → kind ok, target ok
+  program: pick(618,568) → place → pick(629,548) → place → pick(747,421) → place → home
+    ✓ pick at (0.083,0.036) done, magnet on, arm lifted
+    ✓ pick at (8.3, 3.6) cm succeeded: the spot changed in camera A,B (part left it); released in the container
+    ✓ pick at (0.081,0.028) done, magnet on, arm lifted
+    ✗ pick at (8.1, 2.8) cm FAILED: the spot looks unchanged in camera A (part still there: not ferrous, or the magnet missed it); released over the container anyway
+    ✓ pick at (0.057,-0.031) done, magnet on, arm lifted
+    ✓ pick at (5.7, -3.1) cm succeeded: the spot changed in camera A,B (part left it); released in the container
+    ✓ home
+  (evaluator) correctly placed: 1/3, misplaced: ["kit_B:{'screw': 2, 'nut': 2, 'washer': 1}"]
+
+=== round 3 (0.0s) oracle: 1 parts to move
+   p1 ( 600, 483) screw   steel_zinc  fe=T → leave    conf=1.00 | screw_m4x20_A (steel_zinc, screw) → kind ok, target ok
+   p2 ( 673, 292) nut     steel_zinc  fe=T → leave    conf=1.00 | nut_m4_A (steel_zinc, nut) → kind ok, target ok
+   p3 ( 665, 298) washer  steel_zinc  fe=T → leave    conf=1.00 | washer_m4_A (steel_zinc, washer) → kind ok, target ok
+   p4 ( 550, 531) screw   steel_zinc  fe=T → leave    conf=1.00 | screw_m4x20_B (steel_zinc, screw) → kind ok, target ok
+   p5 ( 482, 460) nut     steel_zinc  fe=T → leave    conf=1.00 | nut_m4_B (steel_zinc, nut) → kind ok, target ok
+   p6 ( 576, 534) washer  steel_zinc  fe=T → leave    conf=1.00 | washer_m4_B (steel_zinc, washer) → kind ok, target ok
+   p7 ( 640, 306) screw   steel_zinc  fe=T → leave    conf=1.00 | screw_m4x20_C (steel_zinc, screw) → kind ok, target ok
+   p8 ( 498, 446) nut     steel_zinc  fe=T → leave    conf=1.00 | nut_m4_C (steel_zinc, nut) → kind ok, target ok
+   p9 ( 527, 699) washer  steel_zinc  fe=T → leave    conf=1.00 | washer_m4_C (steel_zinc, washer) → kind ok, target ok
+  p10 ( 678, 565) washer  steel_zinc  fe=T → unknown  conf=1.00 | washer_m4_extra (steel_zinc, washer) → kind ok, target ok
+  program: pick(678,565) → place → home
+    ✓ pick at (0.067,0.031) done, magnet on, arm lifted
+    ✓ pick at (6.7, 3.1) cm succeeded: the spot changed in camera A,B (part left it); released in the container
+    ✓ home
+  (evaluator) correctly placed: 1/3, misplaced: ["kit_B:{'screw': 2, 'nut': 2, 'washer': 1}"]

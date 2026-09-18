@@ -1,0 +1,151 @@
+{
+  "pieces": [
+    {
+      "id": "p1",
+      "u": 600,
+      "v": 483,
+      "kind": "screw",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p2",
+      "u": 673,
+      "v": 292,
+      "kind": "nut",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p3",
+      "u": 665,
+      "v": 298,
+      "kind": "washer",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p4",
+      "u": 551,
+      "v": 531,
+      "kind": "screw",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p5",
+      "u": 618,
+      "v": 568,
+      "kind": "nut",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "kit_B",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p6",
+      "u": 576,
+      "v": 534,
+      "kind": "washer",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p7",
+      "u": 640,
+      "v": 306,
+      "kind": "screw",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p8",
+      "u": 629,
+      "v": 548,
+      "kind": "nut",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "kit_C",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p9",
+      "u": 747,
+      "v": 421,
+      "kind": "washer",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "kit_C",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p10",
+      "u": 678,
+      "v": 565,
+      "kind": "washer",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "unknown",
+      "confidence": 1.0,
+      "reason": "oracle"
+    }
+  ],
+  "program": [
+    {
+      "op": "pick",
+      "u": 618,
+      "v": 568,
+      "piece": "p5"
+    },
+    {
+      "op": "place",
+      "target": "kit_B"
+    },
+    {
+      "op": "pick",
+      "u": 629,
+      "v": 548,
+      "piece": "p8"
+    },
+    {
+      "op": "place",
+      "target": "kit_C"
+    },
+    {
+      "op": "pick",
+      "u": 747,
+      "v": 421,
+      "piece": "p9"
+    },
+    {
+      "op": "place",
+      "target": "kit_C"
+    },
+    {
+      "op": "home"
+    }
+  ],
+  "done": false,
+  "message": "oracle: 3 parts to move"
+}

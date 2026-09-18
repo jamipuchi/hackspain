@@ -1,0 +1,131 @@
+{
+  "pieces": [
+    {
+      "id": "p1",
+      "u": 600,
+      "v": 483,
+      "kind": "screw",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p2",
+      "u": 673,
+      "v": 292,
+      "kind": "nut",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p3",
+      "u": 665,
+      "v": 298,
+      "kind": "washer",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p4",
+      "u": 550,
+      "v": 531,
+      "kind": "screw",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p5",
+      "u": 482,
+      "v": 460,
+      "kind": "nut",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p6",
+      "u": 576,
+      "v": 534,
+      "kind": "washer",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p7",
+      "u": 640,
+      "v": 306,
+      "kind": "screw",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p8",
+      "u": 498,
+      "v": 446,
+      "kind": "nut",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p9",
+      "u": 527,
+      "v": 699,
+      "kind": "washer",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "leave",
+      "confidence": 1.0,
+      "reason": "oracle"
+    },
+    {
+      "id": "p10",
+      "u": 678,
+      "v": 565,
+      "kind": "washer",
+      "material": "steel_zinc",
+      "ferrous": true,
+      "target": "unknown",
+      "confidence": 1.0,
+      "reason": "oracle"
+    }
+  ],
+  "program": [
+    {
+      "op": "pick",
+      "u": 678,
+      "v": 565,
+      "piece": "p10"
+    },
+    {
+      "op": "place",
+      "target": "unknown"
+    },
+    {
+      "op": "home"
+    }
+  ],
+  "done": false,
+  "message": "oracle: 1 parts to move"
+}
