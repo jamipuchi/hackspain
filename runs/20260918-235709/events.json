@@ -1,0 +1,393 @@
+[
+ {
+  "frame": 50,
+  "kind": "phase",
+  "text": "calibrating cameras from the ArUco markers"
+ },
+ {
+  "frame": 50,
+  "kind": "calibration",
+  "markers": [
+   1,
+   2,
+   3
+  ],
+  "error_mm": 0.5692382184631547,
+  "cameras": [
+   "A",
+   "B"
+  ]
+ },
+ {
+  "frame": 50,
+  "kind": "agent_photo",
+  "files": [
+   "agent_001_camA.png",
+   "agent_002_camB.png"
+  ],
+  "note": "initial survey"
+ },
+ {
+  "frame": 60,
+  "kind": "tool_call",
+  "step": 1,
+  "name": "take_photo",
+  "args": {
+   "camera": "all",
+   "zoom_x_cm": null,
+   "zoom_y_cm": null
+  },
+  "latency_s": 3.3
+ },
+ {
+  "frame": 70,
+  "kind": "tool_result",
+  "step": 1,
+  "name": "take_photo",
+  "ok": true,
+  "text": "photo taken; magnet face now at (3.4, 4.7, z=10.3) cm, magnet off",
+  "files": [
+   "agent_003_camA.png",
+   "agent_004_camB.png"
+  ]
+ },
+ {
+  "frame": 80,
+  "kind": "tool_call",
+  "step": 2,
+  "name": "take_photo",
+  "args": {
+   "camera": "B",
+   "zoom_x_cm": 8,
+   "zoom_y_cm": 0
+  },
+  "latency_s": 4.4
+ },
+ {
+  "frame": 90,
+  "kind": "tool_result",
+  "step": 2,
+  "name": "take_photo",
+  "ok": true,
+  "text": "photo taken; magnet face now at (3.4, 4.7, z=10.3) cm, magnet off",
+  "files": [
+   "agent_005_camB_zoom.png"
+  ]
+ },
+ {
+  "frame": 100,
+  "kind": "tool_call",
+  "step": 3,
+  "name": "pick_at",
+  "args": {
+   "x_cm": 6,
+   "y_cm": -3
+  },
+  "latency_s": 7.4
+ },
+ {
+  "frame": 172,
+  "kind": "tool_result",
+  "step": 3,
+  "name": "pick_at",
+  "ok": true,
+  "text": "pick at (0.060,-0.030) done, magnet on, arm lifted; magnet face now at (6.8, -3.3, z=4.8) cm, magnet ON",
+  "files": [
+   "agent_006_camA.png"
+  ]
+ },
+ {
+  "frame": 182,
+  "kind": "tool_call",
+  "step": 4,
+  "name": "place_in",
+  "args": {
+   "target": "nuts"
+  },
+  "latency_s": 2.5
+ },
+ {
+  "frame": 258,
+  "kind": "tool_result",
+  "step": 4,
+  "name": "place_in",
+  "ok": true,
+  "text": "place: released over the bin (no camera to verify the pick); magnet face now at (13.1, -0.1, z=5.1) cm, magnet off",
+  "files": [
+   "agent_007_camA.png"
+  ]
+ },
+ {
+  "frame": 268,
+  "kind": "tool_call",
+  "step": 5,
+  "name": "pick_at",
+  "args": {
+   "x_cm": 7,
+   "y_cm": 2
+  },
+  "latency_s": 2.7
+ },
+ {
+  "frame": 339,
+  "kind": "tool_result",
+  "step": 5,
+  "name": "pick_at",
+  "ok": true,
+  "text": "pick at (0.070,0.020) done, magnet on, arm lifted; magnet face now at (7.8, 2.2, z=4.8) cm, magnet ON",
+  "files": [
+   "agent_008_camA.png"
+  ]
+ },
+ {
+  "frame": 349,
+  "kind": "tool_call",
+  "step": 6,
+  "name": "take_photo",
+  "args": {
+   "camera": "B",
+   "zoom_x_cm": 7,
+   "zoom_y_cm": 2
+  },
+  "latency_s": 4.9
+ },
+ {
+  "frame": 359,
+  "kind": "tool_result",
+  "step": 6,
+  "name": "take_photo",
+  "ok": true,
+  "text": "photo taken; magnet face now at (7.8, 2.2, z=4.8) cm, magnet ON",
+  "files": [
+   "agent_009_camB_zoom.png"
+  ]
+ },
+ {
+  "frame": 369,
+  "kind": "tool_call",
+  "step": 7,
+  "name": "place_in",
+  "args": {
+   "target": "screws"
+  },
+  "latency_s": 4.4
+ },
+ {
+  "frame": 444,
+  "kind": "tool_result",
+  "step": 7,
+  "name": "place_in",
+  "ok": true,
+  "text": "place: released over the bin (no camera to verify the pick); magnet face now at (9.5, -8.7, z=5.0) cm, magnet off",
+  "files": [
+   "agent_010_camA.png"
+  ]
+ },
+ {
+  "frame": 454,
+  "kind": "tool_call",
+  "step": 8,
+  "name": "take_photo",
+  "args": {
+   "camera": "B",
+   "zoom_x_cm": 9,
+   "zoom_y_cm": 0
+  },
+  "latency_s": 4.1
+ },
+ {
+  "frame": 464,
+  "kind": "tool_result",
+  "step": 8,
+  "name": "take_photo",
+  "ok": true,
+  "text": "photo taken; magnet face now at (9.5, -8.7, z=5.0) cm, magnet off",
+  "files": [
+   "agent_011_camB_zoom.png"
+  ]
+ },
+ {
+  "frame": 474,
+  "kind": "tool_call",
+  "step": 9,
+  "name": "home",
+  "args": {},
+  "latency_s": 2.6
+ },
+ {
+  "frame": 504,
+  "kind": "tool_result",
+  "step": 9,
+  "name": "home",
+  "ok": true,
+  "text": "parked; magnet face now at (3.8, 5.6, z=10.4) cm, magnet off",
+  "files": [
+   "agent_012_camA.png"
+  ]
+ },
+ {
+  "frame": 514,
+  "kind": "tool_call",
+  "step": 10,
+  "name": "take_photo",
+  "args": {
+   "camera": "all",
+   "zoom_x_cm": 9,
+   "zoom_y_cm": 0
+  },
+  "latency_s": 2.5
+ },
+ {
+  "frame": 524,
+  "kind": "tool_result",
+  "step": 10,
+  "name": "take_photo",
+  "ok": true,
+  "text": "photo taken; magnet face now at (3.8, 5.6, z=10.4) cm, magnet off",
+  "files": [
+   "agent_013_camA_zoom.png",
+   "agent_014_camB_zoom.png"
+  ]
+ },
+ {
+  "frame": 534,
+  "kind": "tool_call",
+  "step": 11,
+  "name": "pick_at",
+  "args": {
+   "x_cm": 9,
+   "y_cm": -2
+  },
+  "latency_s": 6.4
+ },
+ {
+  "frame": 604,
+  "kind": "tool_result",
+  "step": 11,
+  "name": "pick_at",
+  "ok": true,
+  "text": "pick at (0.090,-0.020) done, magnet on, arm lifted; magnet face now at (9.3, -2.0, z=4.6) cm, magnet ON",
+  "files": [
+   "agent_015_camA.png"
+  ]
+ },
+ {
+  "frame": 614,
+  "kind": "tool_call",
+  "step": 12,
+  "name": "move_to",
+  "args": {
+   "x_cm": 8,
+   "y_cm": -3,
+   "z_cm": 1.3
+  },
+  "latency_s": 4.5
+ },
+ {
+  "frame": 635,
+  "kind": "tool_result",
+  "step": 12,
+  "name": "move_to",
+  "ok": true,
+  "text": "moved; magnet face now at (7.2, -2.9, z=1.5) cm, magnet ON",
+  "files": [
+   "agent_016_camA.png"
+  ]
+ },
+ {
+  "frame": 645,
+  "kind": "tool_call",
+  "step": 13,
+  "name": "magnet",
+  "args": {
+   "on": false
+  },
+  "latency_s": 3.2
+ },
+ {
+  "frame": 661,
+  "kind": "tool_result",
+  "step": 13,
+  "name": "magnet",
+  "ok": true,
+  "text": "electromagnet released; magnet face now at (7.3, -2.8, z=1.4) cm, magnet off",
+  "files": [
+   "agent_017_camA.png"
+  ]
+ },
+ {
+  "frame": 671,
+  "kind": "tool_call",
+  "step": 14,
+  "name": "home",
+  "args": {},
+  "latency_s": 6.1
+ },
+ {
+  "frame": 700,
+  "kind": "tool_result",
+  "step": 14,
+  "name": "home",
+  "ok": true,
+  "text": "parked; magnet face now at (4.5, 6.6, z=11.0) cm, magnet off",
+  "files": [
+   "agent_018_camA.png"
+  ]
+ },
+ {
+  "frame": 710,
+  "kind": "tool_call",
+  "step": 15,
+  "name": "take_photo",
+  "args": {
+   "camera": "B",
+   "zoom_x_cm": 8,
+   "zoom_y_cm": 0
+  },
+  "latency_s": 4.9
+ },
+ {
+  "frame": 720,
+  "kind": "tool_result",
+  "step": 15,
+  "name": "take_photo",
+  "ok": true,
+  "text": "photo taken; magnet face now at (4.5, 6.6, z=11.0) cm, magnet off",
+  "files": [
+   "agent_019_camB_zoom.png"
+  ]
+ },
+ {
+  "frame": 730,
+  "kind": "tool_call",
+  "step": 16,
+  "name": "pick_at",
+  "args": {
+   "x_cm": 6.6,
+   "y_cm": -0.7
+  },
+  "latency_s": 4.9
+ },
+ {
+  "frame": 801,
+  "kind": "tool_result",
+  "step": 16,
+  "name": "pick_at",
+  "ok": true,
+  "text": "pick at (0.066,-0.007) done, magnet on, arm lifted; magnet face now at (7.6, -0.7, z=4.8) cm, magnet ON",
+  "files": [
+   "agent_020_camA.png"
+  ]
+ },
+ {
+  "frame": 811,
+  "kind": "score",
+  "binned": 2,
+  "total": 9
+ },
+ {
+  "frame": 811,
+  "kind": "phase",
+  "text": "done: 2/9 correctly placed"
+ }
+]

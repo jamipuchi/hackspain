@@ -1,0 +1,85 @@
+camera A calibrated from markers [1, 2, 3]: 0.57 mm reprojection error
+camera B calibrated from markers [1, 2, 3]: 0.62 mm reprojection error
+build=theker_v1 planner=oracle-ground-truth seed=4 run=/Users/jaumepuig/robotics/magnet_sorter/runs/20260919-005424
+ground truth (hidden from GPT-6): screw_m3x20_zinc→screws, screw_m4x20_zinc→screws, screw_m4x20_black→screws, nut_m3_zinc→nuts, nut_m4_zinc→nuts, nut_m4_zinc_b→nuts, washer_m3_zinc→washers, washer_m4_zinc→washers, washer_m4_zinc_b→washers, screw_m4x16_brass→leave
+viewer open: watch the run in the MuJoCo window
+
+=== round 1 (0.0s) oracle: 3 parts to move
+   p1 ( 622, 439) screw   steel_zinc  fe=T → screws   conf=1.00 | screw_m3x20_zinc (steel_zinc, screw) → kind ok, target ok
+   p2 ( 450, 520) screw   steel_zinc  fe=T → screws   conf=1.00 | screw_m4x20_zinc (steel_zinc, screw) → kind ok, target ok
+   p3 ( 777, 494) screw   steel_black fe=T → screws   conf=1.00 | screw_m4x20_black (steel_black, screw) → kind ok, target ok
+   p4 ( 559, 560) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m3_zinc (steel_zinc, nut) → kind ok, target ok
+   p5 ( 742, 520) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m4_zinc (steel_zinc, nut) → kind ok, target ok
+   p6 ( 728, 482) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m4_zinc_b (steel_zinc, nut) → kind ok, target ok
+   p7 ( 483, 494) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m3_zinc (steel_zinc, washer) → kind ok, target ok
+   p8 ( 554, 487) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m4_zinc (steel_zinc, washer) → kind ok, target ok
+   p9 ( 695, 468) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m4_zinc_b (steel_zinc, washer) → kind ok, target ok
+  p10 ( 584, 456) screw   brass       fe=F → leave    conf=1.00 | screw_m4x16_brass (brass, screw) → kind ok, target ok
+  program: pick(622,439) → place → pick(450,520) → place → pick(777,494) → place → home
+    ✓ pick at (0.095,0.005) done, magnet on, arm lifted
+    ✓ pick at (9.5, 0.5) cm succeeded: the spot changed in camera A,B (part left it); released in the container
+    ✓ pick at (0.073,0.052) done, magnet on, arm lifted
+    ✓ pick at (7.3, 5.2) cm succeeded: the spot changed in camera A,B (part left it); released in the container
+    ✓ pick at (0.080,-0.037) done, magnet on, arm lifted
+    ✓ pick at (8.0, -3.7) cm succeeded: the spot changed in camera A,B (part left it); released in the container
+    ✓ home
+  (evaluator) correctly placed: 4/9
+
+=== round 2 (0.0s) oracle: 3 parts to move
+   p1 ( 927, 442) screw   steel_zinc  fe=T → screws   conf=1.00 | screw_m3x20_zinc (steel_zinc, screw) → kind ok, target ok
+   p2 ( 450, 520) screw   steel_zinc  fe=T → screws   conf=1.00 | screw_m4x20_zinc (steel_zinc, screw) → kind ok, target ok
+   p3 ( 947, 423) screw   steel_black fe=T → screws   conf=1.00 | screw_m4x20_black (steel_black, screw) → kind ok, target ok
+   p4 ( 559, 560) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m3_zinc (steel_zinc, nut) → kind ok, target ok
+   p5 ( 630, 417) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m4_zinc (steel_zinc, nut) → kind ok, target ok
+   p6 ( 534, 459) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m4_zinc_b (steel_zinc, nut) → kind ok, target ok
+   p7 ( 452, 526) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m3_zinc (steel_zinc, washer) → kind ok, target ok
+   p8 ( 554, 487) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m4_zinc (steel_zinc, washer) → kind ok, target ok
+   p9 ( 695, 468) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m4_zinc_b (steel_zinc, washer) → kind ok, target ok
+  p10 ( 584, 456) screw   brass       fe=F → leave    conf=1.00 | screw_m4x16_brass (brass, screw) → kind ok, target ok
+  program: pick(450,520) → place → pick(559,560) → place → pick(534,459) → place → home
+    ✓ pick at (0.073,0.052) done, magnet on, arm lifted
+    ✓ pick at (7.3, 5.2) cm succeeded: the spot changed in camera A,B (part left it); released in the container
+    ✓ pick at (0.062,0.022) done, magnet on, arm lifted
+    ✓ pick at (6.2, 2.2) cm: unclear from the cameras whether the part left; released over the container, check the photo
+    ✓ pick at (0.090,0.029) done, magnet on, arm lifted
+    ✓ pick at (9.0, 2.9) cm succeeded: the spot changed in camera A,B (part left it); released in the container
+    ✓ home
+  (evaluator) correctly placed: 6/9
+
+=== round 3 (0.0s) oracle: 2 parts to move
+   p1 ( 927, 442) screw   steel_zinc  fe=T → screws   conf=1.00 | screw_m3x20_zinc (steel_zinc, screw) → kind ok, target ok
+   p2 ( 449, 520) screw   steel_zinc  fe=T → screws   conf=1.00 | screw_m4x20_zinc (steel_zinc, screw) → kind ok, target ok
+   p3 ( 947, 423) screw   steel_black fe=T → screws   conf=1.00 | screw_m4x20_black (steel_black, screw) → kind ok, target ok
+   p4 ( 642, 325) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m3_zinc (steel_zinc, nut) → kind ok, target ok
+   p5 ( 630, 417) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m4_zinc (steel_zinc, nut) → kind ok, target ok
+   p6 ( 645, 325) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m4_zinc_b (steel_zinc, nut) → kind ok, target ok
+   p7 ( 452, 526) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m3_zinc (steel_zinc, washer) → kind ok, target ok
+   p8 ( 308, 570) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m4_zinc (steel_zinc, washer) → kind ok, target ok
+   p9 ( 695, 468) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m4_zinc_b (steel_zinc, washer) → kind ok, target ok
+  p10 ( 584, 456) screw   brass       fe=F → leave    conf=1.00 | screw_m4x16_brass (brass, screw) → kind ok, target ok
+  program: pick(449,520) → place → pick(695,468) → place → home
+    ✓ pick at (0.073,0.052) done, magnet on, arm lifted
+    ✓ pick at (7.3, 5.2) cm succeeded: the spot changed in camera A,B (part left it); released in the container
+    ✓ pick at (0.087,-0.015) done, magnet on, arm lifted
+    ✓ pick at (8.7, -1.5) cm succeeded: the spot changed in camera A,B (part left it); released in the container
+    ✓ home
+  (evaluator) correctly placed: 7/9
+
+=== round 4 (0.0s) oracle: 0 parts to move
+   p1 ( 927, 442) screw   steel_zinc  fe=T → screws   conf=1.00 | screw_m3x20_zinc (steel_zinc, screw) → kind ok, target ok
+   p2 ( 449, 520) screw   steel_zinc  fe=T → screws   conf=1.00 | screw_m4x20_zinc (steel_zinc, screw) → kind ok, target ok
+   p3 ( 947, 423) screw   steel_black fe=T → screws   conf=1.00 | screw_m4x20_black (steel_black, screw) → kind ok, target ok
+   p4 ( 642, 325) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m3_zinc (steel_zinc, nut) → kind ok, target ok
+   p5 ( 630, 417) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m4_zinc (steel_zinc, nut) → kind ok, target ok
+   p6 ( 645, 325) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m4_zinc_b (steel_zinc, nut) → kind ok, target ok
+   p7 ( 450, 523) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m3_zinc (steel_zinc, washer) → kind ok, target ok
+   p8 ( 308, 570) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m4_zinc (steel_zinc, washer) → kind ok, target ok
+   p9 ( 355, 442) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m4_zinc_b (steel_zinc, washer) → kind ok, target ok
+  p10 ( 584, 456) screw   brass       fe=F → leave    conf=1.00 | screw_m4x16_brass (brass, screw) → kind ok, target ok
+  program: (empty)
+GPT-6 says it is done.
+
+result: 7/9 correctly placed, 19 feedback lines, 181s wall, 90s sim
+  not done: screw_m4x20_zinc at [0.073 0.052 0.008] (in washers)
+  not done: washer_m4_zinc at [0.06  0.091 0.002] (in None)
+exit=0

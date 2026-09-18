@@ -1,0 +1,141 @@
+<mujoco model="scara_magnet_sort">
+  <!-- 3-axis SCARA arm: J1 base yaw, J2 elbow yaw, J3 vertical slide. Electromagnet on the slide tip. -->
+  <compiler angle="radian" autolimits="true"/>
+  <option timestep="0.002" gravity="0 0 -9.81" integrator="implicitfast"/>
+
+  <visual>
+    <headlight ambient="0.25 0.25 0.25" diffuse="0.35 0.35 0.35" specular="0.05 0.05 0.05"/>
+    <global offwidth="1280" offheight="960"/>
+    <quality shadowsize="4096"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.9 0.92 0.95" rgb2="0.6 0.65 0.7" width="256" height="256"/>
+    <texture name="table_tex" type="2d" builtin="flat" rgb1="0.42 0.50 0.44" width="64" height="64"/>
+    <material name="table_mat" texture="table_tex" reflectance="0.02" specular="0.05" shininess="0.05"/>
+    <material name="arm_mat" rgba="0.85 0.87 0.9 1" specular="0.3" shininess="0.4"/>
+    <material name="joint_mat" rgba="0.2 0.2 0.22 1"/>
+    <material name="magnet_mat" rgba="0.75 0.1 0.1 1" specular="0.5" shininess="0.6"/>
+    <material name="bin_mat" rgba="0.15 0.35 0.75 0.85"/>
+    <!-- piece materials: the vision model must tell these apart -->
+    <material name="iron_mat" rgba="0.24 0.24 0.26 1" specular="0.15" shininess="0.15"/>
+    <material name="aluminum_mat" rgba="0.82 0.84 0.87 1" specular="0.9" shininess="0.9" reflectance="0.3"/>
+    <material name="brass_mat" rgba="0.80 0.62 0.22 1" specular="0.8" shininess="0.8" reflectance="0.2"/>
+    <material name="plastic_red_mat" rgba="0.85 0.15 0.15 1" specular="0.3" shininess="0.5"/>
+    <material name="plastic_blue_mat" rgba="0.15 0.3 0.85 1" specular="0.3" shininess="0.5"/>
+  </asset>
+
+  <default>
+    <joint damping="2"/>
+    <geom condim="4" friction="0.9 0.01 0.001" solref="0.005 1" solimp="0.95 0.99 0.001"/>
+    <default class="piece">
+      <geom mass="0.05" condim="4" friction="1.0 0.02 0.002"/>
+      <joint type="free" damping="0"/>
+    </default>
+    <default class="arm_vis">
+      <geom contype="0" conaffinity="0" material="arm_mat"/>
+    </default>
+  </default>
+
+  <worldbody>
+    <light pos="0.3 0 1.5" dir="0 0 -1" directional="false" castshadow="true" diffuse="0.45 0.45 0.45" specular="0.2 0.2 0.2"/>
+    <light pos="-0.5 0.5 1.2" dir="0.5 -0.4 -1" directional="false" castshadow="false" diffuse="0.2 0.2 0.2"/>
+
+    <!-- table top surface is z=0; working area x in [0.12,0.46], y in [-0.18,0.18] (reach 0.50) -->
+    <geom name="table" type="box" size="0.35 0.30 0.02" pos="0.25 0 -0.02" material="table_mat"/>
+    <geom name="floor" type="plane" size="3 3 0.1" pos="0 0 -0.75" rgba="0.5 0.5 0.52 1"/>
+
+    <!-- workspace outline (visual only) -->
+    <geom type="box" size="0.17 0.002 0.0005" pos="0.29 -0.18 0.0005" rgba="0.9 0.9 0.9 1" contype="0" conaffinity="0"/>
+    <geom type="box" size="0.17 0.002 0.0005" pos="0.29 0.18 0.0005" rgba="0.9 0.9 0.9 1" contype="0" conaffinity="0"/>
+    <geom type="box" size="0.002 0.18 0.0005" pos="0.12 0 0.0005" rgba="0.9 0.9 0.9 1" contype="0" conaffinity="0"/>
+    <geom type="box" size="0.002 0.18 0.0005" pos="0.46 0 0.0005" rgba="0.9 0.9 0.9 1" contype="0" conaffinity="0"/>
+
+    <!-- iron bin: open box at (0.12, 0.26) -->
+    <body name="iron_bin" pos="0.12 0.26 0">
+      <geom type="box" size="0.05 0.04 0.002" pos="0 0 0.002" material="bin_mat"/>
+      <geom type="box" size="0.05 0.002 0.02" pos="0 -0.04 0.02" material="bin_mat"/>
+      <geom type="box" size="0.05 0.002 0.02" pos="0 0.04 0.02" material="bin_mat"/>
+      <geom type="box" size="0.002 0.04 0.02" pos="-0.05 0 0.02" material="bin_mat"/>
+      <geom type="box" size="0.002 0.04 0.02" pos="0.05 0 0.02" material="bin_mat"/>
+      <site name="iron_bin_drop" pos="0 0 0.08" size="0.005" rgba="0 0 1 0"/>
+    </body>
+
+    <!-- SCARA arm -->
+    <body name="column" pos="0 0 0">
+      <geom type="cylinder" size="0.045 0.16" pos="0 0 0.16" material="joint_mat"/>
+      <geom type="box" size="0.07 0.07 0.01" pos="0 0 0.01" material="joint_mat"/>
+      <body name="link1" pos="0 0 0.32">
+        <joint name="j1" type="hinge" axis="0 0 1" range="-2.6 2.6"/>
+        <geom type="cylinder" size="0.04 0.03" pos="0 0 0.03" material="arm_mat"/>
+        <geom type="box" size="0.125 0.03 0.02" pos="0.125 0 0.03" material="arm_mat"/>
+        <body name="link2" pos="0.25 0 0.06">
+          <joint name="j2" type="hinge" axis="0 0 1" range="-2.7 2.7"/>
+          <geom type="cylinder" size="0.035 0.025" pos="0 0 0.025" material="arm_mat"/>
+          <geom type="box" size="0.125 0.025 0.015" pos="0.125 0 0.025" material="arm_mat"/>
+          <body name="slide" pos="0.25 0 0">
+            <!-- j3: vertical slide. tip z = 0.15 + q3 ; q3 = -0.13 → magnet face on top of a piece -->
+            <joint name="j3" type="slide" axis="0 0 1" range="-0.145 0.10" damping="20"/>
+            <geom type="cylinder" size="0.012 0.17" pos="0 0 -0.06" material="joint_mat" contype="0" conaffinity="0"/>
+            <body name="magnet" pos="0 0 -0.23">
+              <geom name="magnet_body" type="cylinder" size="0.018 0.012" pos="0 0 0.012" material="magnet_mat"/>
+              <geom name="magnet_face" type="cylinder" size="0.018 0.001" pos="0 0 0.001" rgba="0.3 0.3 0.3 1"/>
+              <site name="magnet_tip" pos="0 0 0" size="0.004" rgba="1 0 0 0.6"/>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+
+    <!-- pieces; positions are randomized at runtime -->
+    <body name="piece_iron_1" pos="0.30 0.05 0.01" childclass="piece">
+      <joint/>
+      <geom type="cylinder" size="0.018 0.008" material="iron_mat"/>
+    </body>
+    <body name="piece_iron_2" pos="0.40 -0.10 0.01" childclass="piece">
+      <joint/>
+      <geom type="box" size="0.018 0.014 0.008" material="iron_mat"/>
+    </body>
+    <body name="piece_iron_3" pos="0.20 -0.05 0.01" childclass="piece">
+      <joint/>
+      <geom type="cylinder" size="0.014 0.010" material="iron_mat"/>
+    </body>
+    <body name="piece_aluminum_1" pos="0.35 0.12 0.01" childclass="piece">
+      <joint/>
+      <geom type="cylinder" size="0.018 0.008" material="aluminum_mat"/>
+    </body>
+    <body name="piece_aluminum_2" pos="0.22 0.12 0.01" childclass="piece">
+      <joint/>
+      <geom type="box" size="0.016 0.016 0.008" material="aluminum_mat"/>
+    </body>
+    <body name="piece_brass_1" pos="0.45 0.05 0.01" childclass="piece">
+      <joint/>
+      <geom type="cylinder" size="0.016 0.008" material="brass_mat"/>
+    </body>
+    <body name="piece_plastic_1" pos="0.28 -0.14 0.01" childclass="piece">
+      <joint/>
+      <geom type="box" size="0.02 0.012 0.008" material="plastic_red_mat"/>
+    </body>
+    <body name="piece_plastic_2" pos="0.42 0.14 0.01" childclass="piece">
+      <joint/>
+      <geom type="cylinder" size="0.017 0.008" material="plastic_blue_mat"/>
+    </body>
+
+    <!-- simulated cameras -->
+    <camera name="overhead" pos="0.29 0.04 0.78" xyaxes="0 -1 0 1 0 0" fovy="45"/>
+    <camera name="oblique" pos="0.9 -0.7 0.7" xyaxes="0.6 0.8 0 -0.4 0.3 0.85" fovy="50"/>
+  </worldbody>
+
+  <actuator>
+    <position name="a1" joint="j1" kp="400" kv="40" ctrlrange="-2.6 2.6"/>
+    <position name="a2" joint="j2" kp="250" kv="25" ctrlrange="-2.7 2.7"/>
+    <position name="a3" joint="j3" kp="2000" kv="80" ctrlrange="-0.145 0.10"/>
+  </actuator>
+
+  <!-- electromagnet: one inactive weld per ferrous piece, switched at runtime -->
+  <equality>
+    <weld name="mag_piece_iron_1" body1="magnet" body2="piece_iron_1" active="false" solref="0.002 1"/>
+    <weld name="mag_piece_iron_2" body1="magnet" body2="piece_iron_2" active="false" solref="0.002 1"/>
+    <weld name="mag_piece_iron_3" body1="magnet" body2="piece_iron_3" active="false" solref="0.002 1"/>
+  </equality>
+</mujoco>

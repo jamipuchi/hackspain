@@ -1,0 +1,129 @@
+camera A calibrated from markers [1, 2, 3]: 0.57 mm reprojection error
+camera B calibrated from markers [0, 1, 3]: 0.58 mm reprojection error
+build=taras_v1 planner=oracle-ground-truth seed=4 run=/Users/jaumepuig/robotics/magnet_sorter/runs/20260919-000957
+ground truth (hidden from GPT-6): screw_m4x16_zinc→screws, screw_m5x20_zinc→screws, screw_m4x25_black→screws, nut_m4_zinc→nuts, nut_m5_zinc→nuts, nut_m6_zinc→nuts, washer_m4_zinc→washers, washer_m5_zinc→washers, washer_m6_zinc→washers, screw_m4x16_brass→leave, washer_m6_alu→leave
+viewer open: watch the run in the MuJoCo window
+
+=== round 1 (0.0s) oracle: 3 parts to move
+   p1 ( 629, 494) screw   steel_zinc  fe=T → screws   conf=1.00 | screw_m4x16_zinc (steel_zinc, screw) → kind ok, target ok
+   p2 ( 741, 517) screw   steel_zinc  fe=T → screws   conf=1.00 | screw_m5x20_zinc (steel_zinc, screw) → kind ok, target ok
+   p3 ( 676, 468) screw   steel_black fe=T → screws   conf=1.00 | screw_m4x25_black (steel_black, screw) → kind ok, target ok
+   p4 ( 597, 453) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m4_zinc (steel_zinc, nut) → kind ok, target ok
+   p5 ( 737, 478) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m5_zinc (steel_zinc, nut) → kind ok, target ok
+   p6 ( 614, 421) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m6_zinc (steel_zinc, nut) → kind ok, target ok
+   p7 ( 549, 431) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m4_zinc (steel_zinc, washer) → kind ok, target ok
+   p8 ( 602, 463) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m5_zinc (steel_zinc, washer) → kind ok, target ok
+   p9 ( 594, 464) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m6_zinc (steel_zinc, washer) → kind ok, target ok
+  p10 ( 613, 470) screw   brass       fe=F → leave    conf=1.00 | screw_m4x16_brass (brass, screw) → kind ok, target ok
+  p11 ( 733, 513) washer  aluminum    fe=F → leave    conf=1.00 | washer_m6_alu (aluminum, washer) → kind ok, target ok
+  program: pick(629,494) → place → pick(741,517) → place → pick(676,468) → place → home
+    ✓ pick at (0.095,0.004) done, magnet on, arm lifted
+    ✗ pick at (9.5, 0.4) cm FAILED: the part is still where it was (camera A); not ferrous, or the magnet missed it
+    ✓ pick at (0.078,0.048) done, magnet on, arm lifted
+    ✗ pick at (7.8, 4.8) cm FAILED: the part is still where it was (camera A,B); not ferrous, or the magnet missed it
+    ✓ pick at (0.069,0.008) done, magnet on, arm lifted
+    ✗ pick at (6.9, 0.8) cm FAILED: the part is still where it was (camera A,B); not ferrous, or the magnet missed it
+    ✓ home
+  (evaluator) correctly placed: 2/9
+
+=== round 2 (0.0s) oracle: 3 parts to move
+   p1 ( 627, 481) screw   steel_zinc  fe=T → screws   conf=1.00 | screw_m4x16_zinc (steel_zinc, screw) → kind ok, target ok
+   p2 ( 448, 416) screw   steel_zinc  fe=T → screws   conf=1.00 | screw_m5x20_zinc (steel_zinc, screw) → kind ok, target ok
+   p3 ( 487, 416) screw   steel_black fe=T → screws   conf=1.00 | screw_m4x25_black (steel_black, screw) → kind ok, target ok
+   p4 ( 592, 447) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m4_zinc (steel_zinc, nut) → kind ok, target ok
+   p5 ( 652, 398) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m5_zinc (steel_zinc, nut) → kind ok, target ok
+   p6 ( 614, 421) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m6_zinc (steel_zinc, nut) → kind ok, target ok
+   p7 ( 549, 431) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m4_zinc (steel_zinc, washer) → kind ok, target ok
+   p8 ( 599, 462) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m5_zinc (steel_zinc, washer) → kind ok, target ok
+   p9 ( 591, 459) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m6_zinc (steel_zinc, washer) → kind ok, target ok
+  p10 ( 668, 487) screw   brass       fe=F → leave    conf=1.00 | screw_m4x16_brass (brass, screw) → kind ok, target ok
+  p11 ( 732, 509) washer  aluminum    fe=F → leave    conf=1.00 | washer_m6_alu (aluminum, washer) → kind ok, target ok
+  program: pick(627,481) → place → pick(592,447) → place → pick(614,421) → place → home
+    ✓ pick at (0.089,-0.002) done, magnet on, arm lifted
+    ✓ pick at (8.9, -0.2) cm succeeded: the part left its spot (confirmed by camera A,B), released in the container
+    ✓ pick at (0.080,-0.029) done, magnet on, arm lifted
+    ✗ pick at (8.0, -2.9) cm FAILED: the part is still where it was (camera A); not ferrous, or the magnet missed it
+    ✓ pick at (0.059,-0.034) done, magnet on, arm lifted
+    ✗ pick at (5.9, -3.4) cm FAILED: the part is still where it was (camera A,B); not ferrous, or the magnet missed it
+    ✓ home
+  (evaluator) correctly placed: 5/9
+
+=== round 3 (0.0s) oracle: 3 parts to move
+   p1 ( 471, 393) screw   steel_zinc  fe=T → screws   conf=1.00 | screw_m4x16_zinc (steel_zinc, screw) → kind ok, target ok
+   p2 ( 458, 418) screw   steel_zinc  fe=T → screws   conf=1.00 | screw_m5x20_zinc (steel_zinc, screw) → kind ok, target ok
+   p3 ( 472, 408) screw   steel_black fe=T → screws   conf=1.00 | screw_m4x25_black (steel_black, screw) → kind ok, target ok
+   p4 ( 553, 543) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m4_zinc (steel_zinc, nut) → kind ok, target ok
+   p5 ( 568, 533) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m6_zinc (steel_zinc, nut) → kind ok, target ok
+   p6 ( 549, 431) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m4_zinc (steel_zinc, washer) → kind ok, target ok
+   p7 ( 599, 461) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m5_zinc (steel_zinc, washer) → kind ok, target ok
+   p8 ( 595, 454) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m6_zinc (steel_zinc, washer) → kind ok, target ok
+   p9 ( 736, 450) screw   brass       fe=F → leave    conf=1.00 | screw_m4x16_brass (brass, screw) → kind ok, target ok
+  p10 ( 732, 509) washer  aluminum    fe=F → leave    conf=1.00 | washer_m6_alu (aluminum, washer) → kind ok, target ok
+  program: pick(549,431) → place → pick(599,461) → place → pick(595,454) → place → home
+    ✓ pick at (0.083,-0.052) done, magnet on, arm lifted
+    ✗ pick at (8.3, -5.2) cm FAILED: the part is still where it was (camera A,B); not ferrous, or the magnet missed it
+    ✓ pick at (0.086,-0.020) done, magnet on, arm lifted
+    ✗ pick at (8.6, -2.0) cm FAILED: the part is still where it was (camera A,B); not ferrous, or the magnet missed it
+    ✓ pick at (0.083,-0.025) done, magnet on, arm lifted
+    ✗ pick at (8.3, -2.5) cm FAILED: the part is still where it was (camera A,B); not ferrous, or the magnet missed it
+    ✓ home
+  (evaluator) correctly placed: 5/9
+
+=== round 4 (0.0s) oracle: 2 parts to move
+   p1 ( 471, 393) screw   steel_zinc  fe=T → screws   conf=1.00 | screw_m4x16_zinc (steel_zinc, screw) → kind ok, target ok
+   p2 ( 458, 418) screw   steel_zinc  fe=T → screws   conf=1.00 | screw_m5x20_zinc (steel_zinc, screw) → kind ok, target ok
+   p3 ( 472, 408) screw   steel_black fe=T → screws   conf=1.00 | screw_m4x25_black (steel_black, screw) → kind ok, target ok
+   p4 ( 553, 543) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m4_zinc (steel_zinc, nut) → kind ok, target ok
+   p5 ( 568, 533) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m6_zinc (steel_zinc, nut) → kind ok, target ok
+   p6 ( 624, 412) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m4_zinc (steel_zinc, washer) → kind ok, target ok
+   p7 ( 555, 484) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m5_zinc (steel_zinc, washer) → kind ok, target ok
+   p8 ( 364, 479) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m6_zinc (steel_zinc, washer) → kind ok, target ok
+   p9 ( 736, 450) screw   brass       fe=F → leave    conf=1.00 | screw_m4x16_brass (brass, screw) → kind ok, target ok
+  p10 ( 732, 509) washer  aluminum    fe=F → leave    conf=1.00 | washer_m6_alu (aluminum, washer) → kind ok, target ok
+  program: pick(624,412) → place → pick(555,484) → place → home
+    ✓ pick at (0.050,-0.035) done, magnet on, arm lifted
+    ✗ pick at (5.0, -3.5) cm FAILED: the part is still where it was (camera A,B); not ferrous, or the magnet missed it
+    ✓ pick at (0.109,-0.025) done, magnet on, arm lifted
+    ✗ pick at (10.9, -2.5) cm FAILED: the part is still where it was (camera A,B); not ferrous, or the magnet missed it
+    ✓ home
+  (evaluator) correctly placed: 5/9
+
+=== round 5 (0.0s) oracle: 2 parts to move
+   p1 ( 471, 393) screw   steel_zinc  fe=T → screws   conf=1.00 | screw_m4x16_zinc (steel_zinc, screw) → kind ok, target ok
+   p2 ( 458, 418) screw   steel_zinc  fe=T → screws   conf=1.00 | screw_m5x20_zinc (steel_zinc, screw) → kind ok, target ok
+   p3 ( 472, 408) screw   steel_black fe=T → screws   conf=1.00 | screw_m4x25_black (steel_black, screw) → kind ok, target ok
+   p4 ( 553, 543) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m4_zinc (steel_zinc, nut) → kind ok, target ok
+   p5 ( 568, 533) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m6_zinc (steel_zinc, nut) → kind ok, target ok
+   p6 ( 624, 412) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m4_zinc (steel_zinc, washer) → kind ok, target ok
+   p7 ( 634, 442) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m5_zinc (steel_zinc, washer) → kind ok, target ok
+   p8 ( 364, 479) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m6_zinc (steel_zinc, washer) → kind ok, target ok
+   p9 ( 736, 450) screw   brass       fe=F → leave    conf=1.00 | screw_m4x16_brass (brass, screw) → kind ok, target ok
+  p10 ( 732, 509) washer  aluminum    fe=F → leave    conf=1.00 | washer_m6_alu (aluminum, washer) → kind ok, target ok
+  program: pick(624,412) → place → pick(634,442) → place → home
+    ✓ pick at (0.050,-0.035) done, magnet on, arm lifted
+    ✗ pick at (5.0, -3.5) cm FAILED: the part is still where it was (camera A,B); not ferrous, or the magnet missed it
+    ✓ pick at (0.066,-0.017) done, magnet on, arm lifted
+    ✓ pick at (6.6, -1.7) cm succeeded: the part left its spot (confirmed by camera A,B), released in the container
+    ✓ home
+  (evaluator) correctly placed: 6/9
+
+=== round 6 (0.0s) oracle: 0 parts to move
+   p1 ( 471, 393) screw   steel_zinc  fe=T → screws   conf=1.00 | screw_m4x16_zinc (steel_zinc, screw) → kind ok, target ok
+   p2 ( 458, 418) screw   steel_zinc  fe=T → screws   conf=1.00 | screw_m5x20_zinc (steel_zinc, screw) → kind ok, target ok
+   p3 ( 472, 408) screw   steel_black fe=T → screws   conf=1.00 | screw_m4x25_black (steel_black, screw) → kind ok, target ok
+   p4 ( 553, 543) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m4_zinc (steel_zinc, nut) → kind ok, target ok
+   p5 ( 568, 533) nut     steel_zinc  fe=T → nuts     conf=1.00 | nut_m6_zinc (steel_zinc, nut) → kind ok, target ok
+   p6 ( 624, 412) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m4_zinc (steel_zinc, washer) → kind ok, target ok
+   p7 ( 802, 595) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m5_zinc (steel_zinc, washer) → kind ok, target ok
+   p8 ( 364, 479) washer  steel_zinc  fe=T → washers  conf=1.00 | washer_m6_zinc (steel_zinc, washer) → kind ok, target ok
+   p9 ( 736, 450) screw   brass       fe=F → leave    conf=1.00 | screw_m4x16_brass (brass, screw) → kind ok, target ok
+  p10 ( 732, 509) washer  aluminum    fe=F → leave    conf=1.00 | washer_m6_alu (aluminum, washer) → kind ok, target ok
+  program: (empty)
+GPT-6 says it is done.
+
+result: 6/9 correctly placed, 31 feedback lines, 163s wall, 93s sim
+  not done: nut_m5_zinc at [-0.579 -0.252 -0.746] (in None)
+  not done: washer_m4_zinc at [ 0.051 -0.035  0.007] (in None)
+  not done: washer_m6_zinc at [ 0.156 -0.089  0.006] (in None)
+physics guard clamped a piece velocity 155 times
+exit=0
