@@ -62,6 +62,8 @@ extra use cases for the demo.
   around every container, and **waves**: `BuildConfig.wave_size` (6) parts on the card at once; when GPT-6's `done` is
   accepted, the operator puts the next batch on the card and the agent continues (the tool result says so, the
   inventory is reset). This is also how the physical demo will run — a human refills the card.
+- Result of the fix (oracle planner, taras_kitting, seed 4): **3/3 kits** with waves of 3–4 parts vs 1/3 before,
+  zero failed picks, zero co-picks. Tuned to a 2.6 cm floor and 1.2 cm keep-out margin → ~5 parts per wave.
 - Lesson: always print the achieved layout (`layout: n parts, closest pair x cm`) and check it before blaming
   perception or physics. Mechanics ceilings above (7/9 etc.) need re-measuring with the new layout.
 

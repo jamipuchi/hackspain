@@ -23,7 +23,7 @@ for d in "$SRC"/magnet_sorter/runs/*/; do
   mkdir -p "runs/$n"
   cp -f "$d"/meta.json "$d"/events.json runs/$n/ 2>/dev/null || true
   cp -f "$d"/round*_plan.json "$d"/round*_plan.png "$d"/agent_*_mosaic.png runs/$n/ 2>/dev/null || true
-  for v in "$d"/video_preview.mp4 "$d"/video_cycles.mp4; do
+  for v in "$d"/video_preview.mp4 "$d"/video_mujoco.mp4 "$d"/video_cycles.mp4; do
     [ -f "$v" ] && [ $(stat -f %z "$v") -lt 40000000 ] && cp -f "$v" runs/$n/ || true
   done
 done

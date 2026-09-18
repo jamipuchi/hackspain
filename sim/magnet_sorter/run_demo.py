@@ -102,8 +102,8 @@ def scatter(model, data, pieces, rng: np.random.Generator, region: str = "worksp
     Returns the pieces actually placed."""
     placed, done = [], []
     want = 0.042 if sd.BUILD == "hobby_v1" else 0.038  # the shopping sheet: "spread parts in one layer with gaps"
-    floor = 0.028  # a Ø20 magnet reaches ~1.2 cm sideways: 2.8 cm between centres is the physical minimum
-    keep_out = [(t["pos"][0], t["pos"][1], max(t["size"][0], t["size"][1]) + 0.015) for t in sd.TARGETS.values()] if region == "workspace" else []
+    floor = 0.026  # a Ø20 magnet reaches ~1.2 cm sideways: 2.6 cm between centres keeps the neighbour ≥ 1 cm outside its reach
+    keep_out = [(t["pos"][0], t["pos"][1], max(t["size"][0], t["size"][1]) + 0.012) for t in sd.TARGETS.values()] if region == "workspace" else []
     for b in pieces:
         found = None
         spacing = want
