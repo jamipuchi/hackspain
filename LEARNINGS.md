@@ -25,8 +25,15 @@ extra use cases for the demo.
 - **Sliding-window context** (last 40 log lines + inventory + latest photos) instead of chaining
   `previous_response_id`: cost stays ~4k tokens/step (≈$0.04). Chaining grew to $2.5 for 16 steps.
 - Reasoning effort `medium`; `low` dithered more.
-- Results so far (taras_v1, 2 cameras, seed 4): 4/6 parts correct in 22 steps, brass distractor correctly
-  left after one failed pick, $1.27. Misses: a small M5 nut never noticed; an M6 washer read as a nut.
+- Results so far:
+  - taras_v1, 2 cameras, seed 4: **4/6** correct in 22 steps, brass distractor correctly left, $1.27.
+    Misses: a small M5 nut never noticed; an M6 washer read as a nut.
+  - theker_v1 (final sheet: M3/M4 parts, lids, blue card), 1 top-down phone, seed 4: **4/9** correct in 38
+    steps, $2.73. Dominant failure = **co-picks**: with parts ~3 cm apart the Ø20 magnet lifts the neighbour
+    too (nut into the screws lid, washer + nut into unknown). GPT-6 noticed the mismatch in the final photo
+    and reported the exceptions honestly instead of claiming success. Fixes queued: parts spaced ≥ 3.8 cm
+    (the sheet's "gaps between parts"), magnet lateral reach radius + 2 mm.
+  - Cost/step ≈ $0.06–0.07 with two 1280×960 images per step at medium effort.
 
 ## Cameras
 - One or two oblique phones ≤ 50 cm work; two views help when the arm hides a spot. The final sheet
