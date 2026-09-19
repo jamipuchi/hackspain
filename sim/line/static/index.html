@@ -170,6 +170,36 @@ td.mono{font-family:var(--mono);font-size:.8rem}
  </div>
 </section>
 
+<section class="tab" data-tab="Calibrate">
+ <div class="grid" style="grid-template-columns:minmax(380px,1.3fr) 1fr;align-items:start">
+  <div class="card"><h2>Live · put ONE bean in the zone, still</h2>
+   <div class="viewer"><img src="/stream.mjpg" alt="camera"></div>
+   <div id="calLive" class="hint" style="font-family:var(--mono)">looking…</div>
+   <label>detection sensitivity: objects darker than grey <b id="calSensV"></b> count (board ≈ <span id="calPaper">?</span>)<input id="calSens" type="range" min="60" max="240" oninput="calSensV.textContent=this.value" onchange="setCfg('vision.bean_gray_max',+this.value)"></label>
+   <p class="hint">Raise it until a white bean is detected (count 1); lower it if the empty zone shows objects.</p>
+  </div>
+  <div style="display:grid;gap:14px">
+   <div class="card" style="text-align:center"><h2>Teach it</h2>
+    <div class="row" style="justify-content:center;gap:18px">
+     <button style="font-size:1.5rem;padding:26px 34px;background:#e8edf2;color:#111" onclick="teach('white')">this is WHITE</button>
+     <button style="font-size:1.5rem;padding:26px 34px;background:#222;color:#eee;border:1px solid #555" onclick="teach('black')">this is BLACK</button>
+    </div>
+    <div class="hint">Each press samples the bean in the zone. Do 3 or more of each, mixing positions.</div>
+    <div class="row" style="justify-content:center"><span class="hint">white samples: <b id="nWhite">0</b></span><span class="hint">black samples: <b id="nBlack">0</b></span><button class="sm" onclick="calSamples={white:[],black:[]};saveCal();paintCal()">clear</button></div>
+   </div>
+   <div class="card"><h2>Grey scale · black ← → white</h2>
+    <svg id="calScale" viewBox="0 0 600 110" style="width:100%"></svg>
+    <div class="row"><span class="hint">threshold</span><input class="num" id="calThr" type="number" min="0" max="255"><button class="acc" onclick="applyThr()">apply threshold</button><span class="hint" id="calThrHint"></span></div>
+   </div>
+   <div class="card"><h2>What the door does</h2>
+    <label>which beans get REMOVED (door CLOSED)<select id="calRemove" onchange="applyThr()"><option value="white">white beans</option><option value="black">black beans</option></select></label>
+    <div class="hint">The other colour keeps the door OPEN. The door holds its side until a bean of the other colour comes.</div>
+    <div class="kv" id="calKv"></div>
+   </div>
+  </div>
+ </div>
+</section>
+
 <section class="tab" data-tab="Line">
  <div class="grid">
   <div class="card"><h2>Closed loop</h2>
@@ -206,7 +236,7 @@ td.mono{font-family:var(--mono);font-size:.8rem}
 </main>
 <script>
 const $=id=>document.getElementById(id);
-const TABS=['Door','Line','Cameras','Classifier','Overview','Log'];let tab=localStorage.getItem('tab')||'Door';let S=null;let beltSp=0,timer=null,swT={};
+const TABS=['Door','Calibrate','Line','Cameras','Classifier','Overview','Log'];let tab=localStorage.getItem('tab')||'Door';let S=null;let beltSp=0,timer=null,swT={};
 function showTab(t){tab=t;localStorage.setItem('tab',t);document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.dataset.tab===t));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.textContent===t));}
 $('nav').innerHTML=TABS.map(t=>`<button onclick="showTab('${t}')">${t}</button>`).join('');showTab(tab);
 async function postJSON(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});const j=await r.json();if(!j.ok)toast('error: '+j.error);return j;}
@@ -228,6 +258,28 @@ function snapshot(){window.open('/snapshot.jpg?'+Date.now());}
 function sw(k){swT[k]=performance.now()/1000;const T=S?.cfg?.timing||{};let out=[];if(swT.top&&swT.zone)out.push(`top→zone ${(swT.zone-swT.top).toFixed(2)} s`);if(swT.zone&&swT.door){const dt=swT.door-swT.zone;const cm=T.door_from_top_cm[0]-T.zone_from_top_cm[0];const v=cm/dt;out.push(`zone→door ${dt.toFixed(2)} s = ${v.toFixed(1)} cm/s`);setCfg('timing.bean_speed_cm_s',+v.toFixed(1));swT={};}$('swOut').textContent=out.join(' · ')||`marked ${k}`;}
 document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;if(e.code==='Space'||e.key==='Escape'){e.preventDefault();door('stop');}else if(e.key==='o'){door('open');}else if(e.key==='c'){door('close');}
  else if(e.key==='g')sample('good');else if(e.key==='d')sample('defect');else if(e.key==='f')sample('foreign');});
+
+// ---- calibration tab
+let calSamples={white:[],black:[]};try{calSamples=JSON.parse(localStorage.getItem('calSamples'))||calSamples;}catch(e){}
+function saveCal(){try{localStorage.setItem('calSamples',JSON.stringify(calSamples));}catch(e){}}
+let calLast=null;
+async function calPoll(){if(tab!=='Calibrate')return;try{const j=await postJSON('/api/classify_now',{});const r=j.results||[];calLast=r;
+ $('calLive').textContent=r.length===0?'no object in the zone':r.map(x=>`object at (${x.blob.u},${x.blob.v}) grey ${(+x.blob.features.mean_gray).toFixed(0)} · ${(+x.blob.features.major_mm).toFixed(1)} mm${x.blob.partial?' · partial (touching the zone edge)':''} → ${x.verdict.suspect?'REMOVE (closed)':'keep (open)'}`).join('\n');}catch(e){}}
+setInterval(calPoll,900);
+async function teach(cls){if(!calLast||!calLast.length){toast('no object in the zone');return;}const whole=calLast.filter(x=>!x.blob.partial);const x=(whole.length?whole:calLast)[0];calSamples[cls].push(+x.blob.features.mean_gray);saveCal();paintCal();postJSON('/api/sample',{label:cls});}
+function thrAuto(){const w=calSamples.white,b=calSamples.black;if(!w.length||!b.length)return null;const lo=Math.max(...b),hi=Math.min(...w);return Math.round((lo+hi)/2);}
+function paintCal(){$('nWhite').textContent=calSamples.white.length;$('nBlack').textContent=calSamples.black.length;const t=thrAuto();if(t!==null&&document.activeElement!==$('calThr'))$('calThr').value=t;
+ const W=600,H=110,x=g=>10+g/255*(W-20);let out=`<defs><linearGradient id="g"><stop offset="0" stop-color="#111"/><stop offset="1" stop-color="#fff"/></linearGradient></defs><rect x="10" y="40" width="${W-20}" height="22" fill="url(#g)" rx="4"/>`;
+ for(const g of calSamples.black)out+=`<circle cx="${x(g)}" cy="30" r="6" fill="#111" stroke="#7aa7ff" stroke-width="2"/>`;
+ for(const g of calSamples.white)out+=`<circle cx="${x(g)}" cy="30" r="6" fill="#fff" stroke="#7aa7ff" stroke-width="2"/>`;
+ if(calLast&&calLast.length){const g=+calLast[0].blob.features.mean_gray;out+=`<polygon points="${x(g)},64 ${x(g)-7},76 ${x(g)+7},76" fill="#f2a93b"/><text x="${x(g)}" y="92" fill="#f2a93b" font-size="12" text-anchor="middle" font-family="Menlo,monospace">now ${g.toFixed(0)}</text>`;}
+ const cur=S?.cfg?.classifier?.rules;if(cur){const thr=$('calRemove').value==='white'?cur.max_mean_gray:cur.min_mean_gray;if(thr>0&&thr<255){out+=`<line x1="${x(thr)}" y1="20" x2="${x(thr)}" y2="66" stroke="#e53935" stroke-width="3"/><text x="${x(thr)}" y="14" fill="#e53935" font-size="12" text-anchor="middle" font-family="Menlo,monospace">threshold ${thr}</text>`;}}
+ const bl=calSamples.black.length?Math.max(...calSamples.black):null,wh=calSamples.white.length?Math.min(...calSamples.white):null;
+ $('calThrHint').textContent=(bl!==null&&wh!==null)?(wh-bl>10?`gap ${bl} … ${wh}: clear separation`:`gap ${bl} … ${wh}: too close, add light / change camera exposure`):'sample both colours to get a suggestion';
+ $('calScale').innerHTML=out;}
+async function applyThr(){const thr=+$('calThr').value;if(!(thr>0))return;const rules=Object.assign({},S.cfg.classifier.rules);if($('calRemove').value==='white'){rules.max_mean_gray=thr;rules.min_mean_gray=0;}else{rules.min_mean_gray=thr;rules.max_mean_gray=255;}
+ await postJSON('/api/config',{path:'classifier.rules',value:rules});await postJSON('/api/config',{path:'action_position',value:'closed'});await postJSON('/api/config',{path:'door_policy',value:'state'});await postJSON('/api/config',{path:'trigger_on',value:'verdict'});await postJSON('/api/line',{action:'reset'});refresh();}
+
 // door: two concepts
 const tot={open:0,close:0};function paintTot(){$('totOpen').textContent=tot.open;$('totClose').textContent=tot.close;}
 async function nudge(t){const ms=+$('nudgeMs').value;const j=await postJSON('/api/door',{action:'nudge',towards:t,ms});if(j.ok){tot[t]+=ms;paintTot();refresh();}}

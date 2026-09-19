@@ -136,7 +136,7 @@ class SortingLine:
                 self.track_started = frame.t
                 self.track_first = (best.u, best.v)
                 self.counters["beans"] += 1
-                self.event("bean_seen", u=round(best.u), v=round(best.v), partial=best.partial)
+                self.event("bean_seen", u=round(best.u), v=round(best.v), partial=best.partial, gray=round(best.features.get("mean_gray", 0)), major_mm=round(best.features.get("major_mm", 0), 1))
             elif self.state == "tracking" and self.enabled and getattr(self.cfg, "trigger_on", "verdict") == "seen" and math.hypot(best.u - self.track_first[0], best.v - self.track_first[1]) > 3.0:
                 verdict = self._decide(frame, best, roi)  # first frame where the object has actually moved: it is falling, act now
             if self.state == "tracking" and not best.partial and self.enabled and getattr(self.cfg, "trigger_on", "verdict") != "seen" and self.track_frac >= float(getattr(self.cfg.camera, "trigger_frac", 0.0)):
@@ -200,7 +200,7 @@ class SortingLine:
         self.last_verdict, self.last_blob = verdict, blob
         self.state = "decided"
         frac = flow_fraction(blob, roi, self.cfg.camera.flow_axis)
-        self.event("verdict", label=verdict.label, p=round(verdict.p_defect, 2), suspect=verdict.suspect, reason=verdict.reason, ms=round(verdict.ms, 1), frac=round(frac, 2))
+        self.event("verdict", label=verdict.label, p=round(verdict.p_defect, 2), suspect=verdict.suspect, gray=round(blob.features.get("mean_gray", 0)), major_mm=round(blob.features.get("major_mm", 0), 1), reason=verdict.reason, ms=round(verdict.ms, 1), frac=round(frac, 2))
         if verdict.suspect:
             self.counters["suspect"] += 1
         else:
