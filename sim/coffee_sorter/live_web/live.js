@@ -451,6 +451,9 @@ function updateLatestEvidence() {
     $(id).textContent = text;
     $(`card-${id}`).textContent = text;
   }
+  $('card-action').textContent = decision ? `${values.decision} · ${values.hit}` : 'Waiting';
+  $('card-empty').hidden = Boolean(request);
+  $('card-content').hidden = !request;
   const stateLabel = request?.error || request?.invalidated ? 'Command failed'
     : object?.outcome === 'reject' ? 'Rejected'
     : object?.outcome === 'spilled' ? 'Spilled'
@@ -525,7 +528,7 @@ function updateScoreboard() {
   const settling = Number(scores.settling_seconds || 0);
   const start = Number(scores.window_start_exclusive_s || 0);
   const end = Number(scores.window_end_inclusive_s || 0);
-  $('score-status').textContent = `As of ${asOf.toFixed(1)} simulated seconds${scores.warming_up ? ' · warming up' : ' · full window'}`;
+  $('score-status').textContent = `${asOf.toFixed(1)} s · ${scores.warming_up ? 'warming' : 'ready'}`;
   $('score-context').textContent = `Window (${start.toFixed(1)}, ${end.toFixed(1)}] simulated seconds. Available ${available.toFixed(1)} / ${window.toFixed(1)} simulated seconds. ${scores.settling_objects ?? 0} settling object${scores.settling_objects === 1 ? '' : 's'}. Manual injections ${scores.manual_injections_excluded ? 'excluded' : 'not excluded'}. Settling delay ${settling.toFixed(1)} simulated seconds.`;
   const versions = scores.versions || {};
   $('score-versions').textContent = `Score epoch ${scores.score_epoch_id?.slice(0, 8) || 'unavailable'} · Source ${versions.source_revision?.slice(0, 7) || 'unavailable'} · Model ${versions.model?.slice(0, 12) || 'unavailable'} · Policy ${versions.policy?.slice(0, 12) || 'unavailable'}`;
@@ -544,9 +547,9 @@ function update() {
   const status = commandState.status;
   const connected = socket?.readyState === WebSocket.OPEN;
   const heartbeatAge = heartbeatSeenAt === null ? null : performance.now() - heartbeatSeenAt;
-  const heartbeatText = continuousMode() ? (heartbeatAge === null ? 'waiting for heartbeat' : `heartbeat ${(heartbeatAge / 1000).toFixed(1)} s ago`) : '';
   const statusLabel = ({starting:'Preparing', restarting:'Restarting', ready:'Ready', running:'Live', completed:'Session complete', failed:'Engine failed'})[status] || status;
-  $('status').textContent = !connected ? 'Disconnected' : `${statusLabel}${heartbeatText ? ` · ${heartbeatText}` : ''}`;
+  const heartbeatStale = continuousMode() && heartbeatAge !== null && heartbeatAge >= HEARTBEAT_IDLE_MS;
+  $('status').textContent = !connected ? 'Disconnected' : heartbeatStale ? `${statusLabel} · stale` : statusLabel;
   $('status').dataset.state = status;
   const durationComplete = !liveContinuousMode() && commandState.sim_time_s >= (commandState.limits?.sim_seconds || 10) - 0.6;
   const awaitingHeartbeat = liveContinuousMode() && heartbeatSeenAt === null;
@@ -566,7 +569,8 @@ function update() {
   setMetric('admitted', `${(state.admitted_rate || 0).toFixed(0)} /s`);
   const objects = state.objects || [];
   setMetric('active', String(objects.filter(o => o.active).length));
-  $('pose-hz').textContent = measurements.pose_hz ? `${measurements.pose_hz.toFixed(1)} Hz` : 'Waiting';
+  setMetric('pose-hz', measurements.pose_hz ? `${measurements.pose_hz.toFixed(1)} Hz` : 'Waiting');
+  setMetric('heartbeat', heartbeatAge === null ? 'Waiting' : `${(heartbeatAge / 1000).toFixed(1)} s ago`);
   updateScoreboard();
   updateLatestEvidence();
   updateItems();
@@ -801,7 +805,7 @@ function setProjection(ortho) {
   to.updateProjectionMatrix();
   three.camera = to; three.ortho = ortho; three.controls.object = to; three.controls.update();
   $('projection').setAttribute('aria-pressed', String(ortho));
-  $('projection').textContent = ortho ? 'Orthographic view' : 'Perspective view';
+  $('projection').textContent = ortho ? 'Orthographic' : 'Perspective';
   $('projection').title = ortho
     ? 'Orthographic view removes perspective foreshortening'
     : 'Perspective view uses natural depth and foreshortening';
@@ -880,7 +884,7 @@ function buildMachine(L) {
     const pts = [A, B, A.clone().sub(T), A.clone().add(T), B.clone().sub(T), B.clone().add(T)];
     const line = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), dimMat); line.visible = three.labels; scene.add(line); dimLines.push(line);
     const el = document.createElement('div'); el.className = 'annotation dim'; el.textContent = text; stage.append(el);
-    annotations.push({el, pos: A.clone().add(B).multiplyScalar(.5)});
+    annotations.push({el, pos: A.clone().add(B).multiplyScalar(.5), essential: false});
   };
   const yd = -(L.belt_w / 2 + .16), t = [0, .02, 0], tz = [.02, 0, 0];
   dimension([beltX0, yd, L.belt_z], [beltX1, yd, L.belt_z], `BELT ${L.belt_len.toFixed(2)} m · ${L.belt_speed.toFixed(1)} m/s`, t);
@@ -923,10 +927,10 @@ function buildMachine(L) {
   selectedShadow.visible = false; scene.add(selectedShadow);
   for (const [text, p] of [
     ['1 DROP ZONE', [(spawn.x_min + spawn.x_max) / 2, (spawn.y_min + spawn.y_max) / 2, L.belt_z + .42]], ['2 INSPECT', [L.cam_x, 0, L.belt_z + .52]],
-    ['3 AIR JETS', [L.ej_x, .25, L.belt_z + .15]], ['ACCEPT', [L.split_x + .28, -.28, splitZ + .05]], ['REJECT', [L.split_x - .04, -.28, splitZ - .24]],
+    ['3 AIR JETS', [L.ej_x, .25, L.belt_z + .15]], ['KEEP', [L.split_x + .28, -.28, splitZ + .05]], ['REJECT', [L.split_x - .04, -.28, splitZ - .24]],
   ]) {
     const el = document.createElement('div'); el.className = 'annotation'; el.textContent = text; stage.append(el);
-    annotations.push({el, pos: new THREE.Vector3(...p)});
+    annotations.push({el, pos: new THREE.Vector3(...p), essential: true});
   }
   $('title-rows').replaceChildren(...[
     ['CINTA', 'Class-agnostic INline Transport Analyzer'],
@@ -1104,7 +1108,7 @@ function render3d(now) {
   controls.update();
   for (const a of annotations) {
     _proj.copy(a.pos).project(camera);
-    const show = three.labels && _proj.z < 1 && Math.abs(_proj.x) < .95 && Math.abs(_proj.y) < .9;
+    const show = (a.essential || three.labels) && _proj.z < 1 && Math.abs(_proj.x) < .95 && Math.abs(_proj.y) < .9;
     a.el.style.display = show ? 'block' : 'none';
     if (show) { a.el.style.left = `${(_proj.x * .5 + .5) * stage.clientWidth}px`; a.el.style.top = `${(-_proj.y * .5 + .5) * stage.clientHeight}px`; }
   }
@@ -1207,8 +1211,8 @@ function setLabels(on, persist = true) {
 $('labels').onclick = () => setLabels(!three.labels);
 try {
   const storedLabels = localStorage.getItem('coffee.labels');
-  setLabels(storedLabels === null ? window.innerWidth >= 760 : storedLabels !== '0', false);
-} catch { setLabels(window.innerWidth >= 760, false); }
+  setLabels(storedLabels === null ? false : storedLabels !== '0', false);
+} catch { setLabels(false, false); }
 const PANELS = ['panel-left', 'panel-right', 'title-block', 'inset'];
 document.addEventListener('keydown', event => {
   if (event.metaKey || event.ctrlKey || event.altKey || $('diagnostics').open) return;
@@ -1223,7 +1227,7 @@ for (const button of document.querySelectorAll('[data-toggle]')) {
   const id = button.dataset.toggle;
   button.onclick = () => setCollapsed(id, !$(id).classList.contains('collapsed'));
   let stored = null; try { stored = localStorage.getItem(`coffee.panel.${id}`); } catch {}
-  const defaultCollapsed = window.innerWidth < 760 || (id === 'title-block' && !localHost);
+  const defaultCollapsed = window.innerWidth < 760 || id === 'title-block' || id === 'inset';
   setCollapsed(id, stored === null ? defaultCollapsed : stored === '1', false);
 }
 initThree();

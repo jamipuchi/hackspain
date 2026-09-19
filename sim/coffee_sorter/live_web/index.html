@@ -31,7 +31,7 @@ h1,h2{font-size:12px;font-weight:700;letter-spacing:1.4px;text-transform:upperca
 .head span{font-size:10.5px;color:var(--ink-soft);text-align:right;min-width:0;overflow-wrap:anywhere}
 .brand{display:flex;flex-direction:column;align-items:flex-start;gap:1px}.brand h1{font-size:18px;letter-spacing:2.4px}.brand-expansion{margin:0;font-size:8.5px;line-height:1.2;white-space:nowrap;color:var(--ink-soft)}
 #status::before{content:"● ";color:#8799a8}#status[data-state=running]::before{color:var(--good)}#status[data-state=failed]::before{color:var(--bad)}
-p{margin:6px 0 0;color:var(--ink-soft);font-size:11px;line-height:1.4}#notice{display:block;margin-top:7px;font-weight:700;color:var(--ink)}#error{color:var(--bad);overflow-wrap:anywhere}#error:empty{display:none}
+p{margin:6px 0 0;color:var(--ink-soft);font-size:11px;line-height:1.4}#error{color:var(--bad);overflow-wrap:anywhere}#error:empty{display:none}
 .table{margin-top:8px;border-top:1px solid var(--rule)}.row{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:4px 0;border-bottom:1px solid var(--rule-soft);align-items:baseline}
 .row span{color:var(--ink-soft);font-size:10.5px;letter-spacing:.4px;text-transform:uppercase}.row b{font-weight:500;font-variant-numeric:tabular-nums;text-align:right;font-size:13px}.row small{grid-column:1/-1;color:var(--ink-soft);font-size:10.5px;text-align:right;margin-top:-2px}
 .row.big b{font-size:16px}#score-loss{color:#8a4b2c}#score-capture{color:var(--good)}
@@ -40,6 +40,7 @@ button{font:inherit;font-size:11px;letter-spacing:.6px;text-transform:uppercase;
 button:hover{background:#e6e9e3}button:disabled{opacity:.45;cursor:default}button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 button.primary,button[aria-pressed=true]{background:var(--rule);color:var(--sheet)}button.primary:hover{background:#1f2b26}
 .card{margin-top:8px;border:1px solid var(--rule);border-left:4px solid var(--accent);padding:6px 8px}.card .head{border-bottom:1px solid var(--rule-soft)}
+.card-empty{margin:0;color:var(--ink);font-weight:700;text-transform:uppercase;letter-spacing:.6px}
 .card-state{font-weight:700;color:#6d481f;font-size:11px;text-transform:uppercase;letter-spacing:.6px}
 .card .row b{font-size:11.5px;text-align:left;overflow-wrap:anywhere}.card .row{grid-template-columns:96px 1fr}
 .card-command,.card-error{font-size:10px;margin:6px 0 0;color:var(--ink-soft);overflow-wrap:anywhere}.card-error{color:var(--bad)}
@@ -64,16 +65,9 @@ footer{margin-top:16px;padding-top:12px;border-top:1px solid var(--rule);font-si
 <button class="edge" type="button" data-toggle="panel-left" aria-expanded="true" aria-controls="panel-left-body">Engine</button>
 <div class="body" id="panel-left-body">
 <div class="head"><div class="brand"><h1>CINTA</h1><p class="brand-expansion">Class-agnostic INline Transport Analyzer</p></div><span id="status" data-state="starting">Connecting</span></div>
-<strong id="notice">Preparing the engine</strong>
+<span id="notice" hidden></span>
 <p id="error" role="alert"></p>
-<div class="table">
-<div class="row"><span>Simulation time</span><b id="sim-time">0.00 s</b></div>
-<div class="row"><span>Engine s / wall s</span><b id="engine-rate">Waiting</b></div>
-<div class="row"><span>Admitted / sim s</span><b id="admitted">0 /s</b></div>
-<div class="row"><span>Objects in scene</span><b id="active">0</b></div>
-<div class="row"><span>Pose packets / s</span><b id="pose-hz">Waiting</b></div>
-</div>
-<nav class="btns" aria-label="View"><button data-camera="overview" aria-pressed="true" type="button">Overview</button><button data-camera="sorting" aria-pressed="false" type="button">Sorting</button><button data-camera="inspection" aria-pressed="false" type="button">Belt</button><button id="projection" aria-pressed="false" type="button" title="Perspective view uses natural depth and foreshortening">Perspective view</button><button id="labels" aria-pressed="true" type="button" title="Toggle 3D labels and dimensions (L)">Labels</button></nav>
+<nav class="btns" aria-label="View"><button data-camera="overview" aria-pressed="true" type="button">Overview</button><button data-camera="sorting" aria-pressed="false" type="button">Sorting</button><button data-camera="inspection" aria-pressed="false" type="button">Belt</button><button id="projection" aria-pressed="false" type="button" title="Perspective view uses natural depth and foreshortening">Perspective</button><button id="labels" aria-pressed="false" type="button" title="Toggle technical labels and dimensions (L)">Labels</button></nav>
 <section aria-label="Current item policy"><div class="head" style="margin-top:10px"><h2>Items</h2><span id="policy-status" class="policy-status">Waiting for catalog</span></div><div id="items" class="items"></div></section>
 </div>
 </section>
@@ -92,27 +86,28 @@ footer{margin-top:16px;padding-top:12px;border-top:1px solid var(--rule);font-si
 </div>
 </section>
 <section class="card" aria-live="polite" aria-label="Latest injected stone">
+<p id="card-empty" class="card-empty">Latest stone: none</p>
+<div id="card-content" hidden>
 <div class="head"><h2>Latest stone</h2><strong id="card-state" class="card-state">In progress</strong></div>
 <div class="table" style="margin-top:0;border-top:0">
 <div class="row"><span>Prediction</span><b id="card-prediction">Not observed</b></div>
-<div class="row"><span>Air command</span><b id="card-decision">Not decided</b></div>
-<div class="row"><span>Force contact</span><b id="card-hit">Not recorded</b></div>
-<div class="row"><span>Outcome</span><b id="card-outcome">Unresolved</b></div>
-<div class="row"><span>Time to outcome</span><b id="card-outcome-time">Waiting</b></div>
+<div class="row"><span>Action / contact</span><b id="card-action">Waiting</b></div>
+<div class="row"><span>Physical outcome</span><b id="card-outcome">Unresolved</b></div>
 </div>
-<p id="card-command" class="card-command">No injection yet</p><p id="card-error" class="card-error" hidden></p>
+<span id="card-decision" hidden></span><span id="card-hit" hidden></span><span id="card-outcome-time" hidden></span><span id="card-command" hidden></span><p id="card-error" class="card-error" hidden></p>
+</div>
 </section>
 <div class="legend" aria-label="Outcome legend"><span><i class="pulse"></i>Air command</span><span><i class="reject"></i>Confirmed reject</span><span><i class="spill"></i>Spill</span></div>
 </div>
 </section>
 
-<section id="title-block" class="panel h" aria-label="Machine data">
-<button class="edge" type="button" data-toggle="title-block" aria-expanded="true" aria-controls="title-rows">Machine data</button>
+<section id="title-block" class="panel h collapsed" aria-label="Machine data">
+<button class="edge" type="button" data-toggle="title-block" aria-expanded="false" aria-controls="title-rows">Machine data</button>
 <div class="body" id="title-rows"><div><b>CINTA</b>machine data appears when the engine layout arrives</div></div>
 </section>
 
-<section id="inset" class="panel h" aria-label="Top and side projections">
-<button class="edge" type="button" data-toggle="inset" aria-expanded="true" aria-controls="inset-body">Top / side view</button>
+<section id="inset" class="panel h collapsed" aria-label="Top and side projections">
+<button class="edge" type="button" data-toggle="inset" aria-expanded="false" aria-controls="inset-body">Top / side view</button>
 <div class="body" id="inset-body"><canvas id="scene" width="1250" height="430" aria-label="Live top and side views of the simulated conveyor"></canvas></div>
 </section>
 
@@ -122,6 +117,8 @@ footer{margin-top:16px;padding-top:12px;border-top:1px solid var(--rule);font-si
 <div class="row"><b id="diag-engine-rate">Waiting</b><span>Engine seconds / wall second</span></div>
 <div class="row"><b id="diag-admitted">0 /s</b><span>Admitted / simulated second</span></div>
 <div class="row"><b id="diag-active">0</b><span>Objects in the scene</span></div>
+<div class="row"><b id="diag-pose-hz">Waiting</b><span>Pose packets / wall second</span></div>
+<div class="row"><b id="diag-heartbeat">Waiting</b><span>Application heartbeat</span></div>
 </div>
 <section class="details">
 <div class="object"><h2 id="object-title">Follow your stone</h2><p>The ring follows the selected physical object.</p>
