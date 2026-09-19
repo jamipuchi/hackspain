@@ -144,7 +144,7 @@ force is not justified by these timing/coverage and light-fragment losses alone.
 The model, reports, final metrics/decisions/video, tests and review evidence are in
 the task's `final-validation.tar.gz` attachment.
 
-**Next**
+**19 September — attributable visual baseline**
 
 The overnight characterization baseline is now committed with a full 8 s HUD
 video and six post-run annotated inspection sheets. It records 81.79% physical
@@ -153,6 +153,15 @@ accuracy, 45.45% rejection precision, 38.85% defect recall, 7.95% good false eje
 unresolved beans, remain in the denominator. Ever-merged defect recall is 26.23%
 versus 47.04% for single-only beans. Twenty-two regression tests pass.
 See [NIGHT_LOG.md](NIGHT_LOG.md) for the numbers, limits and phone video links.
+
+The 4 s rate sweep is complete. From 500 to 2000 requested beans/s, physical
+recall falls from 61.62% to 42.55% while good false ejects rise from 2.87% to
+8.06%. At 3000 requested beans/s, the original pool admits only 2214 beans/s
+and starves on 2867 attempts. That point measures a throttled plant, not a
+3000-bean/s controller. [Nine-panel rate plot](runs/rate-sweep/rate_summary.png)
+and [overlap cohorts](runs/rate-sweep/cohort_summary.png) show the tradeoffs.
+
+**Next**
 
 - [x] foreground-only `vision.detect` with exact equivalence proof; train the classifier
 - [x] first closed-loop run with metrics + video

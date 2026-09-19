@@ -170,3 +170,75 @@ Prior task archives:
 - [Final model, metrics and HUD video](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/final-validation.tar.gz)
 
 - [Complete baseline archive](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/baseline-evidence.tar.gz).
+
+### Rate sweep
+
+Ran `run.py bench --rates 500,1000,2000,3000 --seconds 4 --name rate-sweep`.
+Seed 0; original model and physical defaults; serial runs.
+Each run has six annotated camera sheets and metrics under `runs/rate-sweep/`.
+Eligible spawn window: 0.8–3.4 s; these are short, single-seed screens.
+
+**500 beans/s requested**
+- Admitted: 500.0 beans/s; eligible: 1,300.
+- Accuracy: 92.00%; precision: 78.08%.
+- Defect recall: 61.62%; good false ejects: 2.87%.
+- Spills: 1.38%; late rejects: 0/288.
+- Pool-starved attempts: 0; wall/sim: 15.12 s/s.
+
+Surprise: quality degrades well before pool starvation. The 3,000 request
+exceeds the base pool capacity, so it is not a valid 3,000-bean/s controller
+qualification. Do not extend the rate upward until the pool is enlarged.
+The three late decisions at 2,000 show why one zero-late run is insufficient.
+Next: inject latency across the deadline, then compare physical settings.
+
+- [Rate sweep plot](runs/rate-sweep/bench.png).
+- [Raw benchmark results](runs/rate-sweep/bench.json).
+- [Phone rate plot](https://hack-s3.agent-swarm.dev/agentfs/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/drives/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/rate-summary.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=minioadmin%2F20260919%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260919T023729Z&X-Amz-Expires=86400&X-Amz-Signature=02324f2335bd35f3bd74faf3428ba4445186cc7b357408bcd73677ffe60607e4&X-Amz-SignedHeaders=host&response-content-disposition=attachment%3B%20filename%2A%3DUTF-8%27%27rate-summary.png&response-content-type=image%2Fpng&x-amz-checksum-mode=ENABLED&x-id=GetObject) (direct link expires 20 September).
+- [Durable rate plot](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/rate-summary.png).
+- [Overlap cohort plot](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/rate-cohorts.png).
+- [Complete rate-sweep evidence](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/rate-sweep.tar.gz).
+**1000 beans/s requested**
+- Admitted: 1000.0 beans/s; eligible: 2,600.
+- Accuracy: 86.62%; precision: 56.16%.
+- Defect recall: 44.44%; good false ejects: 5.74%.
+- Spills: 2.38%; late rejects: 0/532.
+- Pool-starved attempts: 0; wall/sim: 16.98 s/s.
+
+Surprise: quality degrades well before pool starvation. The 3,000 request
+exceeds the base pool capacity, so it is not a valid 3,000-bean/s controller
+qualification. Do not extend the rate upward until the pool is enlarged.
+The three late decisions at 2,000 show why one zero-late run is insufficient.
+Next: inject latency across the deadline, then compare physical settings.
+
+- [Rate sweep plot](runs/rate-sweep/bench.png).
+- [Raw benchmark results](runs/rate-sweep/bench.json).
+**2000 beans/s requested**
+- Admitted: 2000.0 beans/s; eligible: 5,200.
+- Accuracy: 82.23%; precision: 48.41%.
+- Defect recall: 42.55%; good false ejects: 8.06%.
+- Spills: 4.40%; late rejects: 3/1109.
+- Pool-starved attempts: 0; wall/sim: 19.45 s/s.
+
+Surprise: quality degrades well before pool starvation. The 3,000 request
+exceeds the base pool capacity, so it is not a valid 3,000-bean/s controller
+qualification. Do not extend the rate upward until the pool is enlarged.
+The three late decisions at 2,000 show why one zero-late run is insufficient.
+Next: inject latency across the deadline, then compare physical settings.
+
+- [Rate sweep plot](runs/rate-sweep/bench.png).
+- [Raw benchmark results](runs/rate-sweep/bench.json).
+**3000 beans/s requested**
+- Admitted: 2214.4 beans/s; eligible: 5,800.
+- Accuracy: 81.05%; precision: 45.64%.
+- Defect recall: 39.89%; good false ejects: 8.78%.
+- Spills: 4.90%; late rejects: 0/1270.
+- Pool-starved attempts: 2,867; wall/sim: 21.32 s/s.
+
+Surprise: quality degrades well before pool starvation. The 3,000 request
+exceeds the base pool capacity, so it is not a valid 3,000-bean/s controller
+qualification. Do not extend the rate upward until the pool is enlarged.
+The three late decisions at 2,000 show why one zero-late run is insufficient.
+Next: inject latency across the deadline, then compare physical settings.
+
+- [Rate sweep plot](runs/rate-sweep/bench.png).
+- [Raw benchmark results](runs/rate-sweep/bench.json).

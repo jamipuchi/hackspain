@@ -20,7 +20,7 @@ commit and push each major result. Keep the PR unmerged for morning review.
 
 ## Phase 2: characterize and tune
 
-- [ ] Run 500, 1000, 2000 and 3000 beans/s; extend only if capacity holds.
+- [x] Run 500, 1000, 2000 and 3000 beans/s; extend only if capacity holds.
 - [ ] Sweep induced latency across the camera-to-jet deadline.
 - [ ] Compare force, pulse, splitter, nozzle coverage and pool settings.
 - [ ] Preserve before/after metrics and plots; justify any default change.
