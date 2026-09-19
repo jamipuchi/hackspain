@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "object_type_id": "generated.five-point-star.v1",
+  "display_name": "Five-point star token",
+  "lifecycle_state": "asset_ready",
+  "generator": {
+    "provider_model": "google/gemini-3.8-flash",
+    "recipe_sha256": "ab172827287041a6d98b836b37e7297ff9d5438e397ef7c213ed25f47293549b"
+  },
+  "visual": {
+    "visual_asset_id": "sha256:7182c057c83b501438fd6f7a9b1d45700bb0e39579b0a73dce73065af62abbdc",
+    "uri": "../coffee-quality/object-generation/results/gemini/star/render/object.glb",
+    "media_type": "model/gltf-binary",
+    "units": "m",
+    "up_axis": "+Y",
+    "bounds_m": [
+      0.01694960594177246,
+      0.016120851516723633,
+      0.002
+    ],
+    "mesh_count": 1,
+    "material_count": 1,
+    "sim_from_asset_quaternion_wxyz": [
+      0.7071067811865476,
+      0.7071067811865476,
+      0.0,
+      0.0
+    ],
+    "runtime_lod_reviewed": false
+  },
+  "physics": {
+    "review_status": "unreviewed",
+    "proxy": null,
+    "mass_kg": null
+  },
+  "inspection": {
+    "class_label": null,
+    "camera_representation_reviewed": false
+  },
+  "sorting": {
+    "defect": null,
+    "severity": null,
+    "policy_action": null
+  },
+  "activation": {
+    "profile_id": null,
+    "profile_sha256": null,
+    "model_sha256": null,
+    "policy_sha256": null,
+    "model_epoch_id": null,
+    "score_epoch_id": null
+  }
+}
