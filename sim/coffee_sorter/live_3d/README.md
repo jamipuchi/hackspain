@@ -5,7 +5,18 @@ It is read-only and does not change the shared live UI or backend.
 
 ## Run
 
-Keep the continuous service available on port 8892. Then run:
+Start the continuous backend in one terminal:
+
+```sh
+/Users/taras/Documents/code/hackspain/.venv-coffee/bin/python \
+  sim/coffee_sorter/live.py \
+  --host 127.0.0.1 \
+  --port 8892 \
+  --preset sim/coffee_sorter/configs/continuous_demo.json \
+  --out /private/tmp/coffee-live-3d-backend
+```
+
+Then start the read-only preview in another terminal:
 
 ```sh
 /Users/taras/Documents/code/hackspain/.venv-coffee/bin/python \
@@ -25,6 +36,7 @@ It preserves the live server's Host and Origin checks.
 ## Visual contract
 
 Live appearance uses only authoritative `shape`, `axes`, `rgb`, `pos`, and `quat` values.
+The viewer omits an active object and reports it when any required render field is absent or invalid.
 Classifier predictions appear as text and never select a model.
 Ellipsoids use the generic coffee-bean LOD and server color.
 Half shapes use the broken-bean LOD.

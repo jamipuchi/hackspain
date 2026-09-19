@@ -2,7 +2,12 @@ import * as THREE from 'three';
 import {OrbitControls} from '/three/OrbitControls.js';
 import {RoomEnvironment} from '/three/RoomEnvironment.js';
 import {GLTFLoader} from '/three/loaders/GLTFLoader.js';
-import {liveInstanceScale, machineLayoutSignature, reserveInstance} from '/geometry.mjs';
+import {
+  hasAuthoritativeLiveFields,
+  liveInstanceScale,
+  machineLayoutSignature,
+  reserveInstance,
+} from '/geometry.mjs';
 
 const $ = id => document.getElementById(id);
 const stage = $('stage');
@@ -236,13 +241,21 @@ let latestInjectedId = null;
 let lastEventId = -1;
 let visibleObjects = 0;
 let omittedObjects = 0;
+let invalidObjects = 0;
 function updateLiveObjects(packet) {
   const counts = new Map([...liveMeshes.keys()].map(key => [key, 0]));
   let selectedObject = null;
+  let selectedObjectRenderable = false;
   omittedObjects = 0;
+  invalidObjects = 0;
   for (const object of packet.objects || []) {
     if (object.object_id === latestInjectedId) selectedObject = object;
-    if (!object.active || !object.pos || !object.quat) continue;
+    if (!object.active) continue;
+    if (!hasAuthoritativeLiveFields(object)) {
+      invalidObjects++;
+      continue;
+    }
+    if (object.object_id === latestInjectedId) selectedObjectRenderable = true;
     const key = liveAssetKey(object);
     const mesh = liveMeshes.get(key) || liveMeshes.get('box');
     const index = reserveInstance(counts, key, MAX_INSTANCES);
@@ -252,11 +265,10 @@ function updateLiveObjects(packet) {
     }
     dummy.position.fromArray(object.pos);
     dummy.quaternion.set(object.quat[1], object.quat[2], object.quat[3], object.quat[0]).normalize();
-    const axes = object.axes || [.004, .003, .002];
-    dummy.scale.fromArray(liveInstanceScale(object.shape, axes));
+    dummy.scale.fromArray(liveInstanceScale(object.shape, object.axes));
     dummy.updateMatrix();
     mesh.setMatrixAt(index, dummy.matrix);
-    mesh.setColorAt(index, new THREE.Color().setRGB(...(object.rgb || [.55, .55, .5])));
+    mesh.setColorAt(index, new THREE.Color().setRGB(...object.rgb));
   }
   visibleObjects = [...counts.values()].reduce((total, value) => total + value, 0);
   for (const [key, mesh] of liveMeshes) {
@@ -264,7 +276,7 @@ function updateLiveObjects(packet) {
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   }
-  if (selectedObject?.active && selectedObject.pos) {
+  if (selectedObjectRenderable) {
     const radius = Math.max(...selectedObject.axes) * 1.65;
     selectedMarker.position.fromArray(selectedObject.pos);
     selectedMarker.scale.setScalar(radius);
@@ -437,6 +449,7 @@ function render(now) {
     triangles: renderer.info.render.triangles,
     visibleObjects,
     omittedObjects,
+    invalidObjects,
     assetBytes,
     fallbackAssets: [...fallbackAssets, 'box', 'capsule'],
     renderer: gpu,
@@ -445,9 +458,10 @@ function render(now) {
     simTime: state?.sim_time_s ?? null,
   };
   window.live3dTelemetry = telemetry;
-  $('telemetry').classList.toggle('over-capacity', omittedObjects > 0);
+  $('telemetry').classList.toggle('over-capacity', omittedObjects > 0 || invalidObjects > 0);
   const capacity = omittedObjects ? ` · ${omittedObjects} omitted over cap` : '';
-  $('telemetry').textContent = `${fps.toFixed(0)} fps · ${median.toFixed(1)} ms median · ${p95.toFixed(1)} ms p95\n${telemetry.drawCalls} draws · ${visibleObjects} live objects${capacity} · ${(assetBytes / 1024).toFixed(0)} KiB GLB`;
+  const invalid = invalidObjects ? ` · ${invalidObjects} invalid objects omitted` : '';
+  $('telemetry').textContent = `${fps.toFixed(0)} fps · ${median.toFixed(1)} ms median · ${p95.toFixed(1)} ms p95\n${telemetry.drawCalls} draws · ${visibleObjects} live objects${capacity}${invalid} · ${(assetBytes / 1024).toFixed(0)} KiB GLB`;
   requestAnimationFrame(render);
 }
 

@@ -54,7 +54,8 @@ function retryPending() {
 
 function connect() {
   heartbeatSeq = heartbeatSeenAt = null;
-  const ws = new WebSocket(`ws://${location.host}/ws`);
+  const scheme = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const ws = new WebSocket(`${scheme}//${location.host}/ws`);
   socket = ws;
   ws.onopen = () => {
     if (socket !== ws) return;
@@ -373,6 +374,24 @@ let packetAt = null;
 let packetInterval = 100;
 let lastEventId = -1;
 const puffs = [];
+const SUPPORTED_RENDER_SHAPES = new Set(['ellipsoid', 'half', 'box', 'capsule']);
+
+function hasAuthoritativeRenderFields(object) {
+  const finiteArray = (value, length) => (
+    Array.isArray(value) && value.length === length && value.every(Number.isFinite)
+  );
+  return (
+    Number.isInteger(object?.object_id) &&
+    SUPPORTED_RENDER_SHAPES.has(object.shape) &&
+    finiteArray(object.pos, 3) &&
+    finiteArray(object.quat, 4) &&
+    object.quat.some(value => value !== 0) &&
+    finiteArray(object.axes, 3) &&
+    object.axes.every(value => value > 0) &&
+    finiteArray(object.rgb, 3) &&
+    object.rgb.every(value => value >= 0 && value <= 1)
+  );
+}
 
 function resetPoses() {
   poses.clear();
@@ -387,10 +406,10 @@ function ingestPoses(packet) {
   packetAt = now;
   const seen = new Set();
   for (const o of packet.objects || []) {
-    if (!o.pos) continue;
+    if (!hasAuthoritativeRenderFields(o)) continue;
     seen.add(o.object_id);
     const entry = poses.get(o.object_id);
-    const q = o.quat || [1, 0, 0, 0];
+    const q = o.quat;
     if (entry) {
       entry.p0 = entry.p1; entry.q0 = entry.q1;
       entry.p1 = o.pos; entry.q1 = q;
@@ -418,7 +437,7 @@ function ingestPoses(packet) {
 const _pa = [0, 0, 0];
 function interpolated(o, alpha, outPos, outQuat) {
   const entry = poses.get(o.object_id);
-  if (!entry) { outPos.fromArray(o.pos); const q = o.quat || [1,0,0,0]; outQuat.set(q[1], q[2], q[3], q[0]); return; }
+  if (!entry) { outPos.fromArray(o.pos); outQuat.set(o.quat[1], o.quat[2], o.quat[3], o.quat[0]); return; }
   const a = entry.p0, b = entry.p1;
   outPos.set(a[0] + (b[0]-a[0])*alpha, a[1] + (b[1]-a[1])*alpha, a[2] + (b[2]-a[2])*alpha);
   _qa.set(entry.q0[1], entry.q0[2], entry.q0[3], entry.q0[0]).normalize();
@@ -609,7 +628,7 @@ function buildMachine(L) {
     ellipsoid: beanGeo,
     half: new THREE.SphereGeometry(1, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2),
     box: new THREE.BoxGeometry(2, 2, 2),
-    capsule: new THREE.CapsuleGeometry(1, 2, 4, 8),
+    capsule: new THREE.CapsuleGeometry(1, 2, 4, 8).rotateX(Math.PI / 2).scale(1, 1, .5),
   };
   const capacity = {ellipsoid: (L.n_ellipsoid || 400) + 64, half: (L.n_half || 48) + 16, box: (L.n_box || 20) + 16, capsule: (L.n_capsule || 20) + 16};
   const pools = {};
@@ -641,6 +660,7 @@ function buildMachine(L) {
     ['SPLITTER', `x ${L.split_x.toFixed(2)} m, drop ${(L.split_z_drop * 1000).toFixed(0)} mm`],
     ['STEP', `${(L.timestep * 1000).toFixed(0)} ms physics · units m · rev ${(state.source_revision || '').slice(0, 7) || 'n/a'}`],
     ['ASSETS', 'primitives (loading Blender GLBs)'],
+    ['RENDER', 'authoritative objects only'],
     ['INPUT', 'drag orbit · scroll zoom · click belt = inject · L labels · H panels'],
   ].map(([k, v]) => { const row = document.createElement('div'); const b = document.createElement('b'); b.textContent = k; row.append(b, document.createTextNode(v)); return row; }));
   Object.assign(three, {pools, puffMesh, ring, ring2, dummy, machineGroup});
@@ -651,6 +671,11 @@ function buildMachine(L) {
 function setAssetsRow(text) {
   const row = [...$('title-rows').children].find(r => r.firstChild?.textContent === 'ASSETS');
   if (row) row.lastChild.textContent = text;
+}
+
+function setRenderRow(text) {
+  const row = [...$('title-rows').children].find(r => r.firstChild?.textContent === 'RENDER');
+  if (row && row.lastChild.textContent !== text) row.lastChild.textContent = text;
 }
 
 // Blender assets from visual_assets/browser: the machine (scene_machine.py via export_machine.py) and the
@@ -706,18 +731,27 @@ function render3d(now) {
   const alpha = packetAt === null ? 1 : THREE.MathUtils.clamp((now - packetAt) / packetInterval, 0, 1);
   const counts = {ellipsoid: 0, half: 0, box: 0, capsule: 0, black: 0};
   let ringShown = false;
+  let invalid = 0;
+  let omitted = 0;
   for (const o of state?.objects || []) {
-    if (!o.pos || (!o.active && o.object_id !== selected)) continue;
-    const rgb = o.rgb || [.5, .55, .42];
-    let shape = pools[o.shape] ? o.shape : 'ellipsoid';
+    if (!o.active && o.object_id !== selected) continue;
+    if (!hasAuthoritativeRenderFields(o)) {
+      invalid++;
+      continue;
+    }
+    const rgb = o.rgb;
+    let shape = o.shape;
     if (shape === 'ellipsoid' && pools.black && (rgb[0] + rgb[1] + rgb[2]) / 3 < .25) shape = 'black';
     const mesh = pools[shape];
-    if (counts[shape] >= mesh.instanceMatrix.count) continue;
+    if (counts[shape] >= mesh.instanceMatrix.count) {
+      omitted++;
+      continue;
+    }
     interpolated(o, alpha, _p, _q);
     dummy.position.copy(_p); dummy.quaternion.copy(_q);
-    const ax = o.axes || [.004, .003, .002];
-    if (shape === 'capsule') dummy.scale.set(ax[1] || .002, ax[1] || .002, ax[0] || .004);
-    else dummy.scale.set(ax[0] || .004, ax[1] || ax[0] || .003, ax[2] || ax[1] || .002);
+    const ax = o.axes;
+    if (shape === 'capsule') dummy.scale.set(ax[1], ax[1], ax[0] + ax[1]);
+    else dummy.scale.set(ax[0], ax[1], ax[2]);
     dummy.updateMatrix();
     const slot = counts[shape]++;
     mesh.setMatrixAt(slot, dummy.matrix);
@@ -733,6 +767,7 @@ function render3d(now) {
     mesh.setColorAt(slot, _c);
     if (o.object_id === selected) { ring.position.copy(_p); ring2.position.copy(_p); ring.lookAt(camera.position); ringShown = true; }
   }
+  setRenderRow(`${Object.values(counts).reduce((sum, count) => sum + count, 0)} visible · ${invalid} invalid omitted · ${omitted} over cap`);
   for (const [shape, mesh] of Object.entries(pools)) {
     mesh.count = counts[shape] || 0; mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   }
@@ -790,13 +825,13 @@ function drawInset(now) {
   ctx.fillStyle = '#825231';ctx.fillText('Reject',X(.36),Z(.40));
   const alpha = packetAt === null ? 1 : THREE.MathUtils.clamp((now - packetAt) / packetInterval, 0, 1);
   for (const o of state?.objects || []) {
-    if (!o.pos || (!o.active && o.object_id !== selected)) continue;
+    if ((!o.active && o.object_id !== selected) || !hasAuthoritativeRenderFields(o)) continue;
     interpolated(o, alpha, _p, _q);
     const x = _p.x, y = _p.y, z = _p.z;
     if (x < -1.2 || x > .55) continue;
-    const rgb = o.rgb || [.5,.55,.42];
+    const rgb = o.rgb;
     const color = `rgb(${rgb.slice(0,3).map(v => Math.round(v <= 1 ? v * 255 : v)).join(',')})`;
-    const radius = Math.max(2, (o.axes?.[0] || .004) * 500);
+    const radius = Math.max(2, o.axes[0] * 500);
     const qw = _q.w, qx = _q.x, qy = _q.y, qz = _q.z;
     const yaw = Math.atan2(2*(qx*qy+qw*qz),1-2*(qy*qy+qz*qz));
     const pitch = Math.atan2(-2*(qx*qz-qw*qy),1-2*(qy*qy+qz*qz));
