@@ -1,0 +1,59 @@
+{
+  "rows": [
+    {
+      "object_id": 1,
+      "spawn_time_s": 0.0,
+      "required_reject": true,
+      "outcome": "reject",
+      "score_epoch_id": "epoch-a"
+    },
+    {
+      "object_id": 2,
+      "spawn_time_s": 0.1,
+      "required_reject": false,
+      "outcome": "accept",
+      "score_epoch_id": "epoch-a"
+    },
+    {
+      "object_id": 3,
+      "spawn_time_s": 60.1,
+      "required_reject": false,
+      "outcome": "spilled",
+      "score_epoch_id": "epoch-a"
+    },
+    {
+      "object_id": 4,
+      "spawn_time_s": 60.2,
+      "required_reject": true,
+      "outcome": null,
+      "score_epoch_id": "epoch-a"
+    },
+    {
+      "object_id": 5,
+      "spawn_time_s": 1.0,
+      "required_reject": true,
+      "outcome": "reject",
+      "manual_injection": true,
+      "score_epoch_id": "epoch-a"
+    },
+    {
+      "object_id": 1,
+      "spawn_time_s": 1.0,
+      "required_reject": false,
+      "outcome": "accept",
+      "score_epoch_id": "epoch-b"
+    }
+  ],
+  "snapshots": [
+    {
+      "score_epoch_id": "epoch-a",
+      "as_of_sim_time_s": 60.7,
+      "versions": {"model": "model-a", "policy": "policy-a"}
+    },
+    {
+      "score_epoch_id": "epoch-b",
+      "as_of_sim_time_s": 1.6,
+      "versions": {"model": "model-b", "policy": "policy-b"}
+    }
+  ]
+}
