@@ -1,0 +1,17 @@
+{
+  "shot": "good",
+  "preview": false,
+  "image": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/good.png",
+  "blend": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/good.blend",
+  "wall_clock_started_utc": "2026-09-19T12:34:55.111442+00:00",
+  "render_elapsed_seconds": 10.873,
+  "threads": 16,
+  "resolution": [
+    1400,
+    1000
+  ],
+  "samples": 96,
+  "blender_version": "4.5.4 LTS",
+  "render_engine": "CYCLES",
+  "seed": 230948
+}

@@ -1,0 +1,230 @@
+[
+  {
+    "blend": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/good_preview.blend",
+    "blender_version": "4.5.4 LTS",
+    "image": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/good_preview.png",
+    "preview": true,
+    "render_elapsed_seconds": 1.26,
+    "render_engine": "CYCLES",
+    "resolution": [
+      640,
+      480
+    ],
+    "samples": 16,
+    "seed": 230948,
+    "shot": "good",
+    "threads": 16,
+    "wall_clock_started_utc": "2026-09-19T12:25:41.362983+00:00",
+    "attempt_log": "preview.log",
+    "final_delivered": false
+  },
+  {
+    "blend": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/good_preview.blend",
+    "blender_version": "4.5.4 LTS",
+    "image": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/good_preview.png",
+    "preview": true,
+    "render_elapsed_seconds": 1.168,
+    "render_engine": "CYCLES",
+    "resolution": [
+      640,
+      480
+    ],
+    "samples": 16,
+    "seed": 230948,
+    "shot": "good",
+    "threads": 16,
+    "wall_clock_started_utc": "2026-09-19T12:27:43.918822+00:00",
+    "attempt_log": "preview2.log",
+    "final_delivered": false
+  },
+  {
+    "blend": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/good_preview.blend",
+    "blender_version": "4.5.4 LTS",
+    "image": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/good_preview.png",
+    "preview": true,
+    "render_elapsed_seconds": 1.272,
+    "render_engine": "CYCLES",
+    "resolution": [
+      640,
+      480
+    ],
+    "samples": 16,
+    "seed": 230948,
+    "shot": "good",
+    "threads": 16,
+    "wall_clock_started_utc": "2026-09-19T12:28:22.875063+00:00",
+    "attempt_log": "preview3.log",
+    "final_delivered": false
+  },
+  {
+    "blend": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/good_preview.blend",
+    "blender_version": "4.5.4 LTS",
+    "image": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/good_preview.png",
+    "preview": true,
+    "render_elapsed_seconds": 1.27,
+    "render_engine": "CYCLES",
+    "resolution": [
+      640,
+      480
+    ],
+    "samples": 16,
+    "seed": 230948,
+    "shot": "good",
+    "threads": 16,
+    "wall_clock_started_utc": "2026-09-19T12:29:29.824048+00:00",
+    "attempt_log": "preview4.log",
+    "final_delivered": false
+  },
+  {
+    "blend": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/defects_preview.blend",
+    "blender_version": "4.5.4 LTS",
+    "image": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/defects_preview.png",
+    "preview": true,
+    "render_elapsed_seconds": 1.225,
+    "render_engine": "CYCLES",
+    "resolution": [
+      640,
+      480
+    ],
+    "samples": 16,
+    "seed": 230948,
+    "shot": "defects",
+    "threads": 16,
+    "wall_clock_started_utc": "2026-09-19T12:30:18.572943+00:00",
+    "attempt_log": "defects-preview.log",
+    "final_delivered": false
+  },
+  {
+    "blend": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/defects.blend",
+    "blender_version": "4.5.4 LTS",
+    "image": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/defects.png",
+    "preview": false,
+    "render_elapsed_seconds": 10.895,
+    "render_engine": "CYCLES",
+    "resolution": [
+      1400,
+      1000
+    ],
+    "samples": 96,
+    "seed": 230948,
+    "shot": "defects",
+    "threads": 16,
+    "wall_clock_started_utc": "2026-09-19T12:31:00.420918+00:00",
+    "attempt_log": "defects.log",
+    "final_delivered": false
+  },
+  {
+    "blend": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/good.blend",
+    "blender_version": "4.5.4 LTS",
+    "image": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/good.png",
+    "preview": false,
+    "render_elapsed_seconds": 11.094,
+    "render_engine": "CYCLES",
+    "resolution": [
+      1400,
+      1000
+    ],
+    "samples": 96,
+    "seed": 230948,
+    "shot": "good",
+    "threads": 16,
+    "wall_clock_started_utc": "2026-09-19T12:31:35.415482+00:00",
+    "attempt_log": "good.log",
+    "final_delivered": false
+  },
+  {
+    "blend": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/conveyor_preview.blend",
+    "blender_version": "4.5.4 LTS",
+    "image": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/conveyor_preview.png",
+    "preview": true,
+    "render_elapsed_seconds": 1.309,
+    "render_engine": "CYCLES",
+    "resolution": [
+      640,
+      480
+    ],
+    "samples": 16,
+    "seed": 230948,
+    "shot": "conveyor",
+    "threads": 16,
+    "wall_clock_started_utc": "2026-09-19T12:33:33.903489+00:00",
+    "attempt_log": "conveyor-preview.log",
+    "final_delivered": false
+  },
+  {
+    "blend": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/conveyor_preview.blend",
+    "blender_version": "4.5.4 LTS",
+    "image": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/conveyor_preview.png",
+    "preview": true,
+    "render_elapsed_seconds": 1.308,
+    "render_engine": "CYCLES",
+    "resolution": [
+      640,
+      480
+    ],
+    "samples": 16,
+    "seed": 230948,
+    "shot": "conveyor",
+    "threads": 16,
+    "wall_clock_started_utc": "2026-09-19T12:34:12.290490+00:00",
+    "attempt_log": "conveyor-preview2.log",
+    "final_delivered": false
+  },
+  {
+    "blend": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/good.blend",
+    "blender_version": "4.5.4 LTS",
+    "image": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/good.png",
+    "preview": false,
+    "render_elapsed_seconds": 10.873,
+    "render_engine": "CYCLES",
+    "resolution": [
+      1400,
+      1000
+    ],
+    "samples": 96,
+    "seed": 230948,
+    "shot": "good",
+    "threads": 16,
+    "wall_clock_started_utc": "2026-09-19T12:34:55.111442+00:00",
+    "attempt_log": "good-final.log",
+    "final_delivered": true
+  },
+  {
+    "blend": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/defects.blend",
+    "blender_version": "4.5.4 LTS",
+    "image": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/defects.png",
+    "preview": false,
+    "render_elapsed_seconds": 10.764,
+    "render_engine": "CYCLES",
+    "resolution": [
+      1400,
+      1000
+    ],
+    "samples": 96,
+    "seed": 230948,
+    "shot": "defects",
+    "threads": 16,
+    "wall_clock_started_utc": "2026-09-19T12:35:06.810934+00:00",
+    "attempt_log": "defects-final.log",
+    "final_delivered": true
+  },
+  {
+    "blend": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/conveyor.blend",
+    "blender_version": "4.5.4 LTS",
+    "image": "/home/worker/.worktrees/hackspain/2026-09-19-coffee-realistic-assets/sim/coffee_sorter/visual_assets/renders/conveyor.png",
+    "preview": false,
+    "render_elapsed_seconds": 11.936,
+    "render_engine": "CYCLES",
+    "resolution": [
+      1400,
+      1000
+    ],
+    "samples": 96,
+    "seed": 230948,
+    "shot": "conveyor",
+    "threads": 16,
+    "wall_clock_started_utc": "2026-09-19T12:35:18.420006+00:00",
+    "attempt_log": "conveyor-final.log",
+    "final_delivered": true
+  }
+]
