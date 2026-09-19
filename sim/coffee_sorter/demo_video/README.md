@@ -5,6 +5,28 @@ It does not own the source scene, simulator, model, live interface, or recorded 
 
 ## Separate video previews
 
+### Native Full HD renders
+
+Taras authorized all nine existing clips at 1920 by 1080, with unchanged framing and timing.
+The Full HD preset uses 48 Cycles samples, a 0.035 adaptive threshold, denoising, and H.264 CRF 16.
+The commands use the Mac's Metal GPU. The shared runtime lock and eight-thread limit still apply.
+
+```sh
+python3 sim/coffee_sorter/demo_video/render_segments.py --full-hd --device METAL \
+  --output-dir /private/tmp/coffee-demo-video-previews/segments-1080p
+python3 sim/coffee_sorter/demo_video/render_slowmo.py --full-hd --device METAL \
+  --output-dir /private/tmp/coffee-demo-video-previews/segments-1080p/05-ultra-slowmo
+```
+
+Use `--frame-limit 3` with one segment to benchmark three new frames.
+Repeat without `--frame-limit` to resume the same verified frame sequence.
+Use `--device CPU` on a computer without Metal. Do not change devices within an unfinished sequence.
+The manifests record native frame dimensions, quality settings, source poses, and encoded video dimensions.
+The original preview files remain unchanged.
+The higher resolution does not change the slow-motion framing or resolve its pending visual feedback.
+
+### Preview commands
+
 Taras authorized video rendering after the still review.
 Render the approved scenes as separate clips:
 

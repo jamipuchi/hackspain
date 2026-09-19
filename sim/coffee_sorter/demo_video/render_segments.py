@@ -40,6 +40,54 @@ def write_json(path, data):
     temporary.replace(path)
 
 
+def add_render_options(parser):
+    parser.add_argument("--full-hd", action="store_true", help="Render native 1920 by 1080 frames with production quality settings.")
+    parser.add_argument("--samples", type=int)
+    parser.add_argument("--device", choices=("CPU", "METAL"), default="CPU")
+    parser.add_argument("--frame-limit", type=int, help="Render this many new frames, then stop. Resume without this option.")
+
+
+def render_settings(args):
+    return {
+        "resolution": [1920, 1080] if args.full_hd else [640, 360],
+        "samples": args.samples if args.samples is not None else (48 if args.full_hd else 12),
+        "device": args.device,
+        "adaptive_threshold": 0.035 if args.full_hd else 0.18,
+        "crf": 16 if args.full_hd else 20,
+    }
+
+
+def configure_quality(scene, settings):
+    import bpy
+
+    scene.render.resolution_x, scene.render.resolution_y = settings["resolution"]
+    scene.render.resolution_percentage = 100
+    scene.cycles.samples = settings["samples"]
+    scene.cycles.adaptive_threshold = settings["adaptive_threshold"]
+    scene.cycles.use_denoising = True
+    scene.cycles.device = "CPU"
+    if settings["device"] == "METAL":
+        preferences = bpy.context.preferences.addons["cycles"].preferences
+        preferences.compute_device_type = "METAL"
+        preferences.get_devices()
+        if not any(device.type == "METAL" for device in preferences.devices):
+            raise RuntimeError("No Metal render device is available.")
+        for device in preferences.devices:
+            device.use = device.type == "METAL"
+        scene.cycles.device = "GPU"
+
+
+def worker_options(args):
+    options = ["--device", args.device]
+    if args.full_hd:
+        options.append("--full-hd")
+    if args.samples is not None:
+        options += ["--samples", str(args.samples)]
+    if args.frame_limit is not None:
+        options += ["--frame-limit", str(args.frame_limit)]
+    return options
+
+
 def render(name, args):
     import bpy
     from mathutils import Vector
@@ -61,8 +109,9 @@ def render(name, args):
     source_indices = [spec["source_start"] + (0 if spec["motion"] == "macro-focus" else i) for i in range(spec["frames"])]
     source_frames = [payload["frames"][i] for i in source_indices]
     assert payload["config"]["fps"] == FPS
+    settings = render_settings(args)
     contract = {
-        "segment": spec, "resolution": [640, 360], "fps": FPS, "samples": args.samples,
+        "segment": spec, "fps": FPS, **settings,
         "base_blend_sha256": source_manifest["blend_sha256"], "replay_sha256": sha(REPLAY),
         "renderer_sha256": sha(Path(__file__)),
         "importer_sha256": sha(ASSETS / "render_recording.py"),
@@ -88,14 +137,12 @@ def render(name, args):
         write_json(manifest_path, record)
     bpy.ops.wm.open_mainfile(filepath=str(base / "scene.blend"))
     scene = bpy.context.scene
-    scene.render.resolution_x, scene.render.resolution_y = 640, 360
-    scene.render.resolution_percentage = 100
+    configure_quality(scene, settings)
     scene.render.threads_mode = "FIXED"
     scene.render.threads = 8
     scene.render.fps = FPS
     scene.render.use_motion_blur = False
     scene.render.use_persistent_data = True
-    scene.cycles.samples = args.samples
     scene.frame_start, scene.frame_end = 1, spec["frames"]
     beans = bpy.data.collections["RecordedBeans"]
     for obj in tuple(beans.objects):
@@ -120,6 +167,7 @@ def render(name, args):
         camera.data.dof.aperture_fstop = 8
 
     completed = {f["frame"]: f for f in record["frames"]}
+    rendered = 0
     for index, frame in enumerate(source_frames):
         number = index + 1
         path = frames_dir / f"frame_{number:04d}.png"
@@ -154,8 +202,11 @@ def render(name, args):
         })
         write_json(manifest_path, record)
         print(f"FRAME {name} {number}/{spec['frames']}", flush=True)
+        rendered += 1
+        if args.frame_limit is not None and rendered >= args.frame_limit:
+            break
     assert sha(REPLAY) == contract["replay_sha256"]
-    record["status"] = "frames-complete"
+    record["status"] = "frames-complete" if len(record["frames"]) == spec["frames"] else "rendering"
     write_json(manifest_path, record)
 
 
@@ -164,14 +215,16 @@ def main():
     parser.add_argument("--only", choices=SEGMENTS)
     parser.add_argument("--base-dir", type=Path, default=PREVIEWS / "basic-scene-renders-v3")
     parser.add_argument("--output-dir", type=Path, default=PREVIEWS / "segments-v2")
-    parser.add_argument("--samples", type=int, default=12)
+    add_render_options(parser)
     parser.add_argument("--blender", default="blender")
     parser.add_argument("--worker", action="store_true")
     argv = sys.argv[sys.argv.index("--") + 1:] if "--worker" in sys.argv else sys.argv[1:]
     args = parser.parse_args(argv)
     args.base_dir, args.output_dir = args.base_dir.resolve(), args.output_dir.resolve()
-    if args.samples < 1:
+    if render_settings(args)["samples"] < 1:
         parser.error("Samples must be positive.")
+    if args.frame_limit is not None and args.frame_limit < 1:
+        parser.error("The frame limit must be positive.")
     if args.worker:
         if not args.only:
             parser.error("Select one segment for each Blender process.")
@@ -185,11 +238,13 @@ def main():
             manifest = json.loads(manifest_path.read_text())
             if manifest.get("video", {}).get("sha256") != sha(video):
                 raise RuntimeError(f"The existing video is unverified: {video}")
+            if any(manifest["contract"].get(key) != render_settings(args)[key] for key in ("resolution", "samples")):
+                raise RuntimeError("The existing video has different quality settings. Select a new output directory.")
             print(f"Preserving completed video: {name}", flush=True)
             continue
         output.mkdir(parents=True, exist_ok=True)
         command = [args.blender, "--background", "--threads", "8", "--python-exit-code", "1", "--python", str(Path(__file__).resolve()),
-                   "--", "--worker", "--only", name, "--base-dir", str(args.base_dir), "--output-dir", str(args.output_dir), "--samples", str(args.samples)]
+                   "--", "--worker", "--only", name, "--base-dir", str(args.base_dir), "--output-dir", str(args.output_dir), *worker_options(args)]
         with LOCK.open("a+") as lock:
             try:
                 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -207,14 +262,17 @@ def main():
         manifest["process_seconds"] = manifest.get("process_seconds", 0) + elapsed
         manifest["blender_command"] = command
         write_json(manifest_path, manifest)
+        if manifest["status"] != "frames-complete":
+            print(f"FRAMES_READY {name} {len(manifest['frames'])}/{SEGMENTS[name]['frames']}", flush=True)
+            continue
         encode = ["ffmpeg", "-n", "-threads", "2", "-framerate", str(FPS), "-i", str(output / "frames/frame_%04d.png"),
-                  "-c:v", "libx264", "-threads", "2", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(video)]
+                  "-c:v", "libx264", "-threads", "2", "-preset", "medium", "-crf", str(render_settings(args)["crf"]), "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(video)]
         with (output / "ffmpeg.log").open("w") as log:
             subprocess.run(encode, stdout=log, stderr=subprocess.STDOUT, check=True)
         probe = json.loads(subprocess.check_output(["ffprobe", "-v", "error", "-count_frames", "-select_streams", "v:0", "-show_entries",
             "stream=codec_name,width,height,r_frame_rate,nb_read_frames:format=duration", "-of", "json", str(video)], text=True))
         stream = probe["streams"][0]
-        assert (stream["width"], stream["height"], stream["r_frame_rate"], int(stream["nb_read_frames"])) == (640, 360, "30/1", SEGMENTS[name]["frames"])
+        assert (stream["width"], stream["height"], stream["r_frame_rate"], int(stream["nb_read_frames"])) == (*render_settings(args)["resolution"], "30/1", SEGMENTS[name]["frames"])
         manifest["video"] = {"sha256": sha(video), "probe": probe, "encode_command": encode}
         manifest["status"] = "complete"
         write_json(manifest_path, manifest)

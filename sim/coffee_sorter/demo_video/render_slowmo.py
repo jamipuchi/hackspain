@@ -13,7 +13,7 @@ import time
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from render_segments import ASSETS, FPS, LOCK, PREVIEWS, ROOT, sha, write_json
+from render_segments import ASSETS, FPS, LOCK, PREVIEWS, ROOT, add_render_options, configure_quality, render_settings, sha, worker_options, write_json
 
 CAPTURE = PREVIEWS / "high-rate-capture"
 REPLAY = CAPTURE / "fresh-current-main/replay.json"
@@ -67,12 +67,14 @@ def render(args):
     from scene_machine import build_machine
 
     payload, validation, frames, contacts = inputs()
+    settings = render_settings(args)
     contract = {
         "segment": {"frames": len(frames), "source_start": frames[0][0], "source_end": frames[-1][0]},
-        "resolution": [640, 360], "fps": FPS, "source_hz": 500, "slowdown": 500 / FPS,
-        "samples": args.samples, "study": args.study,
+        **settings, "fps": FPS, "source_hz": 500, "slowdown": 500 / FPS,
+        "study": args.study,
         "replay_sha256": sha(REPLAY), "validation_sha256": sha(VALIDATION), "independent_audit_sha256": sha(AUDIT),
         "renderer_sha256": sha(Path(__file__)),
+        "quality_source_sha256": sha(HERE / "render_segments.py"),
         "asset_sources": {name: sha(ASSETS / name) for name in (
             "build_assets.py", "render_recording.py", "render_stills.py", "scene_machine.py", "scene_lighting.py", "scene_direction.json")},
     }
@@ -112,9 +114,8 @@ def render(args):
     bpy.context.scene.collection.children.link(beans)
     objects, _ = create_recorded_beans(payload, [f for _, f in frames], prototypes, beans)
     record["machine"] = build_machine(payload)
-    scene = configure_scene(True, args.samples)
-    scene.render.resolution_x, scene.render.resolution_y = 640, 360
-    scene.render.resolution_percentage = 100
+    scene = configure_scene(True, settings["samples"])
+    configure_quality(scene, settings)
     scene.render.threads_mode = "FIXED"
     scene.render.threads = 8
     scene.render.fps = FPS
@@ -142,6 +143,7 @@ def render(args):
         add_area(label, (0, 0, 1), (0, 0, 0), watts, size, color)
 
     completed = {f["frame"]: f for f in record["frames"]}
+    rendered = 0
     selected = {1, 20, 76, 77, 80, 100, len(frames)} if args.study else set(range(1, len(frames) + 1))
     for number, (source_index, frame) in enumerate(frames, 1):
         path = output / "frames" / f"frame_{number:04d}.png"
@@ -213,23 +215,28 @@ def render(args):
         })
         write_json(manifest_path, record)
         print(f"FRAME slowmo {number}/{len(frames)} source={frame['t']}", flush=True)
+        rendered += 1
+        if args.frame_limit is not None and rendered >= args.frame_limit:
+            break
     assert sha(REPLAY) == contract["replay_sha256"] and sha(VALIDATION) == contract["validation_sha256"]
     assert sha(AUDIT) == contract["independent_audit_sha256"]
-    record["status"] = "study-complete" if args.study else "frames-complete"
+    record["status"] = ("study-complete" if args.study else "frames-complete") if len(record["frames"]) == len(selected) else "rendering"
     write_json(manifest_path, record)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, default=PREVIEWS / "segments-v2/05-ultra-slowmo-v2")
-    parser.add_argument("--samples", type=int, default=12)
+    add_render_options(parser)
     parser.add_argument("--study", action="store_true")
     parser.add_argument("--worker", action="store_true")
     argv = sys.argv[sys.argv.index("--") + 1:] if "--worker" in sys.argv else sys.argv[1:]
     args = parser.parse_args(argv)
     args.output_dir = args.output_dir.resolve()
-    if args.samples < 1:
+    if render_settings(args)["samples"] < 1:
         parser.error("Samples must be positive.")
+    if args.frame_limit is not None and args.frame_limit < 1:
+        parser.error("The frame limit must be positive.")
     if args.worker:
         render(args)
         return 0
@@ -239,11 +246,14 @@ def main():
     video = output / "preview.mp4"
     manifest_path = output / "manifest.json"
     if video.exists():
-        assert sha(video) == json.loads(manifest_path.read_text())["video"]["sha256"]
+        manifest = json.loads(manifest_path.read_text())
+        assert sha(video) == manifest["video"]["sha256"]
+        if any(manifest["contract"].get(key) != render_settings(args)[key] for key in ("resolution", "samples")):
+            raise RuntimeError("The existing video has different quality settings. Select a new output directory.")
         print(f"Preserving completed video: {video}")
         return 0
     command = ["blender", "--background", "--threads", "8", "--python-exit-code", "1", "--python", str(Path(__file__).resolve()),
-               "--", "--worker", "--output-dir", str(output), "--samples", str(args.samples)]
+               "--", "--worker", "--output-dir", str(output), *worker_options(args)]
     if args.study:
         command.append("--study")
     with LOCK.open("a+") as lock:
@@ -260,20 +270,23 @@ def main():
         print(f"Blender failed. Read {output / 'blender.log'}")
         return result.returncode
     manifest = json.loads(manifest_path.read_text())
-    manifest["process_seconds"] = elapsed
+    manifest["process_seconds"] = manifest.get("process_seconds", 0) + elapsed
     manifest["blender_command"] = command
     write_json(manifest_path, manifest)
+    if manifest["status"] == "rendering":
+        print(f"FRAMES_READY {len(manifest['frames'])}/{OUTPUT_FRAMES}")
+        return 0
     if args.study:
         print(f"STUDY_READY {output}")
         return 0
     encode = ["ffmpeg", "-n", "-threads", "2", "-framerate", str(FPS), "-i", str(output / "frames/frame_%04d.png"),
-              "-c:v", "libx264", "-threads", "2", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(video)]
+              "-c:v", "libx264", "-threads", "2", "-preset", "medium", "-crf", str(render_settings(args)["crf"]), "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(video)]
     with (output / "ffmpeg.log").open("w") as log:
         subprocess.run(encode, stdout=log, stderr=subprocess.STDOUT, check=True)
     probe = json.loads(subprocess.check_output(["ffprobe", "-v", "error", "-count_frames", "-select_streams", "v:0", "-show_entries",
         "stream=codec_name,width,height,r_frame_rate,nb_read_frames:format=duration", "-of", "json", str(video)], text=True))
     stream = probe["streams"][0]
-    assert (stream["width"], stream["height"], stream["r_frame_rate"], int(stream["nb_read_frames"])) == (640, 360, "30/1", OUTPUT_FRAMES)
+    assert (stream["width"], stream["height"], stream["r_frame_rate"], int(stream["nb_read_frames"])) == (*render_settings(args)["resolution"], "30/1", OUTPUT_FRAMES)
     manifest["status"] = "complete"
     manifest["video"] = {"sha256": sha(video), "probe": probe, "encode_command": encode}
     write_json(manifest_path, manifest)
