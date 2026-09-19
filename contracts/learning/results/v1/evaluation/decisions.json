@@ -1,0 +1,476 @@
+{
+  "swapped_label_control": [
+    {
+      "destination": null,
+      "distance": 4.730160112522078,
+      "reason": "too_far",
+      "sample_id": "test_screw_00"
+    },
+    {
+      "destination": null,
+      "distance": 3.1217177389169066,
+      "reason": "too_far",
+      "sample_id": "test_screw_01"
+    },
+    {
+      "destination": null,
+      "distance": 3.7464245617361254,
+      "reason": "too_far",
+      "sample_id": "test_screw_02"
+    },
+    {
+      "destination": "bin_C",
+      "distance": 2.398766059977899,
+      "reason": null,
+      "sample_id": "test_screw_03"
+    },
+    {
+      "destination": "bin_C",
+      "distance": 2.344479699895294,
+      "reason": null,
+      "sample_id": "test_screw_04"
+    },
+    {
+      "destination": null,
+      "distance": 2.5948539150870435,
+      "reason": "too_far",
+      "sample_id": "test_screw_05"
+    },
+    {
+      "destination": null,
+      "distance": 2.688623369786479,
+      "reason": "too_far",
+      "sample_id": "test_screw_06"
+    },
+    {
+      "destination": null,
+      "distance": 2.820636642971182,
+      "reason": "too_far",
+      "sample_id": "test_screw_07"
+    },
+    {
+      "destination": null,
+      "distance": 2.977667565139153,
+      "reason": "too_far",
+      "sample_id": "test_screw_08"
+    },
+    {
+      "destination": null,
+      "distance": 5.359544749775001,
+      "reason": "too_far",
+      "sample_id": "test_screw_09"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 1.32070599040653,
+      "reason": null,
+      "sample_id": "test_nut_00"
+    },
+    {
+      "destination": "bin_B",
+      "distance": 1.0801909974220598,
+      "reason": null,
+      "sample_id": "test_nut_01"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 1.3971955827131386,
+      "reason": null,
+      "sample_id": "test_nut_02"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 1.454987506716673,
+      "reason": null,
+      "sample_id": "test_nut_03"
+    },
+    {
+      "destination": "bin_B",
+      "distance": 0.7232345935575134,
+      "reason": null,
+      "sample_id": "test_nut_04"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 1.458971487419622,
+      "reason": null,
+      "sample_id": "test_nut_05"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 1.2077684412220928,
+      "reason": null,
+      "sample_id": "test_nut_06"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 1.401435790741279,
+      "reason": null,
+      "sample_id": "test_nut_07"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 1.2778739286567653,
+      "reason": null,
+      "sample_id": "test_nut_08"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 1.317298856147334,
+      "reason": null,
+      "sample_id": "test_nut_09"
+    },
+    {
+      "destination": "bin_B",
+      "distance": 2.19237353034187,
+      "reason": null,
+      "sample_id": "test_washer_00"
+    },
+    {
+      "destination": "bin_B",
+      "distance": 2.2023890515277214,
+      "reason": null,
+      "sample_id": "test_washer_01"
+    },
+    {
+      "destination": "bin_B",
+      "distance": 2.215538577929532,
+      "reason": null,
+      "sample_id": "test_washer_02"
+    },
+    {
+      "destination": "bin_B",
+      "distance": 2.1889234260093784,
+      "reason": null,
+      "sample_id": "test_washer_03"
+    },
+    {
+      "destination": "bin_B",
+      "distance": 2.24368659359448,
+      "reason": null,
+      "sample_id": "test_washer_04"
+    },
+    {
+      "destination": "bin_B",
+      "distance": 2.249394760807562,
+      "reason": null,
+      "sample_id": "test_washer_05"
+    },
+    {
+      "destination": "bin_B",
+      "distance": 2.312343294798596,
+      "reason": null,
+      "sample_id": "test_washer_06"
+    },
+    {
+      "destination": null,
+      "distance": 2.4822844545682807,
+      "reason": "too_far",
+      "sample_id": "test_washer_07"
+    },
+    {
+      "destination": "bin_B",
+      "distance": 2.292888983287116,
+      "reason": null,
+      "sample_id": "test_washer_08"
+    },
+    {
+      "destination": "bin_B",
+      "distance": 2.228942733597401,
+      "reason": null,
+      "sample_id": "test_washer_09"
+    }
+  ],
+  "test": [
+    {
+      "destination": null,
+      "distance": 4.730160112522078,
+      "reason": "too_far",
+      "sample_id": "test_screw_00"
+    },
+    {
+      "destination": null,
+      "distance": 3.1217177389169066,
+      "reason": "too_far",
+      "sample_id": "test_screw_01"
+    },
+    {
+      "destination": null,
+      "distance": 3.7464245617361254,
+      "reason": "too_far",
+      "sample_id": "test_screw_02"
+    },
+    {
+      "destination": "bin_B",
+      "distance": 2.398766059977899,
+      "reason": null,
+      "sample_id": "test_screw_03"
+    },
+    {
+      "destination": "bin_B",
+      "distance": 2.344479699895294,
+      "reason": null,
+      "sample_id": "test_screw_04"
+    },
+    {
+      "destination": null,
+      "distance": 2.5948539150870435,
+      "reason": "too_far",
+      "sample_id": "test_screw_05"
+    },
+    {
+      "destination": null,
+      "distance": 2.688623369786479,
+      "reason": "too_far",
+      "sample_id": "test_screw_06"
+    },
+    {
+      "destination": null,
+      "distance": 2.820636642971182,
+      "reason": "too_far",
+      "sample_id": "test_screw_07"
+    },
+    {
+      "destination": null,
+      "distance": 2.977667565139153,
+      "reason": "too_far",
+      "sample_id": "test_screw_08"
+    },
+    {
+      "destination": null,
+      "distance": 5.359544749775001,
+      "reason": "too_far",
+      "sample_id": "test_screw_09"
+    },
+    {
+      "destination": "bin_C",
+      "distance": 1.32070599040653,
+      "reason": null,
+      "sample_id": "test_nut_00"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 1.0801909974220598,
+      "reason": null,
+      "sample_id": "test_nut_01"
+    },
+    {
+      "destination": "bin_C",
+      "distance": 1.3971955827131386,
+      "reason": null,
+      "sample_id": "test_nut_02"
+    },
+    {
+      "destination": "bin_C",
+      "distance": 1.454987506716673,
+      "reason": null,
+      "sample_id": "test_nut_03"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 0.7232345935575134,
+      "reason": null,
+      "sample_id": "test_nut_04"
+    },
+    {
+      "destination": "bin_C",
+      "distance": 1.458971487419622,
+      "reason": null,
+      "sample_id": "test_nut_05"
+    },
+    {
+      "destination": "bin_C",
+      "distance": 1.2077684412220928,
+      "reason": null,
+      "sample_id": "test_nut_06"
+    },
+    {
+      "destination": "bin_C",
+      "distance": 1.401435790741279,
+      "reason": null,
+      "sample_id": "test_nut_07"
+    },
+    {
+      "destination": "bin_C",
+      "distance": 1.2778739286567653,
+      "reason": null,
+      "sample_id": "test_nut_08"
+    },
+    {
+      "destination": "bin_C",
+      "distance": 1.317298856147334,
+      "reason": null,
+      "sample_id": "test_nut_09"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 2.19237353034187,
+      "reason": null,
+      "sample_id": "test_washer_00"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 2.2023890515277214,
+      "reason": null,
+      "sample_id": "test_washer_01"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 2.215538577929532,
+      "reason": null,
+      "sample_id": "test_washer_02"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 2.1889234260093784,
+      "reason": null,
+      "sample_id": "test_washer_03"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 2.24368659359448,
+      "reason": null,
+      "sample_id": "test_washer_04"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 2.249394760807562,
+      "reason": null,
+      "sample_id": "test_washer_05"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 2.312343294798596,
+      "reason": null,
+      "sample_id": "test_washer_06"
+    },
+    {
+      "destination": null,
+      "distance": 2.4822844545682807,
+      "reason": "too_far",
+      "sample_id": "test_washer_07"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 2.292888983287116,
+      "reason": null,
+      "sample_id": "test_washer_08"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 2.228942733597401,
+      "reason": null,
+      "sample_id": "test_washer_09"
+    }
+  ],
+  "validation": [
+    {
+      "destination": "bin_B",
+      "distance": 0.910413257962651,
+      "reason": null,
+      "sample_id": "validation_screw_00"
+    },
+    {
+      "destination": null,
+      "distance": 12.585302971136585,
+      "reason": "too_far",
+      "sample_id": "validation_screw_01"
+    },
+    {
+      "destination": "bin_B",
+      "distance": 0.8856531102769224,
+      "reason": null,
+      "sample_id": "validation_screw_02"
+    },
+    {
+      "destination": "bin_B",
+      "distance": 1.638279165410017,
+      "reason": null,
+      "sample_id": "validation_screw_03"
+    },
+    {
+      "destination": null,
+      "distance": 16.794536166025637,
+      "reason": "too_far",
+      "sample_id": "validation_screw_04"
+    },
+    {
+      "destination": "bin_B",
+      "distance": 1.4881290416157003,
+      "reason": null,
+      "sample_id": "validation_screw_05"
+    },
+    {
+      "destination": "bin_C",
+      "distance": 0.6801178540214736,
+      "reason": null,
+      "sample_id": "validation_nut_00"
+    },
+    {
+      "destination": "bin_C",
+      "distance": 0.4971574425518038,
+      "reason": null,
+      "sample_id": "validation_nut_01"
+    },
+    {
+      "destination": "bin_C",
+      "distance": 0.6680534389979069,
+      "reason": null,
+      "sample_id": "validation_nut_02"
+    },
+    {
+      "destination": "bin_C",
+      "distance": 0.8884800261766995,
+      "reason": null,
+      "sample_id": "validation_nut_03"
+    },
+    {
+      "destination": "bin_C",
+      "distance": 0.7862879359416277,
+      "reason": null,
+      "sample_id": "validation_nut_04"
+    },
+    {
+      "destination": "bin_C",
+      "distance": 0.5846550634058951,
+      "reason": null,
+      "sample_id": "validation_nut_05"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 0.3113087665654981,
+      "reason": null,
+      "sample_id": "validation_washer_00"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 0.4323266580385386,
+      "reason": null,
+      "sample_id": "validation_washer_01"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 1.1414268453350334,
+      "reason": null,
+      "sample_id": "validation_washer_02"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 0.1972719590969224,
+      "reason": null,
+      "sample_id": "validation_washer_03"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 0.6048153698300819,
+      "reason": null,
+      "sample_id": "validation_washer_04"
+    },
+    {
+      "destination": "bin_A",
+      "distance": 0.37511115366768744,
+      "reason": null,
+      "sample_id": "validation_washer_05"
+    }
+  ]
+}

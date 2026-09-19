@@ -1,0 +1,773 @@
+[
+  {
+    "image_sha256": "aeea92b7be16355844174b15e64881f3630fab6d5a8d747e151c7c76ce4e56d7",
+    "observation": {
+      "outline": "elongated",
+      "central_opening": "unclear",
+      "description": "The object has an elongated rectangular outline with a wider cylindrical base and no clearly visible central opening.",
+      "visibility": "clear",
+      "object_count": 1
+    },
+    "request": {
+      "model": "jev-1.13.0",
+      "state": {
+        "demonstrations": [
+          {
+            "observation": {
+              "outline": "elongated",
+              "central_opening": "unclear",
+              "description": "The object has an elongated outline with a wider cylindrical section at one end and no clearly visible central opening.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_B"
+          },
+          {
+            "observation": {
+              "outline": "polygonal",
+              "central_opening": "visible",
+              "description": "The object has a hexagonal outer outline with a large circular central opening that occupies most of its width.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_C"
+          },
+          {
+            "observation": {
+              "outline": "round",
+              "central_opening": "absent",
+              "description": "The object has a small round outline with no visible central opening and uniform proportions.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_A"
+          },
+          {
+            "observation": {
+              "outline": "elongated",
+              "central_opening": "absent",
+              "description": "The object has an elongated rectangular profile with a wider, circular base and no visible central opening.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_B"
+          },
+          {
+            "observation": {
+              "outline": "elongated",
+              "central_opening": "absent",
+              "description": "The object has an elongated rectangular profile with a wider, flat base and no visible openings.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_B"
+          },
+          {
+            "observation": {
+              "outline": "elongated",
+              "central_opening": "absent",
+              "description": "The object has an elongated cylindrical outline with a wider circular section at one end and no visible central opening.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_B"
+          },
+          {
+            "observation": {
+              "outline": "elongated",
+              "central_opening": "absent",
+              "description": "The object has an elongated rectangular profile with a wider cylindrical base and no visible central opening.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_B"
+          },
+          {
+            "observation": {
+              "outline": "elongated",
+              "central_opening": "unclear",
+              "description": "The object has an elongated cylindrical body with a wider circular cap at one end and no visible central opening.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_B"
+          },
+          {
+            "observation": {
+              "outline": "elongated",
+              "central_opening": "absent",
+              "description": "The object has an elongated cylindrical body with a wider, flat circular top and no visible openings.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_B"
+          },
+          {
+            "observation": {
+              "outline": "polygonal",
+              "central_opening": "visible",
+              "description": "The object has a hexagonal outline with a circular central opening and uniform proportions.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_C"
+          },
+          {
+            "observation": {
+              "outline": "polygonal",
+              "central_opening": "visible",
+              "description": "The object has a hexagonal outline with a large circular central opening that occupies most of its surface area.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_C"
+          },
+          {
+            "observation": {
+              "outline": "polygonal",
+              "central_opening": "visible",
+              "description": "The object has a hexagonal outer outline with a large circular opening in the center.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_C"
+          },
+          {
+            "observation": {
+              "outline": "polygonal",
+              "central_opening": "visible",
+              "description": "The object has a polygonal outer edge with a visible circular opening in the center.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_C"
+          },
+          {
+            "observation": {
+              "outline": "polygonal",
+              "central_opening": "visible",
+              "description": "The object has a polygonal outer edge with a visible circular opening in the center.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_C"
+          },
+          {
+            "observation": {
+              "outline": "polygonal",
+              "central_opening": "visible",
+              "description": "The object has a hexagonal outline with a large circular central opening and thin surrounding walls.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_C"
+          },
+          {
+            "observation": {
+              "outline": "round",
+              "central_opening": "absent",
+              "description": "The object has a round outline with no visible central opening and uniform proportions.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_A"
+          },
+          {
+            "observation": {
+              "outline": "round",
+              "central_opening": "absent",
+              "description": "The object has a small round outline with no visible central opening.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_A"
+          },
+          {
+            "observation": {
+              "outline": "round",
+              "central_opening": "absent",
+              "description": "A small, solid white object with a circular outline and no visible openings.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_A"
+          },
+          {
+            "observation": {
+              "outline": "round",
+              "central_opening": "absent",
+              "description": "The object has a uniform round outline with no visible central opening and equal proportions in all directions.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_A"
+          },
+          {
+            "observation": {
+              "outline": "round",
+              "central_opening": "absent",
+              "description": "The object has a small round outline with no visible central opening and uniform proportions.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_A"
+          },
+          {
+            "observation": {
+              "outline": "round",
+              "central_opening": "unclear",
+              "description": "The object has a round outline with an unclear central opening and uniform proportions.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_A"
+          }
+        ],
+        "observation": {
+          "outline": "elongated",
+          "central_opening": "unclear",
+          "description": "The object has an elongated rectangular outline with a wider cylindrical base and no clearly visible central opening.",
+          "visibility": "clear",
+          "object_count": 1
+        }
+      },
+      "questions": {
+        "destination": {
+          "type": "choice",
+          "instructions": "Choose the demonstrated destination with the closest visual resemblance. Choose defer when resemblance is not clear.",
+          "criteria": {
+            "bin_A": "Matches observations demonstrated for bin_A.",
+            "bin_B": "Matches observations demonstrated for bin_B.",
+            "bin_C": "Matches observations demonstrated for bin_C.",
+            "defer": "No destination has a clear demonstrated resemblance."
+          }
+        }
+      }
+    },
+    "prediction": {
+      "destination": "bin_B",
+      "reason": null,
+      "probabilities": {
+        "bin_A": 0.0,
+        "bin_B": 1.0,
+        "bin_C": 0.0,
+        "defer": 0.0
+      },
+      "confidence": 1.0
+    }
+  },
+  {
+    "image_sha256": "63f72f665bc9247638adb8785c9d9391d95e2642b75923b0fdd7de563768487b",
+    "observation": {
+      "outline": "polygonal",
+      "central_opening": "visible",
+      "description": "The object has a hexagonal outline with a large circular central opening.",
+      "visibility": "clear",
+      "object_count": 1
+    },
+    "request": {
+      "model": "jev-1.13.0",
+      "state": {
+        "demonstrations": [
+          {
+            "observation": {
+              "outline": "elongated",
+              "central_opening": "unclear",
+              "description": "The object has an elongated outline with a wider cylindrical section at one end and no clearly visible central opening.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_B"
+          },
+          {
+            "observation": {
+              "outline": "polygonal",
+              "central_opening": "visible",
+              "description": "The object has a hexagonal outer outline with a large circular central opening that occupies most of its width.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_C"
+          },
+          {
+            "observation": {
+              "outline": "round",
+              "central_opening": "absent",
+              "description": "The object has a small round outline with no visible central opening and uniform proportions.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_A"
+          },
+          {
+            "observation": {
+              "outline": "elongated",
+              "central_opening": "absent",
+              "description": "The object has an elongated rectangular profile with a wider, circular base and no visible central opening.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_B"
+          },
+          {
+            "observation": {
+              "outline": "elongated",
+              "central_opening": "absent",
+              "description": "The object has an elongated rectangular profile with a wider, flat base and no visible openings.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_B"
+          },
+          {
+            "observation": {
+              "outline": "elongated",
+              "central_opening": "absent",
+              "description": "The object has an elongated cylindrical outline with a wider circular section at one end and no visible central opening.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_B"
+          },
+          {
+            "observation": {
+              "outline": "elongated",
+              "central_opening": "absent",
+              "description": "The object has an elongated rectangular profile with a wider cylindrical base and no visible central opening.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_B"
+          },
+          {
+            "observation": {
+              "outline": "elongated",
+              "central_opening": "unclear",
+              "description": "The object has an elongated cylindrical body with a wider circular cap at one end and no visible central opening.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_B"
+          },
+          {
+            "observation": {
+              "outline": "elongated",
+              "central_opening": "absent",
+              "description": "The object has an elongated cylindrical body with a wider, flat circular top and no visible openings.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_B"
+          },
+          {
+            "observation": {
+              "outline": "polygonal",
+              "central_opening": "visible",
+              "description": "The object has a hexagonal outline with a circular central opening and uniform proportions.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_C"
+          },
+          {
+            "observation": {
+              "outline": "polygonal",
+              "central_opening": "visible",
+              "description": "The object has a hexagonal outline with a large circular central opening that occupies most of its surface area.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_C"
+          },
+          {
+            "observation": {
+              "outline": "polygonal",
+              "central_opening": "visible",
+              "description": "The object has a hexagonal outer outline with a large circular opening in the center.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_C"
+          },
+          {
+            "observation": {
+              "outline": "polygonal",
+              "central_opening": "visible",
+              "description": "The object has a polygonal outer edge with a visible circular opening in the center.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_C"
+          },
+          {
+            "observation": {
+              "outline": "polygonal",
+              "central_opening": "visible",
+              "description": "The object has a polygonal outer edge with a visible circular opening in the center.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_C"
+          },
+          {
+            "observation": {
+              "outline": "polygonal",
+              "central_opening": "visible",
+              "description": "The object has a hexagonal outline with a large circular central opening and thin surrounding walls.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_C"
+          },
+          {
+            "observation": {
+              "outline": "round",
+              "central_opening": "absent",
+              "description": "The object has a round outline with no visible central opening and uniform proportions.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_A"
+          },
+          {
+            "observation": {
+              "outline": "round",
+              "central_opening": "absent",
+              "description": "The object has a small round outline with no visible central opening.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_A"
+          },
+          {
+            "observation": {
+              "outline": "round",
+              "central_opening": "absent",
+              "description": "A small, solid white object with a circular outline and no visible openings.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_A"
+          },
+          {
+            "observation": {
+              "outline": "round",
+              "central_opening": "absent",
+              "description": "The object has a uniform round outline with no visible central opening and equal proportions in all directions.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_A"
+          },
+          {
+            "observation": {
+              "outline": "round",
+              "central_opening": "absent",
+              "description": "The object has a small round outline with no visible central opening and uniform proportions.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_A"
+          },
+          {
+            "observation": {
+              "outline": "round",
+              "central_opening": "unclear",
+              "description": "The object has a round outline with an unclear central opening and uniform proportions.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_A"
+          }
+        ],
+        "observation": {
+          "outline": "polygonal",
+          "central_opening": "visible",
+          "description": "The object has a hexagonal outline with a large circular central opening.",
+          "visibility": "clear",
+          "object_count": 1
+        }
+      },
+      "questions": {
+        "destination": {
+          "type": "choice",
+          "instructions": "Choose the demonstrated destination with the closest visual resemblance. Choose defer when resemblance is not clear.",
+          "criteria": {
+            "bin_A": "Matches observations demonstrated for bin_A.",
+            "bin_B": "Matches observations demonstrated for bin_B.",
+            "bin_C": "Matches observations demonstrated for bin_C.",
+            "defer": "No destination has a clear demonstrated resemblance."
+          }
+        }
+      }
+    },
+    "prediction": {
+      "destination": "bin_C",
+      "reason": null,
+      "probabilities": {
+        "bin_A": 0.0,
+        "bin_B": 0.0,
+        "bin_C": 1.0,
+        "defer": 0.0
+      },
+      "confidence": 0.99
+    }
+  },
+  {
+    "image_sha256": "032db47f0feda047e1a30cdfd3c053a140c074e52e75f5dbf74e9dd30a96a0f7",
+    "observation": {
+      "outline": "round",
+      "central_opening": "unclear",
+      "description": "The object has a round outline with an unclear central opening and uniform proportions.",
+      "visibility": "clear",
+      "object_count": 1
+    },
+    "request": {
+      "model": "jev-1.13.0",
+      "state": {
+        "demonstrations": [
+          {
+            "observation": {
+              "outline": "elongated",
+              "central_opening": "unclear",
+              "description": "The object has an elongated outline with a wider cylindrical section at one end and no clearly visible central opening.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_B"
+          },
+          {
+            "observation": {
+              "outline": "polygonal",
+              "central_opening": "visible",
+              "description": "The object has a hexagonal outer outline with a large circular central opening that occupies most of its width.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_C"
+          },
+          {
+            "observation": {
+              "outline": "round",
+              "central_opening": "absent",
+              "description": "The object has a small round outline with no visible central opening and uniform proportions.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_A"
+          },
+          {
+            "observation": {
+              "outline": "elongated",
+              "central_opening": "absent",
+              "description": "The object has an elongated rectangular profile with a wider, circular base and no visible central opening.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_B"
+          },
+          {
+            "observation": {
+              "outline": "elongated",
+              "central_opening": "absent",
+              "description": "The object has an elongated rectangular profile with a wider, flat base and no visible openings.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_B"
+          },
+          {
+            "observation": {
+              "outline": "elongated",
+              "central_opening": "absent",
+              "description": "The object has an elongated cylindrical outline with a wider circular section at one end and no visible central opening.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_B"
+          },
+          {
+            "observation": {
+              "outline": "elongated",
+              "central_opening": "absent",
+              "description": "The object has an elongated rectangular profile with a wider cylindrical base and no visible central opening.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_B"
+          },
+          {
+            "observation": {
+              "outline": "elongated",
+              "central_opening": "unclear",
+              "description": "The object has an elongated cylindrical body with a wider circular cap at one end and no visible central opening.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_B"
+          },
+          {
+            "observation": {
+              "outline": "elongated",
+              "central_opening": "absent",
+              "description": "The object has an elongated cylindrical body with a wider, flat circular top and no visible openings.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_B"
+          },
+          {
+            "observation": {
+              "outline": "polygonal",
+              "central_opening": "visible",
+              "description": "The object has a hexagonal outline with a circular central opening and uniform proportions.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_C"
+          },
+          {
+            "observation": {
+              "outline": "polygonal",
+              "central_opening": "visible",
+              "description": "The object has a hexagonal outline with a large circular central opening that occupies most of its surface area.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_C"
+          },
+          {
+            "observation": {
+              "outline": "polygonal",
+              "central_opening": "visible",
+              "description": "The object has a hexagonal outer outline with a large circular opening in the center.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_C"
+          },
+          {
+            "observation": {
+              "outline": "polygonal",
+              "central_opening": "visible",
+              "description": "The object has a polygonal outer edge with a visible circular opening in the center.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_C"
+          },
+          {
+            "observation": {
+              "outline": "polygonal",
+              "central_opening": "visible",
+              "description": "The object has a polygonal outer edge with a visible circular opening in the center.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_C"
+          },
+          {
+            "observation": {
+              "outline": "polygonal",
+              "central_opening": "visible",
+              "description": "The object has a hexagonal outline with a large circular central opening and thin surrounding walls.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_C"
+          },
+          {
+            "observation": {
+              "outline": "round",
+              "central_opening": "absent",
+              "description": "The object has a round outline with no visible central opening and uniform proportions.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_A"
+          },
+          {
+            "observation": {
+              "outline": "round",
+              "central_opening": "absent",
+              "description": "The object has a small round outline with no visible central opening.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_A"
+          },
+          {
+            "observation": {
+              "outline": "round",
+              "central_opening": "absent",
+              "description": "A small, solid white object with a circular outline and no visible openings.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_A"
+          },
+          {
+            "observation": {
+              "outline": "round",
+              "central_opening": "absent",
+              "description": "The object has a uniform round outline with no visible central opening and equal proportions in all directions.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_A"
+          },
+          {
+            "observation": {
+              "outline": "round",
+              "central_opening": "absent",
+              "description": "The object has a small round outline with no visible central opening and uniform proportions.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_A"
+          },
+          {
+            "observation": {
+              "outline": "round",
+              "central_opening": "unclear",
+              "description": "The object has a round outline with an unclear central opening and uniform proportions.",
+              "visibility": "clear",
+              "object_count": 1
+            },
+            "destination": "bin_A"
+          }
+        ],
+        "observation": {
+          "outline": "round",
+          "central_opening": "unclear",
+          "description": "The object has a round outline with an unclear central opening and uniform proportions.",
+          "visibility": "clear",
+          "object_count": 1
+        }
+      },
+      "questions": {
+        "destination": {
+          "type": "choice",
+          "instructions": "Choose the demonstrated destination with the closest visual resemblance. Choose defer when resemblance is not clear.",
+          "criteria": {
+            "bin_A": "Matches observations demonstrated for bin_A.",
+            "bin_B": "Matches observations demonstrated for bin_B.",
+            "bin_C": "Matches observations demonstrated for bin_C.",
+            "defer": "No destination has a clear demonstrated resemblance."
+          }
+        }
+      }
+    },
+    "prediction": {
+      "destination": "bin_A",
+      "reason": null,
+      "probabilities": {
+        "bin_A": 0.98,
+        "bin_B": 0.01,
+        "bin_C": 0.0,
+        "defer": 0.01
+      },
+      "confidence": 0.97
+    }
+  }
+]
