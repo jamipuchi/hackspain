@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conveyor Servo Wiring</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --bg:#f1f3f5; --paper:#ffffff; --ink:#1b2430; --muted:#5c6773; --line:#d5dbe1;
+    --teal:#00979c; --teal-ink:#006d70; --teal-soft:#dff4f4;
+    --board:#1f7a4d; --board-dark:#155a38; --header:#111820; --pin:#c9ced4; --pcbtext:#e8f5ee;
+    --w-orange:#f0821e; --w-red:#d62828; --w-black:#111111; --w-brown:#6b3e1e;
+    --ok:#1f8a4c; --warn:#b3261e; --warn-soft:#fbe9e7;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14181d; --paper:#1d232a; --ink:#e9edf1; --muted:#9aa5b1; --line:#2f3841;
+      --teal:#2cc4c9; --teal-ink:#7fe0e3; --teal-soft:#123a3c;
+      --board:#1f7a4d; --board-dark:#155a38; --header:#0b0f14; --pin:#b7bec6; --pcbtext:#e8f5ee;
+      --w-black:#0a0a0a; --ok:#4cc27a; --warn:#ff7a70; --warn-soft:#3a1f1d;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14181d; --paper:#1d232a; --ink:#e9edf1; --muted:#9aa5b1; --line:#2f3841;
+    --teal:#2cc4c9; --teal-ink:#7fe0e3; --teal-soft:#123a3c;
+    --board:#1f7a4d; --board-dark:#155a38; --header:#0b0f14; --pin:#b7bec6; --pcbtext:#e8f5ee;
+    --w-black:#0a0a0a; --ok:#4cc27a; --warn:#ff7a70; --warn-soft:#3a1f1d;
+  }
+  body{background:var(--bg); color:var(--ink); font-family:"IBM Plex Sans",system-ui,-apple-system,sans-serif; font-size:16px; line-height:1.5; padding-inline:16px; padding-block:28px 56px;}
+  .wrap{max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:28px;}
+  h1{font-size:clamp(1.6rem,4vw,2.1rem); font-weight:600; letter-spacing:-0.01em; margin:0; text-wrap:balance;}
+  h2{font-size:1.15rem; font-weight:600; margin:0 0 10px;}
+  p{margin:0;}
+  .eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.78rem; letter-spacing:.08em; text-transform:uppercase; color:var(--teal-ink); margin-bottom:6px;}
+  .lede{color:var(--muted); max-width:62ch; margin-top:8px;}
+  .notice{background:var(--warn-soft); border-left:4px solid var(--warn); padding:12px 14px; border-radius:4px; font-size:.95rem;}
+  .notice b{font-weight:600;}
+  figure{margin:0; background:var(--paper); border:1px solid var(--line); border-radius:8px; overflow:hidden;}
+  .scroll{overflow-x:auto;}
+  svg{display:block; width:100%; min-width:560px; height:auto;}
+  figcaption{padding:10px 14px; font-size:.85rem; color:var(--muted); border-top:1px solid var(--line);}
+  .pcb{font-family:"IBM Plex Mono",ui-monospace,monospace; font-weight:500;}
+  table{border-collapse:collapse; width:100%; font-size:.95rem;}
+  th,td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:middle;}
+  th{font-size:.78rem; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:500;}
+  .swatch{display:inline-block; width:14px; height:14px; border-radius:3px; vertical-align:-2px; margin-right:8px; border:1px solid rgba(0,0,0,.25);}
+  .pinlbl{font-family:"IBM Plex Mono",ui-monospace,monospace; background:var(--teal-soft); color:var(--teal-ink); padding:2px 8px; border-radius:4px; font-weight:500; white-space:nowrap;}
+  ol.steps{list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:0; counter-reset:s;}
+  ol.steps li{counter-increment:s; display:grid; grid-template-columns:40px 1fr; gap:14px; padding:14px 0; border-bottom:1px solid var(--line);}
+  ol.steps li:last-child{border-bottom:0;}
+  ol.steps li::before{content:counter(s); font-family:"IBM Plex Mono",ui-monospace,monospace; font-weight:500; width:32px; height:32px; border-radius:50%; background:var(--teal); color:#fff; display:grid; place-items:center; font-size:.95rem;}
+  ol.steps li .t{font-weight:600;}
+  ol.steps li .d{color:var(--muted); font-size:.95rem; margin-top:2px;}
+  .check{color:var(--ok); font-weight:600;}
+  pre{margin:8px 0 0; background:var(--header); color:#e9edf1; padding:12px 14px; border-radius:6px; font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.88rem; overflow-x:auto;}
+  .two{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:600px){ .two{grid-template-columns:1fr;} }
+  .card{background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:16px;}
+  .card h3{margin:0 0 6px; font-size:1rem; font-weight:600;}
+  .card p{font-size:.95rem; color:var(--muted);}
+</style>
+</head>
+<body style="margin:0">
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Arduino UNO R3 · one micro servo · USB only</div>
+    <h1>Conveyor Servo Wiring</h1>
+    <p class="lede">Three jumpers, three pins. A single micro servo runs straight off the Uno's USB power, so the separate 5 V supply from before is not needed for this setup.</p>
+  </header>
+
+  <div class="notice"><b>Why it kept spinning:</b> in your photo the orange wire is in pin <span class="pcb">~10</span>. The firmware holds pin 10 at the shoulder angle, so a continuous servo there never stops. The stop button talks to pin <span class="pcb">~6</span>. Move the orange wire and the problem goes away.</div>
+
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 900 470" role="img" aria-label="Wiring diagram: servo orange wire to pin 6, red wire to 5V, black wire to GND on the Arduino Uno">
+      <defs>
+        <marker id="dot" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6"><circle cx="5" cy="5" r="4" fill="context-stroke"/></marker>
+      </defs>
+
+      <!-- board -->
+      <rect x="60" y="120" width="520" height="290" rx="10" fill="var(--board)" stroke="var(--board-dark)" stroke-width="3"/>
+      <rect x="40" y="200" width="50" height="70" rx="4" fill="#9aa5b1" stroke="#6b7580" stroke-width="2"/>
+      <text x="65" y="240" font-size="11" text-anchor="middle" fill="#1b2430" class="pcb">USB</text>
+      <rect x="40" y="320" width="44" height="50" rx="4" fill="#111" />
+      <text x="62" y="350" font-size="9" text-anchor="middle" fill="#ddd" class="pcb">DC</text>
+      <circle cx="380" cy="270" r="0" fill="none"/>
+      <text x="330" y="280" font-size="34" text-anchor="middle" fill="var(--pcbtext)" font-weight="600" opacity=".9">∞</text>
+      <text x="330" y="305" font-size="13" text-anchor="middle" fill="var(--pcbtext)" class="pcb">UNO R3</text>
+      <rect x="380" y="330" width="170" height="40" rx="3" fill="#111820"/>
+      <text x="465" y="355" font-size="10" text-anchor="middle" fill="#9aa5b1" class="pcb">ATMEGA328P</text>
+
+      <!-- top digital header -->
+      <rect x="90" y="120" width="470" height="30" fill="var(--header)"/>
+      <text x="325" y="112" font-size="11" text-anchor="middle" fill="var(--pcbtext)" class="pcb">DIGITAL (PWM~)</text>
+      <g class="pcb" font-size="10" fill="var(--pcbtext)" text-anchor="middle">
+        <!-- 18 pins: SCL SDA AREF GND 13 12 ~11 ~10 ~9 8 | 7 ~6 ~5 4 ~3 2 TX1 RX0 -->
+        <g id="toppins">
+          <rect x="102" y="129" width="10" height="12" fill="var(--pin)"/><text x="107" y="165">SCL</text>
+          <rect x="127" y="129" width="10" height="12" fill="var(--pin)"/><text x="132" y="165">SDA</text>
+          <rect x="152" y="129" width="10" height="12" fill="var(--pin)"/><text x="157" y="165">AREF</text>
+          <rect x="177" y="129" width="10" height="12" fill="var(--pin)"/><text x="182" y="165">GND</text>
+          <rect x="202" y="129" width="10" height="12" fill="var(--pin)"/><text x="207" y="165">13</text>
+          <rect x="227" y="129" width="10" height="12" fill="var(--pin)"/><text x="232" y="165">12</text>
+          <rect x="252" y="129" width="10" height="12" fill="var(--pin)"/><text x="257" y="165">~11</text>
+          <rect x="277" y="129" width="10" height="12" fill="var(--pin)"/><text x="282" y="165">~10</text>
+          <rect x="302" y="129" width="10" height="12" fill="var(--pin)"/><text x="307" y="165">~9</text>
+          <rect x="327" y="129" width="10" height="12" fill="var(--pin)"/><text x="332" y="165">8</text>
+          <rect x="362" y="129" width="10" height="12" fill="var(--pin)"/><text x="367" y="165">7</text>
+          <rect x="387" y="129" width="10" height="12" fill="var(--w-orange)" stroke="#fff" stroke-width="2"/><text x="392" y="165" font-weight="700" fill="#ffd9b8">~6</text>
+          <rect x="412" y="129" width="10" height="12" fill="var(--pin)"/><text x="417" y="165">~5</text>
+          <rect x="437" y="129" width="10" height="12" fill="var(--pin)"/><text x="442" y="165">4</text>
+          <rect x="462" y="129" width="10" height="12" fill="var(--pin)"/><text x="467" y="165">~3</text>
+          <rect x="487" y="129" width="10" height="12" fill="var(--pin)"/><text x="492" y="165">2</text>
+          <rect x="512" y="129" width="10" height="12" fill="var(--pin)"/><text x="517" y="165">TX1</text>
+          <rect x="537" y="129" width="10" height="12" fill="var(--pin)"/><text x="542" y="165">RX0</text>
+        </g>
+      </g>
+      <!-- wrong pin marker -->
+      <g>
+        <line x1="270" y1="98" x2="294" y2="122" stroke="var(--warn)" stroke-width="3" stroke-linecap="round"/>
+        <line x1="294" y1="98" x2="270" y2="122" stroke="var(--warn)" stroke-width="3" stroke-linecap="round"/>
+        <text x="282" y="88" font-size="11" text-anchor="middle" fill="var(--warn)" font-weight="600">not here (photo)</text>
+      </g>
+
+      <!-- bottom power header -->
+      <rect x="130" y="380" width="200" height="30" fill="var(--header)"/>
+      <text x="230" y="428" font-size="11" text-anchor="middle" fill="var(--pcbtext)" class="pcb">POWER</text>
+      <g class="pcb" font-size="10" fill="var(--pcbtext)" text-anchor="middle">
+        <rect x="142" y="389" width="10" height="12" fill="var(--pin)"/><text x="147" y="376">IOREF</text>
+        <rect x="167" y="389" width="10" height="12" fill="var(--pin)"/><text x="172" y="376">RESET</text>
+        <rect x="192" y="389" width="10" height="12" fill="var(--pin)"/><text x="197" y="376">3.3V</text>
+        <rect x="217" y="389" width="10" height="12" fill="var(--w-red)" stroke="#fff" stroke-width="2"/><text x="222" y="376" font-weight="700" fill="#ffc9c9">5V</text>
+        <rect x="242" y="389" width="10" height="12" fill="var(--w-black)" stroke="#fff" stroke-width="2"/><text x="247" y="376" font-weight="700" fill="#fff">GND</text>
+        <rect x="267" y="389" width="10" height="12" fill="var(--pin)"/><text x="272" y="376">GND</text>
+        <rect x="292" y="389" width="10" height="12" fill="var(--pin)"/><text x="297" y="376">Vin</text>
+      </g>
+      <!-- analog header -->
+      <rect x="380" y="380" width="170" height="30" fill="var(--header)"/>
+      <text x="465" y="428" font-size="11" text-anchor="middle" fill="var(--pcbtext)" class="pcb">ANALOG IN</text>
+
+      <!-- servo -->
+      <rect x="720" y="250" width="120" height="150" rx="8" fill="#2d63c7" stroke="#1c3f85" stroke-width="3"/>
+      <rect x="735" y="230" width="40" height="30" rx="4" fill="#3b74d8" stroke="#1c3f85" stroke-width="2"/>
+      <rect x="742" y="205" width="80" height="14" rx="7" fill="#f3f3f3" stroke="#bbb" stroke-width="1.5"/>
+      <circle cx="755" cy="212" r="3" fill="#bbb"/><circle cx="775" cy="212" r="3" fill="#bbb"/><circle cx="795" cy="212" r="3" fill="#bbb"/>
+      <text x="780" y="335" font-size="12" text-anchor="middle" fill="#fff" class="pcb">micro servo</text>
+      <text x="780" y="352" font-size="10" text-anchor="middle" fill="#d6e2f7" class="pcb">SG90 / FS90R</text>
+
+      <!-- servo lead: brown / red / orange out of the servo to the 3-pin plug -->
+      <path d="M720 300 C 690 300, 690 300, 665 300" stroke="var(--w-brown)" stroke-width="5" fill="none"/>
+      <path d="M720 310 C 690 310, 690 310, 665 310" stroke="var(--w-red)" stroke-width="5" fill="none"/>
+      <path d="M720 320 C 690 320, 690 320, 665 320" stroke="var(--w-orange)" stroke-width="5" fill="none"/>
+      <rect x="638" y="288" width="28" height="44" rx="3" fill="#111" stroke="#444" stroke-width="1.5"/>
+      <text x="652" y="350" font-size="10" text-anchor="middle" fill="var(--muted)" class="pcb">3-pin plug</text>
+      <text x="652" y="362" font-size="10" text-anchor="middle" fill="var(--muted)" class="pcb">(already joined)</text>
+
+      <!-- jumpers from plug to pins -->
+      <!-- orange -> ~6 -->
+      <path d="M638 320 C 560 320, 470 250, 392 200 L 392 141" stroke="var(--w-orange)" stroke-width="5" fill="none" stroke-linecap="round"/>
+      <!-- red -> 5V -->
+      <path d="M638 310 C 600 330, 600 450, 400 452 C 300 452, 222 452, 222 401" stroke="var(--w-red)" stroke-width="5" fill="none" stroke-linecap="round"/>
+      <!-- black -> GND -->
+      <path d="M638 300 C 620 340, 620 462, 420 464 C 320 464, 247 464, 247 401" stroke="var(--w-black)" stroke-width="5" fill="none" stroke-linecap="round" stroke-opacity=".95"/>
+      <!-- wire labels -->
+      <g font-size="12" font-weight="600" font-family="IBM Plex Sans, system-ui, sans-serif">
+        <text x="500" y="225" fill="var(--w-orange)">orange → pin ~6</text>
+        <text x="470" y="446" fill="var(--w-red)">red → 5V</text>
+        <text x="330" y="440" fill="var(--ink)">black → GND</text>
+      </g>
+      <text x="180" y="60" font-size="12" fill="var(--muted)" font-family="IBM Plex Sans, system-ui, sans-serif">Board seen from above, USB plug on the left. Pin labels are printed on the black headers.</text>
+    </svg>
+    </div>
+    <figcaption>Only three wires touch the Uno. Colours on the servo lead (brown, red, orange) match the jumper colours (black, red, orange) one to one.</figcaption>
+  </figure>
+
+  <section>
+    <h2>Which wire goes where</h2>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Servo lead</th><th>Jumper</th><th>Uno pin</th><th>Where on the board</th></tr></thead>
+      <tbody>
+        <tr><td><span class="swatch" style="background:var(--w-orange)"></span>orange</td><td><span class="swatch" style="background:var(--w-orange)"></span>orange</td><td><span class="pinlbl">~6</span></td><td>Top row, right group. Second pin after the gap, next to <span class="pcb">7</span>.</td></tr>
+        <tr><td><span class="swatch" style="background:var(--w-red)"></span>red</td><td><span class="swatch" style="background:var(--w-red)"></span>red</td><td><span class="pinlbl">5V</span></td><td>Bottom row marked POWER. Fourth pin from the left.</td></tr>
+        <tr><td><span class="swatch" style="background:var(--w-brown)"></span>brown</td><td><span class="swatch" style="background:var(--w-black)"></span>black</td><td><span class="pinlbl">GND</span></td><td>Bottom row marked POWER. Right next to 5V. Either GND pin works.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Do this, in order</h2>
+    <ol class="steps">
+      <li><div><div class="t">Unplug the USB cable from the Uno.</div><div class="d">Never move wires while the board is powered.</div></div></li>
+      <li><div><div class="t">Pull the orange jumper out of pin ~10.</div><div class="d">It's the one going into the top header in your photo.</div></div></li>
+      <li><div><div class="t">Push the orange jumper into pin <span class="pcb">~6</span>.</div><div class="d">Top header, right-hand group. Count from the gap: 7, then ~6. The label is printed right below the pin.</div></div></li>
+      <li><div><div class="t">Push the red jumper into <span class="pcb">5V</span>.</div><div class="d">Bottom header labelled POWER. It's between 3.3V and GND.</div></div></li>
+      <li><div><div class="t">Push the black jumper into <span class="pcb">GND</span>.</div><div class="d">Bottom header, immediately to the right of 5V.</div></div></li>
+      <li><div><div class="t">Check the 3-pin plug on the servo lead.</div><div class="d">Brown servo wire lines up with the black jumper, red with red, orange with orange. Yours already looks right.</div></div></li>
+      <li><div><div class="t">Plug the USB cable back in.</div><div class="d"><span class="check">Expected:</span> the green ON light comes on and the servo does not move. The new firmware sends no signal to pin 6 until you press RUN.</div></div></li>
+      <li><div><div class="t">Start the button panel.</div><div class="d">In Terminal, paste these two lines. A page with RUN and STOP opens in your browser.</div>
+        <pre>cd ~/robotics/magnet_sorter
+../.venv/bin/python conveyor_button.py</pre></div></li>
+      <li><div><div class="t">Press RUN to move, STOP to stop.</div><div class="d">Space or Escape also stops. Ctrl-C in Terminal stops the servo and closes the panel.</div></div></li>
+    </ol>
+  </section>
+
+  <div class="two">
+    <div class="card"><h3>If it spins without pressing RUN</h3><p>With the orange wire on ~6 and the board just powered, the servo has no signal. If it still turns, the servo or its lead is faulty. Swap in another servo to confirm.</p></div>
+    <div class="card"><h3>If RUN just twitches to one angle</h3><p>Then this is a normal positional servo, not a continuous one. RUN sets an angle and holds it. That's fine for testing; the conveyor needs a continuous-rotation servo such as an FS90R or DS04-NFC.</p></div>
+    <div class="card"><h3>Adding the bigger arm servos later</h3><p>The MG946R and MG90S arm servos need the separate 5 V 5 A supply. Then the rule changes: supply on first, USB second, and supply +5 V never into the Uno's 5V pin. Ask before wiring that stage.</p></div>
+    <div class="card"><h3>Why the board froze earlier</h3><p>Servos were plugged into signal pins while their power was off. The Uno back-fed them through those pins and hung. With this USB-only setup that can't happen.</p></div>
+  </div>
+</div>
+</body>
+</html>
