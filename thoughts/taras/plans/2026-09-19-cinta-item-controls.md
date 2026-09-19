@@ -25,7 +25,7 @@ The current rejection-control work is a prerequisite. The runtime agent owns pol
 - An accepted policy change creates a new score epoch. It does not require a service restart.
 - `probe.py` already provides exact-request caching and the existing Gemini recipe flow.
 - `render_suite.py` already creates cached GLB evidence while respecting the shared Blender lock.
-- `object_definitions.py` already validates draft object definitions and proposes reviewed engine proxy types.
+- `object_definitions.py` validates drafts and proposes supported contact-proxy types. Every proposal remains unreviewed.
 - Generated definitions remain drafts. The runtime has no safe path for arbitrary mesh physics, classification, or activation.
 
 ## Desired end state
@@ -34,7 +34,7 @@ The existing class card remains compact and responsive. It shows every authorita
 
 Below it, one compact draft creator accepts a short item description. The browser submits the work and remains responsive. The live engine continues without waiting for generation or rendering.
 
-A completed draft shows its preview, stable IDs, dimensions, proxy proposal, proxy-based mass estimate, sorting status, and a visible `Not active` label.
+A completed draft shows a thumbnail, name, short state, and primary action. Collapsed details hold its evidence and review status.
 
 ## Non-goals
 
@@ -49,21 +49,19 @@ A completed draft shows its preview, stable IDs, dimensions, proxy proposal, pro
 
 ### Current rejection controls
 
-The runtime agent owns the policy mutation, idempotency, version checks, and score-epoch transition. The UI agent owns the class rows and pending, applied, conflict, and error presentation.
+The current runtime work owns the policy mutation, idempotency, version checks, and score-epoch transition. The current UI work owns the class rows and command presentation.
 
 Each class row shows:
 
 - authoritative class name
-- authoritative shape and defect status
-- severity
-- current action, `Reject` or `Pass`
-- pending state when a command is in flight
-- policy version after acknowledgement
-- a short conflict or command error
+- current action, `Keep` or `Reject`
+- pending or short error cue
+
+Collapsed details show severity and the acknowledged policy version.
 
 ### Future generated-item draft
 
-Jaume owns later UI integration, retraining, and activation. The future draft increment uses new runtime code plus a small endpoint addition. It does not reuse the engine command queue.
+Assign one owner when the future increment starts. The draft increment uses new runtime code plus a small endpoint addition. It does not reuse the engine command queue.
 
 Proposed HTTP contract:
 
@@ -78,7 +76,7 @@ An exact duplicate request returns the existing job. A changed payload with the 
 
 Keep one active job, at most four queued jobs, and 32 retained summaries. Store job records as atomic JSON files under a configured output directory. Do not add a database.
 
-Use these states:
+Reuse the service's existing Host and Origin validation for both endpoints. Use these states:
 
 ```text
 queued
@@ -87,6 +85,7 @@ waiting_for_render
 rendering
 proposing_physics
 draft_ready
+interrupted_uncertain
 failed
 ```
 
@@ -105,17 +104,24 @@ artifact_validation_failed
 
 A busy Blender lock is a visible `waiting_for_render` state. An unsupported physics proxy is a valid draft result. It requires human review and blocks activation.
 
-The compact draft card shows:
+An interrupted provider request becomes `interrupted_uncertain`. Recovery must never start another billable request automatically. A person must resolve or retry it explicitly.
 
-- description and `Create draft` button
-- current stage or one short error
-- generated preview when available
+The compact draft card shows only:
+
+- thumbnail and item name
+- short state or error
+- one primary action
+
+The primary action is `Create draft`. After failure or interruption, only an explicit user action can create a new request.
+
+Collapsed details show:
+
 - `object_type_id` and content-hash `visual_asset_id`
 - dimensions in metres and declared orientation
 - proxy type or `Unsupported`
 - proxy-based mass estimate with an `Unmeasured estimate` label
 - sorting status, including `Unassigned`
-- a persistent `Not active` label
+- a persistent `Not active` status
 
 The card has no activation control. A bounded presentation buffer can retain recent job summaries. Rendering and job execution stay outside the browser render loop and the live engine worker.
 
@@ -126,7 +132,7 @@ The card has no activation control. A bounded presentation buffer can retain rec
 1. Add `sim/coffee_sorter/item_drafts.py` with a bounded queue, exact-request idempotency, atomic status files, and one worker process.
 2. Call the existing recipe generator and cached renderer from that process.
 3. Call `propose_physics`, `build_object_definition`, and `validate_object_definition` after artifact validation.
-4. Add the two same-origin HTTP endpoints to `live.py`. Keep the existing WebSocket policy command unchanged.
+4. Add the two HTTP endpoints to `live.py`. Reuse the existing Host and Origin checks. Keep the WebSocket policy command unchanged.
 5. Add the compact draft card after the UI owner completes the current rejection controls.
 6. Document the output directory, provider prerequisites, Blender lock behavior, and draft-only boundary in `LIVE.md`.
 
@@ -136,11 +142,12 @@ The card has no activation control. A bounded presentation buffer can retain rec
 - Generation never runs on the HTTP event loop or engine worker.
 - Queue and retained history bounds appear in state and tests.
 - Exact retries never start a second provider request or render.
+- Interrupted or uncertain provider work never triggers an automatic billable retry.
 - Changed payloads with a reused UUID fail clearly.
 - Missing credentials, busy rendering, provider failures, and invalid artifacts remain visible.
 - A ready draft contains validated IDs, units, conventions, provenance, and review status.
 - The draft cannot become injectable or active through this increment.
-- Desktop and short-phone layouts keep the conveyor, current policy, job state, errors, and `Not active` label reachable without page scrolling.
+- Desktop and short-phone layouts keep the conveyor, policy, job state, and primary action reachable without page scrolling.
 
 ### Verification
 
@@ -243,11 +250,12 @@ Taras verifies these points in the browser:
 
 1. The conveyor and scores continue while the draft progresses.
 2. Rejection toggles remain usable during generation.
-3. The stage, errors, preview, IDs, dimensions, proxy, and mass basis remain readable.
-4. The card always shows `Not active`.
+3. The thumbnail, name, short state, and primary action remain readable.
+4. Collapsed details show IDs, dimensions, proxy, mass basis, sorting state, and `Not active`.
 5. The injection choices do not change.
 6. An unsupported proxy blocks later activation without marking generation as failed.
 7. Reconnect and exact retry preserve one job and one provider request.
-8. Desktop and short-phone layouts need no page scrolling.
+8. An interrupted or uncertain provider request does not rebill automatically.
+9. Desktop and short-phone layouts need no page scrolling.
 
 Taras owns final functional acceptance.
