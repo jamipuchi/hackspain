@@ -1,0 +1,183 @@
+{
+  "version": 1,
+  "conventions": {
+    "space": "Metres, right-handed, +Z up, +X along the belt toward discharge, Y across the belt. Same space as RECORDING.md and replay.json.",
+    "camera": "location and target in metres. 36 mm sensor, horizontal sensor fit, so the horizontal framing survives an aspect change. focus_distance_m is explicit and is not recomputed.",
+    "lights": "Area lights only. energy_w is Blender watts. size_m is [x, y] for RECTANGLE and a diameter for DISK. Local x of an aimed light is horizontal. spread_deg below 180 acts as a grid and limits spill. glossy false removes the light from reflections.",
+    "exposure": "Final exposure is looks[look].color_management.exposure plus rigs[rig].exposure_offset."
+  },
+  "machine_bounds_m": {
+    "min": [-1.192, -0.32, 0.0],
+    "max": [0.763, 0.32, 1.05],
+    "source": "Tight bounds of replay['machine'] without the floor, rotations included. Added machine detail can exceed them."
+  },
+  "render_hints": {
+    "note": "Not applied by scene_lighting.py. render_scene.py owns render settings.",
+    "engine": "CYCLES",
+    "resolution": [1920, 1080],
+    "motion_blur": false,
+    "motion_blur_reason": "The replay is sampled near 30 Hz. Motion blur would invent trajectories between samples. See RECORDING.md.",
+    "clamp_indirect": 10.0,
+    "filter_glossy": 0.5,
+    "min_samples_for_review": 64
+  },
+  "shots": {
+    "hero": {
+      "role": "The entire machine from the front, discharge end nearest. The machine fills about 58 percent of the frame width and 62 percent of the height at 16:9.",
+      "rig": "hero",
+      "aspect": [16, 9],
+      "blueprint": {"edge_radius_m": 0.004},
+      "camera": {
+        "location": [1.95, -4.05, 1.75], "target": [-0.15, 0.0, 0.52],
+        "lens_mm": 50, "sensor_width_mm": 36, "fstop": 5.6, "dof": true, "focus_distance_m": 4.635,
+        "focus_note": "Nozzle bank and belt end (0.0, 0.0, 0.62).",
+        "clip_start_m": 0.1, "clip_end_m": 200
+      }
+    },
+    "inspection": {
+      "role": "Low 20 mm view under the camera bridge, diagonal across the belt. Sharp beans at the scan line in the lower frame. Light bars and housing underside recede to the upper right.",
+      "rig": "inspection",
+      "aspect": [16, 9],
+      "blueprint": {"edge_radius_m": 0.0008, "rim_range": [0.93, 0.99], "rim_note": "Computed, not re-rendered. The camera is 5 cm above the belt, so a wider range makes the far belt glow."},
+      "camera": {
+        "location": [-0.02, -0.235, 0.65], "target": [-0.16, 0.10, 0.70],
+        "lens_mm": 20, "sensor_width_mm": 36, "fstop": 11, "dof": true, "focus_distance_m": 0.169,
+        "focus_note": "Beans just past the scan line (-0.11, -0.10, 0.603).",
+        "clip_start_m": 0.005, "clip_end_m": 100
+      }
+    },
+    "discharge": {
+      "role": "Three-quarter view from the discharge end, above the near chute wall. Nozzle bank across the upper third, belt end behind it, splitter in the centre and lower right.",
+      "rig": "discharge",
+      "aspect": [16, 9],
+      "blueprint": {"edge_radius_m": 0.0015, "rim_range": [0.88, 0.97]},
+      "camera": {
+        "location": [1.25, -0.42, 1.10], "target": [0.18, 0.0, 0.57],
+        "lens_mm": 35, "sensor_width_mm": 36, "fstop": 8, "dof": true, "focus_distance_m": 1.304,
+        "focus_note": "Nozzle bank centre (0.1, 0.0, 0.65).",
+        "clip_start_m": 0.05, "clip_end_m": 100
+      }
+    },
+    "inspection-station": {
+      "role": "Optional fallback for inspection. Wider 32 mm view of the whole inspection station: belt, scan line, light bars and camera housing. Beans are about 20 px wide at 1920 px, so this shot shows no bean surface.",
+      "rig": "inspection",
+      "aspect": [16, 9],
+      "blueprint": {"edge_radius_m": 0.0015, "rim_range": [0.88, 0.97]},
+      "camera": {
+        "location": [0.60, -0.55, 1.0], "target": [-0.12, 0.0, 0.80],
+        "lens_mm": 32, "sensor_width_mm": 36, "fstop": 5.6, "dof": true, "focus_distance_m": 0.982,
+        "focus_note": "Scan line centre (-0.12, 0.0, 0.62).",
+        "clip_start_m": 0.05, "clip_end_m": 100
+      }
+    }
+  },
+  "looks": {
+    "noir-rim": {
+      "role": "Hero and realism look. Machine and bean materials stay intact. Use it whenever a defect class must be visible by colour.",
+      "world": {"color": [0.0025, 0.003, 0.005], "strength": 1.0},
+      "color_management": {"view_transform": "AgX", "look": "AgX - Medium High Contrast", "exposure": 0.6, "gamma": 1.0},
+      "material_override": null,
+      "rigs": {
+        "hero": {
+          "exposure_offset": 0.0,
+          "lights": [
+            {"name": "Rim strip", "shape": "RECTANGLE", "size_m": [3.2, 0.5], "location": [-0.2, 2.6, 2.4], "target": [-0.2, 0.0, 0.6], "energy_w": 110, "color": [0.62, 0.80, 1.0], "spread_deg": 90},
+            {"name": "Warm key", "shape": "DISK", "size_m": 1.2, "location": [-2.4, -2.2, 2.6], "target": [-0.3, 0.0, 0.6], "energy_w": 40, "color": [1.0, 0.78, 0.55], "spread_deg": 60},
+            {"name": "Belt pool", "shape": "RECTANGLE", "size_m": [2.4, 0.5], "location": [-0.45, -0.25, 2.5], "target": [-0.45, 0.0, 0.6], "energy_w": 9, "color": [1.0, 0.93, 0.85], "spread_deg": 70, "glossy": false},
+            {"name": "Discharge kicker", "shape": "RECTANGLE", "size_m": [0.35, 1.4], "location": [2.3, 0.9, 0.95], "target": [0.35, 0.0, 0.5], "energy_w": 14, "color": [0.75, 0.86, 1.0], "spread_deg": 90},
+            {"name": "Shadow fill", "shape": "RECTANGLE", "size_m": [3.0, 2.0], "location": [2.2, -3.2, 1.4], "target": [-0.2, 0.0, 0.4], "energy_w": 4, "color": [0.70, 0.80, 1.0], "spread_deg": 100, "glossy": false}
+          ]
+        },
+        "inspection": {
+          "exposure_offset": 0.0,
+          "lights": [
+            {"name": "Rim strip", "shape": "RECTANGLE", "size_m": [0.5, 0.12], "location": [-0.55, 0.42, 0.80], "target": [-0.12, -0.08, 0.60], "energy_w": 5.2, "color": [0.62, 0.80, 1.0], "spread_deg": 120},
+            {"name": "Warm key", "shape": "DISK", "size_m": 0.18, "location": [-0.10, -0.48, 0.82], "target": [-0.12, -0.10, 0.60], "energy_w": 0.68, "color": [1.0, 0.78, 0.55]},
+            {"name": "Bridge fill", "shape": "RECTANGLE", "size_m": [0.4, 0.3], "location": [0.15, -0.40, 0.70], "target": [-0.12, 0.10, 0.95], "energy_w": 0.6, "color": [0.70, 0.80, 1.0], "glossy": false}
+          ]
+        },
+        "discharge": {
+          "exposure_offset": 0.0,
+          "lights": [
+            {"name": "Rim strip", "shape": "RECTANGLE", "size_m": [0.8, 0.2], "location": [-0.55, 0.60, 1.30], "target": [0.15, 0.0, 0.62], "energy_w": 14.4, "color": [0.62, 0.80, 1.0], "spread_deg": 120},
+            {"name": "Warm key", "shape": "DISK", "size_m": 0.35, "location": [-0.2, -1.0, 1.35], "target": [0.2, 0.0, 0.6], "energy_w": 8.0, "color": [1.0, 0.78, 0.55]},
+            {"name": "Splitter fill", "shape": "RECTANGLE", "size_m": [0.6, 0.4], "location": [1.2, 0.5, 0.75], "target": [0.45, 0.0, 0.45], "energy_w": 1.1, "color": [0.70, 0.80, 1.0], "glossy": false}
+          ]
+        }
+      }
+    },
+    "blueprint": {
+      "role": "Explainer look. One blue material on everything. Shader lines mark panel edges and silhouettes. It shows how the machine works, not what the beans look like.",
+      "world": {"color": [0.010, 0.030, 0.075], "strength": 1.0, "camera_color": [0.030, 0.085, 0.19]},
+      "color_management": {"view_transform": "AgX", "look": "AgX - Base Contrast", "exposure": 0.8, "gamma": 1.0},
+      "material_override": {
+        "type": "blueprint",
+        "line_min_z_m": 0.002,
+        "color": [0.03, 0.09, 0.22],
+        "line_color": [0.75, 0.92, 1.0], "line_strength": 1.6,
+        "edge_samples": 4, "edge_range": [0.02, 0.12],
+        "rim_range": [0.80, 0.95], "rim_gain": 0.6
+      },
+      "freestyle": {
+        "enabled": false,
+        "note": "Off by default. Freestyle cost grows with triangle count and the full replay holds several hundred 12,000-triangle beans. Enable it only for a shot with few beans in view.",
+        "color": [0.75, 0.92, 1.0], "thickness_px": 1.4, "crease_angle_deg": 100
+      },
+      "rigs": {
+        "hero": {
+          "exposure_offset": 0.0,
+          "lights": [
+            {"name": "Top soft", "shape": "RECTANGLE", "size_m": [3.5, 2.2], "location": [-0.2, -0.5, 3.2], "target": [-0.2, 0.0, 0.5], "energy_w": 38, "color": [0.85, 0.92, 1.0], "spread_deg": 120},
+            {"name": "Front fill", "shape": "RECTANGLE", "size_m": [2.5, 1.5], "location": [1.9, -3.4, 1.6], "target": [-0.2, 0.0, 0.55], "energy_w": 19, "color": [0.85, 0.92, 1.0], "glossy": false}
+          ]
+        },
+        "inspection": {
+          "exposure_offset": 0.0,
+          "lights": [
+            {"name": "Top soft", "shape": "RECTANGLE", "size_m": [0.5, 0.4], "location": [0.35, -0.15, 1.0], "target": [-0.12, -0.05, 0.62], "energy_w": 1.9, "color": [0.85, 0.92, 1.0]},
+            {"name": "Bridge fill", "shape": "RECTANGLE", "size_m": [0.4, 0.3], "location": [0.10, -0.50, 0.75], "target": [-0.12, 0.05, 0.85], "energy_w": 0.45, "color": [0.85, 0.92, 1.0], "glossy": false}
+          ]
+        },
+        "discharge": {
+          "exposure_offset": 0.0,
+          "lights": [
+            {"name": "Top soft", "shape": "RECTANGLE", "size_m": [1.4, 1.0], "location": [0.35, -0.1, 1.9], "target": [0.3, 0.0, 0.5], "energy_w": 9.8, "color": [0.85, 0.92, 1.0]},
+            {"name": "Front fill", "shape": "RECTANGLE", "size_m": [1.0, 0.7], "location": [1.4, -0.9, 1.0], "target": [0.3, 0.0, 0.5], "energy_w": 2.7, "color": [0.85, 0.92, 1.0], "glossy": false}
+          ]
+        }
+      }
+    },
+    "warm-roastery": {
+      "role": "Form and composition look. Warm window light on one matte grey clay material. Use it for intro, transitions and layout review.",
+      "world": {"color": [0.05, 0.035, 0.02], "strength": 1.0, "camera_color": [0.55, 0.46, 0.34]},
+      "color_management": {"view_transform": "AgX", "look": "AgX - Medium High Contrast", "exposure": 0.9, "gamma": 1.0},
+      "material_override": {"type": "matte", "color": [0.55, 0.55, 0.55], "roughness": 0.9, "specular": 0.25},
+      "rigs": {
+        "hero": {
+          "exposure_offset": 0.0,
+          "lights": [
+            {"name": "Window", "shape": "RECTANGLE", "size_m": [3.0, 2.0], "location": [3.1, 0.0, 2.85], "target": [-0.2, 0.0, 0.55], "energy_w": 128, "color": [1.0, 0.80, 0.58], "spread_deg": 140},
+            {"name": "Bounce", "shape": "RECTANGLE", "size_m": [3.0, 2.0], "location": [-2.85, -2.95, 2.0], "target": [-0.2, 0.0, 0.55], "energy_w": 32, "color": [1.0, 0.90, 0.78], "glossy": false},
+            {"name": "Back", "shape": "DISK", "size_m": 1.2, "location": [-1.15, 2.9, 2.3], "target": [-0.2, 0.0, 0.55], "energy_w": 61, "color": [1.0, 0.70, 0.40]}
+          ]
+        },
+        "inspection": {
+          "exposure_offset": 0.0,
+          "lights": [
+            {"name": "Window", "shape": "RECTANGLE", "size_m": [0.6, 0.4], "location": [0.45, 0.05, 1.0], "target": [-0.12, -0.05, 0.62], "energy_w": 3.8, "color": [1.0, 0.80, 0.58]},
+            {"name": "Bounce", "shape": "RECTANGLE", "size_m": [0.6, 0.4], "location": [-0.5, -0.55, 0.85], "target": [-0.12, -0.05, 0.62], "energy_w": 0.8, "color": [1.0, 0.90, 0.78], "glossy": false},
+            {"name": "Back", "shape": "DISK", "size_m": 0.25, "location": [-0.5, 0.5, 0.95], "target": [-0.12, -0.05, 0.62], "energy_w": 2.8, "color": [1.0, 0.70, 0.40]}
+          ]
+        },
+        "discharge": {
+          "exposure_offset": 0.0,
+          "lights": [
+            {"name": "Window", "shape": "RECTANGLE", "size_m": [1.2, 0.8], "location": [0.5, 1.0, 1.7], "target": [0.2, 0.0, 0.58], "energy_w": 18.7, "color": [1.0, 0.80, 0.58]},
+            {"name": "Bounce", "shape": "RECTANGLE", "size_m": [1.2, 0.8], "location": [1.5, -1.0, 1.2], "target": [0.3, 0.0, 0.5], "energy_w": 4.0, "color": [1.0, 0.90, 0.78], "glossy": false},
+            {"name": "Back", "shape": "DISK", "size_m": 0.4, "location": [-0.6, 0.5, 1.3], "target": [0.15, 0.0, 0.62], "energy_w": 7.0, "color": [1.0, 0.70, 0.40]}
+          ]
+        }
+      }
+    }
+  }
+}
