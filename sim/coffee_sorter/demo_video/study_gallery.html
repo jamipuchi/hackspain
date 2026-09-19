@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coffee sorter: scene studies</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #121719; color: #edf0ec; font: 14px/1.45 system-ui, sans-serif; }
+  main { max-width: 1600px; margin: auto; padding: 34px; }
+  header { display: flex; justify-content: space-between; align-items: end; gap: 30px; margin-bottom: 24px; }
+  .eyebrow { color: #b6c5bf; font-size: 11px; letter-spacing: .17em; text-transform: uppercase; }
+  h1 { font-size: 32px; letter-spacing: -.035em; margin: 5px 0; font-weight: 550; }
+  p { margin: 0; color: #a6b4b1; }
+  header p { max-width: 750px; }
+  label { color: #c8d4ce; white-space: nowrap; font-size: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px 16px; }
+  figure { margin: 0; min-width: 0; }
+  figure.wide { grid-column: span 2; }
+  .frame { position: relative; display: block; aspect-ratio: 16/9; overflow: hidden; background: #070b0e; }
+  img { display: block; width: 100%; height: 100%; object-fit: contain; }
+  figcaption { padding: 10px 0 0; }
+  h2 { font-size: 14px; font-weight: 550; margin: 0 0 3px; }
+  figcaption p { font-size: 11px; }
+  .marker { position: absolute; width: 14px; height: 14px; border: 1px solid #ffca94; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+  .marker::after { content: attr(data-label); position: absolute; left: 17px; top: -2px; padding: 1px 4px; background: #0d171bdd; color: #ffca94; font: 10px/1.4 system-ui; white-space: nowrap; }
+  .marker.good { border-color: #bde9db; }
+  .marker.good::after { color: #bde9db; right: 17px; left: auto; }
+  .hide-markers .marker { display: none; }
+  footer { margin-top: 24px; border-top: 1px solid #33403e; padding-top: 15px; color: #9caeaa; font-size: 11px; }
+  @media (max-width: 850px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } header { display: block; } label { display: block; margin-top: 14px; } }
+  @media (max-width: 480px) { main { padding: 20px; } .grid { grid-template-columns: 1fr; } figure.wide { grid-column: auto; } }
+</style>
+<main>
+  <header>
+    <div>
+      <div class="eyebrow">Coffee sorter / 19 September 2026 / Draft stills</div>
+      <h1>From bean detail to the air-jet moment.</h1>
+      <p>Nine Blender renders and one real UI capture. Select an image for its original. No animation is included yet.</p>
+    </div>
+    <label><input id="markers" type="checkbox" checked> Show the tracked pair</label>
+  </header>
+  <div class="grid" id="scenes"></div>
+  <footer>
+    Ultra slow motion: the three studies retain exact poses at 1.800, 1.834, and 1.900 simulated seconds.
+    Review markers identify good bean 1480 and black bean 1470. Cutaways omit chute walls and trim, not beans.
+    The final slow-motion clip needs denser capture and verified pulse contact. The UI uses a different, current engine source.
+  </footer>
+</main>
+<script>
+  const root = './basic-scene-renders-v3/';
+  const shots = [
+    ['01-bean-macro', '01 / Bean detail', 'Focus study. The existing asset sets the texture limit.'],
+    ['02a-low-reveal-start', '02A / Conveyor reveal: start', 'Low camera. Foreground rail and inspection bridge.'],
+    ['02b-low-reveal-end', '02B / Conveyor reveal: end', 'The second camera position establishes the reveal.'],
+    ['03-overhead-inspection', '03 / Overhead inspection', 'Locked composition. Actual recorded bean positions.'],
+    ['04-blueprint-discharge', '04 / Nozzle and splitter', 'Brief orientation shot. Presentation cutaway.'],
+    ['05a-slowmo-belt-edge', '05A / Ultra slow motion: release', '1.800 s. The same black and good bean approach the edge.'],
+    ['05b-slowmo-valve-on', '05B / Ultra slow motion: valve ON', '1.834 s. Recorded valve state, not verified bean contact.'],
+    ['05c-slowmo-splitter', '05C / Ultra slow motion: separation', '1.900 s. The black bean falls below its good neighbour.'],
+    ['06-ui-reference.png', '06 / Actual continuous UI', 'Real rolling scores. No injection performed. The view remains 2D.', true],
+    ['07-warm-closing', '07 / Warm closing view', 'Whole-machine form study with a uniform clay material.', true],
+  ];
+  const gallery = document.querySelector('#scenes');
+  for (const [id, title, note, wide] of shots) {
+    const figure = document.createElement('figure');
+    if (wide) figure.className = 'wide';
+    const frame = document.createElement('a');
+    frame.className = 'frame';
+    frame.href = root + (id.endsWith('.png') ? id : `${id}/scene.png`);
+    const image = document.createElement('img');
+    image.src = frame.href;
+    image.alt = title;
+    frame.append(image);
+    const caption = document.createElement('figcaption');
+    const heading = document.createElement('h2');
+    heading.textContent = title;
+    const detail = document.createElement('p');
+    detail.textContent = note;
+    caption.append(heading, detail);
+    figure.append(frame, caption);
+    gallery.append(figure);
+    if (id.startsWith('05')) {
+      fetch(`${root}${id}/manifest.json`).then(response => response.json()).then(manifest => {
+        for (const [uid, object] of Object.entries(manifest.focused_objects)) {
+          const marker = document.createElement('span');
+          marker.className = `marker ${uid === '1480' ? 'good' : ''}`;
+          marker.dataset.label = uid === '1480' ? 'good' : 'black';
+          marker.style.left = `${object.image_position_normalized[0] * 100}%`;
+          marker.style.top = `${object.image_position_normalized[1] * 100}%`;
+          frame.append(marker);
+        }
+      });
+    }
+  }
+  document.querySelector('#markers').addEventListener('change', event => {
+    document.body.classList.toggle('hide-markers', !event.target.checked);
+  });
+</script>
+</html>

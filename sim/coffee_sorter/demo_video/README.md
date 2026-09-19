@@ -3,6 +3,32 @@
 This directory owns only the demo storyboard and preview-render command.
 It does not own the source scene, simulator, model, live interface, or recorded evidence.
 
+## Current scene studies
+
+Taras approved the concept direction and requested basic renders of every scene.
+The current pass contains nine stills and a screenshot of the continuous UI.
+It does not contain new animation.
+
+```sh
+python3 sim/coffee_sorter/demo_video/render_studies.py \
+  --output-dir /private/tmp/coffee-demo-video-previews/basic-scene-renders-v3
+cp sim/coffee_sorter/demo_video/study_gallery.html /private/tmp/coffee-demo-video-previews/index.html
+python3 -m http.server 8894 --bind 127.0.0.1 \
+  --directory /private/tmp/coffee-demo-video-previews
+```
+
+Open `http://127.0.0.1:8894/` to inspect the gallery.
+The UI screenshot must come from the current service. The Blender command does not create it.
+Use `--only <shot>` to render one composition.
+Each shot produces a PNG, an editable Blender scene, a log, and a source manifest.
+The renderer retains all recorded beans and lists each presentation cutaway.
+Existing images remain unchanged. Use a new output directory for a revised pass.
+The shared lock and eight-thread limit apply to every Blender process.
+
+See `thoughts/taras/research/coffee-demo-video/BASIC_RENDER_REVIEW.md` for evidence and limitations.
+
+## Earlier studies
+
 Run the three previews from the repository root:
 
 ```sh
