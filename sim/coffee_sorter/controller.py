@@ -88,18 +88,30 @@ class Controller:
         self.next_tid = 0
         self.latency_ms: list[float] = []
         self.compute_ms: list[float] = []
+        self.detection_ms: list[float] = []
+        self.inference_ms: list[float] = []
+        self.control_ms: list[float] = []
         self.frames = 0
 
     # -------------------------------------------------------------- per frame
     def on_frame(self, frame, t):
         frame_started_wall = time.perf_counter()
+        stage_started_wall = frame_started_wall
         blobs = self.insp.detect(frame, t)
+        detection_ms = (time.perf_counter() - stage_started_wall) * 1e3
         full = ~blobs.partial
+        stage_started_wall = time.perf_counter()
         P, A = self.model.predict(blobs.X[full])
+        inference_ms = (time.perf_counter() - stage_started_wall) * 1e3
+        stage_started_wall = time.perf_counter()
         blob_tracks = self._associate(blobs, full, P, A, t)
         self.frames += 1
         self._finalize(t, frame_started_wall)
+        control_ms = (time.perf_counter() - stage_started_wall) * 1e3
         compute = time.perf_counter() - frame_started_wall
+        self.detection_ms.append(detection_ms)
+        self.inference_ms.append(inference_ms)
+        self.control_ms.append(control_ms)
         measured_latency = self.pol.latency_floor + compute
         latency = (max(self.pol.fixed_latency, measured_latency) if self.pol.fixed_latency is not None else
                    measured_latency + self.pol.induced_delay)
