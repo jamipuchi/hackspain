@@ -728,7 +728,7 @@ function initThree() {
     const gl = renderer.getContext(), debug = gl.getExtension('WEBGL_debug_renderer_info');
     const gpuName = debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : 'unknown';
     const softwareRenderer = /swiftshader|llvmpipe|software/i.test(gpuName);
-    renderer.setPixelRatio(softwareRenderer ? .6 : Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(softwareRenderer ? .6 : Math.min(window.devicePixelRatio, 1.5));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.08;
