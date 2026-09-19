@@ -202,28 +202,51 @@ def door_lead_s(cfg) -> float:
     return float(cfg.gate.settle_ms) / 1000.0 + float(getattr(cfg.timing, "lead_margin_s", 0.0))
 
 
-def gate_schedule(verdict_t: float, blob_v_px: float, cfg, now_t: float | None = None,
-                  model: str | None = None) -> tuple[float, float]:
-    """(delay_s, dwell_s) for GateDriver.pulse so the door is open while the bean passes it.
+def _dwell_s(cfg, model) -> float:
+    lead = door_lead_s(cfg)
+    v_door = max(speed_at_cm(door_start_cm(cfg), cfg, model), 1e-6)
+    dwell = lead + door_length_cm(cfg) / v_door + float(getattr(cfg.timing, "lead_margin_s", 0.0))
+    return max(dwell, float(cfg.gate.default_dwell_s))
 
-    verdict_t : monotonic time of the verdict (≈ the frame time; the frame age is part of door_lead_s margin).
-    blob_v_px : the blob's coordinate along the flow axis (u for 'x' flow, v for 'y' flow), full-frame pixels.
-    now_t     : current monotonic time; defaults to verdict_t.
+
+def _schedule_from_cm(s_bean_cm: float, elapsed_s: float, cfg, model) -> tuple[float, float]:
+    if str(getattr(cfg.timing, "mode", "model")).lower() == "fixed":       # bench mode: no kinematics at all
+        return max(0.0, float(getattr(cfg.timing, "fixed_delay_s", 0.0)) - elapsed_s), float(cfg.gate.default_dwell_s)
+    t_to_door = travel_time_s(s_bean_cm, door_start_cm(cfg), cfg, model)
+    delay = max(0.0, t_to_door - door_lead_s(cfg) - elapsed_s)
+    return delay, _dwell_s(cfg, model)
+
+
+def gate_schedule_frac(frac: float, cfg, model: str | None = None) -> tuple[float, float]:
+    """(delay_s, dwell_s) for a bean seen *now* at `frac` (0 = upstream edge, 1 = downstream edge) of the zone.
+    This is the signature `line.pipeline` calls: `timing.gate_schedule(frac, cfg)`."""
+    z0, z1 = cfg.timing.zone_from_top_cm
+    s_bean = z0 + min(max(float(frac), 0.0), 1.0) * (z1 - z0)
+    return _schedule_from_cm(s_bean, 0.0, cfg, model)
+
+
+def gate_schedule(*args, now_t: float | None = None, model: str | None = None) -> tuple[float, float]:
+    """(delay_s, dwell_s) for GateDriver.pulse so the door is open while the bean passes it. Two call styles:
+
+      gate_schedule(frac, cfg)                        pipeline style: bean seen now at `frac` of the zone (0..1)
+      gate_schedule(verdict_t, blob_v_px, cfg, ...)   verdict_t = monotonic time of the verdict; blob_v_px = the blob's
+                                                      coordinate along cfg.camera.flow_axis in full-frame pixels;
+                                                      now_t = current time (defaults to verdict_t)
 
     delay = travel time from where the bean was seen to the door start − door_lead_s(cfg) − time already elapsed,
     never negative. dwell = lead + time for the bean to clear the 6 cm door + margin, at least gate.default_dwell_s.
+    With cfg.timing.mode == 'fixed' the kinematics are bypassed: delay = fixed_delay_s − elapsed, dwell = default.
     """
+    if len(args) == 2 and hasattr(args[1], "timing"):
+        return gate_schedule_frac(args[0], args[1], model=model)
+    if len(args) != 3:
+        raise TypeError("gate_schedule(frac, cfg) or gate_schedule(verdict_t, blob_v_px, cfg)")
+    verdict_t, blob_v_px, cfg = args
     now_t = verdict_t if now_t is None else now_t
-    s_bean = bean_position_cm(blob_v_px, cfg)
-    t_to_door = travel_time_s(s_bean, door_start_cm(cfg), cfg, model)
-    lead = door_lead_s(cfg)
-    delay = max(0.0, verdict_t + t_to_door - lead - now_t)
-    v_door = max(speed_at_cm(door_start_cm(cfg), cfg, model), 1e-6)
-    dwell = lead + door_length_cm(cfg) / v_door + float(getattr(cfg.timing, "lead_margin_s", 0.0))
-    return delay, max(dwell, float(cfg.gate.default_dwell_s))
+    return _schedule_from_cm(bean_position_cm(blob_v_px, cfg), now_t - verdict_t, cfg, model)
 
 
-def budget_s(cfg, model: str | None = None) -> float:
+def budget_s(cfg, model: str | None = None) -> float:  # noqa: E302
     """Time left for photo→verdict when the bean is seen at the zone centre (negative = not workable)."""
     return zone_to_door_s(cfg, model) - door_lead_s(cfg)
 

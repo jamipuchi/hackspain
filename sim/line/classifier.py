@@ -65,6 +65,10 @@ def _fmt(x: float) -> str:
 RULES = [
     ("major_mm", "min", "min_major_mm", "fragment", "too short"),
     ("major_mm", "max", "max_major_mm", "foreign", "too long: stick / cluster"),
+    # width across the flow: not smeared by motion blur when the chute aligns the bean with its travel direction.
+    # Only active when min_minor_mm / max_minor_mm exist in cfg.classifier.rules.
+    ("minor_mm", "min", "min_minor_mm", "fragment", "too narrow: fragment / husk"),
+    ("minor_mm", "max", "max_minor_mm", "foreign", "too wide: cluster / stone"),
     ("aspect", "min", "min_aspect", "odd_shape", "too round: stone / cluster"),
     ("aspect", "max", "max_aspect", "odd_shape", "too elongated: husk / stick"),
     ("dark_frac", "max", "max_dark_frac", "burnt", "black surface"),
@@ -334,16 +338,21 @@ class SklearnClassifier:
 
 
 # ====================================================================== training
-def load_dataset(dataset_dir, features: list[str] | None = None):
+def load_dataset(dataset_dir, features: list[str] | None = None, include_partial: bool = False):
     """datasets/beans/<label>/*.json -> (X, y, feature_names). A JSON is a Sample ({'features': {...}, 'label': ...})
-    or a flat {feature: value} dict. Label = folder name."""
+    or a flat {feature: value} dict. Label = folder name. Samples saved with `partial: true` (blob touching the ROI edge,
+    i.e. not the whole bean) are skipped unless include_partial=True; the count is in load_dataset.skipped_partial."""
     root = Path(dataset_dir)
     rows, labels = [], []
+    load_dataset.skipped_partial = 0
     for sub in sorted(p for p in root.iterdir() if p.is_dir()):
         for j in sorted(sub.glob("*.json")):
             try:
                 d = json.loads(j.read_text())
             except json.JSONDecodeError:
+                continue
+            if isinstance(d, dict) and d.get("partial") and not include_partial:
+                load_dataset.skipped_partial += 1
                 continue
             f = d.get("features", d) if isinstance(d, dict) else None
             if not isinstance(f, dict) or not f:

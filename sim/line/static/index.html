@@ -61,8 +61,49 @@ td.mono{font-family:var(--mono);font-size:.8rem}
  </div>
 </section>
 
-<section class="tab" data-tab="Motors">
+<section class="tab" data-tab="Door">
+ <div class="card" style="text-align:center">
+  <div class="hint" style="font-size:1rem">door is</div>
+  <div id="doorPos" class="big" style="font-size:3rem">—</div>
+  <div class="row" style="justify-content:center;gap:24px;margin-top:8px">
+   <button id="btnOpen" class="go" style="font-size:2.2rem;padding:34px 60px;min-width:260px" onclick="door('open')">OPEN</button>
+   <button id="btnClose" class="stop" style="font-size:2.2rem;padding:34px 60px;min-width:260px" onclick="door('close')">CLOSE</button>
+  </div>
+  <div class="row" style="justify-content:center;margin-top:8px"><button class="sm acc" onclick="demoCycle()">demo: open → close → open</button><button class="sm" onclick="door('stop')">■ stop spinning (Space / Esc)</button></div>
+  <p class="hint">OPEN = rest, channel free. CLOSE = paddle across the channel (what the line does when it acts on a bean). Continuous servo: each is a timed spin pulse.</p>
+ </div>
  <div class="grid">
+  <div class="card"><h2>OPEN pulse</h2>
+   <label>duration ms <b id="oMsV"></b><input id="oMs" type="range" min="10" max="400" step="5" oninput="oMsV.textContent=this.value+' ms'" onchange="setCfg('door_d6_open_ms',+this.value)"></label>
+   <div class="row"><button class="sm" onclick="nudgeCfg('door_d6_open_ms',-5)">−5 ms</button><button class="sm" onclick="nudgeCfg('door_d6_open_ms',5)">+5 ms</button><button class="sm go" onclick="door('open',true)">test OPEN pulse now</button></div></div>
+  <div class="card"><h2>CLOSE pulse</h2>
+   <label>duration ms <b id="cMsV"></b><input id="cMs" type="range" min="10" max="400" step="5" oninput="cMsV.textContent=this.value+' ms'" onchange="setCfg('door_d6_close_ms',+this.value)"></label>
+   <div class="row"><button class="sm" onclick="nudgeCfg('door_d6_close_ms',-5)">−5 ms</button><button class="sm" onclick="nudgeCfg('door_d6_close_ms',5)">+5 ms</button><button class="sm stop" onclick="door('close',true)">test CLOSE pulse now</button></div></div>
+  <div class="card"><h2>Servo</h2>
+   <label>servo type on D6<select id="d6Mode" onchange="setCfg('door_d6_mode',this.value)"><option value="continuous">continuous rotation: timed spin pulses</option><option value="positional">positional (normal SG90): hold OPEN/CLOSED angles</option></select></label>
+   <div id="posAngles" class="row" style="display:none"><label>OPEN angle ° <input class="num" id="aOpen" type="number" min="0" max="180" onchange="setCfg('gate.open_deg',+this.value);door('open',true)"></label><label>CLOSED angle ° <input class="num" id="aClose" type="number" min="0" max="180" onchange="setCfg('gate.flush_deg',+this.value);door('close',true)"></label><span class="hint">changing an angle moves the servo there</span></div>
+   <label>speed % <b id="d6SpeedV"></b><input id="d6Speed" type="range" min="5" max="100" oninput="d6SpeedV.textContent=this.value+' %'" onchange="setCfg('door_d6_speed',+this.value)"></label>
+   <label>dead-centre trim <b id="d6TrimV"></b> — if CLOSE travels less than OPEN at equal ms, move it towards CLOSE's sign<input id="d6Trim" type="range" min="-20" max="20" oninput="d6TrimV.textContent=this.value" onchange="setCfg('door_d6_trim',+this.value)"></label>
+   <label>direction<select id="d6Dir" onchange="setCfg('door_d6_dir',+this.value)"><option value="1">normal</option><option value="-1">flipped</option></select></label>
+   <label>time the door stays CLOSED after a bean (s) <input class="num" id="dDwell" type="number" step="0.1" min="0.1" onchange="setCfg('gate.default_dwell_s',+this.value)"></label>
+   <div class="kv" id="doorKv"></div></div>
+ </div>
+ <div class="card"><h2>Calibrate by hand · watch the paddle, nudge, then save the total as the pulse</h2>
+  <div class="grid" style="grid-template-columns:minmax(360px,1.2fr) 1fr;align-items:start">
+   <div class="viewer"><img src="/stream.mjpg" alt="camera"></div>
+   <div style="display:grid;gap:14px">
+    <label>nudge length (ms for continuous, degrees for positional)<select id="nudgeMs"><option>30</option><option>45</option><option selected>60</option><option>90</option><option>120</option><option>200</option></select></label>
+    <div class="card" style="background:#0f1317;border-color:var(--ok)"><h2>towards OPEN <span class="hint">total <b id="totOpen">0</b> ms</span></h2>
+     <div class="row"><button class="go" onclick="nudge('open')">nudge → OPEN</button><button class="sm" onclick="useTotal('open')">use total as OPEN pulse</button><button class="sm" onclick="tot.open=0;paintTot()">reset</button></div></div>
+    <div class="card" style="background:#0f1317;border-color:var(--bad)"><h2>towards CLOSE <span class="hint">total <b id="totClose">0</b> ms</span></h2>
+     <div class="row"><button class="stop" onclick="nudge('close')">nudge → CLOSE</button><button class="sm" onclick="useTotal('close')">use total as CLOSE pulse</button><button class="sm" onclick="tot.close=0;paintTot()">reset</button></div></div>
+    <div class="row"><button class="sm" onclick="door('stop')">■ stop spinning</button><button class="sm" onclick="postJSON('/api/door',{action:'reprobe'}).then(j=>{alert(j.mcu_timed?'Firmware has the MCU-timed pulse: using it.':'Firmware lacks T: host-timed pulses.');refresh();})">re-check firmware after flash</button><button class="sm" onclick="postJSON('/api/door',{action:'assume',pos:'open'}).then(refresh)">it is OPEN now</button><button class="sm" onclick="postJSON('/api/door',{action:'assume',pos:'closed'}).then(refresh)">it is CLOSED now</button></div>
+    <p class="hint">Recipe: put the paddle on one stop by hand or with nudges, press "it is CLOSED now", reset the OPEN total, nudge → OPEN until it rests on the other wall, then "use total as OPEN pulse" (adds 20 % so it always reaches the stop). Repeat the other way. Then test with the big buttons. Raise the speed and repeat when it is reliable.</p>
+   </div>
+  </div>
+ </div>
+ <details class="card"><summary class="hint" style="cursor:pointer">Advanced: raw protocol, conveyor, gate driver (not needed for the demo)</summary>
+  <div class="grid">
   <div class="card"><h2>Conveyor · D6 (continuous servo)</h2>
    <div class="row"><button class="acc" onclick="setBelt(-speed())">◀ reverse</button><button class="stop" onclick="setBelt(0)">■ stop</button><button class="go" onclick="setBelt(speed())">forward ▶</button></div>
    <label>speed <b id="spV">60 %</b><input id="sp" type="range" min="5" max="100" value="60" oninput="spV.textContent=this.value+' %'"></label>
@@ -75,6 +116,34 @@ td.mono{font-family:var(--mono);font-size:.8rem}
    <div class="kv" id="gateKv"></div>
    <div class="row"><button class="sm" onclick="postJSON('/api/line',{action:'dry'}).then(refresh)">force dry run</button><button class="sm stop" onclick="goLive()">switch gate LIVE…</button></div>
   </div>
+  <div class="card" style="grid-column:1/-1"><h2>Door positions · press a button to go there · drag its slider to set the angle (moves the servo and saves)</h2>
+   <div class="grid" style="grid-template-columns:1fr 1fr minmax(260px,360px);align-items:start">
+    <div class="card" id="posClosed" style="background:#0f1317;border-color:var(--ok)">
+     <button class="go" style="font-size:1.6rem;padding:26px" onclick="jogTo(S.cfg.gate.flush_deg)">CLOSED</button>
+     <label>angle <b id="closedV"></b><input id="closedS" type="range" min="0" max="180" oninput="closedV.textContent=this.value+'°'" onchange="setPos('flush',+this.value)"></label>
+     <div class="row"><button class="sm" onclick="nudgePos('flush',-1)">−1°</button><button class="sm" onclick="nudgePos('flush',1)">+1°</button><input class="num" id="closedN" type="number" min="0" max="180" onchange="setPos('flush',+this.value)"></div>
+    </div>
+    <div class="card" id="posOpen" style="background:#0f1317;border-color:var(--warn)">
+     <button class="warn" style="font-size:1.6rem;padding:26px" onclick="jogTo(S.cfg.gate.open_deg)">OPEN</button>
+     <label>angle <b id="openV"></b><input id="openS" type="range" min="0" max="180" oninput="openV.textContent=this.value+'°'" onchange="setPos('open',+this.value)"></label>
+     <div class="row"><button class="sm" onclick="nudgePos('open',-1)">−1°</button><button class="sm" onclick="nudgePos('open',1)">+1°</button><input class="num" id="openN" type="number" min="0" max="180" onchange="setPos('open',+this.value)"></div>
+    </div>
+    <div style="display:grid;gap:8px">
+     <div class="card" style="background:#0f1317"><h2>Continuous servo on D6 · timed pulses</h2>
+      <p class="hint">This servo spins instead of holding an angle, so OPEN = spin one way for a moment into the stop, CLOSED = spin back. Tune the pulse lengths until the paddle lands where you want; flip direction if OPEN goes the wrong way.</p>
+      <div class="row"><label>speed % <input class="num" id="d6Speed" type="number" min="5" max="100" onchange="setCfg('door_d6_speed',+this.value)"></label>
+       <label>open pulse ms <input class="num" id="d6Open" type="number" min="20" step="10" onchange="setCfg('door_d6_open_ms',+this.value)"></label>
+       <label>close pulse ms <input class="num" id="d6Close" type="number" min="20" step="10" onchange="setCfg('door_d6_close_ms',+this.value)"></label>
+       <label>direction<select id="d6Dir" onchange="setCfg('door_d6_dir',+this.value)"><option value="1">normal</option><option value="-1">flipped</option></select></label></div>
+      <div class="row"><button class="stop" onclick="postJSON('/api/cmd',{line:'STOP'}).then(refresh)">■ STOP SPINNING</button><span class="hint">also Space / Esc</span></div>
+     </div>
+     <svg id="dial" viewBox="0 0 400 240" style="width:100%"></svg>
+     <button class="sm acc" onclick="swingTest()">swing test: closed → open → closed</button>
+     <div class="hint">White needle = angle the firmware reports. The sorting loop uses these same two angles.</div></div>
+   </div>
+  </div>
+   </div>
+  </div>
   <div class="card"><h2>Arduino · raw</h2><div class="kv" id="ardKv"></div>
    <div class="row"><input id="rawin" type="text" placeholder="S 90 90 75   ·   C -40   ·   ?"><button class="sm" onclick="raw()">send</button></div>
    <div class="hint">Servo sliders (S base shoulder elbow) — base = door channel:</div>
@@ -82,6 +151,8 @@ td.mono{font-family:var(--mono);font-size:.8rem}
    <div class="row"><button class="sm" onclick="postJSON('/api/cmd',{line:'H'}).then(refresh)">home (H)</button><button class="sm" onclick="postJSON('/api/cmd',{line:'M 0'}).then(refresh)">magnet off</button><button class="sm" onclick="postJSON('/api/selftest',{module:'arduino'}).then(refresh)">arduino self-test</button></div>
   </div>
  </div>
+
+ </details>
 </section>
 
 <section class="tab" data-tab="Classifier">
@@ -99,6 +170,40 @@ td.mono{font-family:var(--mono);font-size:.8rem}
  </div>
 </section>
 
+<section class="tab" data-tab="Calibrate">
+ <div class="grid" style="grid-template-columns:minmax(380px,1.3fr) 1fr;align-items:start">
+  <div class="card"><h2>Live · put ONE bean in the zone, still</h2>
+   <div class="viewer"><img src="/stream.mjpg" alt="camera"></div>
+   <div id="calLive" class="hint" style="font-family:var(--mono)">looking…</div>
+   <label>detection sensitivity: objects darker than grey <b id="calSensV"></b> count (board ≈ <span id="calPaper">?</span>)<input id="calSens" type="range" min="60" max="240" oninput="calSensV.textContent=this.value" onchange="setCfg('vision.bean_gray_max',+this.value)"></label>
+   <p class="hint">Raise it until a white bean is detected (count 1); lower it if the empty zone shows objects.</p>
+  </div>
+  <div style="display:grid;gap:14px">
+   <div class="card" style="text-align:center"><h2>Teach it</h2>
+    <div class="row" style="justify-content:center;gap:18px">
+     <button style="font-size:1.5rem;padding:26px 34px;background:#e8edf2;color:#111" onclick="teach('white')">this is WHITE</button>
+     <button style="font-size:1.5rem;padding:26px 34px;background:#222;color:#eee;border:1px solid #555" onclick="teach('black')">this is BLACK</button>
+    </div>
+    <div class="hint">Each press samples the bean in the zone. Do 3 or more of each, mixing positions.</div>
+    <div class="row" style="justify-content:center"><span class="hint">white samples: <b id="nWhite">0</b></span><span class="hint">black samples: <b id="nBlack">0</b></span><button class="sm" onclick="calSamples={white:[],black:[]};saveCal();paintCal()">clear</button></div>
+   </div>
+   <div class="card"><h2>Grey scale · black ← → white</h2>
+    <svg id="calScale" viewBox="0 0 600 110" style="width:100%"></svg>
+    <div class="row"><span class="hint">threshold</span><input class="num" id="calThr" type="number" min="0" max="255"><button class="acc" onclick="applyThr()">apply threshold</button><span class="hint" id="calThrHint"></span></div>
+   </div>
+   <div class="card"><h2>Recent beans · label them after the fact <span><button class="sm acc" onclick="thrFromLabels()">set threshold from labels</button> <button class="sm stop" onclick="if(confirm('Delete ALL photographed examples and their labels?'))delCap('*',true)">delete all</button></span></h2>
+    <div class="hint" id="galHint">every bean that got a verdict is photographed; press WHITE or BLACK under each</div>
+    <div id="gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;max-height:520px;overflow:auto"></div>
+   </div>
+   <div class="card"><h2>What the door does</h2>
+    <label>which beans get REMOVED (door CLOSED)<select id="calRemove" onchange="applyThr()"><option value="white">white beans</option><option value="black">black beans</option></select></label>
+    <div class="hint">The other colour keeps the door OPEN. The door holds its side until a bean of the other colour comes.</div>
+    <div class="kv" id="calKv"></div>
+   </div>
+  </div>
+ </div>
+</section>
+
 <section class="tab" data-tab="Line">
  <div class="grid">
   <div class="card"><h2>Closed loop</h2>
@@ -110,6 +215,9 @@ td.mono{font-family:var(--mono);font-size:.8rem}
    <div class="kv" id="lineKv"></div>
   </div>
   <div class="card"><h2>Tuning (live, saved to config.json)</h2>
+   <label>trigger<select id="trigOn" onchange="setCfg('trigger_on',this.value)"><option value="seen">anything entering the zone, on first sight</option><option value="verdict">a fully visible object after classification</option></select></label>
+   <label>door policy<select id="doorPolicy" onchange="setCfg('door_policy',this.value)"><option value="state">follow the verdict: hold the last side, move only when a bean differs</option><option value="pulse">pulse: act, wait dwell, return to rest</option></select></label>
+   <label>when it acts on a bean the door goes to<select id="actPos" onchange="setCfg('action_position',this.value)"><option value="closed">CLOSED (rest = OPEN)</option><option value="open">OPEN (rest = CLOSED)</option></select></label>
    <label>door moves for<select id="actOn" onchange="setCfg('act_on',this.value)"><option value="all">every bean (bring-up)</option><option value="suspect">suspect beans only (sorting)</option></select></label>
    <label>trigger point: judge the bean once it has crossed this fraction of the zone <b id="trigV"></b><input id="trig" type="range" min="0" max="0.95" step="0.05" oninput="trigV.textContent=this.value" onchange="setCfg('camera.trigger_frac',+this.value)"></label>
    <label>door timing<select id="tMode" onchange="setCfg('timing.mode',this.value)"><option value="fixed">fixed delay after the verdict</option><option value="model">chute kinematics model (timing.py)</option></select></label>
@@ -132,8 +240,8 @@ td.mono{font-family:var(--mono);font-size:.8rem}
 </main>
 <script>
 const $=id=>document.getElementById(id);
-const TABS=['Overview','Cameras','Motors','Classifier','Line','Log'];let tab=localStorage.getItem('tab')||'Overview';let S=null;let beltSp=0,timer=null,swT={};
-function showTab(t){tab=t;localStorage.setItem('tab',t);document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.dataset.tab===t));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.textContent===t));}
+const TABS=['Door','Calibrate','Line','Cameras','Classifier','Overview','Log'];let tab=localStorage.getItem('tab')||'Door';let S=null;let beltSp=0,timer=null,swT={};
+function showTab(t){tab=t;localStorage.setItem('tab',t);setTimeout(loadGallery,50);document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.dataset.tab===t));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.textContent===t));}
 $('nav').innerHTML=TABS.map(t=>`<button onclick="showTab('${t}')">${t}</button>`).join('');showTab(tab);
 async function postJSON(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});const j=await r.json();if(!j.ok)toast('error: '+j.error);return j;}
 function toast(m){$('pServer').textContent=m;$('pServer').className='pill bad';setTimeout(refresh,1500);}
@@ -152,8 +260,61 @@ async function classifyNow(){const j=await postJSON('/api/classify_now',{});if(!
 async function sample(l){const j=await postJSON('/api/sample',{label:l});if(j.ok){$('clfNow').textContent='saved '+j.path;refresh();}}
 function snapshot(){window.open('/snapshot.jpg?'+Date.now());}
 function sw(k){swT[k]=performance.now()/1000;const T=S?.cfg?.timing||{};let out=[];if(swT.top&&swT.zone)out.push(`top→zone ${(swT.zone-swT.top).toFixed(2)} s`);if(swT.zone&&swT.door){const dt=swT.door-swT.zone;const cm=T.door_from_top_cm[0]-T.zone_from_top_cm[0];const v=cm/dt;out.push(`zone→door ${dt.toFixed(2)} s = ${v.toFixed(1)} cm/s`);setCfg('timing.bean_speed_cm_s',+v.toFixed(1));swT={};}$('swOut').textContent=out.join(' · ')||`marked ${k}`;}
-document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;if(e.code==='Space'||e.key==='Escape'){e.preventDefault();setBelt(0);gate('flush');}
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;if(e.code==='Space'||e.key==='Escape'){e.preventDefault();door('stop');}else if(e.key==='o'){door('open');}else if(e.key==='c'){door('close');}
  else if(e.key==='g')sample('good');else if(e.key==='d')sample('defect');else if(e.key==='f')sample('foreign');});
+
+// ---- calibration tab
+async function loadGallery(){if(tab!=='Calibrate')return;try{const j=await (await fetch('/api/captures')).json();const items=j.items||[];
+ $('gallery').innerHTML=items.map(it=>`<div class="card" style="padding:8px;gap:6px;border-color:${it.label==='white'?'#e8edf2':it.label==='black'?'#7aa7ff':'var(--line)'}">
+  <img src="/captures/${it.stem}.png" style="width:100%;border-radius:6px;background:#000" onclick="window.open('/captures/${it.stem}.png')">
+  <div class="hint" style="font-family:var(--mono)">core ${(+it.dark_core).toFixed(3)} · grey ${Math.round(it.gray)}<br>said: ${it.verdict}${it.label?' · <b>you: '+it.label+'</b>':''}</div>
+  <div class="row" style="gap:4px"><button class="sm" style="background:#e8edf2;color:#111;flex:1" onclick="labelCap('${it.stem}','white')">WHITE</button><button class="sm" style="background:#222;color:#eee;border:1px solid #555;flex:1" onclick="labelCap('${it.stem}','black')">BLACK</button><button class="sm" title="clear label" onclick="labelCap('${it.stem}','')">✕</button><button class="sm stop" title="delete this example" onclick="delCap('${it.stem}')">🗑</button></div></div>`).join('')||'<span class="hint">no beans judged yet</span>';
+ const w=items.filter(i=>i.label==='white').length,b=items.filter(i=>i.label==='black').length;$('galHint').textContent=`${items.length} beans photographed · labelled: ${w} white, ${b} black · white threshold now ${S?.cfg?.classifier?.color_white_max_dark_frac}`;}catch(e){}}
+async function delCap(stem,all){await postJSON('/api/delete_capture',{stem:all?'all':stem,all:!!all});loadGallery();}
+async function labelCap(stem,label){await postJSON('/api/label',{stem,label});loadGallery();}
+async function thrFromLabels(){const j=await postJSON('/api/threshold_from_labels',{});if(j.ok){alert(`threshold set to ${j.threshold}\nwhite beans max core ${j.white_max.toFixed(3)} · black beans min core ${j.black_min.toFixed(3)}\n${j.separable?'clean separation':'WARNING: classes overlap, label more or improve lighting'}`);refresh();loadGallery();}}
+setInterval(loadGallery,2500);
+
+let calSamples={white:[],black:[]};try{calSamples=JSON.parse(localStorage.getItem('calSamples'))||calSamples;}catch(e){}
+function saveCal(){try{localStorage.setItem('calSamples',JSON.stringify(calSamples));}catch(e){}}
+let calLast=null;
+async function calPoll(){if(tab!=='Calibrate')return;try{const j=await postJSON('/api/classify_now',{});const r=j.results||[];calLast=r;
+ $('calLive').textContent=r.length===0?'no object in the zone':r.map(x=>`object at (${x.blob.u},${x.blob.v}) grey ${(+x.blob.features.mean_gray).toFixed(0)} · ${(+x.blob.features.major_mm).toFixed(1)} mm${x.blob.partial?' · partial (touching the zone edge)':''} → ${x.verdict.suspect?'REMOVE (closed)':'keep (open)'}`).join('\n');}catch(e){}}
+setInterval(calPoll,900);
+async function teach(cls){if(!calLast||!calLast.length){toast('no object in the zone');return;}const whole=calLast.filter(x=>!x.blob.partial);const x=(whole.length?whole:calLast)[0];calSamples[cls].push(+x.blob.features.mean_gray);saveCal();paintCal();postJSON('/api/sample',{label:cls});}
+function thrAuto(){const w=calSamples.white,b=calSamples.black;if(!w.length||!b.length)return null;const lo=Math.max(...b),hi=Math.min(...w);return Math.round((lo+hi)/2);}
+function paintCal(){$('nWhite').textContent=calSamples.white.length;$('nBlack').textContent=calSamples.black.length;const t=thrAuto();if(t!==null&&document.activeElement!==$('calThr'))$('calThr').value=t;
+ const W=600,H=110,x=g=>10+g/255*(W-20);let out=`<defs><linearGradient id="g"><stop offset="0" stop-color="#111"/><stop offset="1" stop-color="#fff"/></linearGradient></defs><rect x="10" y="40" width="${W-20}" height="22" fill="url(#g)" rx="4"/>`;
+ for(const g of calSamples.black)out+=`<circle cx="${x(g)}" cy="30" r="6" fill="#111" stroke="#7aa7ff" stroke-width="2"/>`;
+ for(const g of calSamples.white)out+=`<circle cx="${x(g)}" cy="30" r="6" fill="#fff" stroke="#7aa7ff" stroke-width="2"/>`;
+ if(calLast&&calLast.length){const g=+calLast[0].blob.features.mean_gray;out+=`<polygon points="${x(g)},64 ${x(g)-7},76 ${x(g)+7},76" fill="#f2a93b"/><text x="${x(g)}" y="92" fill="#f2a93b" font-size="12" text-anchor="middle" font-family="Menlo,monospace">now ${g.toFixed(0)}</text>`;}
+ const cur=S?.cfg?.classifier?.rules;if(cur){const thr=$('calRemove').value==='white'?cur.max_mean_gray:cur.min_mean_gray;if(thr>0&&thr<255){out+=`<line x1="${x(thr)}" y1="20" x2="${x(thr)}" y2="66" stroke="#e53935" stroke-width="3"/><text x="${x(thr)}" y="14" fill="#e53935" font-size="12" text-anchor="middle" font-family="Menlo,monospace">threshold ${thr}</text>`;}}
+ const bl=calSamples.black.length?Math.max(...calSamples.black):null,wh=calSamples.white.length?Math.min(...calSamples.white):null;
+ $('calThrHint').textContent=(bl!==null&&wh!==null)?(wh-bl>10?`gap ${bl} … ${wh}: clear separation`:`gap ${bl} … ${wh}: too close, add light / change camera exposure`):'sample both colours to get a suggestion';
+ $('calScale').innerHTML=out;}
+async function applyThr(){const thr=+$('calThr').value;if(!(thr>0))return;const rules=Object.assign({},S.cfg.classifier.rules);if($('calRemove').value==='white'){rules.max_mean_gray=thr;rules.min_mean_gray=0;}else{rules.min_mean_gray=thr;rules.max_mean_gray=255;}
+ await postJSON('/api/config',{path:'classifier.rules',value:rules});await postJSON('/api/config',{path:'action_position',value:'closed'});await postJSON('/api/config',{path:'door_policy',value:'state'});await postJSON('/api/config',{path:'trigger_on',value:'verdict'});await postJSON('/api/line',{action:'reset'});refresh();}
+
+// door: two concepts
+const tot={open:0,close:0};function paintTot(){$('totOpen').textContent=tot.open;$('totClose').textContent=tot.close;}
+async function nudge(t){const ms=+$('nudgeMs').value;const j=await postJSON('/api/door',{action:'nudge',towards:t,ms});if(j.ok){tot[t]+=ms;paintTot();refresh();}}
+function useTotal(t){const ms=Math.max(20,Math.round(tot[t]*1.2/5)*5);setCfg(t==='open'?'door_d6_open_ms':'door_d6_close_ms',ms);}
+async function door(a,force){const j=await postJSON('/api/door',{action:a,force:!!force});if(j.ok)refresh();}
+async function demoCycle(){await door('open',true);await new Promise(r=>setTimeout(r,900));await door('close',true);await new Promise(r=>setTimeout(r,Math.max(900,(S?.cfg?.gate?.default_dwell_s||1)*1000)));await door('open',true);}
+function nudgeCfg(path,d){const cur=path.split('.').reduce((o,k)=>o[k],S.cfg);setCfg(path,Math.max(10,cur+d));}
+// door calibration dial
+function c_pos(S){const rep=S.modules?.arduino?.pos;const chan={base:0,shoulder:1,elbow:2}[S.cfg.gate.channel]??0;return rep?rep[chan]:null;}
+let jogA=90;function jogTo(a){a=Math.max(0,Math.min(180,Math.round(a)));jogA=a;const h=S?.cfg?.gate?.hold_deg||[90,75];postJSON('/api/cmd',{line:`S ${a} ${h[0]} ${h[1]}`}).then(refresh);}
+function setPos(which,a){a=Math.max(0,Math.min(180,Math.round(a)));jogTo(a);setCfg(which==='flush'?'gate.flush_deg':'gate.open_deg',a);}
+function nudgePos(which,d){setPos(which,(which==='flush'?S.cfg.gate.flush_deg:S.cfg.gate.open_deg)+d);}
+async function swingTest(){const g=S.cfg.gate;jogTo(g.flush_deg);await new Promise(r=>setTimeout(r,700));jogTo(g.open_deg);await new Promise(r=>setTimeout(r,Math.max(700,g.default_dwell_s*1000)));jogTo(g.flush_deg);}
+function dialDraw(){const svg=$('dial');if(!svg||!S)return;const cx=200,cy=210,R=170;const P=a=>{const t=Math.PI*(1-a/180);return[cx+R*Math.cos(t),cy-R*Math.sin(t)];};
+ let out=`<path d="M${cx-R},${cy} A${R},${R} 0 0 1 ${cx+R},${cy}" fill="none" stroke="#273039" stroke-width="18"/>`;
+ for(let a=0;a<=180;a+=15){const [x1,y1]=P(a);const t=Math.PI*(1-a/180);const x2=cx+(R-22)*Math.cos(t),y2=cy-(R-22)*Math.sin(t);out+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#8b98a5" stroke-width="${a%45?1:2}"/>`;if(a%45===0){const x3=cx+(R+22)*Math.cos(t),y3=cy-(R+22)*Math.sin(t);out+=`<text x="${x3}" y="${y3+4}" fill="#8b98a5" font-size="12" text-anchor="middle" font-family="Menlo,monospace">${a}°</text>`;}}
+ const mark=(a,col,lab)=>{const [x,y]=P(a);return`<circle cx="${x}" cy="${y}" r="9" fill="${col}"/><text x="${x}" y="${y-14}" fill="${col}" font-size="12" text-anchor="middle" font-family="Menlo,monospace">${lab} ${a}°</text>`;};
+ out+=mark(S.cfg.gate.flush_deg,'#1db954','CLOSED')+mark(S.cfg.gate.open_deg,'#f2a93b','OPEN');
+ const rep=S.modules?.arduino?.pos;const chan={base:0,shoulder:1,elbow:2}[S.cfg.gate.channel]??0;if(rep){const [x,y]=P(rep[chan]);out+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#e8edf2" stroke-width="3"/><text x="${cx}" y="${cy-20}" fill="#e8edf2" font-size="16" text-anchor="middle" font-family="Menlo,monospace">${rep[chan]}°</text>`;}
+ out+=`<circle cx="${cx}" cy="${cy}" r="6" fill="#e8edf2"/>`;svg.innerHTML=out;}
 // ROI editor
 const img=$('stream'),cv=$('roiCanvas');let drag=null;
 function toNat(e){const r=cv.getBoundingClientRect();const nw=S?.modules?.camera?.resolution?.[0]||img.naturalWidth||1280,nh=S?.modules?.camera?.resolution?.[1]||img.naturalHeight||720;return[Math.round((e.clientX-r.left)/r.width*nw),Math.round((e.clientY-r.top)/r.height*nh)];}
@@ -174,13 +335,13 @@ function render(){const m=S.modules,c=S.cfg,l=S.line;
  kv($('camKv'),m.camera);$('zoneTxt').textContent=JSON.stringify(c.camera.zone);setIf('ppm',c.camera.px_per_mm);$('ppmV').textContent=c.camera.px_per_mm;setIf('flow',c.camera.flow_axis);setIf('camBackend',c.camera.backend);drawRoi(null,false);
  $('beltV').textContent=S.belt==0?'stopped':(S.belt>0?'forward ':'reverse ')+Math.abs(S.belt)+'%';
  const dry=l.dry_run;for(const id of['dryBanner','dryBanner2']){$(id).className='banner '+(dry?'dry':'live');$(id).textContent=dry?'DRY RUN: gate commands are logged, the servo does not move':'LIVE: the door servo moves on every suspect verdict and gate button';}
- setIf('gFlush',c.gate.flush_deg);setIf('gOpen',c.gate.open_deg);setIf('gDwell',c.gate.default_dwell_s);kv($('gateKv'),m.gate);kv($('ardKv'),m.arduino);
+ const dp=S.modules?.arduino?.door_pos||'—';$('doorPos').textContent=dp;$('doorPos').style.color=dp==='OPEN'?'var(--ok)':dp==='CLOSED'?'var(--bad)':'var(--mut)';$('btnOpen').style.opacity=dp==='OPEN'?.45:1;$('btnClose').style.opacity=dp==='CLOSED'?.45:1;setIf('oMs',c.door_d6_open_ms);$('oMsV').textContent=c.door_d6_open_ms+' ms';setIf('cMs',c.door_d6_close_ms);$('cMsV').textContent=c.door_d6_close_ms+' ms';$('d6SpeedV').textContent=c.door_d6_speed+' %';setIf('d6Trim',c.door_d6_trim);setIf('d6Mode',c.door_d6_mode);$('posAngles').style.display=c.door_d6_mode==='positional'?'flex':'none';setIf('aOpen',c.gate.open_deg);setIf('aClose',c.gate.flush_deg);$('d6TrimV').textContent=c.door_d6_trim;setIf('dDwell',c.gate.default_dwell_s);kv($('doorKv'),{pulse_timing:S.modules?.arduino?.pulse_timing,last_pulse:(S.log.slice().reverse().find(l=>l.includes('door→D6'))||'').split(' ').slice(1).join(' '),pulses_sent:S.modules?.arduino?.translated,link_ok:S.modules?.arduino?.ok,dry_run_loop:S.line.dry_run,loop:S.line.enabled?'SORTING':'stopped'}); if($('dial'))dialDraw();setIf('d6Speed',c.door_d6_speed);setIf('d6Open',c.door_d6_open_ms);setIf('d6Close',c.door_d6_close_ms);setIf('d6Dir',c.door_d6_dir);if($('closedS')){setIf('closedS',c.gate.flush_deg);setIf('closedN',c.gate.flush_deg);$('closedV').textContent=c.gate.flush_deg+'°';setIf('openS',c.gate.open_deg);setIf('openN',c.gate.open_deg);$('openV').textContent=c.gate.open_deg+'°';}setIf('gFlush',c.gate.flush_deg);setIf('gOpen',c.gate.open_deg);setIf('gDwell',c.gate.default_dwell_s);kv($('gateKv'),m.gate);kv($('ardKv'),m.arduino);
  kv($('clfKv'),m.classifier,['rules']);kv($('detKv'),m.detector,['features']);setIf('thr',c.classifier.suspect_threshold);$('thrV').textContent=c.classifier.suspect_threshold;setIf('clfBackend',c.classifier.backend);
  $('dsCounts').textContent=Object.entries(l.datasets||{}).map(([k,v])=>`${k}: ${v}`).join(' · ')||'no samples yet';
  if(document.activeElement?.closest('#rules')==null)$('rules').innerHTML=Object.entries(c.classifier.rules).map(([k,v])=>`<label>${k}<input type="number" step="0.05" value="${v}" onchange="setCfg('classifier.rules',Object.assign({},S.cfg.classifier.rules,{'${k}':+this.value}))"></label>`).join('');
  $('cBeans').textContent=l.counters.beans;$('cGood').textContent=l.counters.good;$('cSus').textContent=l.counters.suspect;$('cGate').textContent=l.counters.gate_pulses;$('cLost').textContent=l.counters.lost;$('cErr').textContent=l.counters.errors;
- kv($('lineKv'),{state:l.state,enabled:l.enabled,zone:JSON.stringify(l.zone),last:l.last_verdict?`${l.last_verdict.label} p=${l.last_verdict.p_defect.toFixed(2)} — ${l.last_verdict.reason}`:'—',zone_to_door_s:c.timing.zone_to_door_s,gate_state:m.gate.state});
- setIf('tSpeed',c.timing.bean_speed_cm_s);setIf('tLead',c.timing.door_lead_s);setIf('actOn',c.act_on);setIf('trig',c.camera.trigger_frac);$('trigV').textContent=c.camera.trigger_frac;setIf('tMode',c.timing.mode);setIf('tFixed',c.timing.fixed_delay_s);setIf('tDwell',c.gate.default_dwell_s);setIf('tLost',c.lost_after_s);setIf('vGray',c.vision.bean_gray_max);setIf('vMin',c.vision.min_area_px);setIf('vMax',c.vision.max_area_px);
+ kv($('lineKv'),{door_side:l.door_side,policy:l.door_policy,state:l.state,enabled:l.enabled,zone:JSON.stringify(l.zone),last:l.last_verdict?`${l.last_verdict.label} p=${l.last_verdict.p_defect.toFixed(2)} — ${l.last_verdict.reason}`:'—',zone_to_door_s:c.timing.zone_to_door_s,gate_state:m.gate.state});
+ setIf('tSpeed',c.timing.bean_speed_cm_s);setIf('tLead',c.timing.door_lead_s);setIf('actOn',c.act_on);setIf('actPos',c.action_position);setIf('doorPolicy',c.door_policy);setIf('trigOn',c.trigger_on);setIf('trig',c.camera.trigger_frac);$('trigV').textContent=c.camera.trigger_frac;setIf('tMode',c.timing.mode);setIf('tFixed',c.timing.fixed_delay_s);setIf('tDwell',c.gate.default_dwell_s);setIf('tLost',c.lost_after_s);setIf('vGray',c.vision.bean_gray_max);setIf('vMin',c.vision.min_area_px);setIf('vMax',c.vision.max_area_px);
  const t0=S.events.length?S.events[0].t:0;$('events').innerHTML=S.events.slice().reverse().map(e=>`<div class="ev ${e.kind} ${e.suspect?'suspect':''}"><span>+${(e.t-t0).toFixed(2)}s</span><span class="k">${e.kind}</span><span>${Object.entries(e).filter(([k])=>!['t','kind'].includes(k)).map(([k,v])=>`${k}=${v}`).join(' ')}</span></div>`).join('');
  $('log').textContent=S.log.slice().reverse().join('\n');}
 async function refresh(){try{const r=await fetch('/api/state');S=await r.json();render();}catch(e){$('pServer').textContent='panel unreachable';$('pServer').className='pill bad';}}

@@ -1,3 +1,8 @@
+import * as THREE from 'three';
+import {OrbitControls} from '/vendor/OrbitControls.js';
+import {RoomEnvironment} from '/vendor/RoomEnvironment.js';
+import {GLTFLoader} from '/assets/vendor/loaders/GLTFLoader.js';
+
 const $ = id => document.getElementById(id);
 const canvas = $('scene');
 const ctx = canvas.getContext('2d');
@@ -16,7 +21,7 @@ let heartbeatSeq = null;
 let heartbeatSeenAt = null;
 let staleConnection = false;
 const selectedEvents = new Map();
-const measurements = {fps: null, acknowledgment_ms: null, outcome_wall_s: null, pose_hz: null};
+const measurements = {fps: null, acknowledgment_ms: null, outcome_wall_s: null, pose_hz: null, webgl: null};
 window.coffeeMeasurements = measurements;
 const HEARTBEAT_IDLE_MS = 4500;
 const MAX_CLIENT_REQUESTS = 64;
@@ -72,6 +77,7 @@ function connect() {
       if (shownSession && packet.session_id && shownSession !== packet.session_id) {
         heartbeatSeq = heartbeatSeenAt = null;
         invalidatePendingRequests();
+        resetPoses();
       }
       if (packet.session_id) shownSession = packet.session_id;
       const nextHeartbeat = Number(packet.heartbeat_seq);
@@ -85,6 +91,7 @@ function connect() {
       previousPacket = performance.now();
       state = packet;
       window.coffeeState = state;
+      ingestPoses(packet);
       update();
       // Retry each retained command after a new connection or an acknowledgment timeout.
       if (pendingRequest() && ['ready', 'running'].includes(state.status)) {
@@ -161,8 +168,8 @@ $('restart').onclick = async () => {
   }
 };
 
-$('inject').onclick = () => {
-  if (!state || restartPending || socket?.readyState !== WebSocket.OPEN) return;
+function injectStone() {
+  if (!state || restartPending || socket?.readyState !== WebSocket.OPEN || $('inject').disabled) return;
   for (const [commandId, request] of requests) {
     if (requests.size < MAX_CLIENT_REQUESTS) break;
     if (request.acknowledged || request.invalidated) requests.delete(commandId);
@@ -198,7 +205,8 @@ $('inject').onclick = () => {
   updateLatestEvidence();
   socket.send(JSON.stringify(payload));
   update();
-};
+}
+$('inject').onclick = injectStone;
 
 function updateLatestEvidence() {
   const request = latestRequest();
@@ -299,6 +307,12 @@ function updateScoreboard() {
   $('score-versions').textContent = `Score epoch ${scores.score_epoch_id?.slice(0, 8) || 'unavailable'} · Source ${versions.source_revision?.slice(0, 7) || 'unavailable'} · Model ${versions.model?.slice(0, 12) || 'unavailable'} · Policy ${versions.policy?.slice(0, 12) || 'unavailable'}`;
 }
 
+function setMetric(id, text) {
+  $(id).textContent = text;
+  const mirror = document.getElementById(`diag-${id}`);
+  if (mirror) mirror.textContent = text;
+}
+
 function update() {
   if (!state) return;
   const status = state.status;
@@ -321,11 +335,12 @@ function update() {
     ? 'The conveyor runs continuously. Injection adds one manual object to the shared stream and does not change feed scores.'
     : 'The first injection starts the conveyor. Restart resets the shared session for all browsers.';
   if (state.error) $('error').textContent = state.error;
-  $('sim-time').textContent = `${(state.sim_time_s || 0).toFixed(2)} s`;
-  $('engine-rate').textContent = state.engine_rate ? `${state.engine_rate.toFixed(2)}×` : 'Waiting';
-  $('admitted').textContent = `${(state.admitted_rate || 0).toFixed(0)} /s`;
+  setMetric('sim-time', `${(state.sim_time_s || 0).toFixed(2)} s`);
+  setMetric('engine-rate', state.engine_rate ? `${state.engine_rate.toFixed(2)}×` : 'Waiting');
+  setMetric('admitted', `${(state.admitted_rate || 0).toFixed(0)} /s`);
   const objects = state.objects || [];
-  $('active').textContent = objects.filter(o => o.active).length;
+  setMetric('active', String(objects.filter(o => o.active).length));
+  $('pose-hz').textContent = measurements.pose_hz ? `${measurements.pose_hz.toFixed(1)} Hz` : 'Waiting';
   updateScoreboard();
   updateLatestEvidence();
   const scoreVersions = state.rolling_scores?.versions || {};
@@ -350,14 +365,401 @@ function update() {
     : `Requested feed ${state.requested_rate || 500}/s. Session limit ${state.limits?.sim_seconds || 10} simulated seconds or ${state.limits?.wall_seconds || 300} wall seconds. Restart session resets the shared session for all browsers.`;
 }
 
-function draw() {
-  frames++;
+// ---------------------------------------------------------------------------
+// Pose interpolation between 10 Hz packets, shared by the 3D view and the inset.
+// ---------------------------------------------------------------------------
+const poses = new Map();
+let packetAt = null;
+let packetInterval = 100;
+let lastEventId = -1;
+const puffs = [];
+
+function resetPoses() {
+  poses.clear();
+  packetAt = null;
+  lastEventId = -1;
+  puffs.length = 0;
+}
+
+function ingestPoses(packet) {
   const now = performance.now();
-  if (now - fpsStart >= 1000) {
-    measurements.fps = frames * 1000 / (now - fpsStart);
-    $('fps').textContent = measurements.fps.toFixed(0);
-    fpsStart = now; frames = 0;
+  if (packetAt !== null) packetInterval = Math.min(400, Math.max(40, packetInterval * .6 + (now - packetAt) * .4));
+  packetAt = now;
+  const seen = new Set();
+  for (const o of packet.objects || []) {
+    if (!o.pos) continue;
+    seen.add(o.object_id);
+    const entry = poses.get(o.object_id);
+    const q = o.quat || [1, 0, 0, 0];
+    if (entry) {
+      entry.p0 = entry.p1; entry.q0 = entry.q1;
+      entry.p1 = o.pos; entry.q1 = q;
+    } else {
+      poses.set(o.object_id, {p0: o.pos, q0: q, p1: o.pos, q1: q});
+    }
   }
+  for (const id of poses.keys()) if (!seen.has(id)) poses.delete(id);
+  // Air pulses: new valve activations become short puffs at the nozzle bank.
+  const L = packet.layout;
+  let maxId = lastEventId;
+  for (const event of packet.events || []) {
+    if (event.event_id <= lastEventId) continue;
+    maxId = Math.max(maxId, event.event_id);
+    if (event.type !== 'valve_activated' || !L) continue;
+    const target = (packet.objects || []).find(o => event.object_ids?.includes(o.object_id));
+    const y = target?.pos ? target.pos[1] : 0;
+    puffs.push({x: L.ej_x, y, z: L.belt_z + L.ej_z_offset, at: now});
+  }
+  if (lastEventId === -1) puffs.length = 0; // do not replay history on first connect
+  lastEventId = maxId;
+  while (puffs.length > 48) puffs.shift();
+}
+
+const _pa = [0, 0, 0];
+function interpolated(o, alpha, outPos, outQuat) {
+  const entry = poses.get(o.object_id);
+  if (!entry) { outPos.fromArray(o.pos); const q = o.quat || [1,0,0,0]; outQuat.set(q[1], q[2], q[3], q[0]); return; }
+  const a = entry.p0, b = entry.p1;
+  outPos.set(a[0] + (b[0]-a[0])*alpha, a[1] + (b[1]-a[1])*alpha, a[2] + (b[2]-a[2])*alpha);
+  _qa.set(entry.q0[1], entry.q0[2], entry.q0[3], entry.q0[0]).normalize();
+  _qb.set(entry.q1[1], entry.q1[2], entry.q1[3], entry.q1[0]).normalize();
+  outQuat.copy(_qa).slerp(_qb, alpha);
+}
+const _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion();
+
+// ---------------------------------------------------------------------------
+// 3D stage: an engineering-drawing style view built from the engine layout.
+// Conventions borrowed from technical drawings: matte fills, visible edges as
+// thin dark lines, dimension callouts in metres, an orthographic option, a title
+// block with the numbers that define the machine. No image or network assets.
+// ---------------------------------------------------------------------------
+const stage = $('stage');
+const three = {ready: false, machineBuilt: false, ortho: false, labels: true};
+const dimLines = [];
+const annotations = [];
+const clickTargets = [];
+const presets = {
+  overview: {position: [1.55, -2.2, 1.75], target: [-.23, 0, .5]},
+  sorting: {position: [.40, -1.25, .79], target: [.16, 0, .46]},
+  inspection: {position: [-.20, -.15, 1.75], target: [-.32, 0, .6]},
+};
+const INK = '#2b3a33', EDGE = '#3a4a42', EDGE_SOFT = '#8a978f', PAPER = '#f1f2ec';
+
+function initThree() {
+  try {
+    const renderer = new THREE.WebGLRenderer({antialias: true, alpha: false, powerPreference: 'high-performance'});
+    const gl = renderer.getContext(), debug = gl.getExtension('WEBGL_debug_renderer_info');
+    const gpuName = debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : 'unknown';
+    const softwareRenderer = /swiftshader|llvmpipe|software/i.test(gpuName);
+    renderer.setPixelRatio(softwareRenderer ? .6 : Math.min(window.devicePixelRatio, 1.5));
+    renderer.domElement.className = 'webgl';
+    renderer.domElement.setAttribute('aria-label', 'Live 3D coffee sorter; drag to orbit, scroll to zoom, click the belt to inject a stone');
+    stage.prepend(renderer.domElement);
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(PAPER);
+    const persp = new THREE.PerspectiveCamera(35, 1, .005, 30);
+    const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, .005, 30);
+    for (const c of [persp, ortho]) c.up.set(0, 0, 1);
+    const controls = new OrbitControls(persp, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = .08;
+    controls.minDistance = .12;
+    controls.maxDistance = 5;
+    controls.maxPolarAngle = Math.PI * .49;
+    const pmrem = new THREE.PMREMGenerator(renderer); const room = new RoomEnvironment();
+    scene.environment = pmrem.fromScene(room, .04).texture; scene.environmentIntensity = .45; room.dispose(); pmrem.dispose();
+    scene.add(new THREE.HemisphereLight('#ffffff', '#b9bfb4', 1.35));
+    const key = new THREE.DirectionalLight('#ffffff', 1.4); key.position.set(-1.5, -2.5, 4); scene.add(key);
+    const fill = new THREE.DirectionalLight('#ffffff', .5); fill.position.set(1.5, 2, 2); scene.add(fill);
+    // 100 mm grid on the floor, 1 m major lines.
+    const grid = new THREE.GridHelper(6, 60, '#b5bcb3', '#dfe3dc'); grid.rotation.x = Math.PI / 2; grid.position.z = .001; scene.add(grid);
+    const major = new THREE.GridHelper(6, 6, '#9aa39a', '#9aa39a'); major.rotation.x = Math.PI / 2; major.position.z = .0015; scene.add(major);
+    Object.assign(three, {renderer, scene, persp, ortho, camera: persp, controls, gpuName});
+    function resize() {
+      const w = stage.clientWidth, h = stage.clientHeight;
+      renderer.setSize(w, h);
+      persp.aspect = w / h;
+      persp.fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(35) / 2) * Math.max(1, 1.2 / persp.aspect)));
+      persp.updateProjectionMatrix();
+      const half = 1.05 * Math.max(1, 1.2 / (w / h));
+      ortho.left = -half * (w / h); ortho.right = half * (w / h); ortho.top = half; ortho.bottom = -half;
+      ortho.updateProjectionMatrix();
+    }
+    new ResizeObserver(resize).observe(stage); resize();
+    document.querySelectorAll('[data-camera]').forEach(b => b.onclick = () => setCamera(b.dataset.camera));
+    $('projection').onclick = () => setProjection(!three.ortho);
+    setCamera('overview');
+    // Click on the belt or table = inject a stone. A drag stays an orbit.
+    const raycaster = new THREE.Raycaster(); const pointer = new THREE.Vector2(); let down = null;
+    renderer.domElement.addEventListener('pointerdown', e => { down = {x: e.clientX, y: e.clientY, t: performance.now()}; });
+    renderer.domElement.addEventListener('pointerup', e => {
+      if (!down) return;
+      const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y), held = performance.now() - down.t; down = null;
+      if (moved > 6 || held > 600 || !clickTargets.length) return;
+      const r = renderer.domElement.getBoundingClientRect();
+      pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      raycaster.setFromCamera(pointer, three.camera);
+      if (raycaster.intersectObjects(clickTargets, false).length) injectStone();
+    });
+    three.ready = true;
+    measurements.webgl = gpuName;
+  } catch (error) {
+    const el = document.createElement('div'); el.id = 'webgl-error'; el.setAttribute('role', 'alert');
+    el.textContent = `The 3D view could not start: ${error.message}. The top and side projections in the corner still follow the engine. Use a current browser with WebGL 2 and hardware acceleration enabled.`;
+    stage.append(el); console.error(error);
+    measurements.webgl = 'unavailable';
+  }
+}
+
+function setCamera(name) {
+  const p = presets[name]; if (!p || !three.camera) return;
+  three.camera.position.fromArray(p.position); three.controls.target.fromArray(p.target); three.controls.update();
+  document.querySelectorAll('[data-camera]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.camera === name)));
+}
+
+function setProjection(ortho) {
+  if (!three.ready) return;
+  const from = three.camera, to = ortho ? three.ortho : three.persp;
+  to.position.copy(from.position); to.quaternion.copy(from.quaternion);
+  if (ortho) to.zoom = Math.max(.3, 2.2 / from.position.distanceTo(three.controls.target)); else to.zoom = 1;
+  to.updateProjectionMatrix();
+  three.camera = to; three.ortho = ortho; three.controls.object = to; three.controls.update();
+  $('projection').setAttribute('aria-pressed', String(ortho));
+  $('projection').textContent = ortho ? 'Ortho' : 'Persp';
+}
+
+const matte = (color, opacity = 1) => new THREE.MeshLambertMaterial(opacity < 1
+  ? {color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide} : {color});
+
+function buildMachine(L) {
+  const {scene} = three;
+  const materials = {
+    steel: matte('#c3cac6'), frame: matte('#55635c'), belt: matte('#5b7fa8'), dark: matte('#3d4a44'),
+    volume: matte('#b9c4bd', .18), accept: matte('#9bbf90', .2), reject: matte('#c99a78', .2),
+  };
+  const edgeMat = new THREE.LineBasicMaterial({color: EDGE}), softEdgeMat = new THREE.LineBasicMaterial({color: EDGE_SOFT});
+  const machineGroup = new THREE.Group(); scene.add(machineGroup);
+  const add = (geometry, material, pos, {rot = null, edges = true, soft = false, click = false} = {}) => {
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(...pos); if (rot) mesh.rotation.set(...rot);
+    machineGroup.add(mesh);
+    if (edges) { const line = new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 20), soft ? softEdgeMat : edgeMat); mesh.add(line); }
+    if (click) clickTargets.push(mesh);
+    return mesh;
+  };
+  const beltX0 = -L.belt_len, beltX1 = 0, beltMid = -L.belt_len / 2;
+  add(new THREE.BoxGeometry(L.belt_len, L.belt_w, .02), materials.belt, [beltMid, 0, L.belt_z - .01], {click: true});
+  for (const x of [beltX0, beltX1]) add(new THREE.CylinderGeometry(.035, .035, L.belt_w + .02, 24), materials.steel, [x, 0, L.belt_z - .035], {soft: true, click: true});
+  add(new THREE.BoxGeometry(L.belt_len + .1, L.belt_w + .08, .05), materials.frame, [beltMid, 0, L.belt_z - .095], {click: true});
+  for (const x of [beltX0 + .05, beltX1 - .05]) for (const y of [-1, 1]) add(new THREE.BoxGeometry(.04, .04, L.belt_z - .12), materials.frame, [x, y * (L.belt_w / 2 + .02), (L.belt_z - .12) / 2], {click: true});
+  for (const y of [-1, 1]) add(new THREE.BoxGeometry(L.belt_len, .01, .035), materials.steel, [beltMid, y * (L.belt_w / 2 + .005), L.belt_z + .017], {click: true});
+  // Feeder hopper over the spawn interval.
+  const feedMid = (L.feed_x[0] + L.feed_x[1]) / 2;
+  add(new THREE.BoxGeometry(L.feed_x[1] - L.feed_x[0] + .06, L.belt_w, .18), materials.volume, [feedMid, 0, L.belt_z + .22], {soft: true});
+  add(new THREE.BoxGeometry(L.feed_x[1] - L.feed_x[0] + .06, L.belt_w + .04, .02), materials.frame, [feedMid, 0, L.belt_z + .32]);
+  for (const y of [-1, 1]) add(new THREE.BoxGeometry(.03, .03, .34), materials.frame, [feedMid, y * (L.belt_w / 2 + .05), L.belt_z + .17]);
+  // Camera bridge and line-scan footprint.
+  add(new THREE.BoxGeometry(.08, L.belt_w + .14, .06), materials.frame, [L.cam_x, 0, L.belt_z + .42]);
+  add(new THREE.BoxGeometry(.05, .09, .06), materials.dark, [L.cam_x, 0, L.belt_z + .36]);
+  for (const y of [-1, 1]) add(new THREE.BoxGeometry(.026, .026, .43), materials.frame, [L.cam_x, y * (L.belt_w / 2 + .048), L.belt_z + .205]);
+  const scan = new THREE.Mesh(new THREE.PlaneGeometry(L.cam_fov, L.belt_w), new THREE.MeshBasicMaterial({color: '#4fb3a0', transparent: true, opacity: .45, depthWrite: false, side: THREE.DoubleSide}));
+  scan.position.set(L.cam_x, 0, L.belt_z + .0008); machineGroup.add(scan);
+  // Ejector manifold with one nozzle per valve.
+  const nozzleGeo = new THREE.CylinderGeometry(.0022, .0015, .016, 8); nozzleGeo.rotateX(Math.PI / 2);
+  const nozzles = new THREE.InstancedMesh(nozzleGeo, materials.dark, L.n_nozzles);
+  const dummy = new THREE.Object3D();
+  for (let i = 0; i < L.n_nozzles; i++) {
+    dummy.position.set(L.ej_x, -L.belt_w / 2 + L.belt_w / L.n_nozzles * (i + .5), L.belt_z + L.ej_z_offset);
+    dummy.updateMatrix(); nozzles.setMatrixAt(i, dummy.matrix);
+  }
+  machineGroup.add(nozzles);
+  add(new THREE.BoxGeometry(.03, L.belt_w + .04, .03), materials.steel, [L.ej_x, 0, L.belt_z + L.ej_z_offset + .022]);
+  for (const y of [-1, 1]) add(new THREE.BoxGeometry(.03, .03, .12), materials.frame, [L.ej_x, y * (L.belt_w / 2 + .035), L.belt_z + .06]);
+  // Splitter plate and the two collection volumes.
+  const splitZ = L.belt_z - L.split_z_drop;
+  add(new THREE.BoxGeometry(.15, L.belt_w + .05, .006), materials.steel, [L.split_x + .075, 0, splitZ]);
+  add(new THREE.BoxGeometry(.37, L.belt_w + .05, .25), materials.reject, [L.split_x - .035, 0, splitZ - .13], {soft: true});
+  add(new THREE.BoxGeometry(.26, L.belt_w + .05, .28), materials.accept, [L.split_x + .28, 0, splitZ - .13], {soft: true});
+  // Dimension callouts (metres), drawn as thin lines with end ticks.
+  const dimMat = new THREE.LineBasicMaterial({color: INK});
+  const dimension = (a, b, text, tick) => {
+    const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), T = new THREE.Vector3(...tick);
+    const pts = [A, B, A.clone().sub(T), A.clone().add(T), B.clone().sub(T), B.clone().add(T)];
+    const line = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), dimMat); line.visible = three.labels; scene.add(line); dimLines.push(line);
+    const el = document.createElement('div'); el.className = 'annotation dim'; el.textContent = text; stage.append(el);
+    annotations.push({el, pos: A.clone().add(B).multiplyScalar(.5)});
+  };
+  const yd = -(L.belt_w / 2 + .16), t = [0, .02, 0], tz = [.02, 0, 0];
+  dimension([beltX0, yd, L.belt_z], [beltX1, yd, L.belt_z], `BELT ${L.belt_len.toFixed(2)} m · ${L.belt_speed.toFixed(1)} m/s`, t);
+  dimension([beltX0 - .16, -L.belt_w / 2, L.belt_z], [beltX0 - .16, L.belt_w / 2, L.belt_z], `${L.belt_w.toFixed(2)} m`, tz);
+  dimension([beltX0 - .16, yd, 0], [beltX0 - .16, yd, L.belt_z], `H ${L.belt_z.toFixed(2)} m`, t);
+  dimension([L.cam_x, yd + .06, L.belt_z], [L.ej_x, yd + .06, L.belt_z], `CAM→JETS ${(L.ej_x - L.cam_x).toFixed(2)} m`, t);
+  dimension([L.split_x - .06, yd, L.belt_z], [L.split_x - .06, yd, splitZ], `DROP ${L.split_z_drop.toFixed(3)} m`, t);
+  dimension([L.ej_x, L.belt_w / 2 + .09, L.belt_z + L.ej_z_offset], [L.ej_x, L.belt_w / 2 + .09, L.belt_z], `${L.n_nozzles} NOZZLES · PITCH ${(L.belt_w / L.n_nozzles * 1000).toFixed(1)} mm`, tz);
+  // Object pools: one instanced draw call per shape, per-instance color from the engine.
+  const beanGeo = new THREE.SphereGeometry(1, 12, 8);
+  const pos = beanGeo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const crease = z > 0 ? .2 * Math.exp(-y * y * 120) * (1 - x * x) : 0;
+    pos.setXYZ(i, x, y, z - crease);
+  }
+  beanGeo.computeVertexNormals();
+  const geometries = {
+    ellipsoid: beanGeo,
+    half: new THREE.SphereGeometry(1, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2),
+    box: new THREE.BoxGeometry(2, 2, 2),
+    capsule: new THREE.CapsuleGeometry(1, 2, 4, 8),
+  };
+  const capacity = {ellipsoid: (L.n_ellipsoid || 400) + 64, half: (L.n_half || 48) + 16, box: (L.n_box || 20) + 16, capsule: (L.n_capsule || 20) + 16};
+  const pools = {};
+  for (const [shape, geometry] of Object.entries(geometries)) {
+    const mesh = new THREE.InstancedMesh(geometry, new THREE.MeshLambertMaterial({color: '#ffffff'}), capacity[shape]);
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); mesh.frustumCulled = false; mesh.count = 0; mesh.userData.textured = false; scene.add(mesh);
+    pools[shape] = mesh;
+  }
+  // Air pulses as short-lived translucent cones under the nozzle bank; a ring follows the injected object.
+  const puffGeo = new THREE.ConeGeometry(1, 1, 10, 1, true); puffGeo.translate(0, -.5, 0); puffGeo.rotateX(Math.PI / 2);
+  const puffMat = new THREE.MeshBasicMaterial({color: '#3aa0c8', transparent: true, opacity: .35, depthWrite: false, side: THREE.DoubleSide});
+  const puffMesh = new THREE.InstancedMesh(puffGeo, puffMat, 48); puffMesh.frustumCulled = false; puffMesh.count = 0; scene.add(puffMesh);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(.016, .0018, 8, 32), new THREE.MeshBasicMaterial({color: '#d8781c'}));
+  ring.visible = false; scene.add(ring);
+  const ring2 = ring.clone(); ring2.rotation.x = Math.PI / 2; scene.add(ring2);
+  for (const [text, p] of [
+    ['1 FEED', [feedMid, 0, L.belt_z + .42]], ['2 INSPECT', [L.cam_x, 0, L.belt_z + .52]],
+    ['3 AIR JETS', [L.ej_x, .25, L.belt_z + .15]], ['ACCEPT', [L.split_x + .28, -.28, splitZ + .05]], ['REJECT', [L.split_x - .04, -.28, splitZ - .24]],
+  ]) {
+    const el = document.createElement('div'); el.className = 'annotation'; el.textContent = text; stage.append(el);
+    annotations.push({el, pos: new THREE.Vector3(...p)});
+  }
+  $('title-rows').replaceChildren(...[
+    ['COFFEE SORTER', 'live engine, 3D from layout'],
+    ['BELT', `${L.belt_len.toFixed(2)} × ${L.belt_w.toFixed(2)} m at H ${L.belt_z.toFixed(2)} m, ${L.belt_speed.toFixed(1)} m/s`],
+    ['FEED', `x ${L.feed_x[0].toFixed(2)}…${L.feed_x[1].toFixed(2)} m, ${state.requested_rate || 500} obj/s`],
+    ['CAMERA', `x ${L.cam_x.toFixed(2)} m, strip ${(L.cam_fov * 1000).toFixed(0)} mm, ${L.cam_w}×${L.cam_h} px`],
+    ['JETS', `x ${L.ej_x.toFixed(2)} m, ${L.n_nozzles} nozzles, ${(L.ej_z_offset * 1000).toFixed(0)} mm above belt`],
+    ['SPLITTER', `x ${L.split_x.toFixed(2)} m, drop ${(L.split_z_drop * 1000).toFixed(0)} mm`],
+    ['STEP', `${(L.timestep * 1000).toFixed(0)} ms physics · units m · rev ${(state.source_revision || '').slice(0, 7) || 'n/a'}`],
+    ['ASSETS', 'primitives (loading Blender GLBs)'],
+    ['INPUT', 'drag orbit · scroll zoom · click belt = inject · L labels · H panels'],
+  ].map(([k, v]) => { const row = document.createElement('div'); const b = document.createElement('b'); b.textContent = k; row.append(b, document.createTextNode(v)); return row; }));
+  Object.assign(three, {pools, puffMesh, ring, ring2, dummy, machineGroup});
+  three.machineBuilt = true;
+  loadBlenderAssets(L).catch(error => { console.error(error); setAssetsRow(`primitives (Blender GLBs failed: ${error.message})`); });
+}
+
+function setAssetsRow(text) {
+  const row = [...$('title-rows').children].find(r => r.firstChild?.textContent === 'ASSETS');
+  if (row) row.lastChild.textContent = text;
+}
+
+// Blender assets from visual_assets/browser: the machine (scene_machine.py via export_machine.py) and the
+// baked bean LODs. GLB is Y up, so each root/geometry is rotated +90 degrees about X once. Bean geometry is
+// normalised by the nominal semi-axes (regular) or AABB half-extents (broken) so the engine's per-object
+// axes can be applied directly as the instance scale, as RECORDING.md prescribes.
+const NOMINAL_REGULAR = [.0049, .00355, .00255], NOMINAL_BROKEN = [.005, .003591612, .001283763];
+const GOOD_MEAN_RGB = [.50, .60, .47];
+async function loadBlenderAssets(L) {
+  const loader = new GLTFLoader();
+  const {scene} = three;
+  const loaded = [];
+  const machine = await loader.loadAsync('/assets/machine_lod.glb');
+  machine.scene.rotation.x = Math.PI / 2;
+  const meshes = []; machine.scene.traverse(o => { if (o.isMesh) meshes.push(o); });
+  scene.add(machine.scene);
+  scene.remove(three.machineGroup);
+  clickTargets.length = 0; clickTargets.push(...meshes.filter(m => m.visible));
+  loaded.push(`machine ${meshes.length} parts`);
+  // The recorded floor slab is a dark 8 x 6 m box; the drawing keeps the paper grid instead.
+  const box = new THREE.Box3();
+  for (const m of meshes) { box.setFromObject(m); if (box.max.x - box.min.x > 3) m.visible = false; }
+  setAssetsRow(`Blender ${loaded.join(', ')}; beans loading…`);
+  const bean = async kind => {
+    const gltf = await loader.loadAsync(`/assets/bean_${kind}_lod.glb`);
+    gltf.scene.updateMatrixWorld(true);
+    let part = null; gltf.scene.traverse(o => { if (o.isMesh && !part) part = o; });
+    if (!part) throw new Error(`${kind}: no mesh primitive`);
+    const nominal = kind === 'broken' ? NOMINAL_BROKEN : NOMINAL_REGULAR;
+    const geometry = part.geometry.clone().applyMatrix4(part.matrixWorld).rotateX(Math.PI / 2).scale(1 / nominal[0], 1 / nominal[1], 1 / nominal[2]);
+    return {geometry, material: part.material};
+  };
+  const [good, black, broken] = await Promise.all(['good', 'black', 'broken'].map(bean));
+  const swap = (pool, asset) => { pool.geometry.dispose(); pool.material.dispose(); pool.geometry = asset.geometry; pool.material = asset.material; pool.userData.textured = true; };
+  swap(three.pools.ellipsoid, good);
+  swap(three.pools.half, broken);
+  const blackPool = new THREE.InstancedMesh(black.geometry, black.material, 96);
+  blackPool.instanceMatrix.setUsage(THREE.DynamicDrawUsage); blackPool.frustumCulled = false; blackPool.count = 0; blackPool.userData.textured = true;
+  scene.add(blackPool); three.pools.black = blackPool;
+  loaded.push('beans good/black/broken LODs (insect unused: true class not exposed)');
+  setAssetsRow(`Blender ${loaded.join('; ')}`);
+}
+
+const _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _c = new THREE.Color(), _fade = new THREE.Color(PAPER), _proj = new THREE.Vector3();
+
+function render3d(now) {
+  if (!three.ready) return;
+  if (!three.machineBuilt) {
+    if (!state?.layout) return;
+    buildMachine(state.layout);
+  }
+  const {pools, puffMesh, ring, ring2, dummy, camera, controls, renderer, scene} = three;
+  const alpha = packetAt === null ? 1 : THREE.MathUtils.clamp((now - packetAt) / packetInterval, 0, 1);
+  const counts = {ellipsoid: 0, half: 0, box: 0, capsule: 0, black: 0};
+  let ringShown = false;
+  for (const o of state?.objects || []) {
+    if (!o.pos || (!o.active && o.object_id !== selected)) continue;
+    const rgb = o.rgb || [.5, .55, .42];
+    let shape = pools[o.shape] ? o.shape : 'ellipsoid';
+    if (shape === 'ellipsoid' && pools.black && (rgb[0] + rgb[1] + rgb[2]) / 3 < .25) shape = 'black';
+    const mesh = pools[shape];
+    if (counts[shape] >= mesh.instanceMatrix.count) continue;
+    interpolated(o, alpha, _p, _q);
+    dummy.position.copy(_p); dummy.quaternion.copy(_q);
+    const ax = o.axes || [.004, .003, .002];
+    if (shape === 'capsule') dummy.scale.set(ax[1] || .002, ax[1] || .002, ax[0] || .004);
+    else dummy.scale.set(ax[0] || .004, ax[1] || ax[0] || .003, ax[2] || ax[1] || .002);
+    dummy.updateMatrix();
+    const slot = counts[shape]++;
+    mesh.setMatrixAt(slot, dummy.matrix);
+    if (mesh.userData.textured) {
+      // Baked textures carry the colour; keep only the engine's per-object deviation from the mean good bean.
+      if (shape === 'black') _c.setRGB(1, 1, 1);
+      else _c.setRGB(...rgb.slice(0, 3).map((v, i) => THREE.MathUtils.clamp(v / GOOD_MEAN_RGB[i], .55, 1.45)));
+      if (o.outcome) _c.multiplyScalar(.7);
+    } else {
+      _c.setRGB(rgb[0] <= 1 ? rgb[0] : rgb[0] / 255, rgb[1] <= 1 ? rgb[1] : rgb[1] / 255, rgb[2] <= 1 ? rgb[2] : rgb[2] / 255);
+      if (o.outcome) _c.lerp(_fade, .45);
+    }
+    mesh.setColorAt(slot, _c);
+    if (o.object_id === selected) { ring.position.copy(_p); ring2.position.copy(_p); ring.lookAt(camera.position); ringShown = true; }
+  }
+  for (const [shape, mesh] of Object.entries(pools)) {
+    mesh.count = counts[shape] || 0; mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  }
+  ring.visible = ring2.visible = ringShown;
+  let used = 0;
+  for (const puff of puffs) {
+    const age = (now - puff.at) / 1000;
+    if (age > .5 || used >= 48) continue;
+    dummy.position.set(puff.x, puff.y, puff.z); dummy.quaternion.identity();
+    const r = .004 + age * .05, len = .03 + age * .16;
+    dummy.scale.set(r, r, len); dummy.updateMatrix(); puffMesh.setMatrixAt(used++, dummy.matrix);
+  }
+  puffMesh.count = used; puffMesh.instanceMatrix.needsUpdate = true;
+  controls.update();
+  for (const a of annotations) {
+    _proj.copy(a.pos).project(camera);
+    const show = three.labels && _proj.z < 1 && Math.abs(_proj.x) < .95 && Math.abs(_proj.y) < .9;
+    a.el.style.display = show ? 'block' : 'none';
+    if (show) { a.el.style.left = `${(_proj.x * .5 + .5) * stage.clientWidth}px`; a.el.style.top = `${(-_proj.y * .5 + .5) * stage.clientHeight}px`; }
+  }
+  renderer.render(scene, camera);
+}
+
+// ---------------------------------------------------------------------------
+// Bottom-right inset: the original top and side projections.
+// ---------------------------------------------------------------------------
+function drawInset(now) {
   ctx.clearRect(0,0,1250,430);
   const X = x => 100 + (x + 1.1) / 1.6 * 1060;
   const Y = y => 138 + y * 270;
@@ -386,14 +788,16 @@ function draw() {
   ctx.font = '12px Avenir Next, sans-serif';
   ctx.fillStyle = '#466356';ctx.fillText('Accept',X(.36),Z(.56));
   ctx.fillStyle = '#825231';ctx.fillText('Reject',X(.36),Z(.40));
+  const alpha = packetAt === null ? 1 : THREE.MathUtils.clamp((now - packetAt) / packetInterval, 0, 1);
   for (const o of state?.objects || []) {
     if (!o.pos || (!o.active && o.object_id !== selected)) continue;
-    const [x,y,z] = o.pos;
+    interpolated(o, alpha, _p, _q);
+    const x = _p.x, y = _p.y, z = _p.z;
     if (x < -1.2 || x > .55) continue;
     const rgb = o.rgb || [.5,.55,.42];
     const color = `rgb(${rgb.slice(0,3).map(v => Math.round(v <= 1 ? v * 255 : v)).join(',')})`;
     const radius = Math.max(2, (o.axes?.[0] || .004) * 500);
-    const [qw,qx,qy,qz] = o.quat || [1,0,0,0];
+    const qw = _q.w, qx = _q.x, qy = _q.y, qz = _q.z;
     const yaw = Math.atan2(2*(qx*qy+qw*qz),1-2*(qy*qy+qz*qz));
     const pitch = Math.atan2(-2*(qx*qz-qw*qy),1-2*(qy*qy+qz*qz));
     ctx.globalAlpha = o.outcome ? .55 : 1;
@@ -410,7 +814,51 @@ function draw() {
     }
   }
   ctx.globalAlpha = 1;
+}
+
+function draw(now) {
+  frames++;
+  if (now - fpsStart >= 1000) {
+    measurements.fps = frames * 1000 / (now - fpsStart);
+    setMetric('fps', measurements.fps.toFixed(0));
+    fpsStart = now; frames = 0;
+  }
+  drawInset(now);
+  render3d(now);
   requestAnimationFrame(draw);
 }
+
+// Panels collapse toward their screen edge; only the dark tab stays. Collapsed state is a per-viewer convenience.
+function setCollapsed(id, collapsed, persist = true) {
+  const panel = $(id); if (!panel) return;
+  panel.classList.toggle('collapsed', collapsed);
+  panel.querySelector('.edge')?.setAttribute('aria-expanded', String(!collapsed));
+  if (persist) { try { localStorage.setItem(`coffee.panel.${id}`, collapsed ? '1' : '0'); } catch {} }
+}
+function setLabels(on, persist = true) {
+  three.labels = on;
+  for (const line of dimLines) line.visible = on;
+  $('labels').setAttribute('aria-pressed', String(on));
+  if (persist) { try { localStorage.setItem('coffee.labels', on ? '1' : '0'); } catch {} }
+}
+$('labels').onclick = () => setLabels(!three.labels);
+try { setLabels(localStorage.getItem('coffee.labels') !== '0', false); } catch { setLabels(true, false); }
+const PANELS = ['panel-left', 'panel-right', 'title-block', 'inset'];
+document.addEventListener('keydown', event => {
+  if (event.metaKey || event.ctrlKey || event.altKey || $('diagnostics').open) return;
+  if (/^(input|textarea|select|button)$/i.test(event.target.tagName)) return;
+  if (event.key === 'l' || event.key === 'L') setLabels(!three.labels);
+  if (event.key === 'h' || event.key === 'H') {
+    const anyOpen = PANELS.some(id => !$(id).classList.contains('collapsed'));
+    for (const id of PANELS) setCollapsed(id, anyOpen);
+  }
+});
+for (const button of document.querySelectorAll('[data-toggle]')) {
+  const id = button.dataset.toggle;
+  button.onclick = () => setCollapsed(id, !$(id).classList.contains('collapsed'));
+  let stored = null; try { stored = localStorage.getItem(`coffee.panel.${id}`); } catch {}
+  setCollapsed(id, stored === null ? window.innerWidth < 760 : stored === '1', false);
+}
+initThree();
 connect();
 requestAnimationFrame(draw);

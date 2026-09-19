@@ -4,58 +4,129 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Coffee sorter | Live engine</title>
+<script type="importmap">{"imports":{"three":"/vendor/three.module.js"}}</script>
 <style>
-:root{color-scheme:light;--ink:#233445;--paper:#f6f8fa;--blue:#205986;--belt:#24548b;--line:#d9e0e7;--muted:#586b7c;--accent:#b86317}
-*{box-sizing:border-box}html,body{height:100%;overflow:hidden}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.4 "Avenir Next",Avenir,"Segoe UI",sans-serif}main{height:100dvh;max-width:1360px;margin:auto;padding:14px 22px;display:flex;flex-direction:column;min-height:0}header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:10px}h1{font-size:24px;letter-spacing:-.5px;margin:0}p{margin:4px 0;color:var(--muted)}.status{padding:6px 12px;border:1px solid var(--line);border-radius:30px;background:white;white-space:nowrap;font-size:13px}.status::before{content:"";display:inline-block;width:8px;height:8px;background:#8799a8;border-radius:50%;margin-right:8px}.status[data-state=running]::before{background:#307953}.status[data-state=failed]::before{background:#b33632}.workspace{background:white;border:1px solid var(--line);border-radius:12px;overflow:hidden;display:grid;grid-template-rows:auto auto minmax(90px,1fr) auto;flex:1;min-height:0}.toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line)}button{font:inherit;font-weight:600;border:0;border-radius:6px;background:var(--blue);color:white;padding:10px 16px;cursor:pointer;min-height:40px}button:hover{background:#174368}button:disabled{opacity:.5;cursor:default}button:focus-visible,a:focus-visible{outline:3px solid #df9b45;outline-offset:3px}.small{font-size:13px}.actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}.secondary{background:white;color:var(--blue);border:1px solid var(--line)}.secondary:hover{background:#edf3f7}.stage{padding:0 10px;background:#fcfdfe;min-height:0;display:grid;place-items:center}canvas{display:block;width:100%;height:auto;max-height:100%;max-width:100%;aspect-ratio:1250/430}.metrics{display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--line);padding:8px 16px;gap:12px}.metric strong{display:block;font-size:18px;font-weight:500;color:var(--ink)}.metric span{display:block;color:var(--muted);font-size:11px}.details{display:grid;grid-template-columns:1fr 1fr;gap:28px}h2{font-size:18px;margin:0 0 10px}.object{border-left:3px solid var(--accent);padding-left:16px}dl{display:grid;grid-template-columns:135px 1fr;margin:12px 0;font-size:14px;gap:6px 12px}dt{color:var(--muted)}dd{margin:0;overflow-wrap:anywhere}ol{margin:0;padding-left:21px;font-size:14px}li{padding-bottom:7px;color:var(--muted)}footer{margin-top:18px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}footer a{color:var(--blue)}#notice{max-width:70ch}#error{color:#a42b24;overflow-wrap:anywhere}#events{max-height:150px;overflow:auto}#limit-note{font-size:12px;margin-top:8px}#outcome{font-weight:600}.measurement-note{display:none}.diagnostics{border:0;border-radius:10px;box-shadow:0 16px 48px #23344555;width:min(900px,calc(100vw - 28px));max-height:calc(100dvh - 28px);padding:0}.diagnostics::backdrop{background:#23344577}.diagnostics-panel{padding:22px;overflow:auto;max-height:calc(100dvh - 28px)}.diagnostics-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:18px}.diagnostics-head h2{margin:0}
-@media(max-width:760px){main{padding:8px;height:100dvh}header{margin-bottom:7px}header p{display:none}h1{font-size:20px}.status{font-size:11px;padding:5px 8px;white-space:normal;text-align:right}.workspace{grid-template-rows:auto auto minmax(72px,1fr) auto}.toolbar{grid-template-columns:minmax(0,1fr);padding:8px;gap:8px}.toolbar p#mode-note{display:none}.actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));width:100%;gap:6px}button{padding:8px 10px;min-height:36px;font-size:13px}.stage{padding:0 5px}.metrics{grid-template-columns:repeat(5,1fr);gap:4px;padding:6px 8px}.metric strong{font-size:13px}.metric span{font-size:9px;line-height:1.15}.diagnostics-panel{padding:18px}.details{grid-template-columns:1fr;gap:22px}}
-@media(max-height:620px){.latest-card{padding:8px 12px}.latest-card h2{font-size:15px}.card-fields{margin-top:6px}.card-command,.card-error{margin-top:5px}.scoreboard{padding:7px 12px}.score-versions{display:none}.scores{margin-top:6px}.score{padding:6px}.score strong{font-size:16px}.score span,.score small{font-size:10px}}
-</style>
-<style>
-.scoreboard{border-top:1px solid var(--line);padding:9px 16px}.scorehead{display:flex;align-items:baseline;justify-content:space-between;gap:16px}.scorehead strong{font-size:14px}.scorehead span,.score-context,.score-versions{font-size:11px;color:var(--muted)}.scorehead span{min-width:0;overflow-wrap:anywhere;text-align:right}.scores{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:7px}.score{border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:#fcfdfe}.score strong{display:block;font-size:17px;font-weight:500}.score span,.score small{display:block;color:var(--muted);font-size:11px}.score small{margin-top:1px}.score-context{margin:6px 0 2px}.score-versions{margin:0}
-.latest-card{margin:8px 16px 0;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:9px 12px;background:#fffaf3}.latest-card-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px}.latest-card h2{margin:0;font-size:16px}.card-state{font-weight:700;color:#6d481f}.card-fields{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:7px 0 0}.card-field strong,.card-field span{display:block}.card-field strong{font-size:11px;color:var(--muted);font-weight:500}.card-field span{font-size:12px;overflow-wrap:anywhere;line-height:1.25}.card-command,.card-error{font-size:11px;margin:6px 0 0;color:var(--muted);overflow-wrap:anywhere;line-height:1.25}.card-error{color:#a42b24}
-@media(max-width:760px){.scores{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}.scoreboard{padding:7px 8px}.scorehead{gap:8px}.scorehead strong{font-size:12px}.scorehead span{font-size:10px}.score{padding:5px}.score strong{font-size:14px}.score span,.score small{font-size:9px;line-height:1.15}.score-context{margin-top:4px;font-size:10px;line-height:1.2}.score-versions{display:none}.latest-card{margin:6px 8px 0;padding:8px}.latest-card-head{gap:8px}.card-fields{gap:4px}.card-field strong{font-size:9px;line-height:1.15}.card-field span{font-size:10px;line-height:1.15}.card-command,.card-error{font-size:10px;line-height:1.15}}
+:root{color-scheme:light;--ink:#2b3a33;--ink-soft:#5a6a62;--paper:#f1f2ec;--sheet:#f6f6f2;--rule:#3a4a42;--rule-soft:#c9d0cb;--blue:#2a5d8a;--good:#2f6b4a;--bad:#9b3a2a;--accent:#b86317}
+*{box-sizing:border-box}html,body{height:100%;overflow:hidden}body{margin:0;background:var(--paper);color:var(--ink);font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+#stage{position:fixed;inset:0}#stage canvas.webgl{display:block;width:100%;height:100%;touch-action:none}
+#webgl-error{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);max-width:52ch;background:var(--sheet);border:1px solid var(--rule);padding:14px 18px}
+.annotation{position:absolute;pointer-events:none;transform:translate(-50%,-100%);padding:2px 6px;border:1px solid var(--rule);background:#f6f6f2f2;font-size:11px;letter-spacing:.6px;color:var(--ink);white-space:nowrap}
+.annotation::after{content:"";position:absolute;left:50%;top:100%;height:14px;width:1px;background:var(--rule)}
+.annotation.dim{transform:translate(-50%,-50%);border:0;background:#f1f2ecdd;padding:1px 4px;font-size:10.5px;letter-spacing:.3px}.annotation.dim::after{display:none}
+/* Panels: sheets with one dark edge tab. The tab always stays on screen; the body collapses toward its edge. */
+.panel{position:fixed;z-index:3;display:flex;background:var(--sheet);border:1px solid var(--rule);color:var(--ink)}
+.panel .body{padding:8px 10px;overflow:auto;max-height:calc(100dvh - 24px);min-width:0;flex:1}
+.panel .edge{flex:0 0 24px;border:0;border-radius:0;min-height:0;padding:0;margin:0;background:var(--rule);color:var(--sheet);font:inherit;font-size:10px;letter-spacing:1.6px;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap}
+.panel .edge:hover{background:#1f2b26}.panel .edge:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+.panel.v .edge{writing-mode:vertical-rl}.panel.v.right .edge{order:0}.panel.v.left .edge{order:2;transform:rotate(180deg)}
+.panel.h{flex-direction:column}.panel.h .edge{order:0;height:22px;flex:0 0 22px}
+.panel.collapsed .body{display:none}#panel-left.collapsed,#panel-right.collapsed{height:260px;width:auto}#title-block.collapsed,#inset.collapsed{width:auto}.panel.h.collapsed .edge{min-width:190px;padding:0 12px}
+#panel-left{top:12px;left:12px;width:330px}#panel-right{top:12px;right:12px;width:330px}
+#title-block{left:12px;bottom:12px;width:min(520px,calc(100vw - 24px))}#inset{right:12px;bottom:12px;width:min(440px,calc(100vw - 24px))}
+/* Sheet content */
+h1,h2{font-size:12px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;margin:0}
+.head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding-bottom:6px;border-bottom:1px solid var(--rule)}
+.head span{font-size:10.5px;color:var(--ink-soft);text-align:right;min-width:0;overflow-wrap:anywhere}
+#status::before{content:"● ";color:#8799a8}#status[data-state=running]::before{color:var(--good)}#status[data-state=failed]::before{color:var(--bad)}
+p{margin:6px 0 0;color:var(--ink-soft);font-size:11px;line-height:1.4}#notice{display:block;margin-top:7px;font-weight:700;color:var(--ink)}#error{color:var(--bad);overflow-wrap:anywhere}#error:empty{display:none}
+.table{margin-top:8px;border-top:1px solid var(--rule)}.row{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:4px 0;border-bottom:1px solid var(--rule-soft);align-items:baseline}
+.row span{color:var(--ink-soft);font-size:10.5px;letter-spacing:.4px;text-transform:uppercase}.row b{font-weight:500;font-variant-numeric:tabular-nums;text-align:right;font-size:13px}.row small{grid-column:1/-1;color:var(--ink-soft);font-size:10.5px;text-align:right;margin-top:-2px}
+.row.big b{font-size:16px}#score-loss{color:#8a4b2c}#score-capture{color:var(--good)}
+.btns{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}.btns button{flex:1 1 30%}
+button{font:inherit;font-size:11px;letter-spacing:.6px;text-transform:uppercase;border:1px solid var(--rule);border-radius:0;background:var(--sheet);color:var(--ink);padding:7px 8px;cursor:pointer;min-height:30px}
+button:hover{background:#e6e9e3}button:disabled{opacity:.45;cursor:default}button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary,button[aria-pressed=true]{background:var(--rule);color:var(--sheet)}button.primary:hover{background:#1f2b26}
+.card{margin-top:8px;border:1px solid var(--rule);border-left:4px solid var(--accent);padding:6px 8px}.card .head{border-bottom:1px solid var(--rule-soft)}
+.card-state{font-weight:700;color:#6d481f;font-size:11px;text-transform:uppercase;letter-spacing:.6px}
+.card .row b{font-size:11.5px;text-align:left;overflow-wrap:anywhere}.card .row{grid-template-columns:96px 1fr}
+.card-command,.card-error{font-size:10px;margin:6px 0 0;color:var(--ink-soft);overflow-wrap:anywhere}.card-error{color:var(--bad)}
+#title-rows div{display:grid;grid-template-columns:76px 1fr;gap:0 10px;border-top:1px solid var(--rule-soft);padding:2px 0;font-size:11px;line-height:1.5}#title-rows div:first-child{border-top:0;font-weight:700}#title-rows b{color:var(--ink-soft);font-weight:600;letter-spacing:.4px}
+#inset .body{padding:0}#inset canvas{display:block;width:100%;height:auto;aspect-ratio:1250/430;background:#fcfdfe}
+.diagnostics{border:1px solid var(--rule);border-radius:0;width:min(900px,calc(100vw - 28px));max-height:calc(100dvh - 28px);padding:0;background:var(--sheet);color:var(--ink);font:inherit}.diagnostics::backdrop{background:#2b3a3388}
+.diagnostics-panel{padding:18px;overflow:auto;max-height:calc(100dvh - 28px)}.diagnostics-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:14px}
+.diag-metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:0 12px;margin-bottom:14px;border-top:1px solid var(--rule)}.diag-metrics .row{display:block;padding:6px 0}.diag-metrics .row b{display:block;text-align:left;font-size:16px}.diag-metrics .row span{display:block}
+.details{display:grid;grid-template-columns:1fr 1fr;gap:24px}.object{border-left:3px solid var(--accent);padding-left:14px}
+dl{display:grid;grid-template-columns:130px 1fr;margin:10px 0;gap:5px 12px}dt{color:var(--ink-soft);text-transform:uppercase;font-size:10.5px;letter-spacing:.4px}dd{margin:0;overflow-wrap:anywhere}
+ol{margin:0;padding-left:20px}li{padding-bottom:6px;color:var(--ink-soft)}#events{max-height:150px;overflow:auto}#limit-note{margin-top:8px}#outcome{font-weight:700}
+footer{margin-top:16px;padding-top:12px;border-top:1px solid var(--rule);font-size:11px;color:var(--ink-soft)}footer a{color:var(--blue)}
+@media(max-width:760px){#panel-left,#panel-right{width:min(300px,calc(100vw - 24px))}#panel-right{top:auto;bottom:48px}#inset{display:none}#title-block{width:calc(100vw - 24px)}.diag-metrics{grid-template-columns:repeat(2,1fr)}.details{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-<main>
-<header><div><h1>Coffee sorter</h1><p>One live engine. Camera decisions. Physical outcomes.</p></div><span id="status" class="status">Connecting</span></header>
-<section class="workspace" aria-label="Live simulation">
-<div class="toolbar"><div><strong id="notice">Preparing the engine</strong><p id="mode-note" class="small">The first injection starts the conveyor. Restart resets the shared session for all browsers.</p><p id="error" class="small" role="alert"></p></div><div class="actions"><button id="inject" disabled>Inject stone</button><button id="details-toggle" class="secondary" type="button">Details</button><button id="restart" class="secondary" disabled>Restart session</button></div></div>
-<section class="latest-card" aria-live="polite" aria-label="Latest injected stone">
-<div class="latest-card-head"><h2>Latest stone</h2><strong id="card-state" class="card-state">In progress</strong></div>
-<div class="card-fields"><div class="card-field"><strong>Prediction</strong><span id="card-prediction">Not observed</span></div><div class="card-field"><strong>Controller action</strong><span id="card-decision">Not decided</span></div><div class="card-field"><strong>Air contact</strong><span id="card-hit">Not recorded</span></div><div class="card-field"><strong>Physical outcome</strong><span id="card-outcome">Unresolved</span></div><div class="card-field"><strong>Time to outcome</strong><span id="card-outcome-time">Waiting</span></div></div>
+<div id="stage" aria-label="Interactive 3D view of the live simulated conveyor"></div>
+
+<section id="panel-left" class="panel v left" aria-label="Engine">
+<button class="edge" type="button" data-toggle="panel-left" aria-expanded="true" aria-controls="panel-left-body">Engine</button>
+<div class="body" id="panel-left-body">
+<div class="head"><h1>Coffee sorter</h1><span id="status" data-state="starting">Connecting</span></div>
+<strong id="notice">Preparing the engine</strong>
+<p id="error" role="alert"></p>
+<div class="table">
+<div class="row"><span>Simulation time</span><b id="sim-time">0.00 s</b></div>
+<div class="row"><span>Engine s / wall s</span><b id="engine-rate">Waiting</b></div>
+<div class="row"><span>Admitted / sim s</span><b id="admitted">0 /s</b></div>
+<div class="row"><span>Objects in scene</span><b id="active">0</b></div>
+<div class="row"><span>Browser frames / s</span><b id="fps">Measuring</b></div>
+<div class="row"><span>Pose packets / s</span><b id="pose-hz">Waiting</b></div>
+</div>
+<nav class="btns" aria-label="View"><button data-camera="overview" aria-pressed="true" type="button">Overview</button><button data-camera="sorting" aria-pressed="false" type="button">Sorting</button><button data-camera="inspection" aria-pressed="false" type="button">Belt</button><button id="projection" aria-pressed="false" type="button">Persp</button><button id="labels" aria-pressed="true" type="button" title="Toggle 3D labels and dimensions (L)">Labels</button></nav>
+</div>
+</section>
+
+<section id="panel-right" class="panel v right" aria-label="Scores and injection">
+<button class="edge" type="button" data-toggle="panel-right" aria-expanded="true" aria-controls="panel-right-body">Scores · Inject</button>
+<div class="body" id="panel-right-body">
+<div class="btns"><button id="inject" class="primary" disabled>Inject stone</button><button id="details-toggle" type="button">Details</button><button id="restart" disabled>Restart</button></div>
+<section id="scoreboard" aria-label="Rolling simulation scores" hidden>
+<div class="head" style="margin-top:10px"><h2>Rolling scores</h2><span id="score-status">Waiting for score data</span></div>
+<div class="table" style="margin-top:0;border-top:0">
+<div class="row big"><span>Sorting accuracy</span><b id="score-accuracy">Unavailable</b><small id="score-accuracy-count">No eligible objects</small></div>
+<div class="row big"><span>Defect capture</span><b id="score-capture">Unavailable</b><small id="score-capture-count">No required defects</small></div>
+<div class="row big"><span>Good loss</span><b id="score-loss">Unavailable</b><small id="score-loss-count">No keep objects</small></div>
+<div class="row big"><span>Unresolved</span><b id="score-unresolved">Unavailable</b><small id="score-unresolved-count">No eligible objects</small></div>
+</div>
+</section>
+<section class="card" aria-live="polite" aria-label="Latest injected stone">
+<div class="head"><h2>Latest stone</h2><strong id="card-state" class="card-state">In progress</strong></div>
+<div class="table" style="margin-top:0;border-top:0">
+<div class="row"><span>Prediction</span><b id="card-prediction">Not observed</b></div>
+<div class="row"><span>Controller</span><b id="card-decision">Not decided</b></div>
+<div class="row"><span>Air contact</span><b id="card-hit">Not recorded</b></div>
+<div class="row"><span>Outcome</span><b id="card-outcome">Unresolved</b></div>
+<div class="row"><span>Time to outcome</span><b id="card-outcome-time">Waiting</b></div>
+</div>
 <p id="card-command" class="card-command">No injection yet</p><p id="card-error" class="card-error" hidden></p>
 </section>
-<div class="stage"><canvas id="scene" width="1250" height="430" aria-label="Live top and side views of the simulated conveyor"></canvas></div>
-<section id="scoreboard" class="scoreboard" aria-label="Rolling simulation scores" hidden>
-<div class="scorehead"><strong>Rolling simulation scores</strong><span id="score-status">Waiting for score data</span></div>
-<div class="scores">
-<div class="score"><strong id="score-accuracy">Unavailable</strong><span>Sorting accuracy</span><small id="score-accuracy-count">No eligible objects</small></div>
-<div class="score"><strong id="score-capture">Unavailable</strong><span>Defect capture</span><small id="score-capture-count">No required defects</small></div>
-<div class="score"><strong id="score-loss">Unavailable</strong><span>Good loss</span><small id="score-loss-count">No keep objects</small></div>
-<div class="score"><strong id="score-unresolved">Unavailable</strong><span>Unresolved</span><small id="score-unresolved-count">No eligible objects</small></div>
 </div>
-<p id="score-context" class="score-context">Scores use a rolling simulated-time window.</p><p id="score-versions" class="score-versions">Version context is unavailable.</p>
 </section>
+
+<section id="title-block" class="panel h" aria-label="Machine data">
+<button class="edge" type="button" data-toggle="title-block" aria-expanded="true" aria-controls="title-rows">Machine data</button>
+<div class="body" id="title-rows"><div><b>COFFEE SORTER</b>machine data appears when the engine layout arrives</div></div>
 </section>
-<dialog id="diagnostics" class="diagnostics" aria-label="Live engine details"><div class="diagnostics-panel"><div class="diagnostics-head"><h2>Live engine details</h2><button id="details-close" class="secondary" type="button">Close</button></div>
-<div class="metrics">
-<div class="metric"><strong id="sim-time">0.00 s</strong><span>Simulation time</span></div>
-<div class="metric"><strong id="engine-rate">Waiting</strong><span>Engine seconds / wall second</span></div>
-<div class="metric"><strong id="admitted">0 /s</strong><span>Admitted / simulated second</span></div>
-<div class="metric"><strong id="fps">Measuring</strong><span>Browser frames / wall second</span></div>
-<div class="metric"><strong id="active">0</strong><span>Objects in the scene</span></div>
+
+<section id="inset" class="panel h" aria-label="Top and side projections">
+<button class="edge" type="button" data-toggle="inset" aria-expanded="true" aria-controls="inset-body">Top / side view</button>
+<div class="body" id="inset-body"><canvas id="scene" width="1250" height="430" aria-label="Live top and side views of the simulated conveyor"></canvas></div>
+</section>
+
+<dialog id="diagnostics" class="diagnostics" aria-label="Live engine details"><div class="diagnostics-panel"><div class="diagnostics-head"><h2>Live engine details</h2><button id="details-close" type="button">Close</button></div>
+<div class="diag-metrics">
+<div class="row"><b id="diag-sim-time">0.00 s</b><span>Simulation time</span></div>
+<div class="row"><b id="diag-engine-rate">Waiting</b><span>Engine seconds / wall second</span></div>
+<div class="row"><b id="diag-admitted">0 /s</b><span>Admitted / simulated second</span></div>
+<div class="row"><b id="diag-fps">Measuring</b><span>Browser frames / wall second</span></div>
+<div class="row"><b id="diag-active">0</b><span>Objects in the scene</span></div>
 </div>
-<p class="measurement-note" id="measurement-note">Pose updates arrive at up to 10 Hz. Browser FPS does not measure engine speed.</p>
 <section class="details">
-<div class="object"><h2 id="object-title">Follow your stone</h2><p class="small">A ring marks the injected object. The camera must recognize it independently.</p>
+<div class="object"><h2 id="object-title">Follow your stone</h2><p>A ring marks the injected object. The camera must recognize it independently.</p>
 <dl><dt>Request</dt><dd id="command">No injection yet</dd><dt>Acknowledgment</dt><dd id="ack">Waiting</dd><dt>Prediction</dt><dd id="prediction">Not observed</dd><dt>Controller action</dt><dd id="decision">Not decided</dd><dt>Jet contact</dt><dd id="hit">Not recorded</dd><dt>Physical outcome</dt><dd id="outcome">Unresolved</dd><dt>Time to outcome</dt><dd id="outcome-time">Waiting</dd></dl>
 </div>
 <div><h2>Engine events</h2><ol id="events"><li>Waiting for the engine.</li></ol><p id="limit-note">One shared session, four browsers maximum. Restart session resets all connected browsers.</p></div>
 </section>
-<footer><div id="versions">Model and policy versions appear when the engine is ready.</div><p>Diagnostic view with primitive shapes. Sorting targets and realistic assets remain unaccepted. <a href="/state" target="_blank">Current engine state</a></p></footer>
+<h2 style="margin-top:16px">Notes</h2><p id="mode-note">The first injection starts the conveyor. Restart resets the shared session for all browsers.</p><p id="measurement-note">Pose updates arrive at up to 10 Hz. Browser FPS does not measure engine speed. Clicking the belt or table injects a stone at the feeder.</p><p id="score-context">Scores use a rolling simulated-time window.</p><p id="score-versions">Version context is unavailable.</p><p>Keys: L toggles 3D labels and dimensions. H collapses or expands every panel. Each panel's dark tab collapses it toward its screen edge.</p>
+<footer><div id="versions">Model and policy versions appear when the engine is ready.</div><p>3D view: Blender machine and bean LODs from visual_assets/browser, posed from the live engine layout and object stream, with dimension callouts in metres. Stones and sticks stay primitives. The inset shows the same poses as top and side projections. Injected stones always spawn at the feeder, whichever point of the table is clicked. Sorting targets remain unaccepted. <a href="/state" target="_blank">Current engine state</a></p></footer>
 </div></dialog>
-</main>
-<script src="/live.js"></script>
+<script type="module" src="/live.js"></script>
 </body>
 </html>

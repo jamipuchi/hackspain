@@ -1,6 +1,6 @@
 """ArduinoLink implementations for the magnet_arm firmware (owner: arduino agent).
 
-    FakeArduino()                       the firmware's protocol in Python: S/M/C/H/?/R, trapezoidal ramp, belt memory
+    FakeArduino()                       the firmware's protocol in Python: S/M/C/H/?/R/T/D/N/L, trapezoidal ramp, belt memory
     HttpPanelLink(url)                  proxies to the running magnet_sorter/conveyor_button.py (POST /cmd, GET /status)
     DirectSerial(port_glob, baud, ...)  pyserial; holds the port, `C 0` on connect/close, reconnects on ENXIO
 
@@ -13,6 +13,7 @@ moves a servo: it only sends `?` and `C 0`.
 from __future__ import annotations
 
 import glob
+import os
 import json
 import math
 import threading
@@ -28,6 +29,15 @@ HOME_POSE = (150, 125, 75)
 MAX_DEG_PER_S = 200.0  # firmware cruise speed
 ACCEL_DEG_S2 = 700.0  # firmware acceleration limit
 TICK_S = 0.020  # firmware servo pulse period
+BELT_US_PER_PCT = 5  # firmware: D6 speed-mode pulse = neutral + speed*5 us
+BELT_STOP_HOLD_S = 0.040  # firmware: neutral held 2 frames before detaching
+SERVO_MIN_US, SERVO_MAX_US = 544, 2400  # Arduino Servo library: write(deg) maps 0..180 onto this range
+
+
+def servo_write_us(deg: float) -> int:
+    """Pulse width the Arduino Servo library sends for write(deg). write(90) is 1472 us, not 1500."""
+    deg = max(0, min(180, int(deg)))
+    return SERVO_MIN_US + deg * (SERVO_MAX_US - SERVO_MIN_US) // 180
 
 
 class LinkError(RuntimeError):
@@ -78,8 +88,21 @@ class FakeArduino:
         self.magnet = False
         self.belt = 0
         self.belt_attached = False
-        self.vmax = [MAX_DEG_PER_S] * 3  # per-channel ramp limits, changed by `R <ch> <vmax> <accel>`
-        self.amax = [ACCEL_DEG_S2] * 3
+        self.belt_angle: int | None = None  # angle the firmware writes on D6 (90 + sp*90/100, C integer division); None = detached/limp
+        self.belt_pulse_end: float | None = None  # `T`: clock time at which the firmware detaches D6 again
+        self.belt_travel = 0.0  # ∫ speed dt in %·s (a continuous servo's cumulative travel; 100 %·s ≈ one full second at full speed)
+        self._belt_t = self.clock()
+        self.t_pulses: list[tuple[int, int]] = []  # every accepted (speed, ms), for tests
+        self.vmax = [MAX_DEG_PER_S] * 4  # per-channel ramp limits, changed by `R <ch> <vmax> <accel>` (3 = D door)
+        self.amax = [ACCEL_DEG_S2] * 4
+        self.lim = [(0, 180)] * 4  # `L <ch> <min> <max>` travel limits
+        self.neutral_us = 1500  # `N <us>`
+        self.belt_us: int | None = None  # pulse width currently on D6 (None = detached)
+        self.belt_stop_at: float | None = None  # neutral written, detach pending
+        self.door_mode = False  # `D`: D6 positional, ramped, held
+        self.door_current = 90.0
+        self.door_target = 90
+        self.door_vel = 0.0
         self._last_tick = self.clock()
         self.log = _Log()
         self.sent: list[str] = []  # every accepted line, for tests
@@ -88,6 +111,19 @@ class FakeArduino:
     # --- firmware model
     def _advance(self):
         t = self.clock()
+        # continuous servo on D6: integrate travel, end a `T` pulse when its MCU timer expires
+        if self.belt_pulse_end is not None and t >= self.belt_pulse_end:
+            self.belt_travel += self.belt * max(0.0, self.belt_pulse_end - self._belt_t)
+            self._belt_t = self.belt_pulse_end
+            self.belt_pulse_end = None
+            self._set_belt(0)
+        self.belt_travel += self.belt * max(0.0, t - self._belt_t)
+        self._belt_t = t
+        if self.belt_stop_at is not None and t >= self.belt_stop_at:  # neutral held long enough -> detach
+            self.belt_stop_at = None
+            self.belt_us = None
+            self.belt_attached = False
+            self.belt_angle = None
         while t - self._last_tick >= TICK_S:
             self._last_tick += TICK_S
             for i in range(3):
@@ -99,10 +135,40 @@ class FakeArduino:
                 if abs(move) >= abs(d):
                     move, self.vel[i] = d, 0.0
                 self.current[i] += move
+            if self.door_mode:  # D6 positional door ramps with channel-3 limits
+                d = self.door_target - self.door_current
+                vdes = math.copysign(min(self.vmax[3], math.sqrt(2 * self.amax[3] * abs(d))), d) if abs(d) > 1e-6 else 0.0
+                dv = max(-self.amax[3] * TICK_S, min(self.amax[3] * TICK_S, vdes - self.door_vel))
+                self.door_vel += dv
+                move = self.door_vel * TICK_S
+                if abs(move) >= abs(d):
+                    move, self.door_vel = d, 0.0
+                self.door_current += move
+                self.belt_us = servo_write_us(round(self.door_current))
+                self.belt_angle = int(round(self.door_current))
+
+    def _set_belt(self, sp: int) -> None:
+        """Firmware setBelt(): speed mode in microseconds; 0 = neutral for BELT_STOP_HOLD_S, then detach (in _advance)."""
+        self.door_mode = False
+        self.belt = sp
+        if sp == 0:
+            if self.belt_attached:
+                self.belt_us = self.neutral_us
+                self.belt_stop_at = self.clock() + BELT_STOP_HOLD_S
+            else:
+                self.belt_us, self.belt_stop_at = None, None
+            self.belt_angle = None
+            return
+        self.belt_stop_at = None
+        self.belt_attached = True
+        self.belt_us = self.neutral_us + sp * BELT_US_PER_PCT
+        self.belt_angle = None  # speed mode: no angle
 
     def moving(self) -> bool:
         self._advance()
-        return any(abs(self.target[i] - self.current[i]) > 0.01 or abs(self.vel[i]) > 1e-6 for i in range(3))
+        arm = any(abs(self.target[i] - self.current[i]) > 0.01 or abs(self.vel[i]) > 1e-6 for i in range(3))
+        door = self.door_mode and (abs(self.door_target - self.door_current) > 0.01 or abs(self.door_vel) > 1e-6)
+        return arm or door
 
     def pos(self) -> tuple[int, int, int]:
         self._advance()
@@ -119,7 +185,7 @@ class FakeArduino:
             except ValueError:
                 return "err"
             self._advance()
-            self.target = [max(0, min(180, v)) for v in vals]
+            self.target = [max(self.lim[i][0], min(self.lim[i][1], v)) for i, v in enumerate(vals)]
             return "ok"
         if c == "M":
             self.magnet = len(line) > 2 and line[2] == "1"
@@ -129,8 +195,26 @@ class FakeArduino:
                 sp = int(line[1:].strip() or "0")
             except ValueError:
                 sp = 0  # atoi() semantics: garbage → 0
-            self.belt = max(-100, min(100, sp))
-            self.belt_attached = self.belt != 0
+            self._advance()
+            self.belt_pulse_end = None  # any C cancels a running T pulse
+            self._set_belt(max(-100, min(100, sp)))
+            return "ok"
+        if c == "T":  # MCU-timed spin pulse: T <speed> <ms>
+            parts = line[1:].split()
+            try:
+                sp, ms = int(parts[0]), int(parts[1])
+            except (IndexError, ValueError):
+                return "err"
+            self._advance()
+            sp = max(-100, min(100, sp))
+            ms = max(0, min(2000, ms))
+            if sp == 0 or ms == 0:
+                self.belt_pulse_end = None
+                self._set_belt(0)
+            else:
+                self._set_belt(sp)
+                self.belt_pulse_end = self.clock() + ms / 1000.0
+                self.t_pulses.append((sp, ms))
             return "ok"
         if c == "H":
             self._advance()
@@ -140,13 +224,55 @@ class FakeArduino:
             parts = line[1:].split()
             try:
                 ch, v, a = (int(x) for x in parts[:3])
-                if len(parts) < 3 or not 0 <= ch <= 2:
+                if len(parts) < 3 or not 0 <= ch <= 3:
                     raise ValueError
             except ValueError:
                 return "err"
             self._advance()
             self.vmax[ch] = MAX_DEG_PER_S if v <= 0 else float(max(1, min(2000, v)))
             self.amax[ch] = ACCEL_DEG_S2 if a <= 0 else float(max(1, min(50000, a)))
+            return "ok"
+        if c == "D":  # positional door on D6: attach, ramp, hold, never detach
+            try:
+                deg = int(line[1:].split()[0])
+            except (IndexError, ValueError):
+                return "err"
+            self._advance()
+            self.belt_pulse_end = None
+            self.belt_stop_at = None
+            lo, hi = self.lim[3]
+            if not self.door_mode:
+                self.door_current, self.door_vel, self.door_mode = float(max(lo, min(hi, deg))), 0.0, True
+            self.door_target = max(lo, min(hi, deg))
+            self.belt_attached = True
+            self.belt = 0
+            self.belt_us = servo_write_us(round(self.door_current))
+            self.belt_angle = int(round(self.door_current))
+            return "ok"
+        if c == "N":
+            try:
+                us = int(line[1:].split()[0])
+            except (IndexError, ValueError):
+                return "err"
+            if not 1300 <= us <= 1700:
+                return "err"
+            self.neutral_us = us
+            if self.belt_stop_at is not None and self.belt_us is not None:
+                self.belt_us = us
+            return "ok"
+        if c == "L":
+            parts = line[1:].split()
+            try:
+                ch, lo, hi = (int(x) for x in parts[:3])
+                if len(parts) < 3 or not 0 <= ch <= 3 or lo < 0 or hi > 180 or lo >= hi:
+                    raise ValueError
+            except ValueError:
+                return "err"
+            self.lim[ch] = (lo, hi)
+            if ch < 3:
+                self.target[ch] = max(lo, min(hi, self.target[ch]))
+            else:
+                self.door_target = max(lo, min(hi, self.door_target))
             return "ok"
         if c == "?":
             p = self.pos()
@@ -173,7 +299,11 @@ class FakeArduino:
     def status(self) -> dict:
         st = self.query()
         return {"name": self.name, "backend": "fake", "port": self.port, "ok": st.ok, "pos": st.pos, "target": list(self.target),
-                "magnet": st.magnet, "moving": st.moving, "belt": self.belt, "vmax": list(self.vmax), "amax": list(self.amax),
+                "magnet": st.magnet, "moving": st.moving, "belt": self.belt, "belt_angle": self.belt_angle,
+                "belt_pulse_active": self.belt_pulse_end is not None, "belt_travel": round(self.belt_travel, 3),
+                "belt_us": self.belt_us, "neutral_us": self.neutral_us, "door_mode": self.door_mode,
+                "door_deg": int(round(self.door_current)) if self.door_mode else None, "limits": [list(l) for l in self.lim],
+                "vmax": list(self.vmax), "amax": list(self.amax),
                 "n_cmds": len(self.sent), "log": self.log.tail()}
 
     def selftest(self) -> list[Check]:
@@ -203,6 +333,7 @@ class HttpPanelLink:
         self.n_errors = 0
         self.last_error = ""
         self.last_rtt_ms = 0.0
+        self.selftest_belt_cmd: str | None = "C 0"  # Gate sets None when D6 drives the door (C 0 would drop it)
 
     def _http(self, method: str, path: str) -> dict:
         req = urllib.request.Request(self.url + path, method=method)
@@ -271,13 +402,18 @@ class HttpPanelLink:
         out.append(Check("panel reachable + ? answers", st.ok, st.error or st.raw, ms))
         out.append(Check("? within 300 ms", st.ok and ms <= 300, f"{ms:.1f} ms", ms))
         out.append(Check("? reply parses", st.ok and st.pos is not None, st.raw if st.ok else st.error))
+        out.append(self._belt_check())
+        return out
+
+    def _belt_check(self) -> Check:
+        if self.selftest_belt_cmd is None:
+            return Check("C 0 skipped", True, "D6 drives the door: C 0 would detach it")
         try:
             t0 = now()
-            r = self.cmd("C 0")
-            out.append(Check("C 0 → ok (belt stays stopped)", r == "ok", r, (now() - t0) * 1000))
+            r = self.cmd(self.selftest_belt_cmd)
+            return Check("C 0 → ok (belt stays stopped)", r == "ok", r, (now() - t0) * 1000)
         except LinkError as e:
-            out.append(Check("C 0 → ok (belt stays stopped)", False, str(e)))
-        return out
+            return Check("C 0 → ok (belt stays stopped)", False, str(e))
 
     def close(self) -> None:
         pass  # the panel owns the port; leaving it running is the point
@@ -305,6 +441,7 @@ class DirectSerial:
         self.n_reconnects = 0
         self.last_error = ""
         self.connected = False
+        self.selftest_belt_cmd: str | None = "C 0"  # Gate sets None when D6 drives the door (C 0 would drop it)
         self._open()
         self.cmd("C 0")
 
@@ -323,6 +460,12 @@ class DirectSerial:
         if self.ser is not None:
             try:
                 self.ser.close()
+            except Exception:
+                pass
+            try:  # macOS: a dead CDC device can leave the fd half-open and the re-open fails with ENXIO until it is really closed
+                fd = getattr(self.ser, "fd", None)
+                if fd is not None:
+                    os.close(fd)
             except Exception:
                 pass
             self.ser = None
@@ -390,11 +533,7 @@ class DirectSerial:
         out.append(Check("port open + ? answers", st.ok, st.error or f"{self.port}: {st.raw}", ms))
         out.append(Check("? within 300 ms", st.ok and ms <= 300, f"{ms:.1f} ms", ms))
         out.append(Check("? reply parses", st.ok and st.pos is not None, st.raw if st.ok else st.error))
-        try:
-            r = self.cmd("C 0")
-            out.append(Check("C 0 → ok (belt stays stopped)", r == "ok", r))
-        except LinkError as e:
-            out.append(Check("C 0 → ok (belt stays stopped)", False, str(e)))
+        out.append(HttpPanelLink._belt_check(self))
         return out
 
     def close(self) -> None:
