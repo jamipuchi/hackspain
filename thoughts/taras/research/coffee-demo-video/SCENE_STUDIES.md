@@ -1,7 +1,8 @@
 # Coffee scene studies, revision 2
 
-Status: Taras liked the six-scene direction and requested a slow-motion air-jet shot.
-See [the three-beat concept](SLOWMO_SHOT.md). Animation remains paused.
+Status: Taras approved the concepts and requested basic renders, with an ultra-slow-motion direction.
+The [basic render review](BASIC_RENDER_REVIEW.md) contains the completed still pass.
+See [the three-beat concept](SLOWMO_SHOT.md). New animation remains pending.
 
 ![Six scene concepts](/private/tmp/coffee-demo-video-previews/mockups/scene-studies-v2.png)
 
@@ -43,7 +44,7 @@ The blueprint callouts require placement against the actual scene geometry.
 The UI panel is a placeholder with no invented metrics.
 
 The first recorded segment remains available as a rejected direction reference.
-Do not start a new animation from these concepts until Taras reviews the board.
+Taras approved the board. These stills now provide the next composition review before animation.
 
 ## Source and output
 
@@ -53,8 +54,8 @@ Do not start a new animation from these concepts until Taras reviews the board.
 - Board: `/private/tmp/coffee-demo-video-previews/mockups/scene-studies-v2.png`
 - Exact prompt: [SCENE_STUDIES_PROMPT.md](SCENE_STUDIES_PROMPT.md)
 
-## Next concrete preview
+## Completed concrete preview
 
-After review, make one macro still and the start and end stills for the low lateral reveal.
-Use those images to check composition before another animation render.
-Use recorded source poses for every shot that depicts bean movement.
+The current pass includes the macro, both reveal positions, overhead, blueprint, three slow-motion moments, and warm closing.
+A screenshot of the actual continuous UI completes the scene set.
+Every rendered bean retains its source pose. No new animation or simulation ran for this pass.

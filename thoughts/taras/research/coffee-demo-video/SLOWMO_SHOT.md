@@ -1,6 +1,8 @@
 # The air-jet moment
 
-Status: Concept for Taras. No event or animation is validated yet.
+Status: Taras approved the concept and requested an ultra-slow-motion effect.
+Three [basic stills](BASIC_RENDER_REVIEW.md) now show one recorded bean pair.
+Pulse contact and the final animation remain unvalidated.
 
 ![Three moments of the slow-motion shot](/private/tmp/coffee-demo-video-previews/mockups/air-jet-slowmo-concept-v1.png)
 
@@ -12,7 +14,7 @@ Keep the nozzle and splitter visible so the viewer can understand their paths.
 2. A recorded air pulse pushes the defective bean downward. Its good neighbour continues along its own recorded path.
 3. The defective bean passes below the splitter. The good bean passes above it.
 
-This describes the desired event, not an event already found in the recording.
+This describes the desired final sequence, not a validated pulse-contact event.
 Do not arrange an artificial collision or curve one bean around the other.
 Select an actual two-bean event with enough separation for the camera to show both.
 
@@ -53,6 +55,27 @@ The previous recording notes propose every-step capture at 500 Hz for a 2 ms tim
 The existing exporter accepts at most 60 fps. A denser capture requires coordination with its owner.
 
 No simulation, exporter change, or animation ran for this concept.
+
+## Recorded pair for the still studies
+
+The current stills use black bean 1470 and good bean 1480.
+Their final recorded outcomes are reject and accept, respectively.
+Frame 54 shows their belt-edge approach at 1.800 seconds.
+Frame 55 shows both beans below the nozzle region at 1.834 seconds.
+Nozzles 12 and 13 have recorded pulses active at that sample.
+Those pulses run from 1.833064 to 1.837275 seconds, at 0.06 N each.
+The replay does not identify which bean each pulse contacts.
+Frame 57 shows their separated paths approaching the splitter at 1.900 seconds.
+It does not show both completed crossings.
+
+All nearby beans remain in each render.
+The final side study omits both chute walls and their trim for visibility.
+Each manifest lists these presentation cutaways and the exact source poses.
+The gallery adds optional review markers. The clean PNGs contain no markers or simulated air graphics.
+
+Stretching this 0.100-second interval to five seconds would imply 50-times slower playback.
+That is an editorial target, not a rendered or validated result.
+The final clip still requires denser capture and per-bean pulse-contact evidence.
 
 ## Revised edit proposal
 
