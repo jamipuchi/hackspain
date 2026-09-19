@@ -1,0 +1,59 @@
+{
+  "response": {
+    "id": "gen-1789775176-FkgfbJBtrdjdtqqSEgwv",
+    "object": "chat.completion",
+    "created": 1789775176,
+    "model": "google/gemini-3-flash-preview",
+    "provider": "Google",
+    "system_fingerprint": null,
+    "service_tier": "provisioned",
+    "choices": [
+      {
+        "index": 0,
+        "logprobs": null,
+        "finish_reason": "stop",
+        "native_finish_reason": "STOP",
+        "message": {
+          "role": "assistant",
+          "content": "{\"outline\": \"round\", \"central_opening\": \"absent\", \"description\": \"The object has a round outline with no visible central opening and uniform proportions.\", \"visibility\": \"clear\", \"object_count\": 1}",
+          "refusal": null,
+          "reasoning": null,
+          "reasoning_details": [
+            {
+              "type": "reasoning.text",
+              "signature": "AY89a18r2siQ00yMFw47XuaixHL8gyIFaT235+MIHPsJ1LAYmH5EwvWBXUlOwOC/ynEI35u7wQstgTo+xOiLw1w+tuSzEwet1Es1cLIphpdVcCk=",
+              "format": "google-gemini-v1",
+              "index": 0
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 1378,
+      "completion_tokens": 48,
+      "total_tokens": 1426,
+      "cost": 0.000833,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.000833,
+        "upstream_inference_prompt_cost": 0.000689,
+        "upstream_inference_completions_cost": 0.000144
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    }
+  },
+  "latency_s": 1.9342896658927202,
+  "request_sha256": "7fc91bed58fefd66947bac94086bc7ec4ae7dd183b107701b69a42b7c6260de9",
+  "endpoint": "https://openrouter.ai/api/v1/chat/completions"
+}
