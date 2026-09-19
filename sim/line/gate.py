@@ -29,6 +29,7 @@ from line.contracts import Check, now
 _CHANNEL_INDEX = {"base": 0, "shoulder": 1, "elbow": 2}
 BELT = "belt"  # positional door servo on D6 through the conveyor output (C <sp> = angle)
 BELT_SPIN = "belt_spin"  # continuous-rotation door servo on D6: MCU-timed `T <speed> <ms>` pulses into mechanical end stops
+D6 = "d6"  # POSITIONAL door servo on D6 via `D <deg>`: attached, ramped like S, held between moves (firmware >= 19 Sep 17:20)
 
 
 def belt_speed_for_angle(deg: float) -> int:
@@ -64,14 +65,15 @@ class Gate:
         self._stop = False
         self._worker = threading.Thread(target=self._run, name="gate-timer", daemon=True)
         self._worker.start()
-        if (self.on_belt or self.on_spin) and hasattr(self.link, "selftest_belt_cmd"):
+        if (self.on_belt or self.on_spin or self.on_d6) and hasattr(self.link, "selftest_belt_cmd"):
             self.link.selftest_belt_cmd = None  # the link's selftest must not send C 0 any more: it would drop the door
         if getattr(self.cfg.gate, "ramp_override", False):
             self.apply_ramp()
 
     def ramp_command(self) -> str:
         g = self.cfg.gate
-        return f"R {self._slot()} {int(g.door_vmax_deg_s)} {int(g.door_accel_deg_s2)}"
+        slot = 3 if self.on_d6 else self._slot()  # firmware channel 3 = the D door
+        return f"R {slot} {int(g.door_vmax_deg_s)} {int(g.door_accel_deg_s2)}"
 
     def apply_ramp(self) -> None:
         """Send the door channel's ramp override (`R`). Logged as action 'ramp'; respects dry_run. No-op on channel belt."""
@@ -120,6 +122,10 @@ class Gate:
     def on_spin(self) -> bool:
         return self.channel() == BELT_SPIN
 
+    @property
+    def on_d6(self) -> bool:
+        return self.channel() == D6
+
     def spin_command(self, action: str) -> str:
         """`T <speed> <ms>` for 'open' / 'flush' on channel belt_spin (never speed 0: that would be an abort)."""
         g = self.cfg.gate
@@ -131,11 +137,13 @@ class Gate:
     def _slot(self) -> int:
         ch = self.channel()
         if ch not in _CHANNEL_INDEX:
-            raise ValueError(f"gate.channel must be one of {list(_CHANNEL_INDEX) + [BELT, BELT_SPIN]}, got {ch!r}")
+            raise ValueError(f"gate.channel must be one of {list(_CHANNEL_INDEX) + [BELT, BELT_SPIN, D6]}, got {ch!r}")
         return _CHANNEL_INDEX[ch]
 
     def command(self, door_deg: int) -> str:
         """`S b s e` with the door angle in the configured slot and hold_deg in the other two; on channel belt, `C <sp>`."""
+        if self.on_d6:
+            return f"D {max(0, min(180, int(door_deg)))}"
         if self.on_belt:
             return f"C {belt_speed_for_angle(door_deg)}"
         if self.on_spin:  # angles are meaningless for a continuous servo: open if above level, else close
@@ -267,8 +275,9 @@ class Gate:
             out.append(Check("fake received both door commands", fake.sent[-2:] == [g.command(self.cfg.gate.open_deg), g.command(self.cfg.gate.flush_deg)],
                              " | ".join(fake.sent[-2:])))
             if self.on_belt:
-                out.append(Check("fake D6 angle after flush", fake.belt_angle == belt_angle_for_speed(int(g.command(self.cfg.gate.flush_deg).split()[1])),
-                                 f"D6 at {fake.belt_angle}° for flush {self.cfg.gate.flush_deg}°"))
+                sp = int(g.command(self.cfg.gate.flush_deg).split()[1])
+                out.append(Check("fake D6 still attached after flush", fake.belt_attached and fake.belt_us == fake.neutral_us + sp * 5,
+                                 f"D6 pulse {fake.belt_us} us for flush (C {sp}); NOTE: on firmware >= 17:20 C is speed, use channel d6"))
         out.append(Check("state back to flush", g.state == "flush", g.state))
         g.close()
         st = self.link.query()

@@ -48,7 +48,7 @@ def test_fake_protocol_replies():
     assert f.cmd("M 0") == "ok" and f.magnet is False
     assert f.cmd("C 60") == "ok" and f.belt == 60 and f.belt_attached
     assert f.cmd("C -250") == "ok" and f.belt == -100
-    assert f.cmd("C 0") == "ok" and f.belt == 0 and not f.belt_attached
+    assert f.cmd("C 0") == "ok" and f.belt == 0 and f.belt_attached and f.belt_us == 1500, "neutral held before detach"
     assert f.cmd("H") == "ok" and f.target == list(HOME_POSE)
     assert f.cmd("X 1") == "err"
     assert f.cmd("") == "err"
@@ -294,26 +294,29 @@ def test_ramp_override_makes_the_door_fast_and_leaves_other_channels_slow():
     elbow = _swing_time(f, clk, "S 90 90 75", "S 90 90 100")
     assert 0.30 <= elbow <= 0.40, elbow  # untouched channel keeps the gentle ramp
     assert f.cmd("R 0 0 0") == "ok" and f.vmax[0] == 200.0 and f.amax[0] == 700.0
-    assert f.status()["vmax"] == [200.0, 200.0, 200.0]
+    assert f.status()["vmax"] == [200.0, 200.0, 200.0, 200.0]
 
 
 def test_ramp_override_rejects_bad_input_and_clamps():
     f = FakeArduino(clock=Clock())
-    assert f.cmd("R 3 400 8000") == "err"
+    assert f.cmd("R 4 400 8000") == "err"  # channels 0-2 arm, 3 = D door
     assert f.cmd("R 0 400") == "err"
     assert f.cmd("R x 1 1") == "err"
     assert f.cmd("R 1 99999 99999999") == "ok" and f.vmax[1] == 2000.0 and f.amax[1] == 50000.0
 
 
-def test_fake_tracks_the_angle_written_on_d6():
-    f = FakeArduino(clock=Clock())
-    assert f.belt_angle is None
-    assert f.cmd("C -28") == "ok" and f.belt_angle == 65 and f.belt == -28
-    assert f.cmd("C 50") == "ok" and f.belt_angle == 135
-    assert f.cmd("C -50") == "ok" and f.belt_angle == 45
-    assert f.cmd("C 1") == "ok" and f.belt_angle == 90
-    assert f.cmd("C 0") == "ok" and f.belt_angle is None and not f.belt_attached  # detached = limp
-    assert f.status()["belt_angle"] is None
+def test_fake_tracks_the_pulse_written_on_d6():
+    clk = Clock()
+    f = FakeArduino(clock=clk)
+    assert f.belt_us is None and f.belt_angle is None
+    assert f.cmd("C -28") == "ok" and f.belt_us == 1360 and f.belt == -28 and f.belt_angle is None  # speed mode: no angle
+    assert f.cmd("C 50") == "ok" and f.belt_us == 1750
+    assert f.cmd("C 1") == "ok" and f.belt_us == 1505
+    assert f.cmd("C 0") == "ok" and f.belt_us == 1500 and f.belt_attached  # neutral first…
+    clk.advance(0.05)
+    f.query()
+    assert f.belt_us is None and not f.belt_attached  # …then detached = limp
+    assert f.status()["belt_us"] is None
 
 
 def test_http_selftest_skips_C0_when_d6_is_the_door(fake_panel):
@@ -323,7 +326,7 @@ def test_http_selftest_skips_C0_when_d6_is_the_door(fake_panel):
     link.selftest_belt_cmd = None  # what Gate does on channel belt
     checks = link.selftest()
     assert all(c.ok for c in checks) and any("skipped" in c.name for c in checks)
-    assert fake.belt_angle == 65, "selftest must not detach the door"
+    assert fake.belt_attached and fake.belt_us == 1360, "selftest must not detach the door"
 
 
 # ------------------------------------------------------------------ T: MCU-timed spin pulse on D6 (continuous door servo)
@@ -335,7 +338,10 @@ def test_T_pulse_spins_then_detaches_on_the_fake_clock():
     assert f.query() and f.belt == 12, "still spinning just before the deadline"
     clk.advance(0.02)
     f.query()
-    assert f.belt == 0 and not f.belt_attached and f.belt_angle is None and f.belt_pulse_end is None
+    assert f.belt == 0 and f.belt_pulse_end is None and f.belt_us == 1500 and f.belt_attached, "deadline: neutral written"
+    clk.advance(0.05)
+    f.query()
+    assert not f.belt_attached and f.belt_us is None, "then detached after the 40 ms neutral hold"
     assert abs(f.belt_travel - 12 * 0.300) < 1e-6, f.belt_travel  # travel = speed × exactly 300 ms, independent of host timing
 
 
@@ -355,3 +361,68 @@ def test_T_pulse_replace_abort_and_limits():
     assert f.cmd("T 30 0") == "ok" and f.belt == 0  # zero ms = no-op/abort
     s = f.status()
     assert s["belt_pulse_active"] is False and "belt_travel" in s
+
+
+# ------------------------------------------------------------------ brief 17:xx: microsecond belt, neutral-then-detach, D / N / L
+def test_servo_library_mapping_and_belt_microseconds():
+    from line.arduino_link import servo_write_us
+
+    assert servo_write_us(90) == 1472, "Servo.write(90) is 1472 us, not 1500 — the creep at 'C 1'"
+    assert servo_write_us(0) == 544 and servo_write_us(180) == 2400
+    clk = Clock()
+    f = FakeArduino(clock=clk)
+    assert f.cmd("C 30") == "ok" and f.belt_us == 1650 and f.belt_angle is None
+    assert f.cmd("C -30") == "ok" and f.belt_us == 1350, "symmetric about the neutral"
+    assert f.cmd("N 1520") == "ok" and f.neutral_us == 1520
+    assert f.cmd("C 30") == "ok" and f.belt_us == 1670
+    assert f.cmd("N 1200") == "err" and f.cmd("N x") == "err"
+
+
+def test_stop_is_neutral_for_two_frames_then_detach():
+    clk = Clock()
+    f = FakeArduino(clock=clk)
+    f.cmd("C 40")
+    assert f.cmd("C 0") == "ok" and f.belt_us == 1500 and f.belt_attached, "neutral written first"
+    clk.advance(0.030)
+    f.query()
+    assert f.belt_us == 1500 and f.belt_attached, "still holding neutral at 30 ms"
+    clk.advance(0.015)
+    f.query()
+    assert f.belt_us is None and not f.belt_attached, "detached after the 40 ms hold"
+    assert f.status()["belt_us"] is None
+
+
+def test_D_positional_door_on_d6_ramps_holds_and_never_detaches():
+    clk = Clock()
+    f = FakeArduino(clock=clk)
+    assert f.cmd("D 90") == "ok" and f.door_mode and f.belt_attached and f.belt_us == 1472
+    assert f.cmd("D 65") == "ok" and f.query().moving is True
+    clk.advance(1.0)
+    st = f.query()
+    assert st.moving is False and f.belt_angle == 65 and f.belt_us == 1214 and f.belt_attached
+    clk.advance(5.0)
+    f.query()
+    assert f.belt_attached and f.door_mode, "a positional door is held, never detached"
+    assert f.cmd("R 3 400 8000") == "ok"
+    f.cmd("D 90")
+    t0 = clk.t
+    while f.query().moving:
+        clk.advance(0.02)
+    assert 0.08 <= clk.t - t0 <= 0.14, "door channel obeys its own ramp override"
+    assert f.cmd("C 20") == "ok" and not f.door_mode and f.belt_us == 1600, "a speed command leaves door mode"
+    assert f.cmd("D") == "err" and f.cmd("D x") == "err"
+
+
+def test_L_travel_limits_clamp_S_and_D():
+    clk = Clock()
+    f = FakeArduino(clock=clk)
+    assert f.cmd("L 3 40 140") == "ok" and f.lim[3] == (40, 140)
+    f.cmd("D 10")
+    assert f.door_target == 40 and f.door_current == 40.0
+    f.cmd("D 179")
+    assert f.door_target == 140
+    assert f.cmd("L 0 10 170") == "ok"
+    f.cmd("S 0 90 90")
+    assert f.target[0] == 10
+    assert f.cmd("L 0 170 10") == "err" and f.cmd("L 4 0 180") == "err" and f.cmd("L 0 -5 180") == "err"
+    assert f.status()["limits"][3] == [40, 140]

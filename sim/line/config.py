@@ -114,6 +114,7 @@ class LineConfig:
     door_d6_close_ms: int = 180  # how long to spin back to CLOSED
     door_d6_trim: int = 0  # dead-centre correction added to every spin command (−20..20): raise if CLOSE travels less than OPEN at equal ms
     door_d6_dir: int = 1  # +1 or -1: flip if OPEN spins the wrong way
+    door_policy: str = "state"  # 'state': the door holds its last side and only moves when a bean's verdict differs from it; 'pulse': act, dwell, return
     action_position: str = "closed"  # which saved position the door takes when it acts on a bean: 'closed' | 'open' (rest = the other one)
     act_on: str = "all"  # 'all': the door moves for every bean (bring-up); 'suspect': only for suspect verdicts (sorting)
     lost_after_s: float = 0.4  # no blob for this long while tracking → bean lost, re-arm

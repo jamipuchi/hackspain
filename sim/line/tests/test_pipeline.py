@@ -20,6 +20,7 @@ def make(cfg, t, u=None, dark=False):
 
 def build(cfg):
     cfg.act_on = "suspect"  # these tests exercise sorting behaviour, not bring-up
+    cfg.door_policy = "pulse"
     cfg.timing.mode = "model"
     ard = _stubs.StubArduino()
     gate = _stubs.StubGate(ard, cfg, dry_run=True)
@@ -114,3 +115,19 @@ def test_back_to_back_beans_each_get_a_verdict():
         t += 0.02
     assert [v.suspect for v in verdicts] == [False, True], [v.reason for v in verdicts]
     assert line.counters["beans"] == 2
+
+
+def test_state_policy_moves_only_on_change():
+    cfg = config.LineConfig()
+    cfg.door_policy = "state"
+    line, gate = build(cfg)
+    cfg.door_policy = "state"
+    roll(line, cfg, dark=True)   # bad → door to the bad side
+    roll(line, cfg, dark=True)   # bad again → nothing moves
+    roll(line, cfg, dark=False)  # good → door to the good side
+    kinds = [e.kind for e in line.events if e.kind in ("door_set", "door_kept")]
+    assert kinds == ["door_set", "door_kept", "door_set"], kinds
+    assert line.counters["gate_pulses"] == 2
+    time.sleep(0.3)
+    acts = [e.split()[0] for _, e in gate.events]
+    assert acts == ["open", "flush"], gate.events  # no automatic return between beans

@@ -52,10 +52,19 @@ class SnapshotSource:
 
     def __init__(self, url: str = "http://127.0.0.1:8800/snapshot.jpg", timeout_s: float = 2.0):
         self.url, self.timeout_s, self.seq = url, timeout_s, 0
+        self._last: bytes | None = None
 
     def grab(self) -> tuple[np.ndarray, float]:
-        with urllib.request.urlopen(self.url, timeout=self.timeout_s) as r:
-            buf = np.frombuffer(r.read(), np.uint8)
+        # the panel re-serves the same JPEG until the camera delivers a new frame (30 fps): skip duplicates so
+        # every reading is a distinct frame, otherwise the log shows ~140 identical rows per second
+        for _ in range(200):
+            with urllib.request.urlopen(self.url, timeout=self.timeout_s) as r:
+                raw = r.read()
+            if raw != self._last:
+                break
+            time.sleep(0.005)
+        self._last = raw
+        buf = np.frombuffer(raw, np.uint8)
         t = now()
         img = cv2.imdecode(buf, cv2.IMREAD_COLOR)
         if img is None:
@@ -107,11 +116,19 @@ def auto_roi(bgr: np.ndarray, arm_px: int) -> ROI | None:
     return ROI(max(x - arm_px, 0), max(y - arm_px, 0), min(x + w + arm_px, W), min(y + h + arm_px, H))
 
 
-def find_marks(bgr_roi: np.ndarray, gray_max: int = 70, min_area: int = 12, max_area: int = 2500, k: int = 2) -> list[tuple[float, float, float]]:
-    """Up to k dark marks in the ROI as (u, v, area), largest first. Blue (servo case) and saturated colours are excluded."""
+def find_marks(bgr_roi: np.ndarray, gray_max: int = 70, min_area: int = 12, max_area: int = 2500, k: int = 2,
+               exclude: tuple[int, int, int, int] | None = None) -> list[tuple[float, float, float]]:
+    """Up to k dark marks in the ROI as (u, v, area), largest first.
+
+    Blue (servo case) and saturated colours are excluded, and so is the `exclude` bbox (x, y, w, h in ROI px, grown by
+    6 px): the case carries black print and a dark connector that would otherwise pass as marks.
+    """
     gray = cv2.cvtColor(bgr_roi, cv2.COLOR_BGR2GRAY)
     hsv = cv2.cvtColor(bgr_roi, cv2.COLOR_BGR2HSV)
     dark = (gray < gray_max) & (hsv[..., 1] < 120)  # dark AND unsaturated: black tape, not the blue case or orange wire
+    if exclude is not None:
+        x, y, w, h = exclude
+        dark[max(y - 6, 0): y + h + 6, max(x - 6, 0): x + w + 6] = False
     dark = cv2.morphologyEx(dark.astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
     n, _lab, st, ce = cv2.connectedComponentsWithStats(dark, connectivity=8)
     marks = []
@@ -254,7 +271,8 @@ def main() -> None:
         while True:
             img, t = src.grab()
             crop = roi.crop(img)
-            marks = find_marks(crop, gray_max=args.gray_max)
+            body_roi = (body[0] - roi.x0, body[1] - roi.y0, body[2], body[3]) if body else None
+            marks = find_marks(crop, gray_max=args.gray_max, exclude=body_roi)
             marks_full = [(m[0] + roi.x0, m[1] + roi.y0, m[2]) for m in marks]
             angle: float | None = None
             mode = "-"
@@ -286,10 +304,11 @@ def main() -> None:
                 prev_angle = angle
                 ts.append(t)
                 angles.append(angle)
+            f1 = lambda v: "" if v == "" or v is None else f"{v:.1f}"  # noqa: E731
             wr.writerow([time.strftime("%H:%M:%S") + f".{int((time.time() % 1) * 1000):03d}", f"{t:.3f}",
                          "" if angle is None else f"{angle:.2f}", mode,
-                         *(f"{v:.1f}" for v in (tip[:2] if tip else ("", ""))), *(f"{v:.1f}" for v in (base[:2] if base else ("", ""))),
-                         len(marks_full), *(f"{v:.1f}" for v in (pivot or ("", "")))])
+                         *(f1(v) for v in (tip[:2] if tip else ("", ""))), *(f1(v) for v in (base[:2] if base else ("", ""))),
+                         len(marks_full), *(f1(v) for v in (pivot or ("", "")))])
             print(f"{t - t_start:7.2f}  {'  --   ' if angle is None else f'{angle:8.2f}'}  {mode:<5} {len(marks_full)}", flush=True)
             if args.show:
                 view = img.copy()

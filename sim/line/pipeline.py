@@ -77,6 +77,7 @@ class SortingLine:
         self.last_blob: Blob | None = None
         self.track_started = 0.0
         self.track_frac = 0.0  # where along the zone the tracked bean was last seen (0 enter … 1 leave)
+        self.door_side: str | None = None  # 'act' | 'rest' | None (unknown: the first verdict sets it)
         self.last_seen = 0.0
         self.lost_after_s = 0.4
         self.fps = 0.0
@@ -164,6 +165,18 @@ class SortingLine:
             self.counters["suspect"] += 1
         else:
             self.counters["good"] += 1
+        if getattr(self.cfg, "door_policy", "state") == "state":
+            # the door is the decision: bad beans → the "act" side (gate.open), good beans → the other side (gate.flush).
+            # It holds there; it only moves when this verdict differs from the side it is on. Nothing returns by itself.
+            want = "act" if verdict.suspect else "rest"
+            if want != self.door_side:
+                (self.gate.open if want == "act" else self.gate.flush)()
+                self.door_side = want
+                self.counters["gate_pulses"] += 1
+                self.event("door_set", side="bad" if want == "act" else "good", because=verdict.label, dry_run=getattr(self.gate, "dry_run", True))
+            else:
+                self.event("door_kept", side="bad" if want == "act" else "good", because=verdict.label)
+            return verdict
         if verdict.suspect or getattr(self.cfg, "act_on", "suspect") == "all":
             delay, dwell = gate_schedule(frac, self.cfg)
             self.gate.pulse(delay, dwell)
@@ -265,7 +278,8 @@ class SortingLine:
         self.events.clear()
         self.state = "armed"
         self.last_verdict = None
+        self.door_side = None  # next verdict sets the side again (and moves the door)
 
     def status(self) -> dict:
-        return {"name": self.name, "state": self.state, "enabled": self.enabled, "dry_run": getattr(self.gate, "dry_run", True), "fps": round(self.fps, 1), "loop_ms": round(self.loop_ms, 1),
+        return {"name": self.name, "state": self.state, "enabled": self.enabled, "door_side": {"act": "bad", "rest": "good", None: "unknown"}[self.door_side], "door_policy": getattr(self.cfg, "door_policy", "state"), "dry_run": getattr(self.gate, "dry_run", True), "fps": round(self.fps, 1), "loop_ms": round(self.loop_ms, 1),
                 "counters": dict(self.counters), "zone": list(self.cfg.camera.zone), "last_verdict": asdict(self.last_verdict) if self.last_verdict else None, "datasets": self.dataset_counts(), "ok": self._thread.is_alive() if self._thread else False}

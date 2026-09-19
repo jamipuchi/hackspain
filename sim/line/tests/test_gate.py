@@ -146,6 +146,9 @@ def test_default_dwell_and_status(env):
     s = g.status()
     assert s["state"] == "scheduled" and 0 < s["open_in_s"] <= 0.05 and 0 < s["flush_in_s"] <= 0.10
     assert wait_state(g, "flush")
+    t0 = time.monotonic()
+    while len(g.log) < 2 and time.monotonic() - t0 < 0.5:  # state flips before the flush command is logged
+        time.sleep(0.005)
     s = g.status()
     assert s["open_in_s"] is None and s["flush_in_s"] is None and s["n_pulses"] == 1 and len(s["log"]) == 2
 
@@ -205,9 +208,9 @@ def test_belt_channel_maps_angles_to_C_and_never_sends_C0(env):
         assert sp != 0 and -100 <= sp <= 100
         assert abs(belt_angle_for_speed(sp) - deg) <= 1 or deg in (90,), (deg, sp)
     g.open()
-    assert fake.sent[-1] == "C -28" and fake.belt_angle == 65 and fake.belt_attached
+    assert fake.sent[-1] == "C -28" and fake.belt_attached and fake.belt_us == 1360
     g.flush()
-    assert fake.sent[-1] == "C 1" and fake.belt_angle == 90 and fake.belt_attached
+    assert fake.sent[-1] == "C 1" and fake.belt_attached and fake.belt_us == 1505
     e = g.log[-1]
     assert e["deg"] == 90 and e["sp"] == 1 and e["deg_actual"] == 90 and e["line"] == "C 1"
     assert not any(s == "C 0" for s in fake.sent)
@@ -270,3 +273,24 @@ def test_belt_spin_pulse_dry_run_and_selftest(env):
     assert all(c.ok for c in checks), [(c.name, c.detail) for c in checks if not c.ok]
     assert any("opposite T" in c.name for c in checks)
     assert fake.selftest_belt_cmd is None
+
+
+# ------------------------------------------------------------------ channel "d6": positional door on D6 via D (held, never detached)
+def test_d6_channel_sends_D_and_disarms_C0(env):
+    cfg, fake, make = env
+    cfg.gate.channel = "d6"
+    fake.selftest_belt_cmd = "C 0"
+    g = make()
+    assert fake.selftest_belt_cmd is None
+    assert g.command(65) == "D 65" and g.command(90) == "D 90" and g.command(200) == "D 180"
+    g.open()
+    assert fake.sent[-1] == "D 65" and fake.door_mode and fake.belt_attached
+    g.flush()
+    assert fake.sent[-1] == "D 90"
+    assert not any(s == "C 0" for s in fake.sent)
+    cfg.gate.ramp_override = True
+    assert g.ramp_command() == "R 3 400 8000"
+    g.apply_ramp()
+    assert fake.sent[-1] == "R 3 400 8000" and fake.vmax[3] == 400.0
+    checks = g.selftest()
+    assert all(c.ok for c in checks), [(c.name, c.detail) for c in checks if not c.ok]
