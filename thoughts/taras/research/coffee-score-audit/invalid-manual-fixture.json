@@ -1,0 +1,6 @@
+{
+  "rows": [
+    {"object_id": 1, "spawn_time_s": 0.0, "required_reject": false, "outcome": "accept", "manual_injection": "false", "score_epoch_id": "epoch-a"}
+  ],
+  "snapshots": []
+}

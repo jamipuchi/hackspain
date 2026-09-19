@@ -14,7 +14,6 @@ import argparse
 import json
 import math
 import sys
-from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -87,15 +86,61 @@ def validate_rows(rows: list[Any]) -> list[dict[str, Any]]:
         outcome = raw.get("outcome")
         if outcome not in VALID_OUTCOMES:
             raise InputError(f"{label}.outcome must be accept, reject, spilled, or null")
+        manual_injection = raw.get("manual_injection", False)
+        if not isinstance(manual_injection, bool):
+            raise InputError(f"{label}.manual_injection must be true or false when present")
         result.append({
             "object_id": object_id,
             "spawn_time_s": number(raw.get("spawn_time_s"), f"{label}.spawn_time_s"),
             "required_reject": raw["required_reject"],
             "outcome": outcome,
-            "manual_injection": raw.get("manual_injection", False) is True,
+            "manual_injection": manual_injection,
             "score_epoch_id": epoch,
         })
     return result
+
+
+def validate_engine_scores(scores: Any, label: str) -> dict[str, Any]:
+    if not isinstance(scores, dict):
+        raise InputError(f"{label} must be an object")
+    for key in (
+        "schema_version", "clock", "score_epoch_id", "as_of_sim_time_s",
+        "window_seconds", "settling_seconds", "window_start_exclusive_s",
+        "window_end_inclusive_s", "available_seconds", "warming_up",
+        "manual_injections_excluded", "settling_objects", "eligible_objects", "versions",
+    ):
+        if key not in scores:
+            raise InputError(f"{label}.{key} is required")
+    for key in (
+        "as_of_sim_time_s", "window_seconds", "settling_seconds",
+        "window_start_exclusive_s", "window_end_inclusive_s", "available_seconds",
+    ):
+        number(scores[key], f"{label}.{key}")
+    for key in ("settling_objects", "eligible_objects"):
+        if isinstance(scores[key], bool) or not isinstance(scores[key], int) or scores[key] < 0:
+            raise InputError(f"{label}.{key} must be a non-negative integer")
+    for key in ("warming_up", "manual_injections_excluded"):
+        if not isinstance(scores[key], bool):
+            raise InputError(f"{label}.{key} must be true or false")
+    versions = scores["versions"]
+    if not isinstance(versions, dict):
+        raise InputError(f"{label}.versions must be an object")
+    for key in ("model", "policy", "source_revision"):
+        if not isinstance(versions.get(key), str) or not versions[key]:
+            raise InputError(f"{label}.versions.{key} must be non-empty")
+    for name in METRICS:
+        value = scores.get(name)
+        if not isinstance(value, dict):
+            raise InputError(f"{label}.{name} must be an object")
+        for key in ("numerator", "denominator", "value"):
+            if key not in value:
+                raise InputError(f"{label}.{name}.{key} is required")
+        for key in ("numerator", "denominator"):
+            if isinstance(value[key], bool) or not isinstance(value[key], int) or value[key] < 0:
+                raise InputError(f"{label}.{name}.{key} must be a non-negative integer")
+        if value["value"] is not None:
+            number(value["value"], f"{label}.{name}.value")
+    return scores
 
 
 def snapshot_context(capture: dict[str, Any]) -> list[dict[str, Any]]:
@@ -125,12 +170,13 @@ def snapshot_context(capture: dict[str, Any]) -> list[dict[str, Any]]:
         source = versions.get("source_revision")
         if not isinstance(model, str) or not model or not isinstance(policy, str) or not policy:
             raise InputError(f"snapshots[{index}].versions needs non-empty model and policy values")
-        if source is not None and not isinstance(source, str):
-            raise InputError(f"snapshots[{index}].versions.source_revision must be a string when present")
+        if not isinstance(source, str) or not source:
+            raise InputError(f"snapshots[{index}].versions.source_revision must be non-empty")
         version_key = (model, policy, source)
         prior_versions = epoch_versions.setdefault(epoch, version_key)
         if prior_versions != version_key:
             raise InputError(f"score epoch {epoch} spans different model or policy versions")
+        engine_scores = validate_engine_scores(raw.get("rolling_scores"), f"snapshots[{index}].rolling_scores")
         contexts.append({
             "snapshot_index": index,
             "score_epoch_id": epoch,
@@ -138,7 +184,7 @@ def snapshot_context(capture: dict[str, Any]) -> list[dict[str, Any]]:
             "window_seconds": window,
             "settling_seconds": settling,
             "versions": {"model": model, "policy": policy, "source_revision": source},
-            "engine_scores": raw.get("rolling_scores", raw.get("engine_scores")),
+            "engine_scores": engine_scores,
         })
     return contexts
 
@@ -160,10 +206,17 @@ def calculate(rows: list[dict[str, Any]], context: dict[str, Any]) -> dict[str, 
     good_lost = sum(row["outcome"] in {"reject", "spilled"} for row in keep)
     unresolved = sum(row["outcome"] is None for row in cohort)
     return {
+        "schema_version": 1,
+        "clock": "simulation",
         "score_epoch_id": context["score_epoch_id"],
         "as_of_sim_time_s": now,
+        "window_seconds": context["window_seconds"],
+        "settling_seconds": context["settling_seconds"],
         "window_start_exclusive_s": start,
         "window_end_inclusive_s": end,
+        "available_seconds": max(0.0, min(context["window_seconds"], now - context["settling_seconds"])),
+        "warming_up": max(0.0, min(context["window_seconds"], now - context["settling_seconds"])) < context["window_seconds"],
+        "manual_injections_excluded": True,
         "source_rows_in_epoch": len(epoch_rows),
         "manual_rows_excluded": len(manual),
         "eligible_objects": len(cohort),
@@ -175,12 +228,17 @@ def calculate(rows: list[dict[str, Any]], context: dict[str, Any]) -> dict[str, 
     }
 
 
-def compare(expected: dict[str, Any], observed: Any) -> dict[str, Any] | None:
-    if not isinstance(observed, dict):
-        return None
+def compare(expected: dict[str, Any], observed: dict[str, Any]) -> dict[str, Any]:
     differences = []
-    for key in ("score_epoch_id", "as_of_sim_time_s", "window_seconds", "settling_seconds"):
-        if key in observed and observed.get(key) != expected.get(key):
+    for key in (
+        "schema_version", "clock", "score_epoch_id", "as_of_sim_time_s",
+        "window_seconds", "settling_seconds", "window_start_exclusive_s",
+        "window_end_inclusive_s", "available_seconds", "warming_up",
+        "manual_injections_excluded", "eligible_objects", "settling_objects",
+    ):
+        if key not in observed:
+            differences.append(f"{key} missing")
+        elif observed[key] != expected[key]:
             differences.append(f"{key}: expected {expected.get(key)!r}, engine {observed.get(key)!r}")
     for name in METRICS:
         actual = observed.get(name)
@@ -190,18 +248,14 @@ def compare(expected: dict[str, Any], observed: Any) -> dict[str, Any] | None:
         for key in ("numerator", "denominator", "value"):
             if actual.get(key) != expected[name][key]:
                 differences.append(f"{name}.{key}: expected {expected[name][key]!r}, engine {actual.get(key)!r}")
-    if observed.get("eligible_objects") != expected["eligible_objects"]:
-        differences.append(
-            f"eligible_objects: expected {expected['eligible_objects']!r}, engine {observed.get('eligible_objects')!r}"
-        )
-    if observed.get("settling_objects") != expected["settling_objects"]:
-        differences.append(
-            f"settling_objects: expected {expected['settling_objects']!r}, engine {observed.get('settling_objects')!r}"
-        )
     observed_versions = observed.get("versions")
-    if isinstance(observed_versions, dict):
+    if not isinstance(observed_versions, dict):
+        differences.append("versions missing")
+    else:
         for key, value in expected["versions"].items():
-            if value is not None and observed_versions.get(key) != value:
+            if key not in observed_versions:
+                differences.append(f"versions.{key} missing")
+            elif observed_versions[key] != value:
                 differences.append(
                     f"versions.{key}: expected {value!r}, engine {observed_versions.get(key)!r}"
                 )
@@ -219,8 +273,6 @@ def main() -> int:
         results = []
         for context in snapshot_context(capture):
             expected = calculate(rows, context)
-            expected["window_seconds"] = context["window_seconds"]
-            expected["settling_seconds"] = context["settling_seconds"]
             expected["versions"] = context["versions"]
             expected["engine_comparison"] = compare(expected, context["engine_scores"])
             results.append(expected)
@@ -228,7 +280,7 @@ def main() -> int:
         print(f"audit input error: {error}", file=sys.stderr)
         return 2
     print(json.dumps({"audit_version": 1, "snapshots": results}, indent=args.indent, sort_keys=True))
-    return 0
+    return 1 if any(not result["engine_comparison"]["pass"] for result in results) else 0
 
 
 if __name__ == "__main__":

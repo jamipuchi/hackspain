@@ -1,0 +1,23 @@
+{
+  "rows": [
+    {"object_id": 1, "spawn_time_s": 0.0, "required_reject": false, "outcome": "accept", "score_epoch_id": "epoch-a"}
+  ],
+  "snapshots": [
+    {
+      "score_epoch_id": "epoch-a",
+      "as_of_sim_time_s": 0.6,
+      "versions": {"model": "model-a", "policy": "policy-a", "source_revision": "source-a"},
+      "rolling_scores": {
+        "schema_version": 1, "clock": "simulation", "score_epoch_id": "epoch-a", "as_of_sim_time_s": 0.6,
+        "window_seconds": 60.0, "settling_seconds": 0.6, "window_start_exclusive_s": -60.0,
+        "window_end_inclusive_s": 0.0, "available_seconds": 0.0, "warming_up": true,
+        "manual_injections_excluded": true, "settling_objects": 0, "eligible_objects": 2,
+        "sorting_accuracy": {"numerator": 1, "denominator": 1, "value": 1.0},
+        "defect_capture": {"numerator": 0, "denominator": 0, "value": null},
+        "good_loss": {"numerator": 0, "denominator": 1, "value": 0.0},
+        "unresolved": {"numerator": 0, "denominator": 1, "value": 0.0},
+        "versions": {"model": "model-a", "policy": "policy-a", "source_revision": "source-a"}
+      }
+    }
+  ]
+}

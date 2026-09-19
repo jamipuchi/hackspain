@@ -66,7 +66,8 @@ It reports these measures:
 
 The checker returns null values for empty denominators. It excludes manual
 rows. It prevents duplicate object IDs within an epoch. It calculates each
-epoch separately. It compares each available engine snapshot exactly.
+epoch separately. It requires a complete matching engine snapshot. It rejects
+an epoch with changed model, policy, or source revision.
 
 ## Edge-case check
 
@@ -80,6 +81,9 @@ The fixture passed these cases:
 - A manual row was excluded.
 - A second epoch used a separate cohort.
 - An empty required denominator returned `0/0` and null.
+- A complete matching engine aggregate passed comparison.
+- A mismatched aggregate returned exit status 1.
+- Missing engine fields and non-boolean manual flags returned exit status 2.
 
 The fixture checks calculation rules. It does not provide physical acceptance evidence.
 
