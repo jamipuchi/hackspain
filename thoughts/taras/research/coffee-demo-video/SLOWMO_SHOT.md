@@ -4,6 +4,8 @@ Status: Taras approved the concept and requested an ultra-slow-motion effect.
 Three [basic stills](BASIC_RENDER_REVIEW.md) now show one recorded bean pair.
 The [video preview](SEGMENTS_REVIEW.md) uses a different pair from an independently audited 500 Hz capture.
 The original still pair remains historical composition evidence only.
+Taras reviewed the video and reported that the discard remains difficult to see.
+The next revision must prioritize a readable reject path, not just unobstructed bean centres.
 
 ## Verified video event
 
