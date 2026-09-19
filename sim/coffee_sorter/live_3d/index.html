@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Coffee sorter live 3D preview</title>
+<style>
+:root{color-scheme:dark;--ink:#f3f0e8;--muted:#a8b0a7;--line:#ffffff1c;--glass:#101714dc;--green:#8be09f;--amber:#f2bf72;--red:#ff8874;--cyan:#78dff0}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden}body{background:#101512;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,sans-serif}button{font:inherit;color:inherit}#app{height:100dvh;display:grid;grid-template-rows:auto minmax(0,1fr);position:relative}.topbar{display:flex;align-items:center;gap:18px;min-height:74px;padding:12px 18px;border-bottom:1px solid var(--line);background:#111815;z-index:3}.identity{min-width:235px}.eyebrow{margin:0 0 3px;color:#93a397;font:10px ui-monospace,monospace;letter-spacing:.15em;text-transform:uppercase}.identity h1{font-size:20px;font-weight:560;letter-spacing:-.02em;margin:0}.scores{display:grid;grid-template-columns:repeat(3,minmax(92px,1fr));gap:8px;flex:1}.score{padding:7px 10px;border-left:1px solid var(--line)}.score strong{display:block;font:18px ui-monospace,monospace}.score span{display:block;margin-top:3px;color:var(--muted);font-size:10px}.score span span{display:inline;margin:0;color:inherit;font-size:inherit}.connection{min-width:155px;text-align:right;font:11px ui-monospace,monospace;color:var(--muted)}.connection b{display:inline-block;width:7px;height:7px;margin-right:6px;border-radius:50%;background:var(--amber)}.connection.online b{background:var(--green)}.connection.failed b{background:var(--red)}
+.stage{position:relative;min-height:0;overflow:hidden}canvas{display:block;width:100%;height:100%;touch-action:none}.stage:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,#0003,transparent 22%,transparent 72%,#0006)}.camera-tools{position:absolute;left:14px;top:14px;display:flex;gap:6px;z-index:2}.camera-tools button{border:1px solid var(--line);background:#111815c9;border-radius:999px;padding:7px 11px;font-size:11px;cursor:pointer}.camera-tools button[aria-pressed=true]{background:#dbe8da;color:#19231c}.latest{position:absolute;right:14px;top:14px;width:min(335px,calc(100% - 28px));background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:14px;backdrop-filter:blur(14px);z-index:2}.latest header{display:flex;justify-content:space-between;align-items:start;gap:10px}.latest h2{font-size:13px;margin:0 0 3px}.latest .object-id{font:10px ui-monospace,monospace;color:var(--muted)}.outcome{font:11px ui-monospace,monospace;border:1px solid var(--line);border-radius:999px;padding:5px 8px}.outcome.passed{color:var(--green)}.outcome.rejected,.outcome.spilled{color:var(--red)}.evidence{display:grid;grid-template-columns:1fr 1fr;gap:9px 12px;margin:13px 0 0}.evidence dt{font:9px ui-monospace,monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}.evidence dd{font-size:11px;margin:3px 0 0;line-height:1.35}.footcards{position:absolute;left:14px;right:14px;bottom:14px;display:flex;justify-content:space-between;align-items:end;gap:12px;z-index:2;pointer-events:none}.asset-note,.telemetry{background:var(--glass);border:1px solid var(--line);border-radius:11px;padding:9px 11px;backdrop-filter:blur(12px);font:10px ui-monospace,monospace;color:var(--muted);line-height:1.5}.asset-note strong{display:block;color:var(--amber);font-family:inherit;font-weight:500}.telemetry{text-align:right}.telemetry.over-capacity{color:var(--red);border-color:#ff887466}.error{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(460px,calc(100% - 32px));background:#2a1714;border:1px solid #ff887466;border-radius:14px;padding:16px;z-index:5;font-size:12px;line-height:1.5}.hidden{display:none!important}
+@media(max-width:760px){.topbar{min-height:96px;padding:9px 12px;gap:10px;align-items:start;flex-wrap:wrap}.identity{min-width:0;flex:1}.identity h1{font-size:17px}.scores{order:3;flex-basis:100%;grid-template-columns:repeat(3,1fr);gap:0}.score{padding:4px 8px}.score strong{font-size:15px}.connection{min-width:118px;font-size:9px}.latest{top:52px;right:9px;width:min(286px,calc(100% - 18px));padding:10px}.latest h2{font-size:12px}.evidence{gap:6px 9px;margin-top:9px}.evidence dd{font-size:10px}.camera-tools{left:9px;top:9px}.camera-tools button{padding:6px 8px;font-size:9px}.footcards{left:9px;right:9px;bottom:9px}.asset-note{max-width:215px}.telemetry{max-width:175px}}
+@media(max-width:500px){.connection{display:none}.latest{top:45px}.footcards{align-items:end}.asset-note{max-width:180px;font-size:8px}.telemetry{font-size:8px}.camera-tools button:nth-child(2){display:none}}
+@media(max-height:620px){.topbar{min-height:62px;padding:7px 12px;flex-wrap:nowrap}.identity .eyebrow{display:none}.scores{order:initial;flex-basis:auto}.score{padding:2px 7px}.score span{font-size:7px;white-space:nowrap}.latest{top:8px;right:8px;padding:9px;width:min(300px,calc(100% - 16px))}.latest .object-id{display:none}.evidence{margin-top:7px}.footcards{bottom:8px}.asset-note{display:none}}
+@media(max-width:760px) and (max-height:620px){.topbar{gap:4px}.identity{flex:0 0 75px}.identity h1{font-size:14px}.scores{min-width:0;grid-template-columns:repeat(3,minmax(0,1fr))}.score{padding:2px 5px}.score span{font-size:0}.score span span{font-size:7px}.latest{top:45px}}
+@media(max-height:620px){.stage.asset-mode .asset-note{display:block;max-width:calc(100% - 18px)}.stage.asset-mode .telemetry{display:none}}
+</style>
+<script type="importmap">{"imports":{"three":"/three/three.module.js"}}</script>
+</head>
+<body>
+<main id="app">
+  <header class="topbar">
+    <div class="identity"><p class="eyebrow">Read-only isolated preview</p><h1>Live sorter, 3D</h1></div>
+    <section class="scores" aria-label="Rolling scores">
+      <div class="score"><strong id="accuracy">Warm-up</strong><span><span id="accuracy-count">0 / 0</span> accuracy</span></div>
+      <div class="score"><strong id="capture">Warm-up</strong><span><span id="capture-count">0 / 0</span> defect capture</span></div>
+      <div class="score"><strong id="loss">Warm-up</strong><span><span id="loss-count">0 / 0</span> good loss</span></div>
+    </section>
+    <div class="connection" id="connection"><b></b><span>Connecting</span></div>
+  </header>
+  <section class="stage" id="stage" aria-label="Live 3D coffee sorting scene">
+    <div class="camera-tools" aria-label="Camera views">
+      <button data-camera="overview" aria-pressed="true">Overview</button>
+      <button data-camera="sorting" aria-pressed="false">Sorting</button>
+      <button data-camera="top" aria-pressed="false">Top</button>
+      <button data-camera="assets" aria-pressed="false">Assets</button>
+    </div>
+    <article class="latest" aria-live="polite">
+      <header><div><h2>Latest requested object</h2><div class="object-id" id="object-id">Waiting for an injection</div></div><div class="outcome" id="outcome">In progress</div></header>
+      <dl class="evidence">
+        <div><dt>Prediction</dt><dd id="prediction">Not observed</dd></div>
+        <div><dt>Decision</dt><dd id="decision">Not decided</dd></div>
+        <div><dt>Air contact</dt><dd id="contact">No contact recorded</dd></div>
+        <div><dt>Physical outcome</dt><dd id="physical-outcome">Unresolved</dd></div>
+      </dl>
+    </article>
+    <div class="footcards">
+      <div class="asset-note" id="asset-note"><strong>Live visual contract</strong>Server shape and RGB select appearance. Boxes and capsules use generic fallbacks. Prediction never changes the model.</div>
+      <div class="telemetry" id="telemetry">Loading local assets</div>
+    </div>
+    <div class="error hidden" id="error" role="alert"></div>
+  </section>
+</main>
+<script type="module" src="/app.js"></script>
+</body>
+</html>
