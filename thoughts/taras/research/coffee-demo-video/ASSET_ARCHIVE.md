@@ -7,13 +7,14 @@ Renderer source commit: `14257e3`.
 Taras requested an agent-fs backup using the repository's `.env` credentials.
 The upload used only `AGENT_FS_API_URL` and `AGENT_FS_API_KEY` from that file.
 No credential values or `.env` files entered Git or the archives.
-The CLI's saved organization differed from the authenticated account's default organization.
-The upload selected the authenticated organization and drive explicitly, without changing the CLI's saved configuration.
+The initial upload used the personal organization `t`.
+Taras requested the `swarm` organization instead.
+The transfer selected the organization and drive explicitly, without changing the CLI's saved configuration.
 
 ## Destination
 
-- Organization: `e5223ba8-d883-4887-99fe-91910b6260ed`
-- Drive: `40258bdf-7154-48d0-ad06-1a81f0dafe01`
+- Organization: `swarm` (`9d0f4b46-6113-49f7-8e8c-d315a64bd59d`)
+- Drive: `default` (`ad84339c-9d70-462a-84cf-b58aba031ac5`)
 - Prefix: `qa/hackspain/2026-09-19-coffee-demo/`
 
 | File under the prefix | Bytes | SHA-256 |
@@ -50,12 +51,15 @@ These files are also available directly under the `clips/` subdirectory:
 
 ## Verification
 
-All eleven binary uploads created version 1.
+All eleven binary uploads created version 1 in the `swarm` organization.
 Each returned content hash and byte count matched its local file.
-Remote metadata confirmed both archive sizes and all nine individual clip sizes.
-Both archives were downloaded through agent-fs and hashed again.
-Their downloaded bytes matched the local SHA-256 hashes exactly.
+Both archives and all nine individual clips were downloaded through agent-fs and hashed again.
+Each downloaded file matched its local SHA-256 hash and byte count exactly.
 Both local ZIP integrity checks passed.
+The archive index was also uploaded and verified against its local bytes.
+After destination verification, all twelve original files were removed from the personal organization.
+The destination inventory contains twelve files. The original prefix contains no files.
+The assets remain recoverable from the verified Swarm copies and unchanged local files.
 
 ## Review status and 1080p
 
