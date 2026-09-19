@@ -739,3 +739,33 @@ preserve counts, input hashes and the calculation. Reproduce from this directory
 ```bash
 .venv/bin/python economics.py --config configs/economics.json --output runs/economics
 ```
+
+### Sensor validation corrections
+
+The first sensor pass is diagnostic only and is excluded from final evidence.
+Independent Standards review found stale source could pass resume validation,
+shape bounds understated capsule/rotated-box footprints, and some non-finite
+config values passed validation. The nominal 100 µs exposure also rounded 1.2 px
+to an identity kernel; a six-row 500 µs kernel shifted the centroid by 0.5 px
+without adjusting the timestamp. The corrected pass uses centered fractional
+box integration and checks source identity before and after each run.
+
+The first executor stopped on a model-capacity error, after the high-feed
+reference and during the crowded case. A replacement executor resumes from
+preserved code and archives the preliminary outputs before regeneration. No
+preliminary nominal-exposure result is used to claim robustness at 100 µs.
+
+The final harness separates the product stream from placement randomness. Each
+planned object has reproducible class, size, appearance and velocity; a blocked
+object remains pending. The 1,000/s comparison rejects a summary unless the
+eligible product-identity hashes match. The high-feed group reports admission
+limits explicitly and does not claim a paired cohort if crowding changes which
+objects arrive in the evaluation window. These are matched product identities,
+not a claim that trajectories remain identical after jets or belt speed change.
+
+Completed cases now use a checksum chain: `completion.json` binds `metrics.json`,
+which binds decoded inspection images, decision/evidence files and the feed
+manifest. Source, configuration, frozen model and software versions are recorded.
+Changing source or configuration in an already-running process is rejected.
+Use `--rerun` to archive a completed/incomplete case and actually recompute it.
+The full corrected regression suite passes **58 tests** before the final batch.

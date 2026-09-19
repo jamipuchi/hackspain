@@ -10,12 +10,12 @@ no blocking questions, no merge, commit and push useful milestones.
 
 ## Phase 1: sensor realism
 
-- [ ] Frozen green model; brightness ±30%, horizontal gradient, exposure-linked
+- [x] Frozen green model; brightness ±30%, horizontal gradient, exposure-linked
   motion blur, shot/read noise, physical ±5% belt jitter, crowded feed.
 - [ ] Matched one-factor physical experiments and combined assumed worst case;
   denominators, camera versus actuation diagnostics, plots and camera frames.
-- [ ] Exposure, noise and jitter frequency explicitly assumptions until measured.
-- [ ] Tests and separate Standards / Spec reviews before pushing.
+- [x] Exposure, noise and jitter frequency explicitly assumptions until measured.
+- [x] Tests and separate Standards / Spec reviews before pushing.
 
 ## Phase 2: economics
 

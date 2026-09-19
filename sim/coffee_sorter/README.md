@@ -91,6 +91,26 @@ Use a process supervisor with automatic restart disabled for long batches.
 hides slower measured CPU work. `--target-nozzles` fixes valves per target;
 `--nozzles` changes the physical bank size. They are different experiments.
 
+Sensor-realism and economics commands use the same environment above:
+
+```bash
+# Validate/resume the saved cases; uses the tracked frozen green classifier.
+.venv/bin/python run_sensor_realism.py all
+# Actually recompute all cases, archiving existing case directories first.
+.venv/bin/python run_sensor_realism.py all --rerun
+# Recompute one case, or regenerate only the summary plots.
+.venv/bin/python run_sensor_realism.py run --scenario exposure-nominal-100us-1000 --rerun
+.venv/bin/python run_sensor_realism.py summarize
+.venv/bin/python economics.py --config configs/economics.json --output runs/economics
+```
+
+[Sensor settings](configs/sensor_realism_scenarios.json) label exposure, noise,
+jitter and feeder geometry as assumptions. Source/config/model identity and
+saved artifact integrity are checked before a completed case can be reused.
+A source or configuration change requires recomputing the affected suite.
+The economics settings in [configs/economics.json](configs/economics.json) are
+hypothetical price and duty assumptions, with zero salvage and costs excluded.
+
 ## What the system handles (variability)
 
 - 10 classes in the feed, with continuous variation in size (screen 14–18), colour, texture, orientation (random yaw + tilt), and position on a 0.5 m wide belt.
