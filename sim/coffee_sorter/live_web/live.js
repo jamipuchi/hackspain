@@ -1322,7 +1322,8 @@ function drawInset() {
   const width = rect.width, height = rect.height;
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = '#f8f8f4'; ctx.fillRect(0, 0, width, height);
-  const left = Math.max(52, width * .08), usable = width - left - Math.max(28, width * .05);
+  const sideClearance = width > 760 ? Math.min(372, width * .27) : Math.max(42, width * .08);
+  const left = sideClearance, usable = width - sideClearance * 2;
   const X = x => left + (x + 1.1) / 1.6 * usable;
   const Y = y => height * .28 + y / .5 * height * .18;
   const Z = z => height * .90 - (z - .30) / .65 * height * .42;
