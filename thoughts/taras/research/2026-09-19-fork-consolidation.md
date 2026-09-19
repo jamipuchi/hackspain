@@ -60,7 +60,7 @@ Revision `05763c1` is published to main. All four PRs within Taras's fork now sh
 The main checkout is clean and uses the exact selected model. Frozen evaluation input validation and model reuse both pass.
 The demonstration service moved to the main checkout on port 8890. The retired quality service on port 8891 stopped.
 All eight obsolete fork branches without open upstream PRs were removed after ancestry verification.
-Two remote branches remain pending Taras's decision because they support open PRs in `jamipuchi/hackspain`.
+Taras requested preserving two remote branches because they support open PRs in `jamipuchi/hackspain`.
 They are `codex/jev` and `codex/coffee-sorter-upstream`. Neither contains work absent from main.
 All former local feature branches were removed.
 
