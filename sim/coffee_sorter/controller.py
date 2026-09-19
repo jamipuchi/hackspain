@@ -5,6 +5,7 @@ Only inputs: camera frames. Only output: `sim.fire(nozzle, t_on, duration, force
 """
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass, field
 import time
 import numpy as np
@@ -73,8 +74,11 @@ class Decision:
 
 class Controller:
     def __init__(self, sim, inspector: Inspector, model: Model, policy: Policy = SPECIALTY,
-                 jet_force: float = JET_FORCE):
+                 jet_force: float = JET_FORCE, continuous: bool = False,
+                 timing_limit: int = 4096):
         self.sim, self.insp, self.model, self.pol = sim, inspector, model, policy
+        self.continuous = continuous
+        self.history_limit = timing_limit
         self.L = sim.L
         self.classes = model.classes
         self.jet_force = jet_force
@@ -86,11 +90,12 @@ class Controller:
         self.tracks: list[Track] = []
         self.decisions: list[Decision] = []
         self.next_tid = 0
-        self.latency_ms: list[float] = []
-        self.compute_ms: list[float] = []
-        self.detection_ms: list[float] = []
-        self.inference_ms: list[float] = []
-        self.control_ms: list[float] = []
+        samples = lambda: deque(maxlen=timing_limit) if continuous else []
+        self.latency_ms = samples()
+        self.compute_ms = samples()
+        self.detection_ms = samples()
+        self.inference_ms = samples()
+        self.control_ms = samples()
         self.frames = 0
 
     # -------------------------------------------------------------- per frame
@@ -139,6 +144,9 @@ class Controller:
                     tr = live[j]; used[j] = True
             if tr is None:
                 tr = Track(self.next_tid, by, bx, t); self.next_tid += 1
+                if self.continuous:
+                    tr.obs_t = deque(maxlen=self.history_limit)
+                    tr.obs_x = deque(maxlen=self.history_limit)
                 tr.prob_sum = np.zeros(len(self.classes))
                 self.tracks.append(tr)
             tr.x, tr.y, tr.t = bx, 0.7 * tr.y + 0.3 * by if tr.n else by, t
@@ -213,5 +221,5 @@ class Controller:
             self.decisions.append(Decision(tr.tid, t, t_available, tr.x, tr.y, v, probs, tr.anomaly,
                                            reject, nozzles, t_fire, pulse, late, tr.n, cls, scheduled))
         # prune
-        if len(self.tracks) > 4000:
+        if self.continuous or len(self.tracks) > 4000:
             self.tracks = [tr for tr in self.tracks if not tr.done or tr.misses < 2]
