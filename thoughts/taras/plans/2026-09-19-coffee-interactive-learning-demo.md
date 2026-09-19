@@ -127,7 +127,7 @@ The [live contract](../contracts/2026-09-19-coffee-live-v1.md) defines IDs, time
 | Scope | Owner and location |
 |---|---|
 | `sim.py`, `scene.py`, `controller.py`, `vision.py`, `classifier.py`, `bootstrap_model.py`, `engine.py`, engine presets | This task after committed quality handoff. Preserve the completed quality checkout. |
-| Overall plan, shared contract, `LIVE.md`, `live.py`, `live_web/*`, separate language-policy files | This task, `/private/tmp/hackspain-coffee-core`, branch `codex/coffee-core-live` |
+| Overall plan, shared contract, `LIVE.md`, `live.py`, `live_web/*`, separate language-policy files | This task, `/Users/taras/Documents/code/hackspain`, branch `codex/coffee-core-live` |
 | New quality evidence and local quality plan | Parallel task, `thoughts/taras/research/coffee-quality/` |
 | `visual_assets/*`, GLBs, cinematic scripts | Swarm and existing render owners |
 | Existing `web/*` and `export_replay.py` | Frozen until Taras confirms integration ownership |
@@ -308,7 +308,7 @@ No engine or controller files change. Keep one active worker and the existing se
 ### Verification
 
 ```bash
-cd /private/tmp/hackspain-coffee-core
+cd /Users/taras/Documents/code/hackspain
 node --check sim/coffee_sorter/live_web/live.js
 .venv-coffee/bin/python -m py_compile sim/coffee_sorter/live.py
 # Reuse the current service unless its source predates this increment.
@@ -372,7 +372,7 @@ Events can fall outside the retained event window. Durable object summaries must
 ### Verification
 
 ```bash
-cd /private/tmp/hackspain-coffee-core
+cd /Users/taras/Documents/code/hackspain
 node --check sim/coffee_sorter/live_web/live.js
 .venv-coffee/bin/python -m py_compile sim/coffee_sorter/live.py
 curl --fail http://127.0.0.1:8890/health
@@ -429,7 +429,7 @@ Measure added evaluation and serialization cost before retaining the update cade
 ### Verification
 
 ```bash
-cd /private/tmp/hackspain-coffee-core
+cd /Users/taras/Documents/code/hackspain
 node --check sim/coffee_sorter/live_web/live.js
 .venv-coffee/bin/python -m py_compile sim/coffee_sorter/live.py
 curl --fail http://127.0.0.1:8890/state
@@ -701,7 +701,7 @@ Coin switching, generalized products, automated suggestions, and advanced learni
 Taras runs the completed increment from its isolated checkout:
 
 ```bash
-cd /private/tmp/hackspain-coffee-core
+cd /Users/taras/Documents/code/hackspain
 python3.13 -m venv .venv-coffee
 source .venv-coffee/bin/activate
 python -m pip install -r sim/coffee_sorter/requirements.txt

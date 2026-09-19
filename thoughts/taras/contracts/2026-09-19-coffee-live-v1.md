@@ -16,7 +16,7 @@ The parallel quality task completed its delivery. Commit `90dffc1` integrates th
 | Generated `web/index.html` | Taras is the integration owner until explicitly reassigned. No other track regenerates it. |
 | Rendering assets, GLBs, cinematic scripts | Swarm. Visual acceptance remains with Taras. |
 
-The original demo task uses `/private/tmp/hackspain-coffee-core` and port 8890.
+The original demo task uses `/Users/taras/Documents/code/hackspain` and port 8890.
 The task named "Improve coffee sorting motion" uses `/private/tmp/hackspain-coffee-quality` and port 8891 for engine work.
 Its Codex task directory remains `/Users/taras/.codex/worktrees/0833/hackspain`.
 Each task edits only its own checkout and assigned files.

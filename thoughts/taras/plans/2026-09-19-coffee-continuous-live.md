@@ -1,8 +1,8 @@
 ---
 date: 2026-09-19
 owner: taras
-status: proposed
-implementation_branch: codex/coffee-core-live
+status: approved
+implementation_branch: from-main-per-increment
 quality_integration_revision: 90dffc1
 ---
 
@@ -29,7 +29,7 @@ An idle browser connection also lost an injection before the worker received it.
 
 ## Score contract
 
-The proposed default window is **60 simulated seconds**. Taras can choose another duration or clock before implementation.
+The default window is **60 simulated seconds**. Taras approved continuing with this plan after fork consolidation.
 Label the clock explicitly. At approximately 0.2x engine speed, this window represents approximately five wall minutes.
 Keep engine speed and browser FPS separate from sorting scores.
 
@@ -77,7 +77,7 @@ Keep cumulative scalar totals when useful. Do not retain full objects solely to 
 ### Verification
 
 ```bash
-cd /private/tmp/hackspain-coffee-core
+cd /Users/taras/Documents/code/hackspain
 .venv-coffee/bin/python -m py_compile sim/coffee_sorter/engine.py sim/coffee_sorter/sim.py sim/coffee_sorter/controller.py
 .venv-coffee/bin/python sim/coffee_sorter/engine.py --preset sim/coffee_sorter/configs/default_demo.json --seconds 2 --out /tmp/coffee-continuous-retention-check
 ```
@@ -120,14 +120,14 @@ Finalize this proposed v2 command contract before implementation. Bounded v1 com
 The following command becomes available in this phase through the new continuous preset. Run it in terminal one:
 
 ```bash
-cd /private/tmp/hackspain-coffee-core
+cd /Users/taras/Documents/code/hackspain
 .venv-coffee/bin/python sim/coffee_sorter/live.py --port 8892 --preset sim/coffee_sorter/configs/continuous_demo.json --out /tmp/coffee-continuous-local
 ```
 
 Run these checks in terminal two:
 
 ```bash
-cd /private/tmp/hackspain-coffee-core
+cd /Users/taras/Documents/code/hackspain
 curl --fail http://127.0.0.1:8892/health
 curl --fail http://127.0.0.1:8892/state
 node --check sim/coffee_sorter/live_web/live.js
