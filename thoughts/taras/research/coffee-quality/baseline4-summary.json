@@ -1,0 +1,255 @@
+{
+  "protocol_version": 1,
+  "session_id": "2df99a5e-0131-4807-a24d-19f8178021f0",
+  "preset": {
+    "name": "provisional-live-v1",
+    "version": 1,
+    "provisional": true,
+    "profile": "green_arabica",
+    "seed": 8,
+    "requested_rate": 500.0,
+    "camera_every_steps": 2,
+    "jet_force_n": 0.06,
+    "model_path": "models/live_green_arabica.joblib",
+    "layout": {
+      "belt_len": 1.1,
+      "belt_w": 0.5,
+      "belt_z": 0.6,
+      "belt_speed": 3.0,
+      "feed_x": [
+        -1.05,
+        -0.95
+      ],
+      "feed_vx": 2.6,
+      "feed_drop": 0.006,
+      "cam_x": -0.12,
+      "cam_fov": 0.048,
+      "cam_w": 2080,
+      "cam_h": 192,
+      "ej_x": 0.1,
+      "n_nozzles": 64,
+      "ej_z_offset": 0.045,
+      "split_x": 0.34,
+      "split_z_drop": 0.125,
+      "n_ellipsoid": 400,
+      "n_half": 48,
+      "n_box": 20,
+      "n_capsule": 20,
+      "timestep": 0.002
+    },
+    "policy": {
+      "name": "specialty",
+      "reject_severities": [
+        "minor",
+        "major",
+        "foreign"
+      ],
+      "threshold": 0.5,
+      "anomaly": true,
+      "base_pulse_s": 0.003,
+      "ref_mass_kg": 0.0002,
+      "max_pulse_s": 0.012,
+      "lead_s": 0.0015,
+      "latency_floor_s": 0.004,
+      "induced_delay_s": 0.0,
+      "fixed_latency_s": null,
+      "target_nozzles": null
+    },
+    "limits": {
+      "max_sim_seconds": 10.0,
+      "max_wall_seconds": 300.0,
+      "max_events": 2000,
+      "max_recent_resolved_objects": 200
+    }
+  },
+  "versions": {
+    "preset": "44ce78c89d45112f29a9561bb517990e398602d83323147d1a5a013fec5ba538",
+    "model": "3e0532d24da3a872ae931b43b9f048ceda5435e13bdaaf65087d54c37705bdbd",
+    "policy": "e1f84378ba7e7c79aaecf8aec0eaa9b725e086b6ec1106a9e3e2ca05810bed04",
+    "source_revision": "46219fee2b0999f3c253cb2fd82114f1b60b223d",
+    "source_sha256": {
+      "engine.py": "c0f8fcb79bf93b27b5b78e10f2b777a231b023191d9066e60da4a5a6981dff1d",
+      "controller.py": "f7c2f975dca2358986054c6d3d389aa286444d73cb2571e45c854b40c0172575",
+      "sim.py": "1bda4e58ee7c7c7635ac81062891a8189d56639b35ba48b5459357ec1df7e7c9",
+      "vision.py": "b539b9a9d2fe04c81058526b2990aee89b1f88629578d8bc50ee41d17059c1c4",
+      "classifier.py": "d6257f348db6a82aa152f57de1ee0976228685f226000dfc62f3e82bf933325d",
+      "profiles.py": "e47a848e1331d902bb1bd1eb7d29306529339100edfb8175f9918e1ab09d6948",
+      "scene.py": "5fff8ea2b049fcf58556599c05e5d4585dd445dc4aa6615d9e1021b813982a27"
+    }
+  },
+  "runtime": {
+    "simulation_seconds": 3.999999999999781,
+    "active_wall_seconds": 20.217394209001213,
+    "engine_rate": 0.19784943394034907,
+    "requested_rate": 500.0,
+    "admitted_rate": 500.00000000002734,
+    "objects_spawned": 2000,
+    "peak_active_bodies": 268,
+    "pool_starved": 0,
+    "platform": "macOS-26.6-arm64-arm-64bit-Mach-O",
+    "python": "3.13.12",
+    "native_threadpools": [
+      {
+        "internal_api": "openmp",
+        "prefix": "libomp",
+        "version": null,
+        "num_threads": 1
+      }
+    ],
+    "packages": {
+      "mujoco": "3.13.0",
+      "numpy": "2.5.3",
+      "opencv-python-headless": "5.0.0.93",
+      "scikit-learn": "1.9.1",
+      "joblib": "1.6.0",
+      "aiohttp": "3.14.3"
+    },
+    "native_thread_limits": {
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "VECLIB_MAXIMUM_THREADS": "1"
+    }
+  },
+  "quality": {
+    "cohort_start_s": 0.8,
+    "cohort_end_s": 3.399999999999781,
+    "eligible_objects": 1300,
+    "required_defects": 190,
+    "keep_objects": 1110,
+    "captured_required_defects": 133,
+    "capture": 0.7,
+    "capture_interval_95": [
+      0.6314024468054291,
+      0.7606702558548872
+    ],
+    "good_objects_lost": 65,
+    "good_loss": 0.05855855855855856,
+    "good_loss_interval_95": [
+      0.046208166357176526,
+      0.0739539823720503
+    ],
+    "unresolved_objects": 0,
+    "unresolved_rate": 0.0,
+    "spills_in_denominators": true,
+    "unresolved_in_denominators": true
+  },
+  "loss_partition": {
+    "unresolved": 0,
+    "not_detected": 8,
+    "merged_without_target": 1,
+    "classification_or_tracking": 22,
+    "targeted_not_hit": 10,
+    "hit_not_captured": 16
+  },
+  "diagnostics": {
+    "categories_are_partition_labels_not_proven_causes": true,
+    "captures_without_own_pulse_hit": 3,
+    "associated_decisions": 1827,
+    "unassociated_decisions": 9,
+    "last_component_associations": 16,
+    "total_events": 6189,
+    "events_retained": 2000,
+    "window_start_event_id": 4190,
+    "event_evidence_scope": "retained_window",
+    "event_counts": {
+      "spawned": 2000,
+      "decision": 1836,
+      "valve_activated": 284,
+      "own_pulse_hit": 261,
+      "outcome": 1775,
+      "collateral_jet_hit": 33
+    }
+  },
+  "timings": {
+    "startup_seconds": 0.48555316613055766,
+    "active_wall_seconds": 20.217394209001213,
+    "physics": {
+      "count": 2000,
+      "total_ms": 2301.862977677956,
+      "per_sim_second_ms": 575.4657444195205,
+      "p50_ms": 1.1571249924600124,
+      "p95_ms": 1.4114544843323529,
+      "p99_ms": 1.7466577305458482,
+      "max_ms": 3.848165972158313
+    },
+    "inspection_render": {
+      "count": 1000,
+      "total_ms": 2902.4594705551863,
+      "per_sim_second_ms": 725.6148676388362,
+      "p50_ms": 2.7691249269992113,
+      "p95_ms": 3.8252459024079144,
+      "p99_ms": 4.565423286985605,
+      "max_ms": 14.45720810443163
+    },
+    "detection": {
+      "count": 1000,
+      "total_ms": 3435.0098751019686,
+      "per_sim_second_ms": 858.7524687755391,
+      "p50_ms": 3.4030835377052426,
+      "p95_ms": 3.9405167335644364,
+      "p99_ms": 5.601036548614501,
+      "max_ms": 11.899624951183796
+    },
+    "model_inference": {
+      "count": 1000,
+      "total_ms": 9104.069364257157,
+      "per_sim_second_ms": 2276.017341064414,
+      "p50_ms": 9.541083010844886,
+      "p95_ms": 10.63396034296602,
+      "p99_ms": 14.59825539961457,
+      "max_ms": 83.57320795767009
+    },
+    "control": {
+      "count": 1000,
+      "total_ms": 220.6327908206731,
+      "per_sim_second_ms": 55.1581977051713,
+      "p50_ms": 0.2185835037380457,
+      "p95_ms": 0.3882256569340825,
+      "p99_ms": 0.6126287905499338,
+      "max_ms": 2.75225006043911
+    },
+    "control_path": {
+      "count": 1000,
+      "total_ms": 12759.712030179799,
+      "per_sim_second_ms": 3189.9280075451243,
+      "p50_ms": 13.168187928386033,
+      "p95_ms": 14.730470080394298,
+      "p99_ms": 20.382786409463733,
+      "max_ms": 94.77633307687938
+    },
+    "evaluation": {
+      "count": 2000,
+      "total_ms": 2075.7108225952834,
+      "per_sim_second_ms": 518.9277056488493,
+      "p50_ms": 1.0686671594157815,
+      "p95_ms": 1.3473889557644723,
+      "p99_ms": 1.8172063166275618,
+      "max_ms": 4.421167075634003
+    },
+    "snapshot": {
+      "count": 203,
+      "total_ms": 153.59792043454945,
+      "per_sim_second_ms": 38.399480108639466,
+      "p50_ms": 0.6229998543858528,
+      "p95_ms": 0.8980205748230217,
+      "p99_ms": 1.6946160094812488,
+      "max_ms": 26.557042030617595
+    },
+    "camera_frame": {
+      "count": 1000,
+      "total_ms": 15770.751597126946,
+      "per_sim_second_ms": 3942.6878992819525,
+      "p50_ms": 16.160708386451006,
+      "p95_ms": 18.167510046623647,
+      "p99_ms": 24.517905320972204,
+      "max_ms": 98.18841679953039
+    },
+    "camera_interval_ms": 4.0,
+    "control_path_overruns": 927,
+    "camera_overruns": 1000,
+    "unattributed_wall_ms": 24.050987558439374,
+    "unattributed_wall_note": "Includes serialization, IPC, process scheduling, and loop overhead. See service-profile.json for HTTP timings."
+  },
+  "full_evidence_path": "/tmp/coffee-quality-baseline4/report.json"
+}

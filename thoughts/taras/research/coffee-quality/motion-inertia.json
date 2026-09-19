@@ -1,0 +1,2073 @@
+{
+  "schema_version": 1,
+  "preset_path": "/private/tmp/hackspain-coffee-quality/sim/coffee_sorter/configs/default_demo.json",
+  "preset": {
+    "name": "provisional-live-v1",
+    "version": 1,
+    "provisional": true,
+    "profile": "green_arabica",
+    "seed": 8,
+    "requested_rate": 500.0,
+    "camera_every_steps": 2,
+    "jet_force_n": 0.06,
+    "model_path": "models/live_green_arabica.joblib",
+    "layout": {
+      "belt_len": 1.1,
+      "belt_w": 0.5,
+      "belt_z": 0.6,
+      "belt_speed": 3.0,
+      "feed_x": [
+        -1.05,
+        -0.95
+      ],
+      "feed_vx": 2.6,
+      "feed_drop": 0.006,
+      "cam_x": -0.12,
+      "cam_fov": 0.048,
+      "cam_w": 2080,
+      "cam_h": 192,
+      "ej_x": 0.1,
+      "n_nozzles": 64,
+      "ej_z_offset": 0.045,
+      "split_x": 0.34,
+      "split_z_drop": 0.125,
+      "n_ellipsoid": 400,
+      "n_half": 48,
+      "n_box": 20,
+      "n_capsule": 20,
+      "timestep": 0.002
+    },
+    "policy": {
+      "name": "specialty",
+      "reject_severities": [
+        "minor",
+        "major",
+        "foreign"
+      ],
+      "threshold": 0.5,
+      "anomaly": true,
+      "base_pulse_s": 0.003,
+      "ref_mass_kg": 0.0002,
+      "max_pulse_s": 0.012,
+      "lead_s": 0.0015,
+      "latency_floor_s": 0.004,
+      "induced_delay_s": 0.0,
+      "fixed_latency_s": null,
+      "target_nozzles": null
+    },
+    "limits": {
+      "max_sim_seconds": 10.0,
+      "max_wall_seconds": 300.0,
+      "max_events": 2000,
+      "max_recent_resolved_objects": 200
+    }
+  },
+  "versions": {
+    "source_revision": "46219fee2b0999f3c253cb2fd82114f1b60b223d",
+    "source_sha256": {
+      "sim.py": "c7c42b63a44f0440828a97df7b5edeea86aabb2fa9dea72471650178723254dc",
+      "scene.py": "5fff8ea2b049fcf58556599c05e5d4585dd445dc4aa6615d9e1021b813982a27",
+      "profiles.py": "e47a848e1331d902bb1bd1eb7d29306529339100edfb8175f9918e1ab09d6948"
+    },
+    "evaluator_sha256": "b3289927a7a32f8c6fc0234a128de916e4e52206464be713ed6cd1b6fa9863de",
+    "preset_sha256": "9e91ef711b421ec59ae01cc2cd39c984ddf9719c44028fa76129992a3e593000",
+    "model_path": "/private/tmp/hackspain-coffee-quality/sim/coffee_sorter/models/live_green_arabica.joblib",
+    "model_sha256": "3e0532d24da3a872ae931b43b9f048ceda5435e13bdaaf65087d54c37705bdbd"
+  },
+  "measurement_scope": {
+    "geometry_state": "Geometry queries use a dedicated MjData. They cannot change the simulated solver state.",
+    "contact_impulse": "Reported impulse is the solved contact force multiplied by one physics timestep.",
+    "inspection_zone_x_m": [
+      -0.144,
+      -0.096
+    ],
+    "post_feed_zone_x_m": [
+      -0.85,
+      0.0
+    ],
+    "jet_zone_x_m": [
+      0.09000000000000001,
+      0.11
+    ],
+    "jets_enabled": false,
+    "camera_enabled": false
+  },
+  "runtime": {
+    "requested_seconds": 2.0,
+    "simulated_seconds": 2.0000000000000013,
+    "physics_timestep_s": 0.002,
+    "requested_rate_objects_s": 500.0,
+    "objects_spawned": 1000,
+    "admitted_rate_objects_s": 499.99999999999966,
+    "pool_starved": 0,
+    "native_thread_limits": {
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "VECLIB_MAXIMUM_THREADS": "1"
+    },
+    "native_threadpools": []
+  },
+  "classes": [
+    "good",
+    "faded",
+    "black",
+    "sour",
+    "insect",
+    "broken",
+    "shell",
+    "husk",
+    "stone",
+    "stick"
+  ],
+  "spawn": {
+    "by_class": {
+      "good": {
+        "objects": 862,
+        "collision_bottom_clearance_m": {
+          "samples": 862,
+          "min": 0.002735124603289174,
+          "p50": 0.003707569498093255,
+          "p95": 0.004400101891111563,
+          "p99": 0.004566477681420904,
+          "max": 0.0047636852814377795,
+          "mean": 0.0037050972280965534
+        },
+        "evaluated_existing_geom_pairs": 193278,
+        "signed_existing_geom_distance_m": {
+          "samples": 193278,
+          "min": 0.004926658693291635,
+          "p50": 0.7153457892702542,
+          "p95": 1.0,
+          "p99": 1.0,
+          "max": 1.0,
+          "mean": 0.6671331703007902
+        },
+        "closest_existing_geom_distance_m": {
+          "samples": 861,
+          "min": 0.004926658693291635,
+          "p50": 0.031993477729024965,
+          "p95": 0.07345012442090246,
+          "p99": 0.09771422235225564,
+          "max": 0.12537698887181645,
+          "mean": 0.03538222504184855
+        },
+        "objects_with_overlap": 0,
+        "overlap_pairs": 0,
+        "overlap_depth_m": {
+          "samples": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "mean": null
+        }
+      },
+      "faded": {
+        "objects": 22,
+        "collision_bottom_clearance_m": {
+          "samples": 22,
+          "min": 0.002937869477610322,
+          "p50": 0.0035175240483275028,
+          "p95": 0.004372524303512326,
+          "p99": 0.004438292975178244,
+          "max": 0.004454743513162995,
+          "mean": 0.003687203204064571
+        },
+        "evaluated_existing_geom_pairs": 4967,
+        "signed_existing_geom_distance_m": {
+          "samples": 4967,
+          "min": 0.005726360567146593,
+          "p50": 0.7279882824837032,
+          "p95": 1.0,
+          "p99": 1.0,
+          "max": 1.0,
+          "mean": 0.6728162130895345
+        },
+        "closest_existing_geom_distance_m": {
+          "samples": 22,
+          "min": 0.005726360567146593,
+          "p50": 0.02341350274703246,
+          "p95": 0.06080972968055787,
+          "p99": 0.09722616476872106,
+          "max": 0.10670981399867688,
+          "mean": 0.029169271237162595
+        },
+        "objects_with_overlap": 0,
+        "overlap_pairs": 0,
+        "overlap_depth_m": {
+          "samples": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "mean": null
+        }
+      },
+      "black": {
+        "objects": 18,
+        "collision_bottom_clearance_m": {
+          "samples": 18,
+          "min": 0.0030055110956898057,
+          "p50": 0.0036870393463095397,
+          "p95": 0.00410570707743928,
+          "p99": 0.004180111085583868,
+          "max": 0.004198712087620016,
+          "mean": 0.0036719520014838716
+        },
+        "evaluated_existing_geom_pairs": 3962,
+        "signed_existing_geom_distance_m": {
+          "samples": 3962,
+          "min": 0.008157501777591857,
+          "p50": 0.6870305825903097,
+          "p95": 1.0,
+          "p99": 1.0,
+          "max": 1.0,
+          "mean": 0.6568615770813117
+        },
+        "closest_existing_geom_distance_m": {
+          "samples": 18,
+          "min": 0.008157501777591857,
+          "p50": 0.02879759903868069,
+          "p95": 0.049648386524104346,
+          "p99": 0.05315913248247682,
+          "max": 0.054036818972069946,
+          "mean": 0.031545894318165
+        },
+        "objects_with_overlap": 0,
+        "overlap_pairs": 0,
+        "overlap_depth_m": {
+          "samples": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "mean": null
+        }
+      },
+      "sour": {
+        "objects": 23,
+        "collision_bottom_clearance_m": {
+          "samples": 23,
+          "min": 0.003218968415920509,
+          "p50": 0.003666530598161466,
+          "p95": 0.004347787308581974,
+          "p99": 0.00443919601019728,
+          "max": 0.004463215769163642,
+          "mean": 0.003812276774176113
+        },
+        "evaluated_existing_geom_pairs": 5295,
+        "signed_existing_geom_distance_m": {
+          "samples": 5295,
+          "min": 0.005737201482111364,
+          "p50": 0.7565185265075547,
+          "p95": 1.0,
+          "p99": 1.0,
+          "max": 1.0,
+          "mean": 0.6862545060885299
+        },
+        "closest_existing_geom_distance_m": {
+          "samples": 23,
+          "min": 0.005737201482111364,
+          "p50": 0.028729044882793753,
+          "p95": 0.0916867957553173,
+          "p99": 0.09697914624669739,
+          "max": 0.09793074310900791,
+          "mean": 0.03630742238347989
+        },
+        "objects_with_overlap": 0,
+        "overlap_pairs": 0,
+        "overlap_depth_m": {
+          "samples": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "mean": null
+        }
+      },
+      "insect": {
+        "objects": 30,
+        "collision_bottom_clearance_m": {
+          "samples": 30,
+          "min": 0.0029452860745941,
+          "p50": 0.0037035690891118467,
+          "p95": 0.0044834374446735435,
+          "p99": 0.004609153662689215,
+          "max": 0.004643073254962937,
+          "mean": 0.003765726886312322
+        },
+        "evaluated_existing_geom_pairs": 6784,
+        "signed_existing_geom_distance_m": {
+          "samples": 6784,
+          "min": 0.006405850234264956,
+          "p50": 0.7180541926650625,
+          "p95": 1.0,
+          "p99": 1.0,
+          "max": 1.0,
+          "mean": 0.6683475737438008
+        },
+        "closest_existing_geom_distance_m": {
+          "samples": 30,
+          "min": 0.006405850234264956,
+          "p50": 0.04148598439541265,
+          "p95": 0.07723775863008436,
+          "p99": 0.1034129699621604,
+          "max": 0.11276537156570571,
+          "mean": 0.044164488319228486
+        },
+        "objects_with_overlap": 0,
+        "overlap_pairs": 0,
+        "overlap_depth_m": {
+          "samples": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "mean": null
+        }
+      },
+      "broken": {
+        "objects": 19,
+        "collision_bottom_clearance_m": {
+          "samples": 19,
+          "min": 0.0033428141012535884,
+          "p50": 0.0035896811203860457,
+          "p95": 0.003881377058694513,
+          "p99": 0.0038922704845662627,
+          "max": 0.0038949938410342,
+          "mean": 0.0035753109586877823
+        },
+        "evaluated_existing_geom_pairs": 4675,
+        "signed_existing_geom_distance_m": {
+          "samples": 4675,
+          "min": 0.0078043855297014455,
+          "p50": 0.7444621681259386,
+          "p95": 1.0,
+          "p99": 1.0,
+          "max": 1.0,
+          "mean": 0.6820021040414295
+        },
+        "closest_existing_geom_distance_m": {
+          "samples": 19,
+          "min": 0.0078043855297014455,
+          "p50": 0.029540808832467375,
+          "p95": 0.05410238411362531,
+          "p99": 0.07200592364669625,
+          "max": 0.07648180852996397,
+          "mean": 0.03141761809940076
+        },
+        "objects_with_overlap": 0,
+        "overlap_pairs": 0,
+        "overlap_depth_m": {
+          "samples": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "mean": null
+        }
+      },
+      "shell": {
+        "objects": 9,
+        "collision_bottom_clearance_m": {
+          "samples": 9,
+          "min": 0.001720694684170243,
+          "p50": 0.0022798893704504275,
+          "p95": 0.0028435038947574264,
+          "p99": 0.002882737688251873,
+          "max": 0.0028925461366254845,
+          "mean": 0.00232418584188533
+        },
+        "evaluated_existing_geom_pairs": 1873,
+        "signed_existing_geom_distance_m": {
+          "samples": 1873,
+          "min": 0.007910639963109917,
+          "p50": 0.6706224843685161,
+          "p95": 1.0,
+          "p99": 1.0,
+          "max": 1.0,
+          "mean": 0.6402215354653344
+        },
+        "closest_existing_geom_distance_m": {
+          "samples": 9,
+          "min": 0.007910639963109917,
+          "p50": 0.02989404987125415,
+          "p95": 0.05219105333888046,
+          "p99": 0.05563505763046079,
+          "max": 0.056496058703355875,
+          "mean": 0.03099517325153467
+        },
+        "objects_with_overlap": 0,
+        "overlap_pairs": 0,
+        "overlap_depth_m": {
+          "samples": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "mean": null
+        }
+      },
+      "husk": {
+        "objects": 7,
+        "collision_bottom_clearance_m": {
+          "samples": 7,
+          "min": -0.0002448579638740789,
+          "p50": 0.0007675669233311311,
+          "p95": 0.0019291189168193165,
+          "p99": 0.002019694932228104,
+          "max": 0.0020423389360803013,
+          "mean": 0.0006683295972117476
+        },
+        "evaluated_existing_geom_pairs": 1634,
+        "signed_existing_geom_distance_m": {
+          "samples": 1634,
+          "min": 0.015559945647689987,
+          "p50": 0.7156221079764009,
+          "p95": 1.0,
+          "p99": 1.0,
+          "max": 1.0,
+          "mean": 0.6755569805718958
+        },
+        "closest_existing_geom_distance_m": {
+          "samples": 7,
+          "min": 0.015559945647689987,
+          "p50": 0.03722861155147166,
+          "p95": 0.07068408523937278,
+          "p99": 0.07693350093158106,
+          "max": 0.07849585485463315,
+          "mean": 0.04071226774895328
+        },
+        "objects_with_overlap": 0,
+        "overlap_pairs": 0,
+        "overlap_depth_m": {
+          "samples": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "mean": null
+        }
+      },
+      "stone": {
+        "objects": 3,
+        "collision_bottom_clearance_m": {
+          "samples": 3,
+          "min": 0.0044749502314633816,
+          "p50": 0.00535848295967678,
+          "p95": 0.005509369681853349,
+          "p99": 0.005522781834935711,
+          "max": 0.005526134873206301,
+          "mean": 0.005119856021448821
+        },
+        "evaluated_existing_geom_pairs": 771,
+        "signed_existing_geom_distance_m": {
+          "samples": 771,
+          "min": 0.00750352614970534,
+          "p50": 0.77295294950915,
+          "p95": 1.0,
+          "p99": 1.0,
+          "max": 1.0,
+          "mean": 0.6970210627401412
+        },
+        "closest_existing_geom_distance_m": {
+          "samples": 3,
+          "min": 0.00750352614970534,
+          "p50": 0.01787794600653728,
+          "p95": 0.05004256385927135,
+          "p99": 0.0529016410017366,
+          "max": 0.053616410287352916,
+          "mean": 0.026332627481198512
+        },
+        "objects_with_overlap": 0,
+        "overlap_pairs": 0,
+        "overlap_depth_m": {
+          "samples": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "mean": null
+        }
+      },
+      "stick": {
+        "objects": 7,
+        "collision_bottom_clearance_m": {
+          "samples": 7,
+          "min": 0.006000000000000005,
+          "p50": 0.006000000000000005,
+          "p95": 0.006000000000000005,
+          "p99": 0.006000000000000005,
+          "max": 0.006000000000000005,
+          "mean": 0.006000000000000005
+        },
+        "evaluated_existing_geom_pairs": 1575,
+        "signed_existing_geom_distance_m": {
+          "samples": 1575,
+          "min": 0.0029858836093172984,
+          "p50": 0.7730593778145782,
+          "p95": 1.0,
+          "p99": 1.0,
+          "max": 1.0,
+          "mean": 0.690509913436787
+        },
+        "closest_existing_geom_distance_m": {
+          "samples": 7,
+          "min": 0.0029858836093172984,
+          "p50": 0.034934459943392504,
+          "p95": 0.04989211807952513,
+          "p99": 0.05208410290416216,
+          "max": 0.05263209911032142,
+          "mean": 0.03370544727793796
+        },
+        "objects_with_overlap": 0,
+        "overlap_pairs": 0,
+        "overlap_depth_m": {
+          "samples": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "mean": null
+        }
+      }
+    }
+  },
+  "contacts": {
+    "belt_feed": {
+      "by_class": {
+        "good": {
+          "samples": 64230,
+          "objects": 847,
+          "normal_impulse_n_s": {
+            "samples": 64230,
+            "min": 0.0,
+            "p50": 3.468281364793507e-06,
+            "p95": 3.865636277460172e-05,
+            "p99": 0.00010802792557039412,
+            "max": 0.0004976081297286598,
+            "mean": 8.83830526600782e-06
+          },
+          "penetration_depth_m": {
+            "samples": 64230,
+            "min": 2.6713486370871786e-10,
+            "p50": 0.00012118455574261153,
+            "p95": 0.0017553305957018598,
+            "p99": 0.0026608759159113633,
+            "max": 0.004453948444177137,
+            "mean": 0.0003410323898153315
+          },
+          "bean_contact_samples": 689,
+          "fixture_contact_samples": 63541
+        },
+        "faded": {
+          "samples": 1942,
+          "objects": 22,
+          "normal_impulse_n_s": {
+            "samples": 1942,
+            "min": 0.0,
+            "p50": 3.6725756227784462e-06,
+            "p95": 3.156015237031668e-05,
+            "p99": 9.149435454024791e-05,
+            "max": 0.00020146376743626398,
+            "mean": 8.089444360823582e-06
+          },
+          "penetration_depth_m": {
+            "samples": 1942,
+            "min": 1.0161989928269416e-07,
+            "p50": 0.00011908626665576216,
+            "p95": 0.0013435704627937843,
+            "p99": 0.0021771181889101753,
+            "max": 0.003064028562472804,
+            "mean": 0.0002817219416494788
+          },
+          "bean_contact_samples": 10,
+          "fixture_contact_samples": 1932
+        },
+        "black": {
+          "samples": 1110,
+          "objects": 18,
+          "normal_impulse_n_s": {
+            "samples": 1110,
+            "min": 0.0,
+            "p50": 3.776747273928073e-06,
+            "p95": 5.9410256506495584e-05,
+            "p99": 0.00014942510027428322,
+            "max": 0.0002664803500188603,
+            "mean": 1.1563142205239069e-05
+          },
+          "penetration_depth_m": {
+            "samples": 1110,
+            "min": 1.6935958638058732e-07,
+            "p50": 0.0001261490781525505,
+            "p95": 0.0022206463649827868,
+            "p99": 0.0030090931850500933,
+            "max": 0.00319575579104846,
+            "mean": 0.0004839977969397204
+          },
+          "bean_contact_samples": 7,
+          "fixture_contact_samples": 1103
+        },
+        "sour": {
+          "samples": 1884,
+          "objects": 23,
+          "normal_impulse_n_s": {
+            "samples": 1884,
+            "min": 0.0,
+            "p50": 2.9994471694554555e-06,
+            "p95": 3.133688590959593e-05,
+            "p99": 9.639818770766473e-05,
+            "max": 0.00024151735596524265,
+            "mean": 7.720172759164798e-06
+          },
+          "penetration_depth_m": {
+            "samples": 1884,
+            "min": 2.1726750060830843e-07,
+            "p50": 0.00011207822507555915,
+            "p95": 0.0016948803880672309,
+            "p99": 0.002400526661941755,
+            "max": 0.003080116409433519,
+            "mean": 0.00031392243252555135
+          },
+          "bean_contact_samples": 24,
+          "fixture_contact_samples": 1860
+        },
+        "insect": {
+          "samples": 2323,
+          "objects": 30,
+          "normal_impulse_n_s": {
+            "samples": 2323,
+            "min": 0.0,
+            "p50": 3.4504906359240933e-06,
+            "p95": 3.810269201855784e-05,
+            "p99": 9.853115169640213e-05,
+            "max": 0.00026459383542045225,
+            "mean": 8.625183446589438e-06
+          },
+          "penetration_depth_m": {
+            "samples": 2323,
+            "min": 3.428282862455445e-08,
+            "p50": 0.00012080660036888242,
+            "p95": 0.0016771768861914924,
+            "p99": 0.0025426275187817723,
+            "max": 0.003459350204133652,
+            "mean": 0.0003271314992553514
+          },
+          "bean_contact_samples": 23,
+          "fixture_contact_samples": 2300
+        },
+        "broken": {
+          "samples": 2197,
+          "objects": 19,
+          "normal_impulse_n_s": {
+            "samples": 2197,
+            "min": 0.0,
+            "p50": 1.198756850219887e-06,
+            "p95": 1.1212353831484134e-05,
+            "p99": 2.8519578477633877e-05,
+            "max": 0.00010963807517290829,
+            "mean": 2.8715401351997667e-06
+          },
+          "penetration_depth_m": {
+            "samples": 2197,
+            "min": 4.831293813076579e-07,
+            "p50": 0.00014134180384420356,
+            "p95": 0.0007406539465450217,
+            "p99": 0.0015351600272563502,
+            "max": 0.00325792701999427,
+            "mean": 0.0002340038237933683
+          },
+          "bean_contact_samples": 29,
+          "fixture_contact_samples": 2168
+        },
+        "shell": {
+          "samples": 347,
+          "objects": 9,
+          "normal_impulse_n_s": {
+            "samples": 347,
+            "min": 0.0,
+            "p50": 1.9013313524598923e-07,
+            "p95": 1.7116584163970513e-05,
+            "p99": 5.099057902091961e-05,
+            "max": 0.00023321405542424593,
+            "mean": 3.961691977632229e-06
+          },
+          "penetration_depth_m": {
+            "samples": 347,
+            "min": 1.9126861257634823e-06,
+            "p50": 0.0005589986274314779,
+            "p95": 0.004082542646505298,
+            "p99": 0.004564419598141211,
+            "max": 0.004677280921934847,
+            "mean": 0.0012851158648644046
+          },
+          "bean_contact_samples": 0,
+          "fixture_contact_samples": 347
+        },
+        "husk": {
+          "samples": 342,
+          "objects": 7,
+          "normal_impulse_n_s": {
+            "samples": 342,
+            "min": 0.0,
+            "p50": 2.0278443653209293e-07,
+            "p95": 5.893349320858715e-06,
+            "p99": 2.8186695723810164e-05,
+            "max": 3.758854014374774e-05,
+            "mean": 1.3346321951761906e-06
+          },
+          "penetration_depth_m": {
+            "samples": 342,
+            "min": 1.590146619113433e-07,
+            "p50": 0.00023291622352830947,
+            "p95": 0.0033273294863650294,
+            "p99": 0.004089277514077208,
+            "max": 0.004299104862787751,
+            "mean": 0.0007974477055741198
+          },
+          "bean_contact_samples": 0,
+          "fixture_contact_samples": 342
+        },
+        "stone": {
+          "samples": 144,
+          "objects": 3,
+          "normal_impulse_n_s": {
+            "samples": 144,
+            "min": 0.0,
+            "p50": 0.0,
+            "p95": 0.000108217956452066,
+            "p99": 0.00022694654558469616,
+            "max": 0.0004657786890742502,
+            "mean": 1.7780570488447965e-05
+          },
+          "penetration_depth_m": {
+            "samples": 144,
+            "min": 1.6975420412108574e-05,
+            "p50": 0.0010996064384554984,
+            "p95": 0.003939848185700212,
+            "p99": 0.006316893276032406,
+            "max": 0.008313135732157254,
+            "mean": 0.0014524443069846948
+          },
+          "bean_contact_samples": 0,
+          "fixture_contact_samples": 144
+        },
+        "stick": {
+          "samples": 790,
+          "objects": 7,
+          "normal_impulse_n_s": {
+            "samples": 790,
+            "min": 0.0,
+            "p50": 2.435519573069593e-07,
+            "p95": 9.536395843294197e-06,
+            "p99": 2.18876981530525e-05,
+            "max": 4.2004604992937515e-05,
+            "mean": 1.764002616777021e-06
+          },
+          "penetration_depth_m": {
+            "samples": 790,
+            "min": 1.4725700445529857e-07,
+            "p50": 0.00013577762530184558,
+            "p95": 0.0016935824794376965,
+            "p99": 0.00398773466470536,
+            "max": 0.004877780859463712,
+            "mean": 0.0004222731679348221
+          },
+          "bean_contact_samples": 16,
+          "fixture_contact_samples": 774
+        }
+      }
+    },
+    "downstream": {
+      "by_class": {
+        "good": {
+          "samples": 2259,
+          "objects": 630,
+          "normal_impulse_n_s": {
+            "samples": 2259,
+            "min": 0.0,
+            "p50": 1.4812159321381007e-05,
+            "p95": 0.0002583346029376253,
+            "p99": 0.0003188024229868638,
+            "max": 0.00042448036898690275,
+            "mean": 7.809048243099747e-05
+          },
+          "penetration_depth_m": {
+            "samples": 2259,
+            "min": 1.3782638395680447e-07,
+            "p50": 0.00018322426917532705,
+            "p95": 0.0013779894160720983,
+            "p99": 0.002355568206055541,
+            "max": 0.004396909430387869,
+            "mean": 0.00039746324697122155
+          },
+          "bean_contact_samples": 196,
+          "fixture_contact_samples": 2063
+        },
+        "faded": {
+          "samples": 36,
+          "objects": 16,
+          "normal_impulse_n_s": {
+            "samples": 36,
+            "min": 0.0,
+            "p50": 7.666489934690676e-05,
+            "p95": 0.00030985659053745526,
+            "p99": 0.000362380974055371,
+            "max": 0.0003719691395090276,
+            "mean": 0.00010235985151638175
+          },
+          "penetration_depth_m": {
+            "samples": 36,
+            "min": 4.6386685157860826e-06,
+            "p50": 0.00023998695241694195,
+            "p95": 0.001159316111433896,
+            "p99": 0.0014598072063801912,
+            "max": 0.001546352418933548,
+            "mean": 0.0003712719318555649
+          },
+          "bean_contact_samples": 0,
+          "fixture_contact_samples": 36
+        },
+        "black": {
+          "samples": 32,
+          "objects": 12,
+          "normal_impulse_n_s": {
+            "samples": 32,
+            "min": 0.0,
+            "p50": 0.0001032405538272728,
+            "p95": 0.0002820472904738904,
+            "p99": 0.0003558156011016577,
+            "max": 0.00036459119462018563,
+            "mean": 0.00010917442198335169
+          },
+          "penetration_depth_m": {
+            "samples": 32,
+            "min": 2.6017863079129573e-06,
+            "p50": 0.0002417642871811081,
+            "p95": 0.0013480763391587503,
+            "p99": 0.0013686058461157326,
+            "max": 0.001370083992848117,
+            "mean": 0.0004332510852770975
+          },
+          "bean_contact_samples": 0,
+          "fixture_contact_samples": 32
+        },
+        "sour": {
+          "samples": 852,
+          "objects": 14,
+          "normal_impulse_n_s": {
+            "samples": 852,
+            "min": 0.0,
+            "p50": 1.9101532357405086e-06,
+            "p95": 2.8235741531255465e-06,
+            "p99": 0.00017921503762365233,
+            "max": 0.0003831957519562822,
+            "mean": 6.838483541149379e-06
+          },
+          "penetration_depth_m": {
+            "samples": 852,
+            "min": 4.967419290245571e-06,
+            "p50": 5.03461257723558e-06,
+            "p95": 0.00040607073417858134,
+            "p99": 0.0019776062832652084,
+            "max": 0.0027732748135431817,
+            "mean": 8.299421998316063e-05
+          },
+          "bean_contact_samples": 0,
+          "fixture_contact_samples": 852
+        },
+        "insect": {
+          "samples": 508,
+          "objects": 23,
+          "normal_impulse_n_s": {
+            "samples": 508,
+            "min": 0.0,
+            "p50": 1.8920605852514448e-06,
+            "p95": 0.00012056937518070038,
+            "p99": 0.0002533929872872488,
+            "max": 0.00043151184389949936,
+            "mean": 1.5693598423190765e-05
+          },
+          "penetration_depth_m": {
+            "samples": 508,
+            "min": 1.5106897367769476e-06,
+            "p50": 5.068753059014018e-06,
+            "p95": 0.0010443169637692031,
+            "p99": 0.003143656424321671,
+            "max": 0.004801411113250774,
+            "mean": 0.0001814522414531031
+          },
+          "bean_contact_samples": 16,
+          "fixture_contact_samples": 492
+        },
+        "broken": {
+          "samples": 74,
+          "objects": 16,
+          "normal_impulse_n_s": {
+            "samples": 74,
+            "min": 0.0,
+            "p50": 2.9807549933350418e-06,
+            "p95": 8.721429602302274e-05,
+            "p99": 9.969198100602624e-05,
+            "max": 0.00010103438475389494,
+            "mean": 2.740377864373567e-05
+          },
+          "penetration_depth_m": {
+            "samples": 74,
+            "min": 9.640573543860187e-06,
+            "p50": 0.00021905081855934025,
+            "p95": 0.0013047598567193942,
+            "p99": 0.0025866684828037335,
+            "max": 0.0030078564530104475,
+            "mean": 0.0004305940367843869
+          },
+          "bean_contact_samples": 16,
+          "fixture_contact_samples": 58
+        },
+        "shell": {
+          "samples": 15,
+          "objects": 4,
+          "normal_impulse_n_s": {
+            "samples": 15,
+            "min": 0.0,
+            "p50": 0.0,
+            "p95": 2.6475827964916815e-05,
+            "p99": 4.1406533875322866e-05,
+            "max": 4.513921035292439e-05,
+            "mean": 7.045350125694429e-06
+          },
+          "penetration_depth_m": {
+            "samples": 15,
+            "min": 3.473195132923401e-05,
+            "p50": 0.0002903924586811263,
+            "p95": 0.001630839117115782,
+            "p99": 0.001889720586307833,
+            "max": 0.0019544409536058458,
+            "mean": 0.0005814494938421521
+          },
+          "bean_contact_samples": 0,
+          "fixture_contact_samples": 15
+        },
+        "husk": {
+          "samples": 57,
+          "objects": 4,
+          "normal_impulse_n_s": {
+            "samples": 57,
+            "min": 0.0,
+            "p50": 2.352271025316444e-07,
+            "p95": 6.375985415312775e-06,
+            "p99": 1.0902928676593998e-05,
+            "max": 1.338162696028844e-05,
+            "mean": 1.3856971220316397e-06
+          },
+          "penetration_depth_m": {
+            "samples": 57,
+            "min": 9.805616313825162e-06,
+            "p50": 1.988649733344612e-05,
+            "p95": 0.0011306045504584535,
+            "p99": 0.001506361227854455,
+            "max": 0.0016648860706328194,
+            "mean": 0.00018645260244662252
+          },
+          "bean_contact_samples": 0,
+          "fixture_contact_samples": 57
+        },
+        "stone": {
+          "samples": 1,
+          "objects": 1,
+          "normal_impulse_n_s": {
+            "samples": 1,
+            "min": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "penetration_depth_m": {
+            "samples": 1,
+            "min": 0.0017807747081637305,
+            "p50": 0.0017807747081637305,
+            "p95": 0.0017807747081637305,
+            "p99": 0.0017807747081637305,
+            "max": 0.0017807747081637305,
+            "mean": 0.0017807747081637305
+          },
+          "bean_contact_samples": 0,
+          "fixture_contact_samples": 1
+        },
+        "stick": {
+          "samples": 18,
+          "objects": 4,
+          "normal_impulse_n_s": {
+            "samples": 18,
+            "min": 0.0,
+            "p50": 2.0441456643980365e-07,
+            "p95": 2.9200392039285724e-05,
+            "p99": 3.9444778995509575e-05,
+            "max": 4.200587573456557e-05,
+            "mean": 5.425502545608127e-06
+          },
+          "penetration_depth_m": {
+            "samples": 18,
+            "min": 2.5488034621529328e-06,
+            "p50": 4.444918987249707e-05,
+            "p95": 0.0007046299625875971,
+            "p99": 0.0008675128209371994,
+            "max": 0.0009082335355246004,
+            "mean": 0.00015516023296499053
+          },
+          "bean_contact_samples": 0,
+          "fixture_contact_samples": 18
+        }
+      }
+    }
+  },
+  "motion": {
+    "post_feed": {
+      "by_class": {
+        "good": {
+          "samples": 110823,
+          "objects": 837,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 110823,
+            "min": -0.004453948444177125,
+            "p50": -2.3075913468839637e-05,
+            "p95": 0.01088669661000376,
+            "p99": 0.02611267984969861,
+            "max": 0.205268086399382,
+            "mean": 0.0019648860205651133
+          },
+          "vertical_velocity_m_s": {
+            "samples": 110823,
+            "min": -1.2132068752982301,
+            "p50": -0.006257411903747823,
+            "p95": 0.24517461796908382,
+            "p99": 0.4750998604560939,
+            "max": 1.9008754560103742,
+            "mean": -0.005072601092293981
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 110823,
+            "min": 4.479407871780486e-08,
+            "p50": 0.03656665632188394,
+            "p95": 0.3421675758721107,
+            "p99": 0.5619376014971513,
+            "max": 1.9008754560103742,
+            "mean": 0.08964015190358382
+          }
+        },
+        "faded": {
+          "samples": 2974,
+          "objects": 21,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 2974,
+            "min": -0.002438267854520615,
+            "p50": -4.685502743723147e-05,
+            "p95": 0.004823105690437741,
+            "p99": 0.01342192071453647,
+            "max": 0.016293525038898804,
+            "mean": 0.0006984462017718071
+          },
+          "vertical_velocity_m_s": {
+            "samples": 2974,
+            "min": -0.5720090381627536,
+            "p50": -0.005331103594423943,
+            "p95": 0.17624076063722724,
+            "p99": 0.3326346205967933,
+            "max": 0.5350172413095369,
+            "mean": -0.005192205572129652
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 2974,
+            "min": 5.460611637083961e-06,
+            "p50": 0.02635262723874308,
+            "p95": 0.24777653958305895,
+            "p99": 0.4073497735400944,
+            "max": 0.5720090381627536,
+            "mean": 0.06176122657192149
+          }
+        },
+        "black": {
+          "samples": 2470,
+          "objects": 18,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 2470,
+            "min": -0.0031957557910484713,
+            "p50": -1.5599402310995103e-05,
+            "p95": 0.012412277786400645,
+            "p99": 0.02003728844586427,
+            "max": 0.03451713787051802,
+            "mean": 0.0017863896627887115
+          },
+          "vertical_velocity_m_s": {
+            "samples": 2470,
+            "min": -0.6590132484261747,
+            "p50": -0.006254359726697745,
+            "p95": 0.3318952805854306,
+            "p99": 0.7747080314891744,
+            "max": 1.004131884303089,
+            "mean": 0.012680327233938042
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 2470,
+            "min": 4.21292768050017e-05,
+            "p50": 0.0592635643947813,
+            "p95": 0.39296393580535044,
+            "p99": 0.7747080314891744,
+            "max": 1.004131884303089,
+            "mean": 0.1159168754482257
+          }
+        },
+        "sour": {
+          "samples": 2903,
+          "objects": 22,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 2903,
+            "min": -0.002930830444579313,
+            "p50": -2.7581092820971875e-05,
+            "p95": 0.013672095556854353,
+            "p99": 0.024858945471035086,
+            "max": 0.02917508056302942,
+            "mean": 0.001991481316060876
+          },
+          "vertical_velocity_m_s": {
+            "samples": 2903,
+            "min": -0.7587875773935375,
+            "p50": -0.0066365401114041244,
+            "p95": 0.23779154553869897,
+            "p99": 0.4619770868464696,
+            "max": 0.7715724226064617,
+            "mean": -0.012265043523504125
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 2903,
+            "min": 4.012815992228899e-06,
+            "p50": 0.03052891621889744,
+            "p95": 0.36264630349206095,
+            "p99": 0.5600796920637154,
+            "max": 0.7715724226064617,
+            "mean": 0.08772947892798366
+          }
+        },
+        "insect": {
+          "samples": 3921,
+          "objects": 30,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 3921,
+            "min": -0.0033165964904290357,
+            "p50": -2.878544187512322e-05,
+            "p95": 0.018095616361110234,
+            "p99": 0.029551400211125935,
+            "max": 0.03070728982723725,
+            "mean": 0.00208682964447371
+          },
+          "vertical_velocity_m_s": {
+            "samples": 3921,
+            "min": -0.7981915870230027,
+            "p50": -0.006388636311179346,
+            "p95": 0.23990464383855634,
+            "p99": 0.5613369089646031,
+            "max": 0.7910284129769971,
+            "mean": -0.007458560341267112
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 3921,
+            "min": 5.6678322773048396e-05,
+            "p50": 0.03511532098467887,
+            "p95": 0.3481510883058802,
+            "p99": 0.6612792964984539,
+            "max": 0.7981915870230027,
+            "mean": 0.09185554900866223
+          }
+        },
+        "broken": {
+          "samples": 2466,
+          "objects": 19,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 2466,
+            "min": -0.002150149029674031,
+            "p50": -6.255497459339843e-05,
+            "p95": 0.008107318572172506,
+            "p99": 0.027431600774701564,
+            "max": 0.030503389422238292,
+            "mean": 0.0012282956409999783
+          },
+          "vertical_velocity_m_s": {
+            "samples": 2466,
+            "min": -0.7639007627108731,
+            "p50": -0.007763263580820285,
+            "p95": 0.17466106093756534,
+            "p99": 0.4126073821700438,
+            "max": 0.6594728687737648,
+            "mean": -0.009040129212982508
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 2466,
+            "min": 7.006411385661584e-06,
+            "p50": 0.029958826412628554,
+            "p95": 0.271357624258463,
+            "p99": 0.5364546868737539,
+            "max": 0.7639007627108731,
+            "mean": 0.06687038877553596
+          }
+        },
+        "shell": {
+          "samples": 1177,
+          "objects": 9,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 1177,
+            "min": -0.01071161237670959,
+            "p50": 0.004309845159877312,
+            "p95": 0.08733520113070842,
+            "p99": 0.10372198646734299,
+            "max": 0.11109934517427722,
+            "mean": 0.021929701696287322
+          },
+          "vertical_velocity_m_s": {
+            "samples": 1177,
+            "min": -1.4002600944683619,
+            "p50": -0.00975314357309362,
+            "p95": 0.9449733768802707,
+            "p99": 1.2917642552123765,
+            "max": 1.5224954552123682,
+            "mean": 0.04031334762093313
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 1177,
+            "min": 0.00011200277568158021,
+            "p50": 0.20009754864658189,
+            "p95": 1.0552922488295118,
+            "p99": 1.3495405686338129,
+            "max": 1.5224954552123682,
+            "mean": 0.3372999983624228
+          }
+        },
+        "husk": {
+          "samples": 937,
+          "objects": 7,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 937,
+            "min": -0.45039203938399275,
+            "p50": 0.0018335491477272647,
+            "p95": 0.1980689369467656,
+            "p99": 0.22797649638060263,
+            "max": 0.228442060901628,
+            "mean": 0.00359325773859034
+          },
+          "vertical_velocity_m_s": {
+            "samples": 937,
+            "min": -3.387546094441431,
+            "p50": 0.0019689145642831528,
+            "p95": 1.0353666713180412,
+            "p99": 1.6615412717947902,
+            "max": 1.84518447179479,
+            "mean": -0.11906226173331734
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 937,
+            "min": 7.472263995128318e-06,
+            "p50": 0.17715160422360918,
+            "p95": 2.4693300944414207,
+            "p99": 3.203902894441429,
+            "max": 3.387546094441431,
+            "mean": 0.47897533806977866
+          }
+        },
+        "stone": {
+          "samples": 314,
+          "objects": 3,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 314,
+            "min": -0.06708894854728942,
+            "p50": 0.010151342037357736,
+            "p95": 0.08049517155589095,
+            "p99": 0.08877013911477943,
+            "max": 0.08918721071777447,
+            "mean": 0.019871212262848794
+          },
+          "vertical_velocity_m_s": {
+            "samples": 314,
+            "min": -4.49119675570269,
+            "p50": -0.036881365993374424,
+            "p95": 0.9031911617733813,
+            "p99": 1.871213482509933,
+            "max": 2.287222340784541,
+            "mean": -0.19603565306505302
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 314,
+            "min": 0.004005765056047473,
+            "p50": 0.42866058348756186,
+            "p95": 2.4111524643296423,
+            "p99": 4.0751878974280835,
+            "max": 4.49119675570269,
+            "mean": 0.6554295173629523
+          }
+        },
+        "stick": {
+          "samples": 904,
+          "objects": 7,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 904,
+            "min": -0.018070988772822427,
+            "p50": -7.227460141384645e-05,
+            "p95": 0.0031016446054855104,
+            "p99": 0.005099137977385098,
+            "max": 0.005275388664013114,
+            "mean": -0.0004915335687782614
+          },
+          "vertical_velocity_m_s": {
+            "samples": 904,
+            "min": -0.21996247063251545,
+            "p50": -0.0044789823134370865,
+            "p95": 0.11873127816582559,
+            "p99": 0.20218097809408384,
+            "max": 0.23596156521572126,
+            "mean": -0.006120010609607231
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 904,
+            "min": 1.2548499132176678e-05,
+            "p50": 0.029626380357113537,
+            "p95": 0.1621018212772902,
+            "p99": 0.20958560338846752,
+            "max": 0.23596156521572126,
+            "mean": 0.04832659796046769
+          }
+        }
+      }
+    },
+    "inspection": {
+      "by_class": {
+        "good": {
+          "samples": 5843,
+          "objects": 729,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 5843,
+            "min": -0.003354587699682998,
+            "p50": -4.4036989750195765e-05,
+            "p95": 0.007474447492170118,
+            "p99": 0.024684691814862696,
+            "max": 0.20485304095948598,
+            "mean": 0.0013469396621002608
+          },
+          "vertical_velocity_m_s": {
+            "samples": 5843,
+            "min": -1.2132068752982301,
+            "p50": -0.006518333582063151,
+            "p95": 0.1870369052043041,
+            "p99": 0.4247388183401148,
+            "max": 0.8142991238982339,
+            "mean": -0.008026043084640798
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 5843,
+            "min": 4.479407871780486e-08,
+            "p50": 0.024305832502687412,
+            "p95": 0.30084221119528065,
+            "p99": 0.611294122311941,
+            "max": 1.2132068752982301,
+            "mean": 0.06945779439901338
+          }
+        },
+        "faded": {
+          "samples": 163,
+          "objects": 21,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 163,
+            "min": -0.0009860353341634154,
+            "p50": -6.9112069389754e-05,
+            "p95": 0.0008910562891516159,
+            "p99": 0.001218427072010546,
+            "max": 0.0012866065064662813,
+            "mean": -3.671983775469042e-05
+          },
+          "vertical_velocity_m_s": {
+            "samples": 163,
+            "min": -0.36884377177355954,
+            "p50": -0.009821541136477705,
+            "p95": 0.06911192085961285,
+            "p99": 0.1826184960631239,
+            "max": 0.21440289606312402,
+            "mean": -0.014141023161527141
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 163,
+            "min": 0.00014905396089677668,
+            "p50": 0.018457200584661437,
+            "p95": 0.13587289562804983,
+            "p99": 0.32512138865634654,
+            "max": 0.36884377177355954,
+            "mean": 0.0378503783938971
+          }
+        },
+        "black": {
+          "samples": 126,
+          "objects": 16,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 126,
+            "min": -0.0020456003167701464,
+            "p50": -4.610177085695444e-05,
+            "p95": 0.011962404589166697,
+            "p99": 0.013912697950030806,
+            "max": 0.014250335680855986,
+            "mean": 0.0014707192850257054
+          },
+          "vertical_velocity_m_s": {
+            "samples": 126,
+            "min": -0.43454164059347605,
+            "p50": -0.00385110905016499,
+            "p95": 0.8716436159047717,
+            "p99": 0.979606884303089,
+            "max": 1.004131884303089,
+            "mean": 0.0978839721653918
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 126,
+            "min": 4.21292768050017e-05,
+            "p50": 0.03728023226880348,
+            "p95": 0.8716436159047717,
+            "p99": 0.979606884303089,
+            "max": 1.004131884303089,
+            "mean": 0.1595216970315761
+          }
+        },
+        "sour": {
+          "samples": 146,
+          "objects": 18,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 146,
+            "min": -0.0024241444119954547,
+            "p50": -4.305629919493237e-05,
+            "p95": 0.005750504652974886,
+            "p99": 0.0068891437409308144,
+            "max": 0.006907037934836269,
+            "mean": 0.0005975307395820294
+          },
+          "vertical_velocity_m_s": {
+            "samples": 146,
+            "min": -0.5778672168863733,
+            "p50": -0.006812848908097606,
+            "p95": 0.0810471918992414,
+            "p99": 0.13707306106976688,
+            "max": 0.15740664421939138,
+            "mean": -0.032158855885159814
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 146,
+            "min": 4.012815992228899e-06,
+            "p50": 0.01640776934414602,
+            "p95": 0.318002110483314,
+            "p99": 0.5494182168863736,
+            "max": 0.5778672168863733,
+            "mean": 0.05716570580984498
+          }
+        },
+        "insect": {
+          "samples": 212,
+          "objects": 27,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 212,
+            "min": -0.00040694236446103815,
+            "p50": -3.781845548295193e-05,
+            "p95": 0.009631468995623928,
+            "p99": 0.026972643688611794,
+            "max": 0.027626280459465358,
+            "mean": 0.0015877597930225348
+          },
+          "vertical_velocity_m_s": {
+            "samples": 212,
+            "min": -0.6810006123826916,
+            "p50": -0.010452744768608236,
+            "p95": 0.0711469668941592,
+            "p99": 0.12033972682977474,
+            "max": 0.14142486673985652,
+            "mean": -0.03497976578473659
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 212,
+            "min": 0.0007012606282046891,
+            "p50": 0.019513821745291635,
+            "p95": 0.2056701559147152,
+            "p99": 0.6396024123826914,
+            "max": 0.6810006123826916,
+            "mean": 0.05770200504769322
+          }
+        },
+        "broken": {
+          "samples": 135,
+          "objects": 17,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 135,
+            "min": -0.0006279077781042863,
+            "p50": -8.462284216381732e-05,
+            "p95": 0.005599267531011075,
+            "p99": 0.007647398771133948,
+            "max": 0.007989769710342043,
+            "mean": 0.0003711008451486165
+          },
+          "vertical_velocity_m_s": {
+            "samples": 135,
+            "min": -0.4064774376566611,
+            "p50": -0.003746894573402514,
+            "p95": 0.1485701152719663,
+            "p99": 0.2346854868686273,
+            "max": 0.2614785668256155,
+            "mean": -0.017031369940645056
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 135,
+            "min": 0.00012197744545507776,
+            "p50": 0.022036125728775738,
+            "p95": 0.2474566813375631,
+            "p99": 0.3801866356874833,
+            "max": 0.4064774376566611,
+            "mean": 0.05696749253703076
+          }
+        },
+        "shell": {
+          "samples": 62,
+          "objects": 8,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 62,
+            "min": -0.010431667772304198,
+            "p50": 0.00046820415869924803,
+            "p95": 0.09755311723687043,
+            "p99": 0.1001277298609379,
+            "max": 0.1007404815166707,
+            "mean": 0.01934391143326454
+          },
+          "vertical_velocity_m_s": {
+            "samples": 62,
+            "min": -1.1320881230699336,
+            "p50": -0.04583320792148499,
+            "p95": 0.5797544552123772,
+            "p99": 0.6640731755750855,
+            "max": 0.733046533065475,
+            "mean": -0.09266887230062798
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 62,
+            "min": 0.0009253350903267604,
+            "p50": 0.3298421971377296,
+            "p95": 0.7622436673317076,
+            "p99": 1.1201199230699337,
+            "max": 1.1320881230699336,
+            "mean": 0.34264225230317596
+          }
+        },
+        "husk": {
+          "samples": 44,
+          "objects": 6,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 44,
+            "min": -0.012799250662127282,
+            "p50": -0.0076322103897043525,
+            "p95": 0.2278070198985521,
+            "p99": 0.22813111448152615,
+            "max": 0.22819938512726967,
+            "mean": 0.03527698946111876
+          },
+          "vertical_velocity_m_s": {
+            "samples": 44,
+            "min": -0.3197627788011451,
+            "p50": -0.0006836967939786105,
+            "p95": 0.35183795571396587,
+            "p99": 0.3855843557139659,
+            "max": 0.39402095571396584,
+            "mean": 0.017639484115235273
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 44,
+            "min": 0.0007326195766040874,
+            "p50": 0.0967754884969925,
+            "p95": 0.35183795571396587,
+            "p99": 0.3855843557139659,
+            "max": 0.39402095571396584,
+            "mean": 0.13414374192637463
+          }
+        },
+        "stone": {
+          "samples": 13,
+          "objects": 2,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 13,
+            "min": 0.009094180359838,
+            "p50": 0.018491556904483786,
+            "p95": 0.023903241240655723,
+            "p99": 0.024310706963612115,
+            "max": 0.02441257339435121,
+            "mean": 0.01778183244144162
+          },
+          "vertical_velocity_m_s": {
+            "samples": 13,
+            "min": -0.645162115523177,
+            "p50": -0.4796231249403023,
+            "p95": 0.7974377649085251,
+            "p99": 0.8181006798673065,
+            "max": 0.8232664086070018,
+            "mean": -0.22072482450242978
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 13,
+            "min": 0.3968536296488649,
+            "p50": 0.5623926202317396,
+            "p95": 0.7974377649085251,
+            "p99": 0.8181006798673065,
+            "max": 0.8232664086070018,
+            "mean": 0.5808257487068332
+          }
+        },
+        "stick": {
+          "samples": 48,
+          "objects": 6,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 48,
+            "min": -0.012952391312938127,
+            "p50": -0.00015056397219892492,
+            "p95": 0.0015838990148414774,
+            "p99": 0.002067647040880978,
+            "max": 0.0021762647104129895,
+            "mean": -0.0022668356052501135
+          },
+          "vertical_velocity_m_s": {
+            "samples": 48,
+            "min": -0.11031709451448958,
+            "p50": 0.0014331015077560611,
+            "p95": 0.18264523809674107,
+            "p99": 0.1994341292182198,
+            "max": 0.20288020792479586,
+            "mean": 0.026725636585185387
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 48,
+            "min": 0.0001689320566410348,
+            "p50": 0.05085924248522232,
+            "p95": 0.18264523809674107,
+            "p99": 0.1994341292182198,
+            "max": 0.20288020792479586,
+            "mean": 0.06811978488560821
+          }
+        }
+      }
+    },
+    "jet": {
+      "by_class": {
+        "good": {
+          "samples": 2357,
+          "objects": 703,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 2357,
+            "min": -0.051781225034379985,
+            "p50": -0.005441110680130978,
+            "p95": 0.0027710400179409025,
+            "p99": 0.014413428973819021,
+            "max": 0.06148351060322632,
+            "mean": -0.004949491893024558
+          },
+          "vertical_velocity_m_s": {
+            "samples": 2357,
+            "min": -1.512532816047619,
+            "p50": -0.32142245843049067,
+            "p95": -0.1883645929466241,
+            "p99": 0.021065690354279038,
+            "max": 0.33955694135101233,
+            "mean": -0.32668005263538147
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 2357,
+            "min": 0.004822825742741318,
+            "p50": 0.32142306805622595,
+            "p95": 0.49571506826340944,
+            "p99": 0.7370802309870416,
+            "max": 1.512532816047619,
+            "mean": 0.32885065708327815
+          }
+        },
+        "faded": {
+          "samples": 61,
+          "objects": 18,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 61,
+            "min": -0.012792255058200697,
+            "p50": -0.005554564040668231,
+            "p95": 0.005782776617269558,
+            "p99": 0.006124006024988282,
+            "max": 0.006179883471323699,
+            "mean": -0.005048970156932454
+          },
+          "vertical_velocity_m_s": {
+            "samples": 61,
+            "min": -0.5311571039368763,
+            "p50": -0.31847373716043376,
+            "p95": -0.08580432878807788,
+            "p99": -0.0387163287880779,
+            "max": -0.026944328788077877,
+            "mean": -0.3140645437972159
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 61,
+            "min": 0.026944328788077877,
+            "p50": 0.31847373716043376,
+            "p95": 0.47815641111547424,
+            "p99": 0.5193851039368763,
+            "max": 0.5311571039368763,
+            "mean": 0.3140645437972159
+          }
+        },
+        "black": {
+          "samples": 50,
+          "objects": 15,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 50,
+            "min": -0.007168448376504211,
+            "p50": -0.004617949018857592,
+            "p95": 0.03451580271053732,
+            "p99": 0.048201909219815715,
+            "max": 0.04841685447694499,
+            "mean": 0.0015792737910913046
+          },
+          "vertical_velocity_m_s": {
+            "samples": 50,
+            "min": -0.4967654986313672,
+            "p50": -0.30695869318712754,
+            "p95": 0.25171219542643686,
+            "p99": 0.27295433124386165,
+            "max": 0.2825681312438617,
+            "mean": -0.21143777716023815
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 50,
+            "min": 0.13618958738081743,
+            "p50": 0.30695869318712754,
+            "p95": 0.46463501723821293,
+            "p99": 0.48715169863136715,
+            "max": 0.4967654986313672,
+            "mean": 0.30711323825655756
+          }
+        },
+        "sour": {
+          "samples": 54,
+          "objects": 17,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 54,
+            "min": -0.01518388748603694,
+            "p50": -0.005356119231047174,
+            "p95": 0.004565399886385845,
+            "p99": 0.004610028878602012,
+            "max": 0.004617026320921203,
+            "mean": -0.0050122553756158554
+          },
+          "vertical_velocity_m_s": {
+            "samples": 54,
+            "min": -0.6485990961131072,
+            "p50": -0.3148116694698696,
+            "p95": -0.0059761362781771835,
+            "p99": 0.035618263721822904,
+            "max": 0.046016863721822926,
+            "mean": -0.3059167240476227
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 54,
+            "min": 0.006776863721822926,
+            "p50": 0.3148116694698696,
+            "p95": 0.5435307360356872,
+            "p99": 0.6382004961131071,
+            "max": 0.6485990961131072,
+            "mean": 0.308849708905603
+          }
+        },
+        "insect": {
+          "samples": 81,
+          "objects": 25,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 81,
+            "min": -0.010557340601671572,
+            "p50": -0.005383798013106955,
+            "p95": 0.007678364162735818,
+            "p99": 0.008844234065005497,
+            "max": 0.008849704629639854,
+            "mean": -0.004298961323233889
+          },
+          "vertical_velocity_m_s": {
+            "samples": 81,
+            "min": -0.7021043989047585,
+            "p50": -0.3183863280010809,
+            "p95": -0.1204448237777228,
+            "p99": 0.020122267182102097,
+            "max": 0.03581826718210204,
+            "mean": -0.2998370542923316
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 81,
+            "min": 0.003421732817897961,
+            "p50": 0.3183863280010809,
+            "p95": 0.3709013066368254,
+            "p99": 0.6864083989047586,
+            "max": 0.7021043989047585,
+            "mean": 0.30112141316552177
+          }
+        },
+        "broken": {
+          "samples": 55,
+          "objects": 16,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 55,
+            "min": -0.01388272644308286,
+            "p50": -0.005340470718430246,
+            "p95": -0.003050728085922717,
+            "p99": -0.0024118302617263283,
+            "max": -0.0021629493814933065,
+            "mean": -0.006194342593341484
+          },
+          "vertical_velocity_m_s": {
+            "samples": 55,
+            "min": -0.7002837850367182,
+            "p50": -0.31691271245033154,
+            "p95": -0.25567210312234623,
+            "p99": -0.22142069464338082,
+            "max": -0.21082580419314298,
+            "mean": -0.3607205475664308
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 55,
+            "min": 0.21082580419314298,
+            "p50": 0.31691271245033154,
+            "p95": 0.6539503895532545,
+            "p99": 0.69059458914739,
+            "max": 0.7002837850367182,
+            "mean": 0.3607205475664308
+          }
+        },
+        "shell": {
+          "samples": 24,
+          "objects": 8,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 24,
+            "min": -0.031797690825073555,
+            "p50": -0.0007752238368070596,
+            "p95": 0.11259741946721502,
+            "p99": 0.11276217942962424,
+            "max": 0.11280189792022655,
+            "mean": 0.009995498890910845
+          },
+          "vertical_velocity_m_s": {
+            "samples": 24,
+            "min": -1.0961712481321773,
+            "p50": -0.3034255025818353,
+            "p95": 0.0462879861006701,
+            "p99": 0.06433838610067014,
+            "max": 0.06885098610067014,
+            "mean": -0.3824392239693138
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 24,
+            "min": 0.02961098610067014,
+            "p50": 0.3034255025818353,
+            "p95": 1.0736082481321771,
+            "p99": 1.0916586481321773,
+            "max": 1.0961712481321773,
+            "mean": 0.39474697049448143
+          }
+        },
+        "husk": {
+          "samples": 18,
+          "objects": 6,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 18,
+            "min": -0.01852207290755714,
+            "p50": -0.004666676320609187,
+            "p95": 0.22035528843188126,
+            "p99": 0.22088772235024037,
+            "max": 0.22102083082983015,
+            "mean": 0.03160262481340612
+          },
+          "vertical_velocity_m_s": {
+            "samples": 18,
+            "min": -0.9868427788011447,
+            "p50": -0.3255152629271165,
+            "p95": -0.2727588344345785,
+            "p99": -0.2594172344345785,
+            "max": -0.25608183443457844,
+            "mean": -0.42968828526353314
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 18,
+            "min": 0.25608183443457844,
+            "p50": 0.3255152629271165,
+            "p95": 0.9701657788011446,
+            "p99": 0.9835073788011447,
+            "max": 0.9868427788011447,
+            "mean": 0.42968828526353314
+          }
+        },
+        "stone": {
+          "samples": 3,
+          "objects": 1,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 3,
+            "min": 0.0008694491649732239,
+            "p50": 0.0011901356998961221,
+            "p95": 0.0014290921471248996,
+            "p99": 0.001450332720211902,
+            "max": 0.0014556428634836527,
+            "mean": 0.0011717425761176663
+          },
+          "vertical_velocity_m_s": {
+            "samples": 3,
+            "min": -0.16034308251341334,
+            "p50": -0.1327532507496009,
+            "p95": -0.1079224021621697,
+            "p99": -0.1057152156210647,
+            "max": -0.10516341898578845,
+            "mean": -0.1327532507496009
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 3,
+            "min": 0.10516341898578845,
+            "p50": 0.1327532507496009,
+            "p95": 0.1575840993370321,
+            "p99": 0.1597912858781371,
+            "max": 0.16034308251341334,
+            "mean": 0.1327532507496009
+          }
+        },
+        "stick": {
+          "samples": 21,
+          "objects": 6,
+          "collision_bottom_relative_to_belt_m": {
+            "samples": 21,
+            "min": -0.019823848254789778,
+            "p50": -0.001820061834422404,
+            "p95": 0.0030702002514619853,
+            "p99": 0.003156180960954691,
+            "max": 0.0031776761383278673,
+            "mean": -0.004212955457768654
+          },
+          "vertical_velocity_m_s": {
+            "samples": 21,
+            "min": -0.15210390771961377,
+            "p50": -0.11004764396199955,
+            "p95": -0.053742674479805554,
+            "p99": -0.0478770085962718,
+            "max": -0.04641059212538837,
+            "mean": -0.10255000836570534
+          },
+          "absolute_vertical_velocity_m_s": {
+            "samples": 21,
+            "min": 0.04641059212538837,
+            "p50": 0.11004764396199955,
+            "p95": 0.14655142315889505,
+            "p99": 0.15099341080747003,
+            "max": 0.15210390771961377,
+            "mean": 0.10255000836570534
+          }
+        }
+      }
+    }
+  },
+  "sample_counts_by_class": {
+    "good": {
+      "spawn_objects": 862,
+      "insertion_geom_pairs": 193278,
+      "belt_feed_contact_samples": 64230,
+      "downstream_contact_samples": 2259,
+      "post_feed_samples": 110823,
+      "inspection_samples": 5843,
+      "jet_samples": 2357
+    },
+    "faded": {
+      "spawn_objects": 22,
+      "insertion_geom_pairs": 4967,
+      "belt_feed_contact_samples": 1942,
+      "downstream_contact_samples": 36,
+      "post_feed_samples": 2974,
+      "inspection_samples": 163,
+      "jet_samples": 61
+    },
+    "black": {
+      "spawn_objects": 18,
+      "insertion_geom_pairs": 3962,
+      "belt_feed_contact_samples": 1110,
+      "downstream_contact_samples": 32,
+      "post_feed_samples": 2470,
+      "inspection_samples": 126,
+      "jet_samples": 50
+    },
+    "sour": {
+      "spawn_objects": 23,
+      "insertion_geom_pairs": 5295,
+      "belt_feed_contact_samples": 1884,
+      "downstream_contact_samples": 852,
+      "post_feed_samples": 2903,
+      "inspection_samples": 146,
+      "jet_samples": 54
+    },
+    "insect": {
+      "spawn_objects": 30,
+      "insertion_geom_pairs": 6784,
+      "belt_feed_contact_samples": 2323,
+      "downstream_contact_samples": 508,
+      "post_feed_samples": 3921,
+      "inspection_samples": 212,
+      "jet_samples": 81
+    },
+    "broken": {
+      "spawn_objects": 19,
+      "insertion_geom_pairs": 4675,
+      "belt_feed_contact_samples": 2197,
+      "downstream_contact_samples": 74,
+      "post_feed_samples": 2466,
+      "inspection_samples": 135,
+      "jet_samples": 55
+    },
+    "shell": {
+      "spawn_objects": 9,
+      "insertion_geom_pairs": 1873,
+      "belt_feed_contact_samples": 347,
+      "downstream_contact_samples": 15,
+      "post_feed_samples": 1177,
+      "inspection_samples": 62,
+      "jet_samples": 24
+    },
+    "husk": {
+      "spawn_objects": 7,
+      "insertion_geom_pairs": 1634,
+      "belt_feed_contact_samples": 342,
+      "downstream_contact_samples": 57,
+      "post_feed_samples": 937,
+      "inspection_samples": 44,
+      "jet_samples": 18
+    },
+    "stone": {
+      "spawn_objects": 3,
+      "insertion_geom_pairs": 771,
+      "belt_feed_contact_samples": 144,
+      "downstream_contact_samples": 1,
+      "post_feed_samples": 314,
+      "inspection_samples": 13,
+      "jet_samples": 3
+    },
+    "stick": {
+      "spawn_objects": 7,
+      "insertion_geom_pairs": 1575,
+      "belt_feed_contact_samples": 790,
+      "downstream_contact_samples": 18,
+      "post_feed_samples": 904,
+      "inspection_samples": 48,
+      "jet_samples": 21
+    }
+  }
+}

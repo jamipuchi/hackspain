@@ -14,6 +14,7 @@ import platform
 import sys
 import time
 from collections import Counter
+from dataclasses import asdict
 from pathlib import Path
 
 import cv2
@@ -77,9 +78,10 @@ def provenance(config: dict) -> dict:
     }
 
 
-def collect_partition(seed: int, seconds: float, rate: float, defect_boost: float):
+def collect_partition(seed: int, seconds: float, rate: float, defect_boost: float,
+                      layout: Layout | None = None, capture_every: int = CAPTURE_EVERY):
     profile = PROFILES["green_arabica"]
-    sim = SorterSim(profile, Layout(**POOL), rate=rate, seed=seed, defect_boost=defect_boost)
+    sim = SorterSim(profile, layout or Layout(**POOL), rate=rate, seed=seed, defect_boost=defect_boost)
     inspector = Inspector(sim)
     rows: list[tuple[int, int, str]] = []
     features: list[np.ndarray] = []
@@ -87,7 +89,7 @@ def collect_partition(seed: int, seconds: float, rate: float, defect_boost: floa
     try:
         for step in range(int(seconds / sim.dt)):
             sim.step()
-            if step % CAPTURE_EVERY:
+            if step % capture_every:
                 continue
             frame, exposure_t = inspector.capture()
             blobs = inspector.detect(frame, exposure_t)
@@ -197,19 +199,40 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seconds", type=float, default=4.0, help="simulation seconds for each independent partition")
     parser.add_argument("--output", type=Path, default=MODELS / "live_green_arabica.joblib")
+    parser.add_argument("--preset", type=Path, default=HERE / "configs" / "default_demo.json")
     args = parser.parse_args()
     if not math.isfinite(args.seconds) or args.seconds <= 0:
         parser.error("--seconds must be finite and positive")
+
+    preset_path = args.preset.resolve()
+    preset = json.loads(preset_path.read_text())
+    if preset.get("profile") != "green_arabica":
+        parser.error("--preset must use the green_arabica profile")
+    layout = Layout(**preset["layout"])
+    rate = float(preset["requested_rate"])
+    capture_every = preset["camera_every_steps"]
+    if not math.isfinite(rate) or rate <= 0:
+        parser.error("preset requested_rate must be finite and positive")
+    if isinstance(capture_every, bool) or not isinstance(capture_every, int) or capture_every <= 0:
+        parser.error("preset camera_every_steps must be a positive integer")
 
     config = {
         "profile": "green_arabica",
         "train_seed": TRAIN_SEED,
         "holdout_seed": HOLDOUT_SEED,
         "seconds_per_partition": args.seconds,
-        "rate": 500,
+        "rate": rate,
         "defect_boost": 5,
-        "capture_every": CAPTURE_EVERY,
-        "pool": POOL,
+        "capture_every": capture_every,
+        "physical_preset": {
+            "name": preset.get("name"),
+            "version": preset.get("version"),
+            "sha256": sha256(preset_path),
+            "layout": asdict(layout),
+            "requested_rate": rate,
+            "camera_every_steps": capture_every,
+            "capture_hz": 1.0 / (layout.timestep * capture_every),
+        },
     }
     expected = provenance(config)
     output = args.output.resolve()
@@ -220,8 +243,12 @@ def main() -> None:
         return
 
     started = time.perf_counter()
-    X_train, y_train, train_rows = collect_partition(TRAIN_SEED, args.seconds, 500, 5)
-    X_holdout, y_holdout, holdout_rows = collect_partition(HOLDOUT_SEED, args.seconds, 500, 5)
+    X_train, y_train, train_rows = collect_partition(
+        TRAIN_SEED, args.seconds, rate, 5, layout, capture_every
+    )
+    X_holdout, y_holdout, holdout_rows = collect_partition(
+        HOLDOUT_SEED, args.seconds, rate, 5, layout, capture_every
+    )
     require_finite("Training features", X_train)
     require_finite("Holdout features", X_holdout)
     require_classes("training", y_train, profile.names)

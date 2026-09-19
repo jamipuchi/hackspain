@@ -41,7 +41,7 @@
       "major",
       "foreign"
     ],
-    "threshold": 0.8,
+    "threshold": 0.5,
     "anomaly": true,
     "base_pulse_s": 0.003,
     "ref_mass_kg": 0.0002,

@@ -1,0 +1,10 @@
+{
+  "manifest_sha256": "6ea14b673f0481241e7afab68f2cb89d8ef93fff1206e2f37e26d87a3b7610bc",
+  "output": "/private/tmp/coffee-quality-acceptance",
+  "seeds_exposed": [
+    111,
+    112,
+    113
+  ],
+  "started_at_utc": "2026-09-19T15:23:55.299220+00:00"
+}

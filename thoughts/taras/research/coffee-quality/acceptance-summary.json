@@ -1,0 +1,129 @@
+{
+  "all_seeds_completed": true,
+  "finished_at_utc": "2026-09-19T15:25:24.844612+00:00",
+  "initial_activity": {
+    "active": false,
+    "health": {
+      "error": null,
+      "reachable": true,
+      "session_id": "6eec7354-d53a-402c-a613-99174a4ce818",
+      "status": "completed"
+    },
+    "processes": []
+  },
+  "manifest": "/private/tmp/hackspain-coffee-quality/thoughts/taras/research/coffee-quality/freeze.json",
+  "manifest_sha256": "6ea14b673f0481241e7afab68f2cb89d8ef93fff1206e2f37e26d87a3b7610bc",
+  "pooled": {
+    "capture_interval_95": [
+      0.8414014398183477,
+      0.8831102947833375
+    ],
+    "good_loss_interval_95": [
+      0.052328197127479686,
+      0.06431176121626953
+    ],
+    "quality_bounds_pass": false,
+    "raw_counts": {
+      "captured_required_defects": 899,
+      "eligible_objects": 6900,
+      "good_objects_lost": 340,
+      "keep_objects": 5859,
+      "required_defects": 1041,
+      "unresolved_objects": 0
+    }
+  },
+  "schema_version": 1,
+  "seed_results": [
+    {
+      "admitted_rate": 499.9999999999718,
+      "capture_interval_95": [
+        0.8048253604583768,
+        0.8844101154126642
+      ],
+      "checks": {
+        "admitted_rate": true,
+        "capture_lower": true,
+        "eligible": true,
+        "good_loss_upper": false,
+        "zero_unresolved": true
+      },
+      "good_loss_interval_95": [
+        0.050691128160059405,
+        0.0716676182651457
+      ],
+      "pass": false,
+      "raw_counts": {
+        "captured_required_defects": 264,
+        "eligible_objects": 2300,
+        "good_objects_lost": 120,
+        "keep_objects": 1989,
+        "required_defects": 311,
+        "unresolved_objects": 0
+      },
+      "seed": 111
+    },
+    {
+      "admitted_rate": 499.9999999999718,
+      "capture_interval_95": [
+        0.8372880170513064,
+        0.9049635223138426
+      ],
+      "checks": {
+        "admitted_rate": true,
+        "capture_lower": true,
+        "eligible": true,
+        "good_loss_upper": false,
+        "zero_unresolved": true
+      },
+      "good_loss_interval_95": [
+        0.05409533233826757,
+        0.07599878280007846
+      ],
+      "pass": false,
+      "raw_counts": {
+        "captured_required_defects": 322,
+        "eligible_objects": 2300,
+        "good_objects_lost": 124,
+        "keep_objects": 1932,
+        "required_defects": 368,
+        "unresolved_objects": 0
+      },
+      "seed": 112
+    },
+    {
+      "admitted_rate": 499.9999999999718,
+      "capture_interval_95": [
+        0.8255466949584789,
+        0.8960770897614654
+      ],
+      "checks": {
+        "admitted_rate": true,
+        "capture_lower": true,
+        "eligible": true,
+        "good_loss_upper": false,
+        "zero_unresolved": true
+      },
+      "good_loss_interval_95": [
+        0.040734634917313384,
+        0.06011890535085267
+      ],
+      "pass": false,
+      "raw_counts": {
+        "captured_required_defects": 313,
+        "eligible_objects": 2300,
+        "good_objects_lost": 96,
+        "keep_objects": 1938,
+        "required_defects": 362,
+        "unresolved_objects": 0
+      },
+      "seed": 113
+    }
+  ],
+  "seeds_exposed": [
+    111,
+    112,
+    113
+  ],
+  "started_at_utc": "2026-09-19T15:23:55.299220+00:00",
+  "status": "fail"
+}
