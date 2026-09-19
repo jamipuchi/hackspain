@@ -39,7 +39,8 @@
     "bean_gray_max": 120,
     "min_area_px": 400,
     "max_area_px": 40000,
-    "dark_spot_gray": 45
+    "dark_spot_gray": 45,
+    "max_fg_frac": 0.5
   },
   "classifier": {
     "backend": "rule",

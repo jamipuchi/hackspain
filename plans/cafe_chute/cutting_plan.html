@@ -82,6 +82,7 @@ li b{font-weight:600}
         <tr><td><span class="tag">S4</span></td><td>Servo keeper</td><td>2</td><td class="num">2.5 × 0.6</td><td>glued on the platform underside on both sides of the servo ears</td></tr>
         <tr><td><span class="tag">S5</span></td><td>Horn tab</td><td>4 layers</td><td class="num">1.5 × 0.6</td><td>stack of four glued = 1.0 tall, on the door's top edge at the hinge end</td></tr>
         <tr><td><span class="tag">S6</span></td><td>Tab cheek</td><td>2</td><td class="num">1.5 × 1.2</td><td>one on each face of the door, lapping door and tab</td></tr>
+        <tr><td><span class="tag">SP</span></td><td>Soft stop pad</td><td>1</td><td class="num">3.0 × 1.0</td><td>glued flat on the LEFT wall inner face, 29.8 to 30.8 from the top, bottom edge on the paper: the door's free end lands on it</td></tr>
         <tr><td><span class="tag">C</span></td><td>Cup riser wall</td><td>4</td><td class="num">6.0 × H</td><td>H = 10.3 − your cup's height (riser table)</td></tr>
         <tr><td><span class="tag">C5</span></td><td>Cup riser top</td><td>1</td><td class="num">6.0 × 6.0</td><td></td></tr>
         <tr><td><span class="tag">L</span></td><td>Paper floor liner</td><td>1</td><td class="num">39.5 × 2.5 (paper)</td><td>printer paper, double-sided tape, matte side up</td></tr>
@@ -280,7 +281,7 @@ li b{font-weight:600}
             <tr><td>21°</td><td>W2 (4.4)</td><td>under the top end</td><td class="num">≈ 0.42 s</td></tr>
           </tbody>
         </table>
-        <p class="note" style="margin-top:12px">Times are from the model in the 3D simulation (zone centre at 12 cm to the door at 30 cm) and are approximate. Subtract 0.1 s for the servo swing to get the budget your laptop has from photo to command.</p>
+        <p class="note" style="margin-top:12px">Times are from the model in the 3D simulation (zone centre at 12 cm to the door at 30 cm) and are approximate. Subtract the door swing to get the laptop's budget from photo to command: about 0.1 s once the firmware's fast-door channel is in, about 0.35 s with the stock ramp. With the stock ramp only 12° and 15° leave a usable budget.</p>
       </div>
       <div>
         <ul>
@@ -309,7 +310,8 @@ li b{font-weight:600}
       <li><b>Bracket.</b> Glue S1 inner flat to the right panel's outer face with its upstream edge on the hinge line, top 1.5 above the wall top. Glue S2 on its downstream end and S1 outer parallel 2.0 out. Glue S3 on top, overhanging 1.0 upstream and 1.3 inward. Glue the two keepers S4 on the platform underside 1.3 apart, centred on the hole. <span class="check">Check: hole centre over the wall centre line on the hinge line.</span></li>
       <li><b>Servo.</b> Wire it to D9, 5V, GND and send <code>S 90 90 75</code>. Push it up through the hole from below, shaft down, ears between the keepers. Double-sided tape on the ears, one wrap of single-sided tape around the bracket box.</li>
       <li><b>Door on.</b> Glue the four-layer tab S5 on the door's top edge at the hinge end, then the two cheeks S6 on both faces lapping door and tab. Seat the door on the toothpick, flush with the wall, and glue the horn arm onto the tab while the servo holds 90. Cure fully.</li>
-      <li><b>Swing test.</b> <code>S 65 90 75</code>: the free end should touch the left wall. Wrong direction: use 115. Back at 90 the door must be flush, no step a bean could catch on. <span class="check">Check: 20 cycles, no rub, no creep.</span></li>
+      <li><b>Soft stop.</b> Glue pad SP on the left wall's inside face from 29.8 to 30.8 along the chute, standing on the paper. The door's free end must land on the pad, never on the bare wall edge.</li>
+      <li><b>Swing test.</b> <code>S 65 90 75</code>: the free end should just touch the pad. Adjust the angle by 1 or 2 degrees until it does. Wrong direction: use 115. Back at 90 the door must be flush, no step a bean could catch on. <span class="check">Check: 20 cycles, no rub, no creep.</span></li>
       <li><b>Cup riser.</b> Glue the four C walls into a tube, C5 on top, then glue the riser to the base and to the right panel under the door (Fig. 3). Place the cup. <span class="check">Check: rim 0.5 below the floor at the door.</span></li>
       <li><b>Zone marks, camera, bowl.</b> Tick the wall tops at 9.0 and 15.0. Phone 20 cm above the middle of the zone, lens square to the paper. Bowl under the exit. Ten beans at 15°, then adjust the slope.</li>
     </ol>
@@ -339,6 +341,7 @@ li b{font-weight:600}
         <li><b>Buttresses and riser</b> triangulate the tall, narrow girder against tipping.</li>
         <li><b>Servo in a glued box</b>, not on a 0.25 wall top: the ears are trapped between two keepers and the platform, and the box is glued to the panel over 2.0 × 2.0 plus its end plate.</li>
         <li><b>Door on two bearings</b>: servo shaft above, toothpick below, horn on a T-tab that cannot peel.</li>
+        <li><b>Soft stop.</b> The door lands on a foam pad, so a fast swing (the firmware's door channel is capped around 400 °/s) does not hammer the wall edge.</li>
       </ul>
     </section>
   </div>

@@ -54,6 +54,7 @@ class VisionCfg:  # owner: camera agent
     min_area_px: int = 400
     max_area_px: int = 40000
     dark_spot_gray: int = 45
+    max_fg_frac: float = 0.5  # more of the ROI than this is dark -> no paper in view, detector returns nothing
 
 
 @dataclass

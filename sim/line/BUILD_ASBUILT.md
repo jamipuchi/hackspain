@@ -35,7 +35,8 @@ Plans (private artifacts, Jaume's account):
 | horn | single-arm horn glued to a T-tab on the door's top edge **with the servo commanded to 90** |
 | FLUSH | `S 90 90 75` (door in line with the wall) |
 | OPEN | `S 65 90 75` nominal (25° in). If the horn ends up mirrored, `S 115 90 75`. Calibrate so the free end just touches the left wall |
-| swing time | SG90 ≈ 0.1 s for 25° incl. the firmware's trapezoidal ramp (`gate.settle_ms = 120` is fine) |
+| swing time | **with the stock firmware ramp (700 °/s², 200 °/s cap) a 25° move takes ≈ 0.35 s** (arduino agent, FakeArduino 0.32 s, analytic 0.38 s) → `gate.settle_ms ≈ 400`, `timing.door_lead_s ≈ 0.40`. With the proposed per-channel speed override (door capped at ~400 °/s) ≈ 0.10–0.12 s → `settle_ms ≈ 120`, `door_lead_s ≈ 0.12` |
+| soft stop | 1.0 × 3.0 cm foam-board pad on the left wall inner face at ≈ 29.8–30.8 cm; OPEN is calibrated to touch the pad |
 | dwell | 0.5 s after the bean was due at the door, then FLUSH |
 
 ## Expected bean kinematics (model, not measured)
@@ -50,7 +51,7 @@ speed of 40 cm/s (`v' = a − 1.6 v`). Bean released from rest at the top.
 | 18° | ≈ 80 | ≈ 0.64 s | ≈ 0.47 s | ≈ 31 cm/s |
 | 21° | ≈ 96 | ≈ 0.58 s | ≈ 0.42 s | ≈ 34 cm/s |
 
-Photo → door-command budget at 15° ≈ 0.45 s (0.55 s minus the servo swing). The chute is hand-fed one bean
+Photo → door-command budget at 15°: ≈ 0.45 s with the fast-door firmware option (0.55 − 0.10), only ≈ 0.15 s with the stock ramp (0.55 − 0.38). At 18° with the stock ramp the budget is ≈ 0.09 s, i.e. not workable; the fast-door option or 12° is required. The chute is hand-fed one bean
 every ~2 s; never two beans in the zone at once.
 
 ## As built (fill in when the chute exists)

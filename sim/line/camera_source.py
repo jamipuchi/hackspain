@@ -84,10 +84,10 @@ class _LatestFrameReader(threading.Thread):
         self.read_errors = 0
         self.fps = 0.0
         self._last_t: float | None = None
-        self._stop = threading.Event()
+        self._stop_evt = threading.Event()  # not `_stop`: that shadows Thread._stop()
 
     def run(self) -> None:
-        while not self._stop.is_set():
+        while not self._stop_evt.is_set():
             ok, bgr = self.cap.read()
             t = now()
             if not ok or bgr is None:
@@ -124,7 +124,7 @@ class _LatestFrameReader(threading.Thread):
             return self.latest is not None
 
     def stop(self) -> None:
-        self._stop.set()
+        self._stop_evt.set()
 
 
 # ----------------------------------------------------------------------------- real camera

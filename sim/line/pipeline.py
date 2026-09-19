@@ -74,6 +74,7 @@ class SortingLine:
         self.last_verdict: Verdict | None = None
         self.last_blob: Blob | None = None
         self.track_started = 0.0
+        self.track_frac = 0.0  # where along the zone the tracked bean was last seen (0 enter … 1 leave)
         self.last_seen = 0.0
         self.lost_after_s = 0.4
         self.fps = 0.0
@@ -105,9 +106,10 @@ class SortingLine:
         self.last_frame, self.last_blobs = frame, blobs
         self.counters["frames"] += 1
         verdict: Verdict | None = None
-        best = max(blobs, key=lambda b: b.area_px) if blobs else None
+        best = self._pick(blobs, roi)
         if best is not None:
             self.last_seen = frame.t
+            self.track_frac = flow_fraction(best, roi, self.cfg.camera.flow_axis)
             if self.state == "armed":
                 self.state = "tracking"
                 self.track_started = frame.t
@@ -123,6 +125,26 @@ class SortingLine:
         self.loop_ms = (now() - t0) * 1000
         self._render(frame, blobs, best)
         return verdict
+
+    def _pick(self, blobs: list[Blob], roi: ROI) -> Blob | None:
+        """Which blob is *the* bean this frame. Beans only move forward along the zone, so while tracking one we follow
+        the blob nearest its last position (never one far behind it). When it has left and another blob is behind,
+        that is a new bean: re-arm so it gets its own verdict."""
+        if not blobs:
+            return None
+        axis = self.cfg.camera.flow_axis
+        fr = {id(b): flow_fraction(b, roi, axis) for b in blobs}
+        if self.state == "armed":
+            return max(blobs, key=lambda b: (fr[id(b)], b.area_px))  # the front-most bean first
+        ahead = [b for b in blobs if fr[id(b)] >= self.track_frac - 0.15]
+        if ahead:
+            return min(ahead, key=lambda b: abs(fr[id(b)] - self.track_frac))
+        # tracked bean is gone (left the zone between frames); the remaining blob(s) are newer beans
+        if self.state == "tracking":
+            self.counters["lost"] += 1
+            self.event("bean_lost", after_s=0.0, note="left the zone before a full view")
+        self.state = "armed"
+        return max(blobs, key=lambda b: (fr[id(b)], b.area_px))
 
     def _decide(self, frame: Frame, blob: Blob, roi: ROI) -> Verdict:
         try:

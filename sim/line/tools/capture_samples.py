@@ -128,7 +128,7 @@ def main() -> None:
             step = 10
             H, W = frame.bgr.shape[:2]
             dx = dy = 0
-            if key in (2424832, 65361) or k == ord("a") and False or k == ord("A"):
+            if key in (2424832, 65361) or k == ord("A"):
                 dx = -step
             if key in (2555904, 65363) or k == ord("D"):
                 dx = step

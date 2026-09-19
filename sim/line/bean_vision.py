@@ -43,6 +43,7 @@ class PaperBeanDetector:
         self.paper_median = 0.0
         self.threshold_used = 0
         self.paper_ok = True
+        self.fg_frac = 0.0
         self._kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
 
     # -- geometry
@@ -81,6 +82,11 @@ class PaperBeanDetector:
         if H < 2 or W < 2:
             return []
         mask, gray = self.mask(crop)
+        # no white paper in view (dark desk, lens covered, hand): most of the ROI is 'bean'. Nothing to classify,
+        # and the per-pixel statistics would cost 50+ ms, so say so in status() and return quickly.
+        self.fg_frac = float(cv2.countNonZero(mask)) / (H * W)
+        if self.fg_frac > self.cfg.vision.max_fg_frac:
+            return []
         n, labels, stats, cents = cv2.connectedComponentsWithStats(mask, connectivity=8)
         if n <= 1:
             return []
@@ -164,7 +170,7 @@ class PaperBeanDetector:
         ts = list(self._times)
         return {"name": self.name, "features": len(FEATURES), "n_frames": self.n_frames, "n_blobs_last": self.n_blobs_last,
                 "last_ms": round(ts[-1], 2) if ts else 0.0, "mean_ms": round(float(np.mean(ts)), 2) if ts else 0.0,
-                "paper_gray_median": round(self.paper_median, 1), "paper_ok": self.paper_ok, "threshold_used": self.threshold_used,
+                "paper_gray_median": round(self.paper_median, 1), "paper_ok": self.paper_ok, "fg_frac": round(self.fg_frac, 3), "threshold_used": self.threshold_used,
                 "px_per_mm": self.cfg.camera.px_per_mm, "zone": list(self.cfg.camera.zone)}
 
     def selftest(self) -> list[Check]:

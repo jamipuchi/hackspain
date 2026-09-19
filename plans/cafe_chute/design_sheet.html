@@ -259,13 +259,13 @@ pre{margin:0;background:color-mix(in srgb,var(--line) 40%,transparent);border-ra
       <text x="458" y="240" text-anchor="middle" class="svg-dim">door open</text>
       <text x="502" y="22" text-anchor="middle" class="svg-dim">bean at door</text>
       <g stroke="var(--ok)" stroke-width="1.5" fill="none"><line x1="305" y1="235" x2="458" y2="235"/><line x1="305" y1="230" x2="305" y2="240"/><line x1="458" y1="230" x2="458" y2="240"/></g>
-      <text x="381" y="252" text-anchor="middle" class="svg-mono" style="fill:var(--ok)">0.45 s: capture + classify + serial + 0.1 s servo</text>
+      <text x="381" y="252" text-anchor="middle" class="svg-mono" style="fill:var(--ok)">0.45 s: capture + classify + serial, then a 0.1 s fast-door swing</text>
       <text x="480" y="252" class="svg-mono" style="fill:var(--dim)">0.13 s margin</text>
       <g class="svg-mono"><text x="54" y="34" text-anchor="end">0</text><text x="54" y="129" text-anchor="end">20</text><text x="54" y="224" text-anchor="end">40 cm</text>
         <text x="60" y="234" text-anchor="middle">0 s</text><text x="230" y="234" text-anchor="middle">0.5</text><text x="400" y="234" text-anchor="middle">1.0</text><text x="570" y="234" text-anchor="middle">1.5</text></g>
     </svg>
     </div>
-    <figcaption>A bean released at rest at the top reaches the zone centre after about 0.7 s and the door after about 1.3 s, rolling at 30 to 40 cm/s. The laptop has roughly 0.45 s from photo to door command. An OpenCV colour rule takes a few tens of milliseconds; a cloud vision model does not fit. If your loop is slower, lower the slope to 12° or move the zone up to 6 to 12 cm.</figcaption>
+    <figcaption>A bean released at rest at the top reaches the zone centre after about 0.7 s and the door after about 1.3 s, rolling at 30 to 40 cm/s. The laptop has roughly 0.45 s from photo to door command <em>if</em> the door swings in about 0.1 s, which needs the firmware's fast-door channel (the stock ramp takes about 0.35 s for 25° and leaves only 0.15 s). An OpenCV colour rule takes a few tens of milliseconds; a cloud vision model does not fit. If your loop is slower, lower the slope to 12° or move the zone up to 6 to 12 cm.</figcaption>
   </figure>
 
   <div class="two">
@@ -306,7 +306,8 @@ pre{margin:0;background:color-mix(in srgb,var(--line) 40%,transparent);border-ra
       <h3>Door angles</h3>
       <dl class="kv">
         <dt>FLUSH</dt><dd>door in line with the wall: <code>S 90 90 75</code> (base channel = door servo on D9)</dd>
-        <dt>OPEN</dt><dd>25° into the channel, free end touching the far wall: <code>S 65 90 75</code>. Use 115 if it turns the wrong way</dd>
+        <dt>OPEN</dt><dd>25° into the channel, free end landing on the soft-stop pad on the far wall: <code>S 65 90 75</code>. Use 115 if it turns the wrong way</dd>
+        <dt>SWING</dt><dd>stock firmware ramp: about 0.35 s for 25°. Ask for the fast-door channel (about 400 °/s) to get 0.1 s; the pad takes the impact</dd>
         <dt>DWELL</dt><dd>send OPEN as soon as the verdict is "suspect"; send FLUSH 0.5 s after the bean was due at the door</dd>
       </dl>
       <p class="assume" style="margin-top:12px">Fit the horn with the servo at 90 so FLUSH is truly flush. Then check that 65 lets the door's free end touch the far wall without jamming against it.</p>

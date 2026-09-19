@@ -89,3 +89,26 @@ def test_flow_fraction_and_schedule():
     assert abs(flow_fraction(b, roi, "-x") - 0.75) < 1e-9
     delay, dwell = fallback_gate_schedule(0.5, cfg)  # bean at 12 cm, door at 30 cm, 35 cm/s, 0.1 s lead
     assert abs(delay - ((30 - 12) / 35 - 0.1)) < 1e-6 and dwell == cfg.gate.default_dwell_s
+
+
+def test_back_to_back_beans_each_get_a_verdict():
+    """Second bean enters the zone while the first is still leaving it: two beans, two verdicts."""
+    cfg = config.LineConfig()
+    line, gate = build(cfg)
+    x0, y0, x1, y1 = cfg.camera.zone
+    ppm = cfg.camera.px_per_mm
+    vmid = (y0 + y1) // 2
+    t = now()
+    verdicts = []
+    for k in range(0, 60):
+        u1 = x0 - 60 + k * 12
+        u2 = u1 - 220  # trailing bean 220 px behind
+        img = np.full((cfg.camera.height, cfg.camera.width, 3), 235, np.uint8)
+        for u, dark in ((u1, False), (u2, True)):
+            cv2.ellipse(img, (int(u), vmid), (int(6 * ppm), int(4 * ppm)), 0, 0, 360, (35, 30, 30) if dark else (70, 95, 140), -1)
+        v = line.step(Frame(img, t, k, "test"))
+        if v:
+            verdicts.append(v)
+        t += 0.02
+    assert [v.suspect for v in verdicts] == [False, True], [v.reason for v in verdicts]
+    assert line.counters["beans"] == 2
