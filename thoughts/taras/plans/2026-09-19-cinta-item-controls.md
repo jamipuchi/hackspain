@@ -172,6 +172,7 @@ generating_recipe
 interrupted_uncertain
 waiting_for_render
 rendering_previews
+worker_unavailable
 preview_ready
 proposing_physics
 validating_physics
@@ -197,6 +198,7 @@ stateDiagram-v2
     interrupted_uncertain --> generating_recipe: exact cache or explicit resolution
     generating_recipe --> waiting_for_render
     waiting_for_render --> rendering_previews
+    rendering_previews --> worker_unavailable: renderer exit unconfirmed
     rendering_previews --> preview_ready
     preview_ready --> proposing_physics
     proposing_physics --> validating_physics
@@ -206,6 +208,7 @@ stateDiagram-v2
     waiting_for_replacement --> selecting_training_baseline: victim becomes eligible
     selecting_training_baseline --> queued_for_training: catalog and victim recorded
     queued_for_training --> training
+    training --> worker_unavailable: trainer exit unconfirmed
     training --> validating_candidate
     validating_candidate --> draining_for_activation: candidate passed
     validating_candidate --> failed: metrics or anomaly gate failed
@@ -220,6 +223,8 @@ stateDiagram-v2
     rendering_previews --> failed: second safe failure
     training --> failed: second safe failure
     activating --> failed: rollback completed
+    worker_unavailable --> waiting_for_render: renderer exit confirmed
+    worker_unavailable --> queued_for_training: trainer exit confirmed
 
     note right of physics_blocked
         Job is blocked and retained.
@@ -235,6 +240,8 @@ stateDiagram-v2
 
 `failed` is terminal for that job. The retained job remains visible, and the global worker continues.
 
+`worker_unavailable` blocks only work that needs the affected renderer or trainer. The live engine and unrelated queue stages continue.
+
 `selecting_training_baseline` starts only after the job acquires the training turn. It records the latest catalog and current `Keep` victim immediately before training.
 
 The service never auto-retries a provider request after an interrupted or uncertain call. A user must resolve that state.
@@ -249,11 +256,15 @@ Never auto-retry when provider submission or billing is uncertain. Preserve `int
 
 An uncertain provider call never triggers or consumes an automatic billable retry. Any new paid request requires a new explicit user action.
 
-Persist the attempt number, lease deadline, provider submission status, timestamps, terminal error, and an opaque lease ownership token.
+Launch each renderer and trainer in its own process group. Persist its group ID, ownership token, and lease deadline.
 
-On lease expiry, terminate the owned child process and wait for its exit. If termination cannot complete, fence the token before another worker starts.
+Also persist the attempt count, provider submission status, timestamps, and terminal error.
 
-Only the current token may publish artifacts or state transitions. Ignore late output from a terminated or fenced attempt.
+On lease expiry, send `TERM` to the owned process group and wait for a bounded interval. Then send `KILL` and wait again if needed.
+
+Confirm the complete process group exited before reassigning that renderer or trainer. Otherwise enter `worker_unavailable` and start no replacement process.
+
+Only the current token may publish artifacts or state transitions. Reject stale output, but never use token fencing to authorize overlapping trainer or renderer processes.
 
 A stalled job cannot block the queue indefinitely. Retain every failed job visibly after the single safe retry is exhausted.
 
@@ -268,6 +279,7 @@ provider_interrupted
 generation_failed
 render_failed
 worker_timeout
+worker_unavailable
 physics_unsupported
 training_failed
 candidate_validation_failed
@@ -414,7 +426,8 @@ git diff --check
 - Queue and presentation limits appear in state and tests.
 - Persisted stage counts permit at most two safe attempts per stage across restart.
 - An expired lease cannot overlap a replacement renderer or trainer process.
-- A blocked or terminal job releases its worker and does not stop later jobs.
+- An unconfirmed process exit makes that worker unavailable until an operator confirms cleanup.
+- A retained job without an unconfirmed process releases its worker and does not stop later eligible jobs.
 - The compact main page remains unchanged outside the existing Items modal entry point.
 
 ### Verification

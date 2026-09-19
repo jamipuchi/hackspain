@@ -272,7 +272,7 @@ Keep these subdirectories separate:
 | --- | --- |
 | `catalog/` | validated active manifest, definitions, and immutable activation bundles |
 | `jobs/` | durable request state, attempt counts, leases, previews, and training evidence |
-| `wall-of-fame/` | immutable inactive assets, provenance, and retirement records |
+| `catalog/wall-of-fame/` | immutable inactive assets, provenance, and retirement records |
 
 Mount this root as writable only for the queue and activation workers. Mount
 the selected active bundle read-only in the live engine after activation.
@@ -280,8 +280,15 @@ Do not scan archived definitions into the active catalog during startup.
 
 Allow only one background training process. Set explicit CPU, memory, wall-time,
 disk, queue, and artifact-retention limits for generation, rendering, and
-training workers. A worker timeout must terminate or fence its child process
-before the next worker acquires the lease.
+training workers.
+
+On timeout, send bounded `TERM` and then bounded `KILL` to the owned process
+group. Confirm the complete group exited before another renderer or trainer
+starts. If exit remains unconfirmed, mark that worker unavailable. Keep the
+live engine and unrelated queue stages running.
+
+Ownership tokens reject stale output. They never authorize overlapping
+renderer or trainer processes.
 
 Keep at most four queued jobs and 32 presentation summaries, as specified by
 the plan. Set benchmark-approved CPU and memory limits before enabling the
