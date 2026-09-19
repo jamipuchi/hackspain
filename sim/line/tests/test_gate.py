@@ -161,3 +161,27 @@ def test_selftest_uses_a_fake_and_never_moves_the_real_link(env):
     assert all(c.ok for c in checks), [(c.name, c.detail) for c in checks if not c.ok]
     assert all(not s.startswith("S") for s in fake.sent), "selftest must not send S to the real link"
     assert fake.sent == ["?"]
+
+
+def test_ramp_override_is_sent_once_at_start_when_enabled(env):
+    cfg, fake, make = env
+    g = make()
+    assert not any(s.startswith("R") for s in fake.sent), "off by default"
+    cfg.gate.ramp_override = True
+    g2 = make()
+    assert fake.sent[-1] == "R 0 400 8000" and g2.log[-1]["action"] == "ramp" and g2.log[-1]["reply"] == "ok"
+    assert fake.vmax[0] == 400.0 and fake.amax[0] == 8000.0
+    assert g2.status()["ramp_override"] is True
+    cfg.gate.channel = "elbow"
+    assert g2.ramp_command() == "R 2 400 8000"
+
+
+def test_ramp_override_dry_run_and_old_firmware(env):
+    cfg, fake, make = env
+    cfg.gate.ramp_override = True
+    g = make(dry_run=True)
+    assert fake.sent == [] and g.log[-1]["action"] == "ramp" and g.log[-1]["sent"] is False
+    fake._handle_orig = fake._handle
+    fake._handle = lambda line: "err" if line.startswith("R") else fake._handle_orig(line)  # firmware without R
+    g2 = make()
+    assert g2.n_errors == 1 and "refused" in g2.last_error and g2.state == "flush"

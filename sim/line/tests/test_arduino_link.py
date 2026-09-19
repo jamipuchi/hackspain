@@ -269,3 +269,37 @@ def test_make_link_resolves_backend():
     assert isinstance(make_link(cfg), FakeArduino)
     cfg.arduino.backend = "http"
     assert isinstance(make_link(cfg), HttpPanelLink)
+
+
+# ------------------------------------------------------------------ R: per-channel ramp override (door on D9)
+def _swing_time(f: FakeArduino, clk: Clock, frm: str, to: str) -> float:
+    f.cmd(frm)
+    clk.advance(3.0)
+    assert f.query().moving is False
+    f.cmd(to)
+    t0 = clk.t
+    while f.query().moving:
+        clk.advance(0.02)
+    return clk.t - t0
+
+
+def test_ramp_override_makes_the_door_fast_and_leaves_other_channels_slow():
+    clk = Clock()
+    f = FakeArduino(clock=clk)
+    slow = _swing_time(f, clk, "S 90 90 75", "S 65 90 75")
+    assert 0.30 <= slow <= 0.40, slow  # default ramp: triangular profile, 2·√(25/700) ≈ 0.38 s
+    assert f.cmd("R 0 400 8000") == "ok"
+    fast = _swing_time(f, clk, "S 90 90 75", "S 65 90 75")
+    assert 0.08 <= fast <= 0.14, fast  # ≈0.11 s
+    elbow = _swing_time(f, clk, "S 90 90 75", "S 90 90 100")
+    assert 0.30 <= elbow <= 0.40, elbow  # untouched channel keeps the gentle ramp
+    assert f.cmd("R 0 0 0") == "ok" and f.vmax[0] == 200.0 and f.amax[0] == 700.0
+    assert f.status()["vmax"] == [200.0, 200.0, 200.0]
+
+
+def test_ramp_override_rejects_bad_input_and_clamps():
+    f = FakeArduino(clock=Clock())
+    assert f.cmd("R 3 400 8000") == "err"
+    assert f.cmd("R 0 400") == "err"
+    assert f.cmd("R x 1 1") == "err"
+    assert f.cmd("R 1 99999 99999999") == "ok" and f.vmax[1] == 2000.0 and f.amax[1] == 50000.0

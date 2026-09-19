@@ -8,7 +8,8 @@
     state                   'flush' | 'scheduled' | 'open'
 
 `cfg.gate.channel` says which slot of `S b s e` is the door (base = D9); the other two slots carry
-`cfg.gate.hold_deg`. In `dry_run` every command is logged with sent=False and nothing reaches the link.
+`cfg.gate.hold_deg`. With `cfg.gate.ramp_override` the gate sends `R <ch> <door_vmax_deg_s> <door_accel_deg_s2>` once at
+start (and via `apply_ramp()`), so the door swings in ≈0.11 s while the arm channels keep the gentle default ramp. In `dry_run` every command is logged with sent=False and nothing reaches the link.
 Every command is logged with a monotonic timestamp (`gate.log`). `selftest()` never moves the real door: it runs
 a pulse against a FakeArduino with the same config and checks the open/flush timing (±20 ms).
 """
@@ -44,6 +45,28 @@ class Gate:
         self._stop = False
         self._worker = threading.Thread(target=self._run, name="gate-timer", daemon=True)
         self._worker.start()
+        if getattr(self.cfg.gate, "ramp_override", False):
+            self.apply_ramp()
+
+    def ramp_command(self) -> str:
+        g = self.cfg.gate
+        return f"R {self._slot()} {int(g.door_vmax_deg_s)} {int(g.door_accel_deg_s2)}"
+
+    def apply_ramp(self) -> None:
+        """Send the door channel's ramp override (`R`). Logged as action 'ramp'; respects dry_run."""
+        line = self.ramp_command()
+        entry = {"t": self.clock(), "action": "ramp", "line": line, "sent": not self.dry_run, "reply": ""}
+        if not self.dry_run:
+            try:
+                entry["reply"] = self.link.cmd(line)
+                if entry["reply"] != "ok":  # older firmware answers `err`: keep going with the slow ramp
+                    self.n_errors += 1
+                    self.last_error = f"ramp override refused ({entry['reply']}); firmware without R? door stays on the slow ramp"
+            except LinkError as e:
+                self.n_errors += 1
+                self.last_error = str(e)
+                entry["reply"] = f"ERROR {e}"
+        self.log.append(entry)
 
     # --- command building
     def _slot(self) -> int:
@@ -137,6 +160,8 @@ class Gate:
             t = self.clock()
             return {"name": self.name, "state": self.state, "dry_run": self.dry_run, "channel": self.cfg.gate.channel,
                     "flush_deg": self.cfg.gate.flush_deg, "open_deg": self.cfg.gate.open_deg,
+                    "ramp_override": bool(getattr(self.cfg.gate, "ramp_override", False)),
+                    "settle_ms": self.cfg.gate.settle_ms,
                     "open_in_s": None if self._open_at is None else round(self._open_at - t, 3),
                     "flush_in_s": None if self._flush_at is None else round(self._flush_at - t, 3),
                     "n_pulses": self.n_pulses, "n_coalesced": self.n_coalesced, "n_errors": self.n_errors,

@@ -21,8 +21,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
+from threadpoolctl import threadpool_limits
 
 from line.contracts import Blob, Check, Frame, Verdict
+
+# HistGradientBoosting spawns an OpenMP team per call; on tiny inputs (one bean, 120 training rows) that costs more
+# than the maths and thrashes when several processes run at once (86 s for a 120-row fit was measured). One thread.
+def _single_thread():
+    return threadpool_limits(limits=1, user_api="openmp")
 
 LINE_DIR = Path(__file__).resolve().parent
 ROOT = LINE_DIR.parent
@@ -183,7 +189,8 @@ class LineModel:
         X = np.asarray(X, float)
         if len(X) == 0:
             return np.zeros((0, len(self.classes))), np.zeros(0)
-        P = self.clf.predict_proba(X)
+        with _single_thread():
+            P = self.clf.predict_proba(X)
         d = (X - self.good_mean) / self.feature_scale
         a = np.sqrt(np.maximum(np.einsum("ij,jk,ik->i", d, self.good_icov, d), 0))
         return P, a
@@ -251,7 +258,8 @@ class SklearnClassifier:
     def classify(self, frame: Frame, blob: Blob) -> Verdict:
         t0 = time.perf_counter()
         x = self.vector(blob.features or {})
-        P, a = self.model.predict(x[None])
+        with _single_thread():
+            P, a = self.model.predict(x[None])
         p, a = P[0], float(a[0])
         p_defect = float(p[self.defect_mask].sum())
         anomalous = a > float(self.model.anomaly_thresh)
@@ -346,13 +354,14 @@ def fit(X, y, features, classes=None, seed=0, source="dataset") -> tuple[LineMod
                                          max_leaf_nodes=15 if small else 31, min_samples_leaf=5 if small else 20,
                                          l2_regularization=0.1, early_stopping=not small, random_state=seed)
     k = int(min(5, counts[counts > 0].min()))
-    if k >= 2 and len(classes) > 1:
-        pred = cross_val_predict(clf, X, yi, cv=StratifiedKFold(k, shuffle=True, random_state=seed))
-        cv_note = f"{k}-fold stratified cross-validation"
-    else:
-        pred = yi.copy()
-        cv_note = "too few samples per class for cross-validation: accuracy is on the training set"
-    clf.fit(X, yi)
+    with _single_thread():
+        if k >= 2 and len(classes) > 1:
+            pred = cross_val_predict(clf, X, yi, cv=StratifiedKFold(k, shuffle=True, random_state=seed))
+            cv_note = f"{k}-fold stratified cross-validation"
+        else:
+            pred = yi.copy()
+            cv_note = "too few samples per class for cross-validation: accuracy is on the training set"
+        clf.fit(X, yi)
     cm = confusion_matrix(yi, pred, labels=range(len(classes)))
     good = X[y == "good"]
     if len(good) >= 5:
@@ -368,10 +377,11 @@ def fit(X, y, features, classes=None, seed=0, source="dataset") -> tuple[LineMod
     is_def = np.array([c != "good" for c in classes])
     te_def, pr_def = is_def[yi], is_def[pred]
     Xb = X[:40]
-    t0 = time.perf_counter()
-    for _ in range(20):
-        clf.predict_proba(Xb[:1])
-    ms1 = (time.perf_counter() - t0) / 20 * 1e3
+    with _single_thread():
+        t0 = time.perf_counter()
+        for _ in range(20):
+            clf.predict_proba(Xb[:1])
+        ms1 = (time.perf_counter() - t0) / 20 * 1e3
     report = dict(source=source, n_train=int(len(y)), classes=classes, counts={c: int(n) for c, n in zip(classes, counts)},
                   features=list(features), accuracy=float((pred == yi).mean()), cv=cv_note,
                   defect_recall=float((pr_def & te_def).sum() / max(te_def.sum(), 1)),

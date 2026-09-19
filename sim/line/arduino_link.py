@@ -1,6 +1,6 @@
 """ArduinoLink implementations for the magnet_arm firmware (owner: arduino agent).
 
-    FakeArduino()                       the firmware's protocol in Python: S/M/C/H/?, trapezoidal ramp, belt memory
+    FakeArduino()                       the firmware's protocol in Python: S/M/C/H/?/R, trapezoidal ramp, belt memory
     HttpPanelLink(url)                  proxies to the running magnet_sorter/conveyor_button.py (POST /cmd, GET /status)
     DirectSerial(port_glob, baud, ...)  pyserial; holds the port, `C 0` on connect/close, reconnects on ENXIO
 
@@ -78,6 +78,8 @@ class FakeArduino:
         self.magnet = False
         self.belt = 0
         self.belt_attached = False
+        self.vmax = [MAX_DEG_PER_S] * 3  # per-channel ramp limits, changed by `R <ch> <vmax> <accel>`
+        self.amax = [ACCEL_DEG_S2] * 3
         self._last_tick = self.clock()
         self.log = _Log()
         self.sent: list[str] = []  # every accepted line, for tests
@@ -90,8 +92,8 @@ class FakeArduino:
             self._last_tick += TICK_S
             for i in range(3):
                 d = self.target[i] - self.current[i]
-                vdes = math.copysign(min(MAX_DEG_PER_S, math.sqrt(2 * ACCEL_DEG_S2 * abs(d))), d) if abs(d) > 1e-6 else 0.0
-                dv = max(-ACCEL_DEG_S2 * TICK_S, min(ACCEL_DEG_S2 * TICK_S, vdes - self.vel[i]))
+                vdes = math.copysign(min(self.vmax[i], math.sqrt(2 * self.amax[i] * abs(d))), d) if abs(d) > 1e-6 else 0.0
+                dv = max(-self.amax[i] * TICK_S, min(self.amax[i] * TICK_S, vdes - self.vel[i]))
                 self.vel[i] += dv
                 move = self.vel[i] * TICK_S
                 if abs(move) >= abs(d):
@@ -134,6 +136,18 @@ class FakeArduino:
             self._advance()
             self.target = list(HOME_POSE)
             return "ok"
+        if c == "R":  # per-channel ramp override; 0 restores the default (mirrors the .ino)
+            parts = line[1:].split()
+            try:
+                ch, v, a = (int(x) for x in parts[:3])
+                if len(parts) < 3 or not 0 <= ch <= 2:
+                    raise ValueError
+            except ValueError:
+                return "err"
+            self._advance()
+            self.vmax[ch] = MAX_DEG_PER_S if v <= 0 else float(max(1, min(2000, v)))
+            self.amax[ch] = ACCEL_DEG_S2 if a <= 0 else float(max(1, min(50000, a)))
+            return "ok"
         if c == "?":
             p = self.pos()
             return f"P {p[0]} {p[1]} {p[2]} M {1 if self.magnet else 0} B {1 if self.moving() else 0}"
@@ -159,7 +173,8 @@ class FakeArduino:
     def status(self) -> dict:
         st = self.query()
         return {"name": self.name, "backend": "fake", "port": self.port, "ok": st.ok, "pos": st.pos, "target": list(self.target),
-                "magnet": st.magnet, "moving": st.moving, "belt": self.belt, "n_cmds": len(self.sent), "log": self.log.tail()}
+                "magnet": st.magnet, "moving": st.moving, "belt": self.belt, "vmax": list(self.vmax), "amax": list(self.amax),
+                "n_cmds": len(self.sent), "log": self.log.tail()}
 
     def selftest(self) -> list[Check]:
         t0 = now()

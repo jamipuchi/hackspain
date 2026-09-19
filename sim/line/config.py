@@ -30,8 +30,11 @@ class GateCfg:  # owner: arduino agent (angles measured on the bench by the buil
     flush_deg: int = 90
     open_deg: int = 65  # 115 if the horn is mounted mirrored
     hold_deg: tuple = (90, 75)  # shoulder/elbow values sent alongside (nothing connected on D10/D11)
-    settle_ms: int = 120  # SG90 25° swing including firmware ramp
+    settle_ms: int = 400  # 25° swing with the default firmware ramp (700 °/s²): ≈0.35 s. ≈120 with ramp_override.
     default_dwell_s: float = 0.5
+    ramp_override: bool = False  # send `R <ch> <vmax> <accel>` for the door channel at start (firmware ≥ 19 Sep 13:50)
+    door_vmax_deg_s: int = 400  # build agent's cap: door tip ≈ 40 cm/s into the foam soft stop
+    door_accel_deg_s2: int = 8000  # 25° in ≈0.11 s (10° accel, 5° cruise, 10° decel)
 
 
 @dataclass
