@@ -141,6 +141,8 @@ Use [object-manifest.example.json](object-manifest.example.json) as the smallest
 
 The example records a valid star asset at `asset_ready`. It intentionally leaves physics, inspection, policy, and activation fields unset.
 
+It records the source Y-up pivot and corrected Z-up bounds. Its runtime anchor remains unset until runtime LOD review.
+
 The backend must reject `asset_ready` objects. Only `active` objects may enter automatic feed or manual physics injection.
 
 Use these lifecycle states:
@@ -166,6 +168,8 @@ Keep the render mesh separate from this proxy. Do not send arbitrary GLB topolog
 
 For a single-mesh runtime LOD, flatten node transforms, restore simulator Z-up, center the bounds, and apply the live pose.
 
+The generated renderer lifts visual bounds onto its Z=0 floor before export. This visual pivot does not define the center of mass or collider origin.
+
 Convert the server WXYZ quaternion before assigning a Three.js quaternion. Preserve the asset correction as a separate transform.
 
 Multipart assets need per-part prototypes or a reviewed merged runtime LOD. The current instancing proof cannot preserve them directly.
@@ -179,6 +183,7 @@ Multipart assets need per-part prototypes or a reviewed merged runtime LOD. The 
 - Assign an immutable `object_type_id`.
 - Use the GLB hash as `visual_asset_id`.
 - Record GLB units, up axis, bounds, mesh count, and material count.
+- Record the source pivot, corrected bounds, and reviewed runtime anchor.
 - Mark new results as `asset_ready`. Do not mark them active.
 
 ### Physics and application domain
@@ -229,6 +234,7 @@ Run the compatibility probe without provider, training, or physics work:
 ```sh
 /Users/taras/Documents/code/hackspain/.venv-coffee/bin/python \
   thoughts/taras/research/coffee-generated-object-compatibility/probe_compatibility.py \
+  --baseline-revision c599bd9988b9fff95c78209040e31e28697a4041 \
   --output thoughts/taras/research/coffee-generated-object-compatibility/probe-output.json
 ```
 

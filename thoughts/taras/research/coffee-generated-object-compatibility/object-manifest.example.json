@@ -12,12 +12,35 @@
     "uri": "../coffee-quality/object-generation/results/gemini/star/render/object.glb",
     "media_type": "model/gltf-binary",
     "units": "m",
-    "up_axis": "+Y",
-    "bounds_m": [
-      0.01694960594177246,
-      0.016120851516723633,
-      0.002
+    "source_up_axis": "+Y",
+    "source_node_pivot_m": [
+      0.0,
+      0.0010000000474974513,
+      0.0
     ],
+    "engine_up_axis": "+Z",
+    "engine_pivot_m": [
+      0.0,
+      0.0,
+      0.0010000000474974513
+    ],
+    "engine_bounds_m": {
+      "minimum": [
+        -0.00847480297088623,
+        -0.007209378719329834,
+        0.0
+      ],
+      "maximum": [
+        0.00847480297088623,
+        0.008911473274230957,
+        0.002
+      ],
+      "dimensions": [
+        0.01694960594177246,
+        0.016120851516723633,
+        0.002
+      ]
+    },
     "mesh_count": 1,
     "material_count": 1,
     "sim_from_asset_quaternion_wxyz": [
@@ -26,6 +49,7 @@
       0.0,
       0.0
     ],
+    "runtime_anchor_m": null,
     "runtime_lod_reviewed": false
   },
   "physics": {
