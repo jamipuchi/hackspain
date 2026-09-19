@@ -242,3 +242,53 @@ Next: inject latency across the deadline, then compare physical settings.
 
 - [Rate sweep plot](runs/rate-sweep/bench.png).
 - [Raw benchmark results](runs/rate-sweep/bench.json).
+
+### Latency versus the camera-to-jet budget
+
+Ran five serial 4 s runs at 1,000 beans/s, seed 0.
+Added controller availability delays: 0, 20, 30, 40 and 60 ms.
+All runs have 2,600 eligible beans and six annotated camera sheets.
+The nominal centre-to-jet budget is 73.33 ms. The controller declares late
+when availability exceeds predicted arrival by more than 2 ms.
+
+**+0 ms injected delay**
+- Total latency p50/p99: 37.33/42.38 ms.
+- Actual median headroom: 33.42 ms.
+- Late rejects: 0/532 (0.00%).
+- Physical defect recall: 44.44%.
+
+**+20 ms injected delay**
+- Total latency p50/p99: 56.98/61.79 ms.
+- Actual median headroom: 13.66 ms.
+- Late rejects: 0/538 (0.00%).
+- Physical defect recall: 49.71%.
+
+**+30 ms injected delay**
+- Total latency p50/p99: 66.83/71.25 ms.
+- Actual median headroom: 4.45 ms.
+- Late rejects: 39/566 (6.89%).
+- Physical defect recall: 44.17%.
+
+**+40 ms injected delay**
+- Total latency p50/p99: 77.52/83.19 ms.
+- Actual median headroom: -6.85 ms.
+- Late rejects: 437/553 (79.02%).
+- Physical defect recall: 16.53%.
+
+**+60 ms injected delay**
+- Total latency p50/p99: 97.25/104.30 ms.
+- Actual median headroom: -26.22 ms.
+- Late rejects: 513/516 (99.42%).
+- Physical defect recall: 5.75%.
+
+Surprise: +30 ms misses some deadlines despite positive median headroom.
+Median timing alone is not a sufficient design margin.
+The last two points lose both timely decisions and physical rejection.
+This validates the simulated availability/deadline path, not real-time hardware.
+Camera backlog and dropped frames remain unmodeled. Measured CPU time varies;
+these are single-seed screens rather than bit-identical recorded-frame replays.
+
+- [Phone latency/headroom graph](https://hack-s3.agent-swarm.dev/agentfs/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/drives/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/latency-summary.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=minioadmin%2F20260919%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260919T024732Z&X-Amz-Expires=86400&X-Amz-Signature=ae56e05a7827564795c3d304b5af94a53676f9392799ab1d0a3ae8482e764ac6&X-Amz-SignedHeaders=host&response-content-disposition=attachment%3B%20filename%2A%3DUTF-8%27%27latency-summary.png&response-content-type=image%2Fpng&x-amz-checksum-mode=ENABLED&x-id=GetObject) (direct link expires 20 September).
+- [Durable latency plot](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/latency-summary.png).
+- [Complete latency evidence](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/latency-sweep.tar.gz).
+- [Local plot](runs/latency-sweep/latency_summary.png); every recorded late flag matches the minus-2-ms threshold.

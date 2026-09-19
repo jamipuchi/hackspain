@@ -161,12 +161,19 @@ and starves on 2867 attempts. That point measures a throttled plant, not a
 3000-bean/s controller. [Nine-panel rate plot](runs/rate-sweep/rate_summary.png)
 and [overlap cohorts](runs/rate-sweep/cohort_summary.png) show the tradeoffs.
 
+The [latency sweep](runs/latency-sweep/latency_summary.png) adds 0/20/30/40/60 ms
+at 1000 beans/s. Late reject decisions are 0/0/6.89/79.02/99.42%; physical recall
+falls to 16.53% and 5.75% at the last two points. A positive median headroom does
+not guarantee all tracks meet their deadlines. The plot shows actual track
+headroom and the controller's 2 ms tolerance beyond predicted jet arrival.
+Camera backlog is not modeled; this tests simulated availability and transport.
+
 **Next**
 
 - [x] foreground-only `vision.detect` with exact equivalence proof; train the classifier
 - [x] first closed-loop run with metrics + video
 - [ ] meet the <5 ms detector target and improve physical rejection/yield/spills
-- [ ] rate sweep 500 → 3000 beans/s, latency vs the 73 ms camera-to-jet budget
+- [x] rate sweep 500 → 3000 beans/s, latency vs the 73 ms camera-to-jet budget
 - [ ] `roasted` profile without touching the controller (generalisation)
 - [ ] UR5e (Menagerie + mink) picking oversize foreign matter off the infeed — the one thing the air jets cannot do
 - [ ] one-slide summary
