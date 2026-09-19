@@ -35,6 +35,11 @@ class GateCfg:  # owner: arduino agent (angles measured on the bench by the buil
     ramp_override: bool = False  # send `R <ch> <vmax> <accel>` for the door channel at start (firmware ≥ 19 Sep 13:50)
     door_vmax_deg_s: int = 400  # build agent's cap: door tip ≈ 40 cm/s into the foam soft stop
     door_accel_deg_s2: int = 8000  # 25° in ≈0.11 s (10° accel, 5° cruise, 10° decel)
+    # channel "belt_spin": continuous-rotation servo on D6 as the door, MCU-timed `T <speed> <ms>` pulses into end stops
+    spin_speed: int = 12  # % of full speed (bench 16:31: speed 12, 300 ms into the stops)
+    spin_open_ms: int = 300
+    spin_close_ms: int = 300
+    spin_open_dir: int = 1  # +1: positive speed opens; -1 if the horn is mirrored
 
 
 @dataclass

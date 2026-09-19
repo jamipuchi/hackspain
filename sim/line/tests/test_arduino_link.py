@@ -324,3 +324,34 @@ def test_http_selftest_skips_C0_when_d6_is_the_door(fake_panel):
     checks = link.selftest()
     assert all(c.ok for c in checks) and any("skipped" in c.name for c in checks)
     assert fake.belt_angle == 65, "selftest must not detach the door"
+
+
+# ------------------------------------------------------------------ T: MCU-timed spin pulse on D6 (continuous door servo)
+def test_T_pulse_spins_then_detaches_on_the_fake_clock():
+    clk = Clock()
+    f = FakeArduino(clock=clk)
+    assert f.cmd("T 12 300") == "ok" and f.belt == 12 and f.belt_attached and f.t_pulses == [(12, 300)]
+    clk.advance(0.29)
+    assert f.query() and f.belt == 12, "still spinning just before the deadline"
+    clk.advance(0.02)
+    f.query()
+    assert f.belt == 0 and not f.belt_attached and f.belt_angle is None and f.belt_pulse_end is None
+    assert abs(f.belt_travel - 12 * 0.300) < 1e-6, f.belt_travel  # travel = speed × exactly 300 ms, independent of host timing
+
+
+def test_T_pulse_replace_abort_and_limits():
+    clk = Clock()
+    f = FakeArduino(clock=clk)
+    f.cmd("T 50 1000")
+    clk.advance(0.1)
+    assert f.cmd("T -20 100") == "ok" and f.belt == -20  # second T replaces the first
+    clk.advance(0.05)
+    assert f.cmd("C 0") == "ok" and f.belt == 0 and f.belt_pulse_end is None  # C 0 aborts immediately
+    f.cmd("T 30 500")
+    assert f.cmd("T 0 0") == "ok" and f.belt == 0 and f.belt_pulse_end is None  # T 0 0 aborts too
+    assert f.cmd("T 250 9000") == "ok" and f.belt == 100 and abs(f.belt_pulse_end - clk.t - 2.0) < 1e-9  # clamps
+    assert f.cmd("T 30") == "err" and f.cmd("T x 1") == "err"
+    f.cmd("C 0")
+    assert f.cmd("T 30 0") == "ok" and f.belt == 0  # zero ms = no-op/abort
+    s = f.status()
+    assert s["belt_pulse_active"] is False and "belt_travel" in s

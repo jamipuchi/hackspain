@@ -27,7 +27,8 @@ from line.arduino_link import FakeArduino, LinkError
 from line.contracts import Check, now
 
 _CHANNEL_INDEX = {"base": 0, "shoulder": 1, "elbow": 2}
-BELT = "belt"  # door on D6 through the conveyor output
+BELT = "belt"  # positional door servo on D6 through the conveyor output (C <sp> = angle)
+BELT_SPIN = "belt_spin"  # continuous-rotation door servo on D6: MCU-timed `T <speed> <ms>` pulses into mechanical end stops
 
 
 def belt_speed_for_angle(deg: float) -> int:
@@ -63,7 +64,7 @@ class Gate:
         self._stop = False
         self._worker = threading.Thread(target=self._run, name="gate-timer", daemon=True)
         self._worker.start()
-        if self.on_belt and hasattr(self.link, "selftest_belt_cmd"):
+        if (self.on_belt or self.on_spin) and hasattr(self.link, "selftest_belt_cmd"):
             self.link.selftest_belt_cmd = None  # the link's selftest must not send C 0 any more: it would drop the door
         if getattr(self.cfg.gate, "ramp_override", False):
             self.apply_ramp()
@@ -74,9 +75,9 @@ class Gate:
 
     def apply_ramp(self) -> None:
         """Send the door channel's ramp override (`R`). Logged as action 'ramp'; respects dry_run. No-op on channel belt."""
-        if self.on_belt:
+        if self.on_belt or self.on_spin:
             self.log.append({"t": self.clock(), "action": "ramp", "line": "", "sent": False,
-                             "reply": "n/a: channel belt drives D6 unramped (servo's own speed)"})
+                             "reply": "n/a: D6 channels are unramped (servo's own speed)"})
             return
         line = self.ramp_command()
         entry = {"t": self.clock(), "action": "ramp", "line": line, "sent": not self.dry_run, "reply": ""}
@@ -115,16 +116,30 @@ class Gate:
     def on_belt(self) -> bool:
         return self.channel() == BELT
 
+    @property
+    def on_spin(self) -> bool:
+        return self.channel() == BELT_SPIN
+
+    def spin_command(self, action: str) -> str:
+        """`T <speed> <ms>` for 'open' / 'flush' on channel belt_spin (never speed 0: that would be an abort)."""
+        g = self.cfg.gate
+        speed = max(1, min(100, abs(int(g.spin_speed)))) * (1 if int(g.spin_open_dir) >= 0 else -1)
+        if action == "open":
+            return f"T {speed} {max(1, min(2000, int(g.spin_open_ms)))}"
+        return f"T {-speed} {max(1, min(2000, int(g.spin_close_ms)))}"
+
     def _slot(self) -> int:
         ch = self.channel()
         if ch not in _CHANNEL_INDEX:
-            raise ValueError(f"gate.channel must be one of {list(_CHANNEL_INDEX) + [BELT]}, got {ch!r}")
+            raise ValueError(f"gate.channel must be one of {list(_CHANNEL_INDEX) + [BELT, BELT_SPIN]}, got {ch!r}")
         return _CHANNEL_INDEX[ch]
 
     def command(self, door_deg: int) -> str:
         """`S b s e` with the door angle in the configured slot and hold_deg in the other two; on channel belt, `C <sp>`."""
         if self.on_belt:
             return f"C {belt_speed_for_angle(door_deg)}"
+        if self.on_spin:  # angles are meaningless for a continuous servo: open if above level, else close
+            return self.spin_command("open" if door_deg != self.cfg.gate.flush_deg else "flush")
         hold = list(self.cfg.gate.hold_deg)
         vals = []
         for i in range(3):
@@ -132,7 +147,7 @@ class Gate:
         return "S " + " ".join(str(max(0, min(180, v))) for v in vals)
 
     def _send(self, action: str, door_deg: int) -> None:
-        line = self.command(door_deg)
+        line = self.spin_command("open" if action == "open" else "flush") if self.on_spin else self.command(door_deg)
         entry = {"t": self.clock(), "action": action, "line": line, "sent": not self.dry_run, "reply": "", "deg": int(door_deg)}
         if self.on_belt:
             sp = int(line.split()[1])
@@ -227,6 +242,9 @@ class Gate:
             if self.on_belt:
                 out.append(Check("belt channel never sends C 0", all(l.split()[1] != "0" for l in (c_open, c_flush)),
                                  f"{c_open} / {c_flush} (C 0 would detach the door servo)"))
+            if self.on_spin:
+                out.append(Check("belt_spin sends opposite T pulses", c_open.startswith("T ") and c_flush.startswith("T ")
+                                 and int(c_open.split()[1]) == -int(c_flush.split()[1]), f"{c_open} / {c_flush}"))
         except ValueError as e:
             return [Check("command strings", False, str(e))]
         fake = FakeArduino()

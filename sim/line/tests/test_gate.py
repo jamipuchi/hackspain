@@ -234,3 +234,37 @@ def test_belt_channel_disarms_the_links_C0_selftest(env):
     cfg.gate.channel = "belt"
     make()
     assert fake.selftest_belt_cmd is None
+
+
+# ------------------------------------------------------------------ channel "belt_spin": continuous door servo on D6, T pulses
+def test_belt_spin_channel_sends_opposite_T_pulses(env):
+    cfg, fake, make = env
+    cfg.gate.channel = "belt_spin"
+    cfg.gate.spin_speed, cfg.gate.spin_open_ms, cfg.gate.spin_close_ms = 12, 300, 250
+    g = make()
+    assert g.spin_command("open") == "T 12 300" and g.spin_command("flush") == "T -12 250"
+    g.open()
+    assert fake.sent[-1] == "T 12 300" and fake.belt == 12 and g.state == "open"
+    g.flush()
+    assert fake.sent[-1] == "T -12 250" and fake.belt == -12 and g.state == "flush"
+    cfg.gate.spin_open_dir = -1
+    assert g.spin_command("open") == "T -12 300" and g.spin_command("flush") == "T 12 250"
+    cfg.gate.spin_speed = 0
+    assert g.spin_command("open").split()[1] != "0", "speed 0 would be an abort, never send it"
+    assert not any(s == "C 0" for s in fake.sent)
+
+
+def test_belt_spin_pulse_dry_run_and_selftest(env):
+    cfg, fake, make = env
+    cfg.gate.channel = "belt_spin"
+    cfg.gate.ramp_override = True  # harmless no-op
+    g = make(dry_run=True)
+    g.pulse(0.02, 0.05)
+    assert wait_state(g, "flush")
+    assert fake.sent == [] and [e["action"] for e in g.log] == ["ramp", "open", "flush"]
+    assert g.log[-2]["line"] == "T 12 300" and g.log[-1]["line"] == "T -12 300"
+    g2 = make()
+    checks = g2.selftest()
+    assert all(c.ok for c in checks), [(c.name, c.detail) for c in checks if not c.ok]
+    assert any("opposite T" in c.name for c in checks)
+    assert fake.selftest_belt_cmd is None

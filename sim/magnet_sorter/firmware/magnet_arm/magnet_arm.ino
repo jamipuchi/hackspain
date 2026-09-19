@@ -19,6 +19,9 @@
     C <speed>                     conveyor servo, -100..100 (0 = no signal, stops) -> ok
     H                             home pose                             -> ok
     ?                             -> P <b> <s> <e> M <0|1> B <0|1>   (B=1 while still moving)
+    T <speed> <ms>                spin the D6 servo at <speed> (-100..100) for <ms> ms timed on the MCU, then detach
+                                  (= C 0). Non-blocking; a second T replaces the first; C 0 or T 0 0 aborts. ms capped
+                                  at 2000. For a continuous-rotation servo used as a door: host jitter is out of the loop.  -> ok
     R <ch> <vmax> <accel>         per-channel ramp override, ch 0-2 (base/shoulder/elbow), vmax in deg/s,
                                   accel in deg/s^2; 0 restores the defaults (200, 700)     -> ok
                                   (the swing door on D9 uses `R 0 400 8000`: 25 deg in ~0.11 s instead of 0.38 s)
@@ -39,6 +42,8 @@ const int HOME_POSE[3] = {150, 125, 75};  // taras_v1: parked up and to the side
 
 Servo servos[3];
 Servo belt;
+bool beltPulseActive = false;           // `T`: timed spin in progress
+unsigned long beltPulseStart = 0, beltPulseMs = 0;
 float current[3];
 float vel[3];
 int target[3];
@@ -84,8 +89,25 @@ void handle(char *cmd) {
     Serial.println(F("ok"));
   } else if (cmd[0] == 'C') {
     int sp = constrain(atoi(cmd + 1), -100, 100);
+    beltPulseActive = false;            // any C cancels a running T pulse
     setBelt(sp);
     Serial.println(F("ok"));
+  } else if (cmd[0] == 'T') {
+    int sp; long ms;
+    if (sscanf(cmd + 1, "%d %ld", &sp, &ms) == 2) {
+      sp = constrain(sp, -100, 100);
+      ms = constrain(ms, 0L, 2000L);
+      if (sp == 0 || ms == 0) {
+        beltPulseActive = false;
+        setBelt(0);
+      } else {
+        setBelt(sp);
+        beltPulseStart = millis();
+        beltPulseMs = (unsigned long)ms;
+        beltPulseActive = true;
+      }
+      Serial.println(F("ok"));
+    } else Serial.println(F("err"));
   } else if (cmd[0] == 'H') {
     for (uint8_t i = 0; i < 3; i++) target[i] = HOME_POSE[i];
     Serial.println(F("ok"));
@@ -129,6 +151,10 @@ void loop() {
     }
   }
   unsigned long now = millis();
+  if (beltPulseActive && now - beltPulseStart >= beltPulseMs) {   // end of a `T` pulse, timed here, not on the host
+    beltPulseActive = false;
+    setBelt(0);
+  }
   if (now - lastTick >= TICK_MS) {
     lastTick = now;
     const float dt = TICK_MS / 1000.0f;

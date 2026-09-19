@@ -1,6 +1,6 @@
 """ArduinoLink implementations for the magnet_arm firmware (owner: arduino agent).
 
-    FakeArduino()                       the firmware's protocol in Python: S/M/C/H/?/R, trapezoidal ramp, belt memory
+    FakeArduino()                       the firmware's protocol in Python: S/M/C/H/?/R/T, trapezoidal ramp, belt memory
     HttpPanelLink(url)                  proxies to the running magnet_sorter/conveyor_button.py (POST /cmd, GET /status)
     DirectSerial(port_glob, baud, ...)  pyserial; holds the port, `C 0` on connect/close, reconnects on ENXIO
 
@@ -79,6 +79,10 @@ class FakeArduino:
         self.belt = 0
         self.belt_attached = False
         self.belt_angle: int | None = None  # angle the firmware writes on D6 (90 + sp*90/100, C integer division); None = detached/limp
+        self.belt_pulse_end: float | None = None  # `T`: clock time at which the firmware detaches D6 again
+        self.belt_travel = 0.0  # ∫ speed dt in %·s (a continuous servo's cumulative travel; 100 %·s ≈ one full second at full speed)
+        self._belt_t = self.clock()
+        self.t_pulses: list[tuple[int, int]] = []  # every accepted (speed, ms), for tests
         self.vmax = [MAX_DEG_PER_S] * 3  # per-channel ramp limits, changed by `R <ch> <vmax> <accel>`
         self.amax = [ACCEL_DEG_S2] * 3
         self._last_tick = self.clock()
@@ -89,6 +93,14 @@ class FakeArduino:
     # --- firmware model
     def _advance(self):
         t = self.clock()
+        # continuous servo on D6: integrate travel, end a `T` pulse when its MCU timer expires
+        if self.belt_pulse_end is not None and t >= self.belt_pulse_end:
+            self.belt_travel += self.belt * max(0.0, self.belt_pulse_end - self._belt_t)
+            self._belt_t = self.belt_pulse_end
+            self.belt_pulse_end = None
+            self._set_belt(0)
+        self.belt_travel += self.belt * max(0.0, t - self._belt_t)
+        self._belt_t = t
         while t - self._last_tick >= TICK_S:
             self._last_tick += TICK_S
             for i in range(3):
@@ -100,6 +112,11 @@ class FakeArduino:
                 if abs(move) >= abs(d):
                     move, self.vel[i] = d, 0.0
                 self.current[i] += move
+
+    def _set_belt(self, sp: int) -> None:
+        self.belt = sp
+        self.belt_attached = sp != 0
+        self.belt_angle = (90 + int(sp * 90 / 100)) if self.belt_attached else None  # trunc toward 0 like C
 
     def moving(self) -> bool:
         self._advance()
@@ -130,9 +147,26 @@ class FakeArduino:
                 sp = int(line[1:].strip() or "0")
             except ValueError:
                 sp = 0  # atoi() semantics: garbage → 0
-            self.belt = max(-100, min(100, sp))
-            self.belt_attached = self.belt != 0
-            self.belt_angle = (90 + int(self.belt * 90 / 100)) if self.belt_attached else None  # trunc toward 0 like C
+            self._advance()
+            self.belt_pulse_end = None  # any C cancels a running T pulse
+            self._set_belt(max(-100, min(100, sp)))
+            return "ok"
+        if c == "T":  # MCU-timed spin pulse: T <speed> <ms>
+            parts = line[1:].split()
+            try:
+                sp, ms = int(parts[0]), int(parts[1])
+            except (IndexError, ValueError):
+                return "err"
+            self._advance()
+            sp = max(-100, min(100, sp))
+            ms = max(0, min(2000, ms))
+            if sp == 0 or ms == 0:
+                self.belt_pulse_end = None
+                self._set_belt(0)
+            else:
+                self._set_belt(sp)
+                self.belt_pulse_end = self.clock() + ms / 1000.0
+                self.t_pulses.append((sp, ms))
             return "ok"
         if c == "H":
             self._advance()
@@ -176,6 +210,7 @@ class FakeArduino:
         st = self.query()
         return {"name": self.name, "backend": "fake", "port": self.port, "ok": st.ok, "pos": st.pos, "target": list(self.target),
                 "magnet": st.magnet, "moving": st.moving, "belt": self.belt, "belt_angle": self.belt_angle,
+                "belt_pulse_active": self.belt_pulse_end is not None, "belt_travel": round(self.belt_travel, 3),
                 "vmax": list(self.vmax), "amax": list(self.amax),
                 "n_cmds": len(self.sent), "log": self.log.tail()}
 
