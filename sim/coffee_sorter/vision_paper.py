@@ -26,5 +26,5 @@ class PaperInspector(Inspector):
         self.bean_gray_max = bean_gray_max
 
     def segment(self, r, g, b) -> np.ndarray:
-        gray = (77 * r + 150 * g + 29 * b) >> 8   # int16 luma
+        gray = (77 * r.astype(np.int32) + 150 * g.astype(np.int32) + 29 * b.astype(np.int32)) >> 8   # luma (int32: 150*255 overflows int16)
         return (gray < self.bean_gray_max).astype(np.uint8)

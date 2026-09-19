@@ -68,6 +68,36 @@ def resolve_camera(match: str, devices: list[tuple[int, str]] | None = None) -> 
     raise LookupError(f"no camera matching {match!r} (phone unlocked and plugged in?). cameras: {listing}")
 
 
+def iphone_on_usb() -> bool:
+    """True when an iPhone is enumerated on USB, whether or not Continuity Camera offers it.
+
+    `system_profiler SPUSBDataType` does NOT list the phone; the IOKit registry does.
+    """
+    try:
+        out = subprocess.run(["ioreg", "-r", "-c", "IOUSBHostDevice", "-l"], capture_output=True, text=True, timeout=10).stdout
+        return '"USB Product Name" = "iPhone"' in out or '"kUSBProductString" = "iPhone"' in out
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def diagnose_missing(match: str) -> str:
+    """One line a human can act on when no camera matches `match`."""
+    if "iphone" in match.lower():
+        if iphone_on_usb():
+            return ("iPhone is on USB but not offered as a camera: unlock it and keep it awake (Continuity Camera stops when "
+                    "the phone locks), and check iPhone Settings > General > AirPlay & Continuity > Continuity Camera")
+        return "no iPhone on USB: plug it in over USB-C (or same Apple ID + Wi-Fi + Bluetooth for wireless) and unlock it"
+    return f"no camera named like {match!r} is attached"
+
+
+def diagnose_no_frames(name: str, opened: bool) -> str:
+    if not opened:
+        return (f"{name} is listed but could not be opened: give this terminal app camera permission "
+                "(System Settings > Privacy & Security > Camera), or another process holds it (panel vs capture tool)")
+    return (f"{name} opened but delivers no frames: another process is streaming it (only one at a time: panel vs viewer), "
+            "or the phone locked; wake it and reopen")
+
+
 # ----------------------------------------------------------------------------- shared reader
 class _LatestFrameReader(threading.Thread):
     """Pulls frames from a cv2.VideoCapture as fast as it delivers them and keeps only the newest."""
@@ -142,7 +172,8 @@ class RealCamera:
         self.name = f"real:{self.match}"
         self.device_index: int | None = None
         self.device_name = ""
-        self.error = ""
+        self.error = ""  # one actionable line (why the camera is unusable), shown on the panel
+        self.detail = ""  # the raw listing behind it
         self._reader: _LatestFrameReader | None = None
         self._cap: cv2.VideoCapture | None = None
         self._grab_latency_ms = 0.0
@@ -156,14 +187,15 @@ class RealCamera:
         try:
             self.device_index, self.device_name = resolve_camera(self.match)
         except LookupError as exc:
-            self.error = str(exc)
+            self.error = diagnose_missing(self.match)
+            self.detail = str(exc)
             return
         cap = cv2.VideoCapture(self.device_index, cv2.CAP_AVFOUNDATION)
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.req_w)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.req_h)
         cap.set(cv2.CAP_PROP_FPS, self.req_fps)
         if not cap.isOpened():
-            self.error = f"could not open {self.device_name} (index {self.device_index}); camera permission for the terminal?"
+            self.error = diagnose_no_frames(self.device_name, opened=False)
             cap.release()
             return
         self._cap = cap
@@ -171,7 +203,7 @@ class RealCamera:
         self._reader = _LatestFrameReader(cap, self.device_name, self.req_fps)
         self._reader.start()
         if not self._reader.wait_first(self._open_timeout_s):
-            self.error = f"{self.device_name} opened but delivered no frame in {self._open_timeout_s:.0f} s"
+            self.error = diagnose_no_frames(self.device_name, opened=True)
 
     @property
     def ok(self) -> bool:
@@ -206,7 +238,7 @@ class RealCamera:
             "fps_measured": round(r.fps, 1) if r else 0.0,
             "grab_latency_ms": round(self._grab_latency_ms, 1),
             "frames": r.seq if r else 0, "dropped": r.dropped if r else 0, "read_errors": r.read_errors if r else 0,
-            "grabs": self._grabs, "running": bool(r and r.is_alive()), "ok": self.ok, "error": self.error,
+            "grabs": self._grabs, "running": bool(r and r.is_alive()), "ok": self.ok, "error": self.error, "detail": self.detail,
         }
 
     def selftest(self) -> list[Check]:
@@ -216,7 +248,8 @@ class RealCamera:
             idx, name = resolve_camera(self.match)
             checks.append(Check("device found by name", True, f"[{idx}] {name}", (now() - t0) * 1000))
         except LookupError as exc:
-            checks.append(Check("device found by name", False, str(exc), (now() - t0) * 1000))
+            checks.append(Check("device found by name", False, diagnose_missing(self.match), (now() - t0) * 1000))
+            checks.append(Check("cameras attached", False, str(exc)))
             return checks
         if not self.ok:
             checks.append(Check("camera open", False, self.error or "no frames"))

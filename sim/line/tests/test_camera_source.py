@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from line import config
-from line.camera_source import FileCamera, RealCamera, SyntheticCamera, resolve_camera
+from line.camera_source import FileCamera, RealCamera, SyntheticCamera, diagnose_missing, resolve_camera
 from line.contracts import Frame, FrameSource
 
 STATUS_KEYS = {"name", "resolution", "fps_measured", "grab_latency_ms", "frames", "dropped"}
@@ -20,14 +20,23 @@ def test_resolve_camera_by_name_skips_desk_view():
         resolve_camera("webcam", devices)
 
 
+def test_diagnose_missing_says_why(monkeypatch):
+    monkeypatch.setattr("line.camera_source.iphone_on_usb", lambda: True)
+    assert "unlock" in diagnose_missing("iphone")
+    monkeypatch.setattr("line.camera_source.iphone_on_usb", lambda: False)
+    assert "plug it in" in diagnose_missing("iphone")
+    assert "webcam" in diagnose_missing("webcam")
+
+
 def test_real_camera_reports_error_instead_of_raising_when_absent(monkeypatch):
     monkeypatch.setattr("line.camera_source.list_cameras", lambda: [(0, "MacBook Pro Camera")])
-    cam = RealCamera(config.LineConfig(), match="no-such-camera")
-    assert not cam.ok and "no camera matching" in cam.error
+    monkeypatch.setattr("line.camera_source.iphone_on_usb", lambda: False)
+    cam = RealCamera(config.LineConfig(), match="iphone")
+    assert not cam.ok and "plug it in" in cam.error and "MacBook Pro Camera" in cam.detail
     st = cam.status()
     assert STATUS_KEYS <= set(st) and st["ok"] is False
     checks = cam.selftest()
-    assert checks and not checks[0].ok
+    assert checks and not checks[0].ok and "plug it in" in checks[0].detail
     with pytest.raises(RuntimeError):
         cam.grab()
     cam.close()

@@ -135,7 +135,8 @@ class SortingLine:
         axis = self.cfg.camera.flow_axis
         fr = {id(b): flow_fraction(b, roi, axis) for b in blobs}
         if self.state == "armed":
-            return max(blobs, key=lambda b: (fr[id(b)], b.area_px))  # the front-most bean first
+            whole = [b for b in blobs if not b.partial] or blobs  # never adopt a bean that is already half out of the zone
+            return max(whole, key=lambda b: (fr[id(b)], b.area_px))  # the front-most bean first
         ahead = [b for b in blobs if fr[id(b)] >= self.track_frac - 0.15]
         if ahead:
             return min(ahead, key=lambda b: abs(fr[id(b)] - self.track_frac))

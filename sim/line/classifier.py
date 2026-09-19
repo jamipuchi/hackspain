@@ -100,11 +100,12 @@ class RuleClassifier:
     def scores(self, features: dict) -> list[tuple[float, str, str]]:
         """(p, label, reason) for every applicable rule, worst first."""
         out = []
+        missing = set()
         for feat, kind, key, label, hint in RULES:
             if key not in self.rules:
                 continue
             if feat not in features:
-                self.missing[feat] += 1
+                missing.add(feat)
                 continue
             x, bound = float(features[feat]), float(self.rules[key])
             w = self._width(feat, key)
@@ -114,6 +115,8 @@ class RuleClassifier:
             sym = "<" if kind == "min" else ">"
             reason = f"{feat} {_fmt(x)}{unit} {sym} {_fmt(bound)}{unit}: {label} ({hint})"
             out.append((p, label, reason))
+        for feat in missing:
+            self.missing[feat] += 1
         out.sort(key=lambda t: -t[0])
         return out
 
@@ -127,7 +130,8 @@ class RuleClassifier:
             suspect = p >= thr
             if not suspect:
                 label = "good"
-                summary = ", ".join(f"{k} {_fmt(float(f[k]))}" for k in ("major_mm", "aspect", "mean_gray", "dark_frac", "n_dark_spots") if k in f)
+                short = {"major_mm": ("major", " mm"), "aspect": ("aspect", ""), "mean_gray": ("gray", ""), "dark_frac": ("dark", ""), "n_dark_spots": ("spots", "")}
+                summary = ", ".join(f"{nm} {_fmt(float(f[k])) if k != 'n_dark_spots' else int(f[k])}{unit}" for k, (nm, unit) in short.items() if k in f)
                 reason = f"ok: {summary}" if summary else "ok"
         else:
             p, label, suspect, reason = 0.5, "unknown", thr <= 0.5, "no usable features"
@@ -300,7 +304,11 @@ class SklearnClassifier:
         far = {k: (val * 3 + 50) for k, val in good.items()}
         v2 = self.classify(frame, Blob(0, 0, (0, 0, 1, 1), 1.0, False, far))
         out.append(Check("sklearn: absurd features flagged", v2.suspect, f"{v2.label} — {v2.reason}", v2.ms))
-        out.append(Check("sklearn: speed", ms < 30, f"{ms:.2f} ms per bean (budget 30)", ms))
+        t0 = time.perf_counter()
+        for _ in range(10):
+            self.classify(frame, Blob(0, 0, (0, 0, 1, 1), 1.0, False, good))
+        ms10 = (time.perf_counter() - t0) / 10 * 1e3
+        out.append(Check("sklearn: speed", ms10 < 30, f"{ms10:.2f} ms per bean (budget 30)", ms10))
         provided = set(LINE_FEATURES or [])
         if provided:
             miss = [f for f in self.features if f not in provided]

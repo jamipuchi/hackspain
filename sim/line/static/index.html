@@ -64,7 +64,7 @@ td.mono{font-family:var(--mono);font-size:.8rem}
 <section class="tab" data-tab="Motors">
  <div class="grid">
   <div class="card"><h2>Conveyor · D6 (continuous servo)</h2>
-   <div class="row"><button class="acc" onclick="belt(-speed())">◀ reverse</button><button class="stop" onclick="belt(0)">■ stop</button><button class="go" onclick="belt(speed())">forward ▶</button></div>
+   <div class="row"><button class="acc" onclick="setBelt(-speed())">◀ reverse</button><button class="stop" onclick="setBelt(0)">■ stop</button><button class="go" onclick="setBelt(speed())">forward ▶</button></div>
    <label>speed <b id="spV">60 %</b><input id="sp" type="range" min="5" max="100" value="60" oninput="spV.textContent=this.value+' %'"></label>
    <div class="row"><input class="num" id="secs" type="number" step="0.1" value="2"><span class="hint">s</span><button class="sm" onclick="timed(1)">▶ timed</button><button class="sm" onclick="timed(-1)">◀ timed</button><span class="hint">belt now: <b id="beltV">stopped</b></span></div>
   </div>
@@ -119,15 +119,15 @@ td.mono{font-family:var(--mono);font-size:.8rem}
 </main>
 <script>
 const $=id=>document.getElementById(id);
-const TABS=['Overview','Cameras','Motors','Classifier','Line','Log'];let tab=localStorage.getItem('tab')||'Overview';let S=null;let belt=0,timer=null,swT={};
+const TABS=['Overview','Cameras','Motors','Classifier','Line','Log'];let tab=localStorage.getItem('tab')||'Overview';let S=null;let beltSp=0,timer=null,swT={};
 function showTab(t){tab=t;localStorage.setItem('tab',t);document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.dataset.tab===t));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.textContent===t));}
 $('nav').innerHTML=TABS.map(t=>`<button onclick="showTab('${t}')">${t}</button>`).join('');showTab(tab);
 async function postJSON(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});const j=await r.json();if(!j.ok)toast('error: '+j.error);return j;}
 function toast(m){$('pServer').textContent=m;$('pServer').className='pill bad';setTimeout(refresh,1500);}
 const setCfg=(p,v)=>postJSON('/api/config',{path:p,value:v}).then(refresh);
 const speed=()=>+$('sp').value;
-function belt(sp){belt=sp;if(timer){clearTimeout(timer);timer=null;}postJSON('/api/conveyor',{speed:sp}).then(refresh);}
-function timed(dir){belt(dir*speed());timer=setTimeout(()=>belt(0),Math.max(100,+$('secs').value*1000));}
+function setBelt(sp){beltSp=sp;if(timer){clearTimeout(timer);timer=null;}postJSON('/api/conveyor',{speed:sp}).then(refresh);}
+function timed(dir){setBelt(dir*speed());timer=setTimeout(()=>setBelt(0),Math.max(100,+$('secs').value*1000));}
 function gate(a){postJSON('/api/gate',{action:a}).then(refresh);}
 function raw(){const v=$('rawin').value.trim();if(v){postJSON('/api/cmd',{line:v}).then(refresh);$('rawin').value='';}}
 $('rawin').onkeydown=e=>{if(e.key==='Enter')raw();};
@@ -139,7 +139,7 @@ async function classifyNow(){const j=await postJSON('/api/classify_now',{});if(!
 async function sample(l){const j=await postJSON('/api/sample',{label:l});if(j.ok){$('clfNow').textContent='saved '+j.path;refresh();}}
 function snapshot(){window.open('/snapshot.jpg?'+Date.now());}
 function sw(k){swT[k]=performance.now()/1000;const T=S?.cfg?.timing||{};let out=[];if(swT.top&&swT.zone)out.push(`top→zone ${(swT.zone-swT.top).toFixed(2)} s`);if(swT.zone&&swT.door){const dt=swT.door-swT.zone;const cm=T.door_from_top_cm[0]-T.zone_from_top_cm[0];const v=cm/dt;out.push(`zone→door ${dt.toFixed(2)} s = ${v.toFixed(1)} cm/s`);setCfg('timing.bean_speed_cm_s',+v.toFixed(1));swT={};}$('swOut').textContent=out.join(' · ')||`marked ${k}`;}
-document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;if(e.code==='Space'||e.key==='Escape'){e.preventDefault();belt(0);gate('flush');}
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;if(e.code==='Space'||e.key==='Escape'){e.preventDefault();setBelt(0);gate('flush');}
  else if(e.key==='g')sample('good');else if(e.key==='d')sample('defect');else if(e.key==='f')sample('foreign');});
 // ROI editor
 const img=$('stream'),cv=$('roiCanvas');let drag=null;
