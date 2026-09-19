@@ -22,6 +22,8 @@ An occupied lock returns status 75. Run the command again after the slot becomes
 The video gallery is `http://127.0.0.1:8894/clips.html` when the preview server is active.
 The completed package is `/private/tmp/coffee-demo-video-previews/coffee-demo-clips.zip`.
 It contains nine separate MP4s with descriptive filenames. It excludes the UI and rejected render attempts.
+The clips and editable assets are backed up in agent-fs.
+See `thoughts/taras/research/coffee-demo-video/ASSET_ARCHIVE.md` for paths, checksums, and the pending slow-motion framing revision.
 It exposes each verified MP4 when that segment completes.
 The renderer retains existing verified clips and can resume verified partial frame sequences with identical inputs.
 It refuses mismatched inputs or unverified existing output files.
