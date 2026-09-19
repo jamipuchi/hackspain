@@ -42,8 +42,7 @@ Multipart runtime assets need per-part prototypes or a reviewed merged LOD.
 The browser uses glTF metallic-roughness materials and baked textures.
 It does not reproduce Cycles procedural nodes, bounce lighting, world lighting, or compositor effects.
 The viewer caps pixel ratio and uses instancing for the live object pool.
-Its telemetry is diagnostic during concurrent Full-HD rendering.
-It is not a clean GPU benchmark.
+Its telemetry is diagnostic and is not a clean GPU benchmark.
 
 Primary references:
 

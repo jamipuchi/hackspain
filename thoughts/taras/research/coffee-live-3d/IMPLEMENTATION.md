@@ -78,7 +78,7 @@ The live overview rendered 25 draw calls and 275,440 triangles with 488 objects.
 
 The observed desktop frame sample reached 57 frames per second.
 Median frame time was 16.7 ms and p95 was 16.8 ms.
-Full-HD rendering activity overlapped this sample.
+Concurrent workstation workloads were not independently measured.
 This sample is diagnostic and is not a clean GPU benchmark.
 
 Desktop 1280 by 720 and phone 320 by 480 layouts had no document overflow.
