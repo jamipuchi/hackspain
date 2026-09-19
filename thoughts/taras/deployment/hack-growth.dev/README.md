@@ -18,6 +18,7 @@ change, a package installation, or a server configuration change.
 - Continuous mode starts without a browser. Its preset disables time limits.
 - `/health`, `/state`, and `/ws` are the current health, state, and WebSocket routes.
 - The selected frozen model and manifest are tracked as compressed source artifacts.
+- This baseline has no coffee Dockerfile.
 
 The existing Caddy configuration validates. This inspection did not read its
 contents or change its configuration.
@@ -67,10 +68,20 @@ through `compose_default` by its Compose service name.
 
 ## DNS and HTTPS
 
-Before Caddy receives the site configuration, create an apex `A` record:
+Do not use `ssh -G hackspain` as DNS evidence. It returns an effective SSH
+target. It does not prove the target is the intended public IPv4 address.
+
+Before Caddy receives the site configuration, confirm all three facts:
+
+1. The server provider identifies the swarm host as `<approved-public-ipv4>`.
+2. `ssh hackspain` reaches that same host.
+3. The existing Caddy container owns public ports 80 and 443 on that host.
+
+Record the approved address with the deployment change. Then create this apex
+`A` record:
 
 ```text
-hack-growth.dev.  A  <IPv4 address resolved by: ssh -G hackspain>
+hack-growth.dev.  A  <approved-public-ipv4>
 ```
 
 Add an `AAAA` record only after the host has a public IPv6 address. Do not
@@ -101,25 +112,43 @@ The source that builds or mounts `/etc/caddy/Caddyfile` remains unconfirmed.
 Confirm that source before changing any route. Do not edit a container-only
 file if Compose recreates the container from another source.
 
-## Coffee image and persistent paths
+## Immutable coffee release
 
-Build a dedicated image from the stated baseline. It needs Python 3.13 and
-the packages pinned in:
+The baseline has no Dockerfile. The Compose template below is not runnable or
+deployment-ready until a reviewed image exists.
+
+The reviewed image contract must include:
+
+- a Python 3.13 base image pinned by immutable digest,
+- `WORKDIR /app`,
+- exactly the source at `c599bd9988b9fff95c78209040e31e28697a4041`,
+- packages from `thoughts/taras/research/coffee-quality/requirements-resolved.txt`,
+- the selected model and adjacent manifest in the image release path,
+- a validated headless MuJoCo backend,
+- a recorded final image digest.
+
+Prepare each model as a versioned release artifact. Do not restore it over an
+existing `live_green_arabica` file. A release can use this layout:
 
 ```text
-thoughts/taras/research/coffee-quality/requirements-resolved.txt
+/srv/hackspain-coffee/releases/<release-id>/
+  source-revision.txt
+  model-sha256.txt
+  sim/coffee_sorter/models/live_green_arabica.joblib
+  sim/coffee_sorter/models/live_green_arabica.manifest.json
 ```
 
-Validate the selected model during image build or release preparation. Do not
-retrain when the service starts.
+Decompress and validate into a new release directory. Compare the SHA-256
+before an image build. Preserve the complete prior release for rollback.
 
 ```bash
-mkdir -p sim/coffee_sorter/models
+release_root=/srv/hackspain-coffee/releases/<new-release-id>
+mkdir -p "$release_root/sim/coffee_sorter/models"
 gzip -dc thoughts/taras/research/coffee-quality/model-selected.joblib.gz \
-  > sim/coffee_sorter/models/live_green_arabica.joblib
+  > "$release_root/sim/coffee_sorter/models/live_green_arabica.joblib"
 gzip -dc thoughts/taras/research/coffee-quality/model-selected.manifest.json.gz \
-  > sim/coffee_sorter/models/live_green_arabica.manifest.json
-sha256sum sim/coffee_sorter/models/live_green_arabica.joblib
+  > "$release_root/sim/coffee_sorter/models/live_green_arabica.manifest.json"
+sha256sum "$release_root/sim/coffee_sorter/models/live_green_arabica.joblib"
 ```
 
 The expected model SHA-256 is:
@@ -129,7 +158,8 @@ The expected model SHA-256 is:
 ```
 
 The running service validates the manifest, model bytes, classes, features,
-profile, layout, feed rate, and camera cadence before it starts.
+profile, layout, feed rate, and camera cadence before it starts. It must not
+train or download a model at startup.
 
 Use three storage classes:
 
@@ -137,40 +167,39 @@ Use three storage classes:
 | --- | --- | --- |
 | selected model and manifest | read-only | frozen continuous engine input |
 | `live_web` and reviewed 3D assets | read-only | page, JavaScript, GLB, and textures |
-| `/var/lib/hackspain-coffee/runs` | writable persistent volume | reports, final state, service profile, and rotating command log |
+| `/var/lib/hackspain-coffee/runs/<start-id>` | writable persistent storage | reports, final state, service profile, and rotating command log |
 
 Continuous mode writes `commands.jsonl` with 1 MiB rotation and two backups.
 It also writes final state and a report when the process stops.
 
 ## Compose service contract
 
-This is a template, not a checked-in Compose file. Replace every angle-bracket
-value after the public-origin change and image validation.
+This is a template, not a checked-in Compose file. It remains blocked on the
+public-origin application change and reviewed image contract.
 
 ```yaml
 services:
   coffee:
-    image: <coffee-image-built-from-c599bd9>
+    image: <coffee-image-digest>
     command:
-      - /app/.venv-coffee/bin/python
-      - sim/coffee_sorter/live.py
-      - --host
-      - 0.0.0.0
-      - --port
-      - "8890"
-      - --preset
-      - sim/coffee_sorter/configs/continuous_demo.json
-      - --out
-      - /var/lib/hackspain-coffee/runs
-      # Add exact public host and origin options after the preflight code change.
+      - /bin/sh
+      - -ec
+      - |
+        start_id="$(date -u +%Y%m%dT%H%M%SZ)-$HOSTNAME"
+        out="/var/lib/hackspain-coffee/runs/$start_id"
+        mkdir -p "$out"
+        exec /app/.venv-coffee/bin/python sim/coffee_sorter/live.py \
+          --host 0.0.0.0 --port 8890 \
+          --preset sim/coffee_sorter/configs/continuous_demo.json \
+          --out "$out" \
+          <public-host-and-origin-options-after-code-change>
     restart: unless-stopped
     init: true
     environment:
       MUJOCO_GL: <validated-headless-backend>
     volumes:
-      - <frozen-model-directory>:/app/sim/coffee_sorter/models:ro
       - <reviewed-static-assets>:/app/sim/coffee_sorter/visual_assets:ro
-      - coffee-runs:/var/lib/hackspain-coffee/runs
+      - <confirmed-host-evidence-root>:/var/lib/hackspain-coffee/runs
     networks:
       - compose_default
     cpus: <benchmark-approved-cpu-limit>
@@ -180,12 +209,19 @@ networks:
   compose_default:
     external: true
 
-volumes:
-  coffee-runs:
 ```
 
 Use a dedicated service name, `coffee`, because the Caddy upstream references
 that name. Do not publish a `ports:` entry. Do not use `deploy.replicas`.
+
+The template uses a persistent bind mount. Confirm its host path, ownership,
+backup policy, and free-space budget before launch. If a named volume is
+required, give it an explicit `name`, record `docker volume inspect` output,
+and never rely on an implicit project-scoped volume name or host path.
+
+Every process start gets a new `<start-id>` directory. A restart creates a new
+engine session and begins score warm-up again. Preserve all prior run
+directories for evidence and rollback.
 
 Docker recommends a production-specific Compose file and explicit restart
 policy. See [Docker Compose production guidance](https://docs.docker.com/compose/how-tos/production/).
@@ -260,8 +296,8 @@ Open `https://hack-growth.dev` in two browsers. Confirm one session ID,
 continuous movement with no clients, HTTPS page delivery, and a `wss://`
 connection. Inject one object only if the chosen public-control policy permits it.
 
-Rollback means selecting the previous validated image and the previous frozen
-model plus manifest. Preserve the run volume. Replace only `coffee` with the
+Rollback means selecting the previous validated image digest and its immutable
+model release. Preserve every run directory. Replace only `coffee` with the
 same scoped Compose command. Check `/health`, `/state`, and the two-browser
 session result after rollback.
 
@@ -270,11 +306,12 @@ session result after rollback.
 Do not deploy until all items pass:
 
 - The public-host and WSS application change is reviewed.
+- The reviewed Python 3.13 image and its digest are recorded.
 - Caddy configuration ownership is confirmed.
-- DNS resolves to the swarm host.
+- The public IPv4 target is confirmed before the DNS record is created.
 - Caddy can obtain the certificate.
 - The Python 3.13 image and headless MuJoCo backend pass a smoke start.
-- The frozen model and manifest hash match.
+- The frozen model and manifest hash match in a new immutable release.
 - The coffee process has one replica and persistent run storage.
 - A host benchmark sets CPU and memory limits.
 - Taras selects the public injection policy.
