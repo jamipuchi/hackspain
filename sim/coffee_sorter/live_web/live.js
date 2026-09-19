@@ -1352,10 +1352,10 @@ function drawInset() {
   const topY = Y(-.25), topHeight = Y(.25) - topY;
   ctx.font = `${mobile ? 9 : 12}px ui-monospace, monospace`;
   ctx.fillStyle = '#586b7c';
-  ctx.fillText('TOP', mobile ? 42 : 18, contentTop);
+  if (!mobile) ctx.fillText('TOP', 18, contentTop);
   ctx.fillText('SIDE', mobile ? 42 : 18, sideTop - 6);
   ctx.fillText(mobile ? 'DROP' : 'DROP ZONE', X(-1.05), contentTop);
-  ctx.fillText('INSPECT', X(-.18), contentTop);
+  ctx.fillText(mobile ? 'INSP' : 'INSPECT', X(-.18), contentTop);
   ctx.fillText('AIR', X(.045), contentTop);
   ctx.fillText(mobile ? 'OUTCOME' : 'PHYSICAL OUTCOME', X(.28), contentTop);
   ctx.fillStyle = '#24548b';
@@ -1373,8 +1373,8 @@ function drawInset() {
   ctx.strokeStyle = '#91a2ad'; ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(X(.34), Z(.475)); ctx.lineTo(X(.49), Z(.475)); ctx.stroke();
   ctx.font = '11px ui-monospace, monospace';
-  ctx.fillStyle = '#466356'; ctx.fillText('KEEP', X(.36), Z(.56));
-  ctx.fillStyle = '#825231'; ctx.fillText('REJECT', X(.36), Z(.40));
+  ctx.fillStyle = '#466356'; ctx.fillText('KEEP', X(.36), mobile ? sideTop + 9 : Z(.56));
+  ctx.fillStyle = '#825231'; ctx.fillText('REJECT', X(.36), mobile ? sideBottom - 3 : Z(.40));
   for (const o of state?.objects || []) {
     if ((!o.active && o.object_id !== selected) || !hasAuthoritativeRenderFields(o)) continue;
     displayedPose(o, _p, _q);
