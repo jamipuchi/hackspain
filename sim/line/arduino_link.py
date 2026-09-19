@@ -13,6 +13,7 @@ moves a servo: it only sends `?` and `C 0`.
 from __future__ import annotations
 
 import glob
+import os
 import json
 import math
 import threading
@@ -459,6 +460,12 @@ class DirectSerial:
         if self.ser is not None:
             try:
                 self.ser.close()
+            except Exception:
+                pass
+            try:  # macOS: a dead CDC device can leave the fd half-open and the re-open fails with ENXIO until it is really closed
+                fd = getattr(self.ser, "fd", None)
+                if fd is not None:
+                    os.close(fd)
             except Exception:
                 pass
             self.ser = None
