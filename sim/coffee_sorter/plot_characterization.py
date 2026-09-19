@@ -314,7 +314,7 @@ def tuning_plot(before, candidates, output):
     if empty:
         fail(f"tuning inputs have no config difference from baseline: {', '.join(empty)}")
     fig, axes = plt.subplots(2, 1, figsize=(11, 12), constrained_layout=True)
-    fig.suptitle("Tuning trade-off: physical recall versus losses", fontsize=20, x=0.08, ha="left")
+    fig.suptitle("Physical recall versus losses", fontsize=20)
     baseline_recall = 100 * need(before["metrics"], "physical_reject_recall", before["path"])
     candidate_recall = [100 * need(row["metrics"], "physical_reject_recall", row["path"]) for row in candidates]
     candidate_values = []
@@ -327,17 +327,21 @@ def tuning_plot(before, candidates, output):
         ax.axhline(baseline_loss, color="#555555", linewidth=1, linestyle="--")
         ax.scatter([baseline_recall], [baseline_loss], marker="s", s=85, color="#222222", label="Baseline", zorder=4)
         for index, (row, xv, yv) in enumerate(zip(candidates, candidate_recall, loss)):
-            changed = differences[row["path"].name]
-            short = "; ".join(item.split(": ", 1)[0].replace("config.", "") for item in changed)
-            ax.scatter([xv], [yv], s=65, color=COLORS[index % len(COLORS)], zorder=3)
-            ax.annotate(f"{row['path'].name}\n{short}", (xv, yv), xytext=(6, 6), textcoords="offset points", fontsize=8)
+            label = f"{index + 1}. {row['path'].name}"
+            ax.scatter([xv], [yv], s=160, color=COLORS[index % len(COLORS)], label=label, zorder=3)
+            ax.text(xv, yv, str(index + 1), color="white", fontsize=8,
+                    ha="center", va="center", zorder=4)
         ax.set_title(title, loc="left")
         ax.set_xlabel("Physical reject recall (%)")
         ax.set_ylabel("Percent (%)")
-        ax.set_xlim(left=0)
-        ax.set_ylim(bottom=0)
+        recall_values = [baseline_recall, *candidate_recall]
+        recall_pad = max(1.0, (max(recall_values) - min(recall_values)) * 0.1)
+        loss_values = [baseline_loss, *loss]
+        loss_pad = max(0.2, (max(loss_values) - min(loss_values)) * 0.1)
+        ax.set_xlim(max(0, min(recall_values) - recall_pad), max(recall_values) + recall_pad)
+        ax.set_ylim(max(0, min(loss_values) - loss_pad), max(loss_values) + loss_pad)
         ax.grid(alpha=0.25)
-        ax.legend(frameon=False)
+        ax.legend(frameon=False, loc="upper left", bbox_to_anchor=(1.01, 1), fontsize=9)
     good = []
     baseline_false, baseline_spill = (100 * need(before["metrics"], key, before["path"])
                                       for key in ("good_false_eject_rate", "spilled_rate"))

@@ -4,6 +4,13 @@ One branch: `coffee-sorter-closed-loop`.
 One [PR](https://github.com/tarasyarema/hackspain/pull/1).
 Do not merge; Taras reviews in the morning.
 
+Start here: [morning verdict](#morning-verdict),
+[rate plot](runs/rate-sweep/rate_summary.png),
+[latency plot](runs/latency-sweep/latency_summary.png),
+[tuning plot](runs/tuning-sweep/tuning_1000_summary.png).
+Watch the [fresh-seed demo](https://hack-s3.agent-swarm.dev/agentfs/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/drives/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/demo-1000-force006.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=minioadmin%2F20260919%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260919T031054Z&X-Amz-Expires=86400&X-Amz-Signature=83f972f690e442ae38a914626c71250110b77843719e91cc537d109c4a288de5&X-Amz-SignedHeaders=host&response-content-disposition=attachment%3B%20filename%2A%3DUTF-8%27%27demo-1000-force006.mp4&x-amz-checksum-mode=ENABLED&x-id=GetObject);
+[all final phone links](#final-phone-visuals-and-archives).
+
 ## Task f2a7e430: first trained closed loop
 
 ### What ran
@@ -292,3 +299,148 @@ these are single-seed screens rather than bit-identical recorded-frame replays.
 - [Durable latency plot](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/latency-summary.png).
 - [Complete latency evidence](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/latency-sweep.tar.gz).
 - [Local plot](runs/latency-sweep/latency_summary.png); every recorded late flag matches the minus-2-ms threshold.
+
+### Physical tuning screens
+
+Each setting ran for 4 s at 1,000 beans/s, seed 0, with 2,600 eligible beans.
+All used a 60 ms minimum total controller latency; measured CPU can exceed it.
+One setting changed at a time. Base pulse duration is scaled by estimated mass.
+These are short screening comparisons, not independent-bean replays.
+
+**Baseline: 0.09 N, base pulse 3 ms, splitter drop 125 mm, adaptive valves**
+- Recall: 44.44%; good false ejects: 5.74%.
+- Spills: 2.38%; precision: 56.16%.
+- [Metrics and all denominators](runs/tuning-sweep/physics-base/metrics.json).
+
+**Jet force 0.06 N**
+- Recall: 51.45%; good false ejects: 4.08%.
+- Spills: 2.00%; precision: 65.93%.
+- [Metrics and all denominators](runs/tuning-sweep/force-0.06/metrics.json).
+
+**Jet force 0.12 N**
+- Recall: 40.97%; good false ejects: 6.16%.
+- Spills: 3.23%; precision: 54.21%.
+- [Metrics and all denominators](runs/tuning-sweep/force-0.12/metrics.json).
+
+**Base pulse 2 ms**
+- Recall: 44.04%; good false ejects: 5.98%.
+- Spills: 2.85%; precision: 54.27%.
+- [Metrics and all denominators](runs/tuning-sweep/pulse-2ms/metrics.json).
+
+**Base pulse 5 ms**
+- Recall: 43.09%; good false ejects: 6.32%.
+- Spills: 3.54%; precision: 53.00%.
+- [Metrics and all denominators](runs/tuning-sweep/pulse-5ms/metrics.json).
+
+**Splitter 100 mm below belt**
+- Recall: 45.85%; good false ejects: 9.73%.
+- Spills: 2.62%; precision: 42.22%.
+- [Metrics and all denominators](runs/tuning-sweep/split-0.10/metrics.json).
+
+**Splitter 150 mm below belt**
+- Recall: 45.92%; good false ejects: 3.47%.
+- Spills: 2.92%; precision: 67.63%.
+- [Metrics and all denominators](runs/tuning-sweep/split-0.15/metrics.json).
+
+**One valve per target, 64-valve bank**
+- Recall: 45.43%; good false ejects: 5.58%.
+- Spills: 1.85%; precision: 56.75%.
+- [Metrics and all denominators](runs/tuning-sweep/target-nozzles-1/metrics.json).
+
+**Three valves per target, 64-valve bank**
+- Recall: 46.54%; good false ejects: 7.24%.
+- Spills: 2.65%; precision: 50.91%.
+- [Metrics and all denominators](runs/tuning-sweep/target-nozzles-3/metrics.json).
+
+The 0.06 N force screen improves recall by 7.00 percentage points,
+reduces good false ejects by 1.66 points, and reduces spills by 0.38 points.
+It is the strongest screened recall gain without increasing either loss measure.
+The lower splitter reduces good false ejects further but increases spills.
+Three valves improve coverage at the cost of collateral rejection.
+Defaults remain the reference configuration; the fresh-seed confirmation is below.
+
+### Pool capacity at 3,000 beans/s
+
+Both runs used 4 s, seed 0 and the same 60 ms minimum latency.
+The enlarged pools are 1,800 ellipsoids, 72 halves, 30 boxes and 30 capsules.
+
+**Original pool**
+- Admitted: 2188.75 beans/s; starved: 2,949.
+- Defect recall: 38.50%; good false ejects: 8.37%.
+- Spills: 4.36%; accuracy: 81.77%.
+- Precision: 44.76%; late rejects: 0.
+- Wall/sim: 21.54 s/s; eligible beans: 5,775.
+
+**Enlarged pool**
+- Admitted: 3000.00 beans/s; starved: 0.
+- Defect recall: 38.60%; good false ejects: 10.10%.
+- Spills: 4.85%; accuracy: 79.65%.
+- Precision: 38.91%; late rejects: 0.
+- Wall/sim: 24.49 s/s; eligible beans: 7,800.
+
+Larger pools remove the admission bottleneck, but do not fix sorting quality.
+No higher-rate screen: the full-rate plant still ejects 10.10% of good beans
+and rejects only 38.60% of defects. Capacity and useful sorting are separate.
+
+### Fresh-seed confirmation and demo
+
+Both runs: 1,000 beans/s, 4 s, seed 1, 60 ms minimum total latency.
+Each evaluated 2,600 eligible beans; both had zero late rejects and zero starvation.
+The candidate changes only jet force from 0.09 N to 0.06 N.
+
+- Defect recall: 48.50% → 51.53%.
+- Good false ejects: 6.27% → 4.26%.
+- Rejection precision: 58.43% → 68.24%.
+- Physical accuracy: 86.08% → 88.54%.
+- Spills: 2.65% → 2.12%.
+- Own-pulse hits: 298/542 → 331/509 associated activations.
+
+The improvement repeats on a second seed. Two short runs do not establish
+robustness across lots, seed distributions or real coffee.
+Use `--jet-force 0.06` as an explicit demo setting; defaults remain unchanged.
+The candidate video is included only on the second run, so wall times are
+not a matched performance comparison.
+
+Artifacts: [confirmation plot](runs/confirmation-seed1/confirmation_summary.png),
+[baseline metrics](runs/confirmation-seed1/physics-base/metrics.json),
+[candidate metrics](runs/confirmation-seed1/force-0.06/metrics.json),
+[HUD video](runs/confirmation-seed1/force-0.06/overview_h264.mp4),
+and [annotated camera strip](runs/confirmation-seed1/force-0.06/inspection_1.png).
+Exact commands and logs: `runs/confirmation-seed1/run.sh` and sibling `.log` files.
+The simulation reached 4.000 s. H.264 video: 200 frames, 50 fps, 1.34 MB.
+Midpoint and final frames decode; all six annotated sheets are present.
+The HUD uses white text on a dark panel and labels the counter `queued`.
+
+### Morning verdict
+
+- Best next experiment: longer paired seeds with 0.06 N, then jet-hit geometry.
+- First fix: merged targets and missed jet intersections, not classifier accuracy.
+- Ever-merged baseline defect recall: 26.23%; single-only: 47.04%.
+- Merged blob action accuracy: 84.47% over 3,760 repeated observations.
+  Action recall: 43.78%; precision: 85.32%. These are not independent beans.
+- The larger pool sustains 3,000 beans/s but loses 10.10% of good beans.
+- Added latency reveals the failure boundary; camera backlog remains unmodeled.
+- Detector remains above 5 ms. Physical sorting and real-time claims remain open.
+
+All 13 tuning/confirmation runs reached 4.0 s and have metrics, decisions,
+evidence JSON and six annotated PNGs each. The full 8 s / 2,000 baseline remains
+`runs/baseline-2000-measured/`, committed in `cc5481a`.
+Its HUD was fixed, all 400 frames retained, and final-frame decode checked.
+The failed `20260919_020354` directory is excluded.
+Final regression suite: 26 tests pass. Standards and Spec source reviews pass.
+Plot QA caught crowded labels; numbered points and separate legends fix them.
+No CI workflows are configured. Keep PR #1 draft and unmerged.
+
+### Final phone visuals and archives
+
+Uploaded with the agent-fs skill. Upload sizes and SHA-256 hashes verified.
+Direct downloads expire 20 September 2026 at about 03:11 UTC;
+durable viewer links remain in the shared drive.
+
+- [Demo video, 1.34 MB](https://hack-s3.agent-swarm.dev/agentfs/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/drives/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/demo-1000-force006.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=minioadmin%2F20260919%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260919T031054Z&X-Amz-Expires=86400&X-Amz-Signature=83f972f690e442ae38a914626c71250110b77843719e91cc537d109c4a288de5&X-Amz-SignedHeaders=host&response-content-disposition=attachment%3B%20filename%2A%3DUTF-8%27%27demo-1000-force006.mp4&x-amz-checksum-mode=ENABLED&x-id=GetObject) · [durable](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/demo-1000-force006.mp4)
+- [Annotated demo strip](https://hack-s3.agent-swarm.dev/agentfs/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/drives/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/demo-annotated-strip.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=minioadmin%2F20260919%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260919T031055Z&X-Amz-Expires=86400&X-Amz-Signature=08208a96625c229fd85242971054ab0e7e05b96db5e9f0827102776acc23c55f&X-Amz-SignedHeaders=host&response-content-disposition=attachment%3B%20filename%2A%3DUTF-8%27%27demo-annotated-strip.png&response-content-type=image%2Fpng&x-amz-checksum-mode=ENABLED&x-id=GetObject) · [durable](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/demo-annotated-strip.png)
+- [Tuning screen](https://hack-s3.agent-swarm.dev/agentfs/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/drives/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/tuning-summary.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=minioadmin%2F20260919%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260919T031053Z&X-Amz-Expires=86400&X-Amz-Signature=d9ec54b40c12dcbd211cb6c7443c0937ed0633db37eac59fafe402e433621136&X-Amz-SignedHeaders=host&response-content-disposition=attachment%3B%20filename%2A%3DUTF-8%27%27tuning-summary.png&response-content-type=image%2Fpng&x-amz-checksum-mode=ENABLED&x-id=GetObject) · [durable](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/tuning-summary.png)
+- [Pool comparison](https://hack-s3.agent-swarm.dev/agentfs/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/drives/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/pool-summary.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=minioadmin%2F20260919%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260919T031053Z&X-Amz-Expires=86400&X-Amz-Signature=f769eb9642b6cc8381aa01857d44cc33c9be7a36679cada63aba343dbe44fd2f&X-Amz-SignedHeaders=host&response-content-disposition=attachment%3B%20filename%2A%3DUTF-8%27%27pool-summary.png&response-content-type=image%2Fpng&x-amz-checksum-mode=ENABLED&x-id=GetObject) · [durable](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/pool-summary.png)
+- [Fresh-seed confirmation](https://hack-s3.agent-swarm.dev/agentfs/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/drives/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/confirmation-summary.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=minioadmin%2F20260919%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260919T031054Z&X-Amz-Expires=86400&X-Amz-Signature=66a7de4587c2e517b51898200fb91b6eec22224072bb24726bb995167ec85435&X-Amz-SignedHeaders=host&response-content-disposition=attachment%3B%20filename%2A%3DUTF-8%27%27confirmation-summary.png&response-content-type=image%2Fpng&x-amz-checksum-mode=ENABLED&x-id=GetObject) · [durable](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/confirmation-summary.png)
+- [All tuning evidence, 38.85 MB](https://hack-s3.agent-swarm.dev/agentfs/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/drives/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/tuning-sweep.tar.gz?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=minioadmin%2F20260919%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260919T031056Z&X-Amz-Expires=86400&X-Amz-Signature=bd9f4af1fcf82e9cc0ca965f37fa45f388d0c695b955a6e3266c6c202aa5ab9f&X-Amz-SignedHeaders=host&response-content-disposition=attachment%3B%20filename%2A%3DUTF-8%27%27tuning-sweep.tar.gz&response-content-type=application%2Fgzip&x-amz-checksum-mode=ENABLED&x-id=GetObject) · [durable](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/tuning-sweep.tar.gz)
+- [All confirmation evidence, 8.23 MB](https://hack-s3.agent-swarm.dev/agentfs/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/drives/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/confirmation-seed1.tar.gz?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=minioadmin%2F20260919%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260919T031057Z&X-Amz-Expires=86400&X-Amz-Signature=afa1360c296727549eeceee45e45b3e84ba5a42f30f3a5a4bbe8ea57a31bcedc&X-Amz-SignedHeaders=host&response-content-disposition=attachment%3B%20filename%2A%3DUTF-8%27%27confirmation-seed1.tar.gz&response-content-type=application%2Fgzip&x-amz-checksum-mode=ENABLED&x-id=GetObject) · [durable](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/confirmation-seed1.tar.gz)

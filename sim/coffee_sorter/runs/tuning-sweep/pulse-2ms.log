@@ -1,0 +1,26 @@
+  t= 0.40s  wall=  4.7s  active=402  queued=20  decisions=103
+  t= 0.80s  wall= 11.7s  active=505  queued=113  decisions=500
+  t= 1.20s  wall= 18.6s  active=513  queued=218  decisions=901
+  t= 1.60s  wall= 25.7s  active=513  queued=290  decisions=1303
+  t= 2.00s  wall= 32.8s  active=521  queued=396  decisions=1702
+  t= 2.40s  wall= 40.0s  active=525  queued=473  decisions=2124
+  t= 2.80s  wall= 47.0s  active=524  queued=553  decisions=2526
+  t= 3.20s  wall= 53.9s  active=535  queued=658  decisions=2925
+  t= 3.60s  wall= 60.9s  active=534  queued=761  decisions=3343
+
+== green_arabica @ 1000 beans/s, policy specialty ==
+throughput 1000 beans/s  (753 kg/h)   evaluated 2600   wall 16.8 s per sim s
+defect removal 44.0%   good yield loss 5.98%   accept stream 73.5 defects/1000 (incoming 139/1000)   spilled 2.85%
+decisions 3759  valves 835  late 0  obs/track 2.42  latency p50 60.0 ms p99 60.0 ms (budget 73 ms)  starved 0
+class         n  rejected  targeted  jet hit  hit/rej  spilled
+good       2239       134        76       90       76       37   keep none
+faded        73        36        59       40       35        1   DEFECT minor
+black        61        26        57       33       25        3   DEFECT major
+sour         59        33        58       32       29        1   DEFECT major
+insect       41        19        39       23       17        1   DEFECT major
+broken       59        30        41       28       27        4   DEFECT major
+shell        22         2        13        7        0       13   DEFECT major
+husk         21         5        10        1        0        7   DEFECT foreign
+stone        15         3         9        2        1        6   DEFECT foreign
+stick        10         5         9        6        5        1   DEFECT foreign
+wrote /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/tuning-sweep/pulse-2ms

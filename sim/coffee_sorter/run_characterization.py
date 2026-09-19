@@ -4,8 +4,8 @@ Examples:
   python run_characterization.py latency
   python run_characterization.py tuning
 
-Each run writes its own stdout log beside its output directory. Completed runs
-with a metrics.json are skipped, so an interrupted PM2 batch can be restarted.
+Each run writes its own stdout log beside its output directory. Runs with the
+complete required artifact set are skipped, so an interrupted batch can resume.
 """
 from __future__ import annotations
 

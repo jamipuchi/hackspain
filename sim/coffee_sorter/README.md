@@ -186,12 +186,27 @@ not guarantee all tracks meet their deadlines. The plot shows actual track
 headroom and the controller's 2 ms tolerance beyond predicted jet arrival.
 Camera backlog is not modeled; this tests simulated availability and transport.
 
+The physical screen compares jet force, pulse length, splitter height, valve
+coverage and pool capacity. At 1000 beans/s, reducing force from 0.09 to 0.06 N
+improved seed-0 recall 44.44% → 51.45% and reduced good false ejects
+5.74% → 4.08%. Fresh seed 1 repeated the direction: recall 48.50% → 51.53%,
+false ejects 6.27% → 4.26%. Use `--jet-force 0.06` as an explicit demo setting;
+defaults remain unchanged pending longer paired runs. The enlarged pool admits
+3000 beans/s without starvation, but good false ejects reach 10.10%.
+[Tuning plot](runs/tuning-sweep/tuning_1000_summary.png),
+[confirmation](runs/confirmation-seed1/confirmation_summary.png), and
+[readable HUD demo](runs/confirmation-seed1/force-0.06/overview_h264.mp4)
+are committed with metrics and annotated frames. Twenty-six tests pass.
+
 **Next**
 
 - [x] foreground-only `vision.detect` with exact equivalence proof; train the classifier
 - [x] first closed-loop run with metrics + video
 - [ ] meet the <5 ms detector target and improve physical rejection/yield/spills
 - [x] rate sweep 500 → 3000 beans/s, latency vs the 73 ms camera-to-jet budget
+- [x] physical tuning screen, separate merged-bean metrics, fresh-seed demo and phone evidence
+- [ ] longer paired seeds for 0.06 N; improve merged-target jet intersection and capture
+- [ ] model camera backlog before claiming hardware timing margin
 - [ ] `roasted` profile without touching the controller (generalisation)
 - [ ] UR5e (Menagerie + mink) picking oversize foreign matter off the infeed — the one thing the air jets cannot do
 - [ ] one-slide summary
