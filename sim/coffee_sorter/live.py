@@ -902,10 +902,14 @@ def main():
     async def script(request):
         return web.FileResponse(HERE / 'live_web/live.js')
 
+    async def timeline(request):
+        return web.FileResponse(HERE / 'live_web/timeline.mjs')
+
     app = web.Application(middlewares=[local_access], client_max_size=2048)
     app.cleanup_ctx.append(service.lifecycle)
     app.on_shutdown.append(service.shutdown)
-    app.add_routes([web.get('/', page), web.get('/live.js', script), web.get('/health', service.health),
+    app.add_routes([web.get('/', page), web.get('/live.js', script),
+                    web.get('/timeline.mjs', timeline), web.get('/health', service.health),
                     web.get('/state', service.state_handler), web.get('/ws', service.websocket),
                     web.post('/restart', service.restart),
                     # The 3D view reuses the replay viewer's vendored three.js build (no network requests).
