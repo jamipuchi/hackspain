@@ -21,6 +21,7 @@ import json
 import os
 import sys
 import time
+from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 
@@ -144,8 +145,15 @@ def main() -> None:
     ap.add_argument("--planner", choices=["gpt6", "jev", "mock", "oracle"], default="gpt6", help="gpt6: OpenAI GPT-6 (vision); jev: TypeSafe Jev decides per part, code does the vision (program brain only)")
     ap.add_argument("--viewer", action="store_true", help="open the MuJoCo viewer and run at wall-clock speed (needs mjpython on macOS)")
     ap.add_argument("--brain", choices=["program", "agent"], default="agent", help="program: one batch program per photo (legacy); agent: GPT-6 tool calls step by step with a photo after each motion")
+    ap.add_argument("--decision-model", choices=["astra", "jev"], default="astra", help="agent mode: Astra selects tools, or Jev selects tools from visual observations")
+    ap.add_argument("--routing", choices=["cheap", "strong", "adaptive"], help="opt-in calibrated THEKER experiment (simulation only)")
+    ap.add_argument("--ledger", help="shared $5 sweep accounting ledger; required with --routing")
+    ap.add_argument("--run-dir", type=Path, help="explicit experiment output directory (must not exist)")
+    ap.add_argument("--vision-provider", choices=["openai", "openrouter"], default="openai", help="vision provider for the Jev agent")
+    ap.add_argument("--vision-model", default=None, help="vision model for the Jev agent; defaults to Astra or DeepSeek V4.1 Flash")
+    ap.add_argument("--reuse-pick-observation", action="store_true", help="reuse the known part description to select placement, then refresh vision after placement")
     ap.add_argument("--cameras", default="A,B", help="which cameras of the build to use, e.g. A or A,B")
-    ap.add_argument("--effort", default="medium", help="GPT-6 reasoning.effort for agent mode")
+    ap.add_argument("--effort", default="medium", help="vision reasoning effort for agent mode")
     ap.add_argument("--max-steps", type=int, default=60)
     ap.add_argument("--budget", type=float, default=4.0, help="USD cap for agent mode")
     ap.add_argument("--phone", choices=["cycles", "mujoco"], default="cycles", help="how the phone frames are rendered")
@@ -156,8 +164,14 @@ def main() -> None:
     ap.add_argument("--no-record", action="store_true")
     ap.add_argument("--cycles", type=int, default=3, help="conveyor builds: number of belt batches")
     args = ap.parse_args()
+    if args.routing and (not args.ledger or args.port or args.viewer or args.phone != "mujoco" or args.build != "theker_v1" or args.brain != "agent" or args.planner != "gpt6" or args.cameras != "A,B"):
+        ap.error("--routing requires --ledger, theker_v1, agent/gpt6, MuJoCo A,B, headless simulation")
+    if args.decision_model == "jev" and (args.brain != "agent" or args.planner != "gpt6"):
+        ap.error("--decision-model jev requires --brain agent and --planner gpt6")
+    if args.decision_model != "jev" and (args.vision_provider != "openai" or args.vision_model or args.reuse_pick_observation):
+        ap.error("vision overrides and --reuse-pick-observation require --decision-model jev")
 
-    run_dir = sd.ROOT / "runs" / datetime.now().strftime("%Y%m%d-%H%M%S")
+    run_dir = args.run_dir or sd.ROOT / "runs" / datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir.mkdir(parents=True)
     seed = args.seed if args.seed is not None else int(time.time()) % 10_000
     rng = np.random.default_rng(seed)
@@ -222,7 +236,12 @@ def main() -> None:
 
         ard = Twin()
 
-    (run_dir / "meta.json").write_text(json.dumps({"build": sd.BUILD, "title": sd.CFG.title, "seed": seed, "planner": args.planner}))
+    metadata = {"build": sd.BUILD, "title": sd.CFG.title, "seed": seed, "planner": args.planner,
+                "brain": args.brain, "decision_model": args.decision_model, "phone": args.phone,
+                "vision_provider": "openrouter" if args.routing else args.vision_provider, "reuse_pick_observation": args.reuse_pick_observation,
+                "effort": "low" if args.routing else args.effort, "viewer": args.viewer,
+                "max_steps": args.max_steps, "budget_usd": args.budget, "routing": args.routing}
+    (run_dir / "meta.json").write_text(json.dumps(metadata, indent=2))
     hopper = list(pieces)
     rng.shuffle(hopper)
     if sd.CONVEYOR:
@@ -239,7 +258,7 @@ def main() -> None:
         onstage = scatter(model, data, hopper[:wave], rng)
         hopper = [b for b in hopper if b not in onstage]
         if hopper:
-            print(f"waves: {len(onstage)} parts on the card now, {len(hopper)} more arrive when GPT-6 finishes this batch")
+            print(f"waves: {len(onstage)} parts on the card now, {len(hopper)} more arrive when the agent finishes this batch")
     step(400)
     ard.write("H")
     step(600)
@@ -255,8 +274,10 @@ def main() -> None:
             cams[cn] = BlenderPhoneCamera(blender, model, data, run_dir / "phone", samples=args.samples, name=cn)
         print(f"Blender scene built in {blender.build_s:.1f}s (Cycles, Metal GPU); cameras {cam_names}")
     else:
+        renderer = None
         for cn in cam_names:
-            cams[cn] = MujocoPhoneCamera(model, data, cn)
+            cams[cn] = MujocoPhoneCamera(model, data, cn, renderer=renderer)
+            renderer = cams[cn].renderer
     phone = cams[cam_names[0]]
 
     ctrl = ArmController(ard, step, frame_grab=phone.grab)
@@ -276,7 +297,9 @@ def main() -> None:
     if rec:
         rec.event("calibration", markers=sorted(cal.found), error_mm=cal.reprojection_error_mm(), cameras=cam_names)
 
-    if args.planner == "gpt6":
+    if args.planner == "gpt6" and args.brain == "agent":
+        planner = None
+    elif args.planner == "gpt6":
         from brain import GPT6Planner
 
         planner = GPT6Planner()
@@ -337,14 +360,14 @@ def main() -> None:
     def ferrous_left() -> list[str]:
         return score()[2]
 
-    print(f"build={sd.BUILD} planner={planner.name} seed={seed} run={run_dir}")
-    print("ground truth (hidden from GPT-6):", ", ".join(f"{b.name}→{b.piece.get('target') or 'leave'}" for b in pieces))
+    print(f"build={sd.BUILD} planner={planner.name if planner else 'agent'} seed={seed} run={run_dir}")
+    print("ground truth (hidden from the models):", ", ".join(f"{b.name}→{b.piece.get('target') or 'leave'}" for b in pieces))
 
     t_start = time.time()
     if viewer is not None:
         print("viewer open: watch the run in the MuJoCo window")
     if args.brain == "agent" and args.planner == "gpt6":
-        from agent_brain import GPT6Agent
+        from agent_brain import GPT6Agent, JevAgent
         from robot_api import RobotAPI
 
         robot = RobotAPI(ctrl, get_face_pos=lambda: data.site("magnet_face").xpos.copy())
@@ -391,9 +414,43 @@ def main() -> None:
             print(f"  ↻ refill: {len(newp)} new parts on the card, {len(hopper)} still waiting")
             return f"This batch is accepted. The operator has put {len(newp)} NEW parts on the card ({len(hopper)} more will follow later). Take a photo, rebuild your inventory with note_parts and continue the same task with the new parts."
 
-        agent = GPT6Agent(robot, {cn: cams[cn].grab for cn in cams}, cals, run_dir, on_event=on_event, effort=args.effort, max_steps=args.max_steps, budget_usd=args.budget, refill=refill)
-        print(f"agent mode: {len(cams)} camera(s) {list(cams)}, effort={args.effort}, max {args.max_steps} steps, budget ${args.budget:.2f}")
-        result = agent.run_loop()
+        agent_class = JevAgent if args.decision_model == "jev" else GPT6Agent
+        if args.routing:
+            from adaptive_brain import AdaptiveAgent
+
+            agent_class = AdaptiveAgent
+        agent = None
+        failure = None
+        try:
+            vision_options = {}
+            if args.routing:
+                vision_options = {"routing": args.routing, "ledger_path": args.ledger}
+            elif args.decision_model == "jev":
+                from brain import MODEL
+
+                vision_options = {"vision_provider": args.vision_provider, "reuse_pick_observation": args.reuse_pick_observation,
+                                  "model": args.vision_model or ("deepseek/deepseek-v4.1-flash" if args.vision_provider == "openrouter" else MODEL)}
+            agent = agent_class(robot, {cn: cams[cn].grab for cn in cams}, cals, run_dir, on_event=on_event, effort=args.effort, max_steps=args.max_steps, budget_usd=args.budget, refill=refill, **vision_options)
+            metadata.update(cameras=cam_names, vision_model=agent.model,
+                            decision_model=getattr(agent, "decision_model", agent.model))
+            (run_dir / "meta.json").write_text(json.dumps(metadata, indent=2))
+            print(f"agent mode: decisions={metadata['decision_model']}, vision={agent.model}, {len(cams)} camera(s) {list(cams)}, effort={metadata['effort']}, max {args.max_steps} steps, budget ${args.budget:.2f}")
+            result = agent.run_loop()
+        except (Exception, KeyboardInterrupt, SystemExit) as exc:
+            (run_dir / "error.json").write_text(json.dumps({"error": type(exc).__name__, "message": str(exc)}, indent=2))
+            if agent is None:
+                if rec:
+                    rec.save()
+                raise
+            failure = exc
+            result = agent.run
+            result.finished = False
+            result.summary = f"stopped: {type(exc).__name__}: {exc}"
+        finally:
+            if blender is not None:
+                blender.close()
+        metadata["decision_model"] = getattr(agent, "decision_model", agent.model)
+        (run_dir / "meta.json").write_text(json.dumps(metadata, indent=2))
         correct, expected, todo, wrong = score()
         print(f"\nagent {'finished' if result.finished else 'stopped'}: {result.summary}")
         print(f"result: {correct}/{expected} correctly placed after {result.steps} tool calls, {result.calls} API calls, {time.time() - t_start:.0f}s wall, {data.time:.0f}s sim")
@@ -404,14 +461,26 @@ def main() -> None:
                 print(f"  not done: {name} at {np.round(data.body(name).xpos, 3)} (in {container_of(name)})")
             else:
                 print(f"  not complete: {name}")
-        print(f"GPT-6 usage: {result.usage_in} in / {result.usage_out} out tokens ≈ ${result.cost_usd():.2f}")
+        cost_label = "Total estimated cost" if result.cost_complete else "Known cost only (accounting incomplete)"
+        print(f"{cost_label}: ${result.cost_usd():.4f}")
+        if result.astra_calls:
+            print(f"Astra usage: {result.usage_in} in / {result.usage_out} out tokens")
+        if result.openrouter_calls:
+            print(f"OpenRouter usage: {result.openrouter_calls} calls, {result.openrouter_usage_in} in / {result.openrouter_usage_out} out tokens, reported cost ${result.openrouter_cost_usd:.4f}")
+        if result.jev_calls:
+            print(f"Jev usage: {result.jev_calls} decisions, {result.jev_usage_in} in / {result.jev_usage_out} out tokens")
+        (run_dir / "result.json").write_text(json.dumps({
+            **asdict(result), "cost_usd": result.cost_usd(), "correct": correct, "expected": expected,
+            "remaining": todo, "wrong": wrong, "wall_seconds": time.time() - t_start,
+            "simulation_seconds": data.time, "batches_done": agent.batches_done,
+        }, indent=2))
         if rec:
             rec.event("score", binned=correct, total=expected)
             rec.event("phase", text=f"done: {correct}/{expected} correctly placed")
             rec.hold(3.0)
             rec.save()
-        if blender is not None:
-            blender.close()
+        if failure is not None:
+            raise failure
         return
 
     history: list[str] = []

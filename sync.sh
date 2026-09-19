@@ -18,10 +18,10 @@ if [ "${behind:-0}" -gt 0 ]; then
 fi
 
 # code (no run artifacts, no caches, no generated scene xml)
-rsync -a --delete \
+rsync -a \
   --exclude '__pycache__' --exclude 'runs/' --exclude '*.raw.mp4' --exclude 'scene_generated*.xml' --exclude '.pixi' \
   "$SRC/magnet_sorter/" sim/magnet_sorter/
-rsync -a --delete --exclude '__pycache__' --exclude 'runs/' "$SRC/astra_sort/" sim/astra_sort_v0/
+rsync -a --exclude '__pycache__' --exclude 'runs/' "$SRC/astra_sort/" sim/astra_sort_v0/
 rsync -a --exclude '__pycache__' --exclude 'avf_cameras' --exclude '*.jpg' "$SRC/demos/" sim/demos/
 # NOTE 19 Sep 19:55: the ~/robotics/coffee_sorter mirror was removed from this script. sim/coffee_sorter on origin/main is
 # Taras's fork of it (PR #3, merged 19:44) and is now the canonical version; an rsync --delete from the older local copy would erase it.
