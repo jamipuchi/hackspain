@@ -1,0 +1,654 @@
+{
+  "experiment": "coffee Jev typed-policy micro-spike refinement",
+  "endpoint": "https://api.typesafe.ai/v1/systemone",
+  "requested_model": "jev-1.13.0",
+  "request_count": 2,
+  "automatic_retries": false,
+  "prompt_change": "Product selection, capability, and directive ambiguity are separate typed questions. Foreign-class metadata is explicit.",
+  "results": [
+    {
+      "id": "english_policy_refined",
+      "instruction": "Keep faded beans, but reject black beans and foreign material.",
+      "expected": {
+        "product": "green_arabica",
+        "capability": "supported",
+        "intent": "policy_change",
+        "ambiguity": "clear",
+        "effective_actions": {
+          "faded": "keep",
+          "black": "reject",
+          "husk": "reject",
+          "stone": "reject",
+          "stick": "reject"
+        }
+      },
+      "observed": {
+        "product": {
+          "choice": "green_arabica",
+          "probabilities": {
+            "roasted": 0.0,
+            "no_profile_change": 0.06,
+            "green_arabica": 0.94
+          },
+          "confidence": 0.91
+        },
+        "capability": {
+          "choice": "supported",
+          "probabilities": {
+            "supported": 0.81,
+            "unsupported": 0.19
+          },
+          "confidence": 0.61
+        },
+        "intent": {
+          "choice": "policy_change",
+          "probabilities": {
+            "policy_change": 0.81,
+            "ambiguous": 0.19,
+            "unsupported_recognition": 0.0,
+            "irrelevant": 0.0
+          },
+          "confidence": 0.74
+        },
+        "ambiguity": {
+          "choice": "ambiguous",
+          "probabilities": {
+            "clear": 0.35,
+            "ambiguous": 0.65
+          },
+          "confidence": 0.3
+        }
+      },
+      "raw_actions": {
+        "good": {
+          "choice": "unchanged",
+          "probabilities": {
+            "keep": 0.1,
+            "unchanged": 0.9,
+            "reject": 0.0
+          },
+          "confidence": 0.84
+        },
+        "faded": {
+          "choice": "keep",
+          "probabilities": {
+            "keep": 0.98,
+            "unchanged": 0.01,
+            "reject": 0.01
+          },
+          "confidence": 0.98
+        },
+        "black": {
+          "choice": "unchanged",
+          "probabilities": {
+            "keep": 0.0,
+            "unchanged": 0.77,
+            "reject": 0.23
+          },
+          "confidence": 0.66
+        },
+        "sour": {
+          "choice": "unchanged",
+          "probabilities": {
+            "keep": 0.0,
+            "unchanged": 0.92,
+            "reject": 0.08
+          },
+          "confidence": 0.87
+        },
+        "insect": {
+          "choice": "unchanged",
+          "probabilities": {
+            "keep": 0.0,
+            "unchanged": 0.86,
+            "reject": 0.14
+          },
+          "confidence": 0.79
+        },
+        "broken": {
+          "choice": "unchanged",
+          "probabilities": {
+            "keep": 0.0,
+            "unchanged": 0.9,
+            "reject": 0.1
+          },
+          "confidence": 0.85
+        },
+        "shell": {
+          "choice": "unchanged",
+          "probabilities": {
+            "keep": 0.0,
+            "unchanged": 0.82,
+            "reject": 0.18
+          },
+          "confidence": 0.73
+        },
+        "husk": {
+          "choice": "unchanged",
+          "probabilities": {
+            "keep": 0.0,
+            "unchanged": 0.76,
+            "reject": 0.24
+          },
+          "confidence": 0.64
+        },
+        "stone": {
+          "choice": "unchanged",
+          "probabilities": {
+            "keep": 0.0,
+            "unchanged": 0.88,
+            "reject": 0.12
+          },
+          "confidence": 0.82
+        },
+        "stick": {
+          "choice": "unchanged",
+          "probabilities": {
+            "keep": 0.0,
+            "unchanged": 0.83,
+            "reject": 0.17
+          },
+          "confidence": 0.75
+        }
+      },
+      "effective_actions": {
+        "good": "keep",
+        "faded": "keep",
+        "black": "reject",
+        "sour": "reject",
+        "insect": "reject",
+        "broken": "reject",
+        "shell": "reject",
+        "husk": "reject",
+        "stone": "reject",
+        "stick": "reject"
+      },
+      "effective_action_matches": {
+        "faded": true,
+        "black": true,
+        "husk": true,
+        "stone": true,
+        "stick": true
+      },
+      "effective_policy_match": true,
+      "api_model": "jev-1.13.0",
+      "wall_latency_s": 0.786,
+      "usage": {
+        "input_tokens": 1970,
+        "output_tokens": 549
+      },
+      "cost_usd": null,
+      "uncertainty": "A typed response is not calibrated policy evidence. Local validation must gate activation.",
+      "raw_sanitized_response": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "product": {
+            "type": "choice",
+            "choice": "green_arabica",
+            "confidence": 0.91,
+            "probabilities": {
+              "roasted": 0.0,
+              "no_profile_change": 0.06,
+              "green_arabica": 0.94
+            }
+          },
+          "capability": {
+            "type": "choice",
+            "choice": "supported",
+            "confidence": 0.61,
+            "probabilities": {
+              "supported": 0.81,
+              "unsupported": 0.19
+            }
+          },
+          "intent": {
+            "type": "choice",
+            "choice": "policy_change",
+            "confidence": 0.74,
+            "probabilities": {
+              "policy_change": 0.81,
+              "ambiguous": 0.19,
+              "unsupported_recognition": 0.0,
+              "irrelevant": 0.0
+            }
+          },
+          "ambiguity": {
+            "type": "choice",
+            "choice": "ambiguous",
+            "confidence": 0.3,
+            "probabilities": {
+              "clear": 0.35,
+              "ambiguous": 0.65
+            }
+          },
+          "action_good": {
+            "type": "choice",
+            "choice": "unchanged",
+            "confidence": 0.84,
+            "probabilities": {
+              "keep": 0.1,
+              "unchanged": 0.9,
+              "reject": 0.0
+            }
+          },
+          "action_faded": {
+            "type": "choice",
+            "choice": "keep",
+            "confidence": 0.98,
+            "probabilities": {
+              "keep": 0.98,
+              "unchanged": 0.01,
+              "reject": 0.01
+            }
+          },
+          "action_black": {
+            "type": "choice",
+            "choice": "unchanged",
+            "confidence": 0.66,
+            "probabilities": {
+              "keep": 0.0,
+              "unchanged": 0.77,
+              "reject": 0.23
+            }
+          },
+          "action_sour": {
+            "type": "choice",
+            "choice": "unchanged",
+            "confidence": 0.87,
+            "probabilities": {
+              "keep": 0.0,
+              "unchanged": 0.92,
+              "reject": 0.08
+            }
+          },
+          "action_insect": {
+            "type": "choice",
+            "choice": "unchanged",
+            "confidence": 0.79,
+            "probabilities": {
+              "keep": 0.0,
+              "unchanged": 0.86,
+              "reject": 0.14
+            }
+          },
+          "action_broken": {
+            "type": "choice",
+            "choice": "unchanged",
+            "confidence": 0.85,
+            "probabilities": {
+              "keep": 0.0,
+              "unchanged": 0.9,
+              "reject": 0.1
+            }
+          },
+          "action_shell": {
+            "type": "choice",
+            "choice": "unchanged",
+            "confidence": 0.73,
+            "probabilities": {
+              "keep": 0.0,
+              "unchanged": 0.82,
+              "reject": 0.18
+            }
+          },
+          "action_husk": {
+            "type": "choice",
+            "choice": "unchanged",
+            "confidence": 0.64,
+            "probabilities": {
+              "keep": 0.0,
+              "unchanged": 0.76,
+              "reject": 0.24
+            }
+          },
+          "action_stone": {
+            "type": "choice",
+            "choice": "unchanged",
+            "confidence": 0.82,
+            "probabilities": {
+              "keep": 0.0,
+              "unchanged": 0.88,
+              "reject": 0.12
+            }
+          },
+          "action_stick": {
+            "type": "choice",
+            "choice": "unchanged",
+            "confidence": 0.75,
+            "probabilities": {
+              "keep": 0.0,
+              "unchanged": 0.83,
+              "reject": 0.17
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 1970,
+          "output_tokens": 549
+        }
+      }
+    },
+    {
+      "id": "spanish_policy_refined",
+      "instruction": "Conserva los granos descoloridos, pero rechaza los negros y el material extraño.",
+      "expected": {
+        "product": "green_arabica",
+        "capability": "supported",
+        "intent": "policy_change",
+        "ambiguity": "clear",
+        "effective_actions": {
+          "faded": "keep",
+          "black": "reject",
+          "husk": "reject",
+          "stone": "reject",
+          "stick": "reject"
+        }
+      },
+      "observed": {
+        "product": {
+          "choice": "green_arabica",
+          "probabilities": {
+            "roasted": 0.0,
+            "no_profile_change": 0.06,
+            "green_arabica": 0.94
+          },
+          "confidence": 0.91
+        },
+        "capability": {
+          "choice": "supported",
+          "probabilities": {
+            "supported": 0.67,
+            "unsupported": 0.33
+          },
+          "confidence": 0.34
+        },
+        "intent": {
+          "choice": "policy_change",
+          "probabilities": {
+            "policy_change": 0.51,
+            "ambiguous": 0.47,
+            "unsupported_recognition": 0.01,
+            "irrelevant": 0.01
+          },
+          "confidence": 0.36
+        },
+        "ambiguity": {
+          "choice": "ambiguous",
+          "probabilities": {
+            "clear": 0.46,
+            "ambiguous": 0.54
+          },
+          "confidence": 0.07
+        }
+      },
+      "raw_actions": {
+        "good": {
+          "choice": "unchanged",
+          "probabilities": {
+            "keep": 0.16,
+            "unchanged": 0.84,
+            "reject": 0.0
+          },
+          "confidence": 0.76
+        },
+        "faded": {
+          "choice": "keep",
+          "probabilities": {
+            "keep": 0.94,
+            "unchanged": 0.04,
+            "reject": 0.02
+          },
+          "confidence": 0.91
+        },
+        "black": {
+          "choice": "unchanged",
+          "probabilities": {
+            "keep": 0.0,
+            "unchanged": 0.72,
+            "reject": 0.28
+          },
+          "confidence": 0.59
+        },
+        "sour": {
+          "choice": "unchanged",
+          "probabilities": {
+            "keep": 0.0,
+            "unchanged": 0.91,
+            "reject": 0.09
+          },
+          "confidence": 0.86
+        },
+        "insect": {
+          "choice": "unchanged",
+          "probabilities": {
+            "keep": 0.0,
+            "unchanged": 0.81,
+            "reject": 0.19
+          },
+          "confidence": 0.71
+        },
+        "broken": {
+          "choice": "unchanged",
+          "probabilities": {
+            "keep": 0.0,
+            "unchanged": 0.84,
+            "reject": 0.16
+          },
+          "confidence": 0.76
+        },
+        "shell": {
+          "choice": "unchanged",
+          "probabilities": {
+            "keep": 0.0,
+            "unchanged": 0.82,
+            "reject": 0.18
+          },
+          "confidence": 0.73
+        },
+        "husk": {
+          "choice": "unchanged",
+          "probabilities": {
+            "keep": 0.0,
+            "unchanged": 0.72,
+            "reject": 0.28
+          },
+          "confidence": 0.58
+        },
+        "stone": {
+          "choice": "unchanged",
+          "probabilities": {
+            "keep": 0.0,
+            "unchanged": 0.79,
+            "reject": 0.21
+          },
+          "confidence": 0.68
+        },
+        "stick": {
+          "choice": "unchanged",
+          "probabilities": {
+            "keep": 0.0,
+            "unchanged": 0.81,
+            "reject": 0.19
+          },
+          "confidence": 0.72
+        }
+      },
+      "effective_actions": {
+        "good": "keep",
+        "faded": "keep",
+        "black": "reject",
+        "sour": "reject",
+        "insect": "reject",
+        "broken": "reject",
+        "shell": "reject",
+        "husk": "reject",
+        "stone": "reject",
+        "stick": "reject"
+      },
+      "effective_action_matches": {
+        "faded": true,
+        "black": true,
+        "husk": true,
+        "stone": true,
+        "stick": true
+      },
+      "effective_policy_match": true,
+      "api_model": "jev-1.13.0",
+      "wall_latency_s": 0.726,
+      "usage": {
+        "input_tokens": 1979,
+        "output_tokens": 549
+      },
+      "cost_usd": null,
+      "uncertainty": "A typed response is not calibrated policy evidence. Local validation must gate activation.",
+      "raw_sanitized_response": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "product": {
+            "type": "choice",
+            "choice": "green_arabica",
+            "confidence": 0.91,
+            "probabilities": {
+              "roasted": 0.0,
+              "no_profile_change": 0.06,
+              "green_arabica": 0.94
+            }
+          },
+          "capability": {
+            "type": "choice",
+            "choice": "supported",
+            "confidence": 0.34,
+            "probabilities": {
+              "supported": 0.67,
+              "unsupported": 0.33
+            }
+          },
+          "intent": {
+            "type": "choice",
+            "choice": "policy_change",
+            "confidence": 0.36,
+            "probabilities": {
+              "policy_change": 0.51,
+              "ambiguous": 0.47,
+              "unsupported_recognition": 0.01,
+              "irrelevant": 0.01
+            }
+          },
+          "ambiguity": {
+            "type": "choice",
+            "choice": "ambiguous",
+            "confidence": 0.07,
+            "probabilities": {
+              "clear": 0.46,
+              "ambiguous": 0.54
+            }
+          },
+          "action_good": {
+            "type": "choice",
+            "choice": "unchanged",
+            "confidence": 0.76,
+            "probabilities": {
+              "keep": 0.16,
+              "unchanged": 0.84,
+              "reject": 0.0
+            }
+          },
+          "action_faded": {
+            "type": "choice",
+            "choice": "keep",
+            "confidence": 0.91,
+            "probabilities": {
+              "keep": 0.94,
+              "unchanged": 0.04,
+              "reject": 0.02
+            }
+          },
+          "action_black": {
+            "type": "choice",
+            "choice": "unchanged",
+            "confidence": 0.59,
+            "probabilities": {
+              "keep": 0.0,
+              "unchanged": 0.72,
+              "reject": 0.28
+            }
+          },
+          "action_sour": {
+            "type": "choice",
+            "choice": "unchanged",
+            "confidence": 0.86,
+            "probabilities": {
+              "keep": 0.0,
+              "unchanged": 0.91,
+              "reject": 0.09
+            }
+          },
+          "action_insect": {
+            "type": "choice",
+            "choice": "unchanged",
+            "confidence": 0.71,
+            "probabilities": {
+              "keep": 0.0,
+              "unchanged": 0.81,
+              "reject": 0.19
+            }
+          },
+          "action_broken": {
+            "type": "choice",
+            "choice": "unchanged",
+            "confidence": 0.76,
+            "probabilities": {
+              "keep": 0.0,
+              "unchanged": 0.84,
+              "reject": 0.16
+            }
+          },
+          "action_shell": {
+            "type": "choice",
+            "choice": "unchanged",
+            "confidence": 0.73,
+            "probabilities": {
+              "keep": 0.0,
+              "unchanged": 0.82,
+              "reject": 0.18
+            }
+          },
+          "action_husk": {
+            "type": "choice",
+            "choice": "unchanged",
+            "confidence": 0.58,
+            "probabilities": {
+              "keep": 0.0,
+              "unchanged": 0.72,
+              "reject": 0.28
+            }
+          },
+          "action_stone": {
+            "type": "choice",
+            "choice": "unchanged",
+            "confidence": 0.68,
+            "probabilities": {
+              "keep": 0.0,
+              "unchanged": 0.79,
+              "reject": 0.21
+            }
+          },
+          "action_stick": {
+            "type": "choice",
+            "choice": "unchanged",
+            "confidence": 0.72,
+            "probabilities": {
+              "keep": 0.0,
+              "unchanged": 0.81,
+              "reject": 0.19
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 1979,
+          "output_tokens": 549
+        }
+      }
+    }
+  ]
+}

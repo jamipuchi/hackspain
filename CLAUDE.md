@@ -1,0 +1,12 @@
+# Coffee demo collaboration
+
+These rules apply to coffee sorter work in this repository.
+
+- Start with a working default. Natural-language changes follow.
+- Taras owns functional testing, QA, and acceptance. Provide small runnable increments and request feedback after visible changes.
+- Add unit tests only when a specific risk makes them strictly necessary. Explain that need first.
+- Do not add a QA framework. Keep existing tests available and run the minimum build or syntax checks needed for a reviewable increment.
+- Keep measurements honest. Separate classifier accuracy, physical sorting outcomes, engine speed, and browser frame rate.
+- Keep simulator truth outside model inputs. Preserve independent evaluation objects.
+- Commit and push review revisions to the active coffee branch. Keep its plan, evidence, and PR description consistent.
+- Preserve the current policy and model when a language request is unsupported or ambiguous.
