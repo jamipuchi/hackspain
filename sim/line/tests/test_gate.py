@@ -228,7 +228,7 @@ def test_belt_channel_pulse_and_selftest(env):
     assert [s for s in fake.sent if s.startswith("C")] == ["C -28", "C 1"]
     checks = g.selftest()
     assert all(c.ok for c in checks), [(c.name, c.detail) for c in checks if not c.ok]
-    assert any("never sends C 0" in c.name for c in checks) and any("D6 angle" in c.name for c in checks)
+    assert any("never sends C 0" in c.name for c in checks) and any("D6 still attached" in c.name for c in checks)
     assert fake.sent[-1] == "?"  # the real link still only gets ? from selftest
 
 
@@ -265,7 +265,7 @@ def test_belt_spin_pulse_dry_run_and_selftest(env):
     g = make(dry_run=True)
     g.pulse(0.02, 0.05)
     assert wait_state(g, "flush")
-    assert fake.sent == [] and [e["action"] for e in g.log] == ["ramp", "open", "flush"]
+    assert fake.sent == [] and [e["action"] for e in g.log] == ["config", "ramp", "open", "flush"]
     assert g.log[-2]["line"] == "T 12 300" and g.log[-1]["line"] == "T -12 300"
     fake.selftest_belt_cmd = "C 0"  # a real link has this attribute; the spin gate must disarm it
     g2 = make()
@@ -294,3 +294,21 @@ def test_d6_channel_sends_D_and_disarms_C0(env):
     assert fake.sent[-1] == "R 3 400 8000" and fake.vmax[3] == 400.0
     checks = g.selftest()
     assert all(c.ok for c in checks), [(c.name, c.detail) for c in checks if not c.ok]
+
+
+def test_d6_and_spin_channels_send_neutral_and_limits_once(env):
+    cfg, fake, make = env
+    cfg.gate.channel = "d6"
+    cfg.gate.neutral_us, cfg.gate.door_limits_deg = 1520, (40, 140)
+    g = make()
+    assert fake.sent[:2] == ["N 1520", "L 3 40 140"] and fake.neutral_us == 1520 and fake.lim[3] == (40, 140)
+    assert [e["action"] for e in list(g.log)[:2]] == ["config", "config"]
+    g.open()  # 65° lies inside the limits
+    assert fake.door_target == 65
+    cfg.gate.channel = "belt_spin"
+    g2 = make()
+    assert g2.servo_config_commands() == ["N 1520"]
+    cfg.gate.channel = "base"
+    n_before = len(fake.sent)
+    make()
+    assert len(fake.sent) == n_before, "arm channels send no D6 config"

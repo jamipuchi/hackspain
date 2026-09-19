@@ -19,7 +19,16 @@
     "default_dwell_s": 1.0,
     "ramp_override": false,
     "door_vmax_deg_s": 400,
-    "door_accel_deg_s2": 8000
+    "door_accel_deg_s2": 8000,
+    "spin_speed": 12,
+    "spin_open_ms": 300,
+    "spin_close_ms": 300,
+    "spin_open_dir": 1,
+    "neutral_us": 1500,
+    "door_limits_deg": [
+      40,
+      140
+    ]
   },
   "camera": {
     "backend": "real",
@@ -29,10 +38,10 @@
     "fps": 60,
     "file_paths": [],
     "zone": [
-      774,
-      458,
-      1272,
-      661
+      250,
+      300,
+      750,
+      380
     ],
     "px_per_mm": 4.3,
     "flow_axis": "-x",

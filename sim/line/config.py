@@ -40,6 +40,9 @@ class GateCfg:  # owner: arduino agent (angles measured on the bench by the buil
     spin_open_ms: int = 300
     spin_close_ms: int = 300
     spin_open_dir: int = 1  # +1: positive speed opens; -1 if the horn is mirrored
+    # servo-investigation 19 Sep 17:xx (firmware >= 17:20): sent once at Gate start on the D6 channels, `err` on old firmware is logged
+    neutral_us: int = 1500  # D6 speed-mode neutral (`N`); Servo.write(90) = 1472 us is NOT neutral. Calibrate with servo_repeat calibrate-neutral
+    door_limits_deg: tuple = (40, 140)  # `L 3 <min> <max>` travel limits for the D6 positional door (conservative; the SG90 binds near 0/180)
 
 
 @dataclass

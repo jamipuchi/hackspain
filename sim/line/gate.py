@@ -67,8 +67,34 @@ class Gate:
         self._worker.start()
         if (self.on_belt or self.on_spin or self.on_d6) and hasattr(self.link, "selftest_belt_cmd"):
             self.link.selftest_belt_cmd = None  # the link's selftest must not send C 0 any more: it would drop the door
+        if self.on_spin or self.on_d6:
+            self.apply_servo_config()
         if getattr(self.cfg.gate, "ramp_override", False):
             self.apply_ramp()
+
+    def servo_config_commands(self) -> list[str]:
+        """`N <neutral_us>` (speed-mode neutral) and, for the positional D6 door, `L 3 <min> <max>` travel limits."""
+        g = self.cfg.gate
+        out = [f"N {max(1300, min(1700, int(getattr(g, 'neutral_us', 1500))))}"]
+        if self.on_d6:
+            lo, hi = (int(v) for v in getattr(g, "door_limits_deg", (0, 180)))
+            out.append(f"L 3 {max(0, min(179, lo))} {max(1, min(180, hi))}")
+        return out
+
+    def apply_servo_config(self) -> None:
+        """Send the documented servo configuration once; old firmware answers `err` and we log it, nothing else changes."""
+        for line in self.servo_config_commands():
+            entry = {"t": self.clock(), "action": "config", "line": line, "sent": not self.dry_run, "reply": ""}
+            if not self.dry_run:
+                try:
+                    entry["reply"] = self.link.cmd(line)
+                    if entry["reply"] != "ok":
+                        self.last_error = f"{line} refused ({entry['reply']}): firmware without N/L? running with defaults"
+                except LinkError as e:
+                    self.n_errors += 1
+                    self.last_error = str(e)
+                    entry["reply"] = f"ERROR {e}"
+            self.log.append(entry)
 
     def ramp_command(self) -> str:
         g = self.cfg.gate
