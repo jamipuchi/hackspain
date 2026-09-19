@@ -5,6 +5,64 @@ It does not own the source scene, simulator, model, live interface, or recorded 
 
 ## Separate video previews
 
+### Native Full HD renders
+
+Taras authorized all nine existing clips at 1920 by 1080, with unchanged framing and timing.
+The Full HD preset uses 48 Cycles samples, a 0.035 adaptive threshold, denoising, and H.264 CRF 16.
+The commands use the Mac's Metal GPU. The shared runtime lock and eight-thread limit still apply.
+
+```sh
+python3 sim/coffee_sorter/demo_video/render_segments.py --full-hd --device METAL \
+  --output-dir /private/tmp/coffee-demo-video-previews/segments-1080p
+python3 sim/coffee_sorter/demo_video/render_slowmo.py --full-hd --device METAL \
+  --output-dir /private/tmp/coffee-demo-video-previews/segments-1080p/05-ultra-slowmo
+```
+
+Use `--frame-limit 3` with one segment to benchmark three new frames.
+Repeat without `--frame-limit` to resume the same verified frame sequence.
+Use `--device CPU` on a computer without Metal. Do not change devices within an unfinished sequence.
+The manifests record native frame dimensions, quality settings, source poses, and encoded video dimensions.
+The original preview files remain unchanged.
+The higher resolution does not change the slow-motion framing or resolve its pending visual feedback.
+
+### Independent remote batch
+
+`bulk_full_hd.py` renders sequentially, verifies native frames and encoded videos, and uploads each completed clip to Swarm.
+It preserves identical existing remote files and rejects conflicting bytes.
+It creates and verifies the final nine-clip ZIP without requiring the Mac.
+Its status file is `segments-1080p/batch.json`. Detailed logs remain in `/tmp/bulk-full-hd-*.log` inside the container.
+
+The HackSpain worker uses an isolated container named `coffee-demo-full-hd`.
+Host files remain under `/opt/coffee-demo-render-20260919/`.
+The container maps `source/` to `/render/source` and `data/` to `/private/tmp/coffee-demo-video-previews`.
+It maps the official Blender 5.2.2 Linux directory to `/opt/blender` without write access.
+The container currently uses eight CPUs and at most 16 GiB RAM. It does not modify existing services.
+Taras permits up to 14 CPU threads for this remote job.
+The active renderer retains eight threads to preserve its checkpoint contract.
+The host render lock is bind-mounted at `/private/tmp/hackspain-coffee-runtime.lock`.
+Its private credential file contains only `AGENT_FS_API_URL` and `AGENT_FS_API_KEY`.
+
+```sh
+ssh hackspain 'docker logs --tail 30 coffee-demo-full-hd'
+ssh hackspain 'docker inspect --format "{{.State.Status}} {{.State.ExitCode}}" coffee-demo-full-hd'
+ssh hackspain 'cat /opt/coffee-demo-render-20260919/data/segments-1080p/batch.json'
+```
+
+Inside the prepared container, the repeatable command is:
+
+```sh
+python3 sim/coffee_sorter/demo_video/bulk_full_hd.py \
+  --credentials /run/secrets/agent-fs.json --verbose
+```
+
+The root batch lock prevents duplicate queues. Each Blender process also holds the shared render lock.
+Completed clips copied from the Mac retain their original GPU manifests.
+Only unfinished clips render with the CPU backend. Do not combine partial GPU frames with CPU frames in one clip.
+Swarm Lead task `8d7515a6-f830-4140-bcf5-2a1d09cea153` owns monitoring and verified delivery in Slack `#x-hackspain`.
+The local render queue stopped after remote verification. Its files remain intact, and its heartbeat is paused.
+
+### Preview commands
+
 Taras authorized video rendering after the still review.
 Render the approved scenes as separate clips:
 

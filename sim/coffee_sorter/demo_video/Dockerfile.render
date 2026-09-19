@@ -1,0 +1,8 @@
+FROM ghcr.io/desplega-ai/agent-swarm-worker:1.152.0
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg libgl1 libsm6 libxxf86vm1
+ENV PATH="/opt/blender:/usr/local/bin:/usr/bin:/bin"
+ENV OMP_NUM_THREADS=8
+ENV OPENBLAS_NUM_THREADS=8
+WORKDIR /render/source
+ENTRYPOINT ["python3", "sim/coffee_sorter/demo_video/bulk_full_hd.py"]

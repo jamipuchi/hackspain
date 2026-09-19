@@ -12,3 +12,12 @@ These rules apply to coffee sorter work in this repository.
 - Preserve the current policy and model when a language request is unsupported or ambiguous.
 - The live demonstration must use a 3D view. Keep the current 2D projection temporary until the dedicated 3D increment.
 - The deployed engine must run continuously without browser activity. Use explicitly labeled rolling score windows instead of requiring visitor restarts.
+
+<important if="you are running the approved Full HD coffee render batch">
+
+Run `sim/coffee_sorter/demo_video/bulk_full_hd.py` for sequential CPU renders and verified uploads to Swarm.
+Read `sim/coffee_sorter/demo_video/README.md` for the container paths and commands.
+The script requires a private JSON file with only the two agent-fs connection variables.
+Generated and maintained with the script-builder skill.
+
+</important>

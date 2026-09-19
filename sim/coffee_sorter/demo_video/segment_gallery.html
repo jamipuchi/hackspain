@@ -2,7 +2,7 @@
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Coffee sorter: video previews</title>
+<title>Coffee sorter: separate video clips</title>
 <style>
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
@@ -28,21 +28,29 @@
 </style>
 <main>
   <header>
-    <div class="eyebrow">Coffee sorter / Separate clips / Review render</div>
-    <h1>Video previews, one scene at a time.</h1>
+    <div class="eyebrow" id="quality-label">Coffee sorter / Separate clips</div>
+    <h1 id="page-heading">Full HD clips, one scene at a time.</h1>
     <p>Completed clips appear automatically. The mode variants share their camera and timing. UI recording remains separate.</p>
     <a href="./">Return to the still studies and mode comparisons</a>
-    <a href="./coffee-demo-clips.zip" download id="pack" hidden>Download all 9 MP4s</a>
+    <a href="?quality=1080p">Full HD, 1920 × 1080</a>
+    <a href="?quality=preview">Original previews, 640 × 360</a>
+    <a download id="pack" hidden>Download all 9 MP4s</a>
   </header>
   <div class="grid" id="clips"></div>
   <footer>
-    Preview resolution: 640 × 360 at 30 fps. Clips have no audio, titles, or transitions baked into them.
+    <span id="resolution-label"></span> Clips have no audio, titles, or transitions baked into them.
     Dynamic clips use historical recorded poses at their original sampling rate.
     The macro holds one recorded instant while the camera and focus move.
     The slow-motion clip uses a separately verified 500 Hz simulation capture at 16.7× slower speed.
   </footer>
 </main>
 <script>
+  const fullHD = new URLSearchParams(location.search).get('quality') !== 'preview';
+  const packPath = fullHD ? './coffee-demo-clips-1080p.zip' : './coffee-demo-clips.zip';
+  document.querySelector('#quality-label').textContent = `Coffee sorter / Separate clips / ${fullHD ? 'Native Full HD' : 'Preview render'}`;
+  document.querySelector('#page-heading').textContent = `${fullHD ? 'Full HD clips' : 'Video previews'}, one scene at a time.`;
+  document.querySelector('#resolution-label').textContent = `${fullHD ? 'Native resolution: 1920 × 1080' : 'Preview resolution: 640 × 360'} at 30 fps.`;
+  document.querySelector('#pack').href = packPath;
   const clips = [
     ['01-bean-macro', '01 / Bean detail', 'A short camera slide and focus movement across the bean.', '01-bean-macro'],
     ['02-conveyor-reveal', '02 / Conveyor reveal', 'The camera moves past the rail while recorded beans flow.', '02a-low-reveal-start'],
@@ -67,11 +75,11 @@
     description.textContent = note;
     const status = document.createElement('div');
     status.className = 'status';
-    status.textContent = id.startsWith('05') ? 'Framing checks' : 'Queued';
+    status.textContent = 'Queued';
     const download = document.createElement('a');
     download.className = 'download';
     download.textContent = 'Download MP4';
-    download.download = `${id}.mp4`;
+    download.download = `${id}${fullHD ? '-1080p' : ''}.mp4`;
     download.hidden = true;
     article.append(video, heading, description, status, download);
     document.querySelector('#clips').append(article);
@@ -79,19 +87,24 @@
   });
   async function refresh() {
     await Promise.all(cards.filter(card => !card.ready).map(async card => {
-      const root = `./segments-v2/${card.id === '05-ultra-slowmo' ? '05-ultra-slowmo-v2' : card.id}/`;
+      const root = fullHD ? `./segments-1080p/${card.id}/` : `./segments-v2/${card.id === '05-ultra-slowmo' ? '05-ultra-slowmo-v2' : card.id}/`;
       try {
         const response = await fetch(`${root}manifest.json`, {cache: 'no-store'});
         if (!response.ok) return;
         const manifest = await response.json();
         if (manifest.status === 'complete') {
+          const stream = manifest.video.probe.streams[0];
+          if (stream.width !== (fullHD ? 1920 : 640) || stream.height !== (fullHD ? 1080 : 360)) {
+            card.status.textContent = 'Resolution mismatch';
+            return;
+          }
           card.ready = true;
           card.video.src = `${root}preview.mp4`;
           card.video.load();
           card.download.href = card.video.src;
           card.download.hidden = false;
           card.status.classList.add('ready');
-          card.status.textContent = `Ready · ${Number(manifest.video.probe.format.duration).toFixed(1)} seconds`;
+          card.status.textContent = `Ready · ${stream.width} × ${stream.height} · ${Number(manifest.video.probe.format.duration).toFixed(1)} seconds`;
         } else {
           card.status.textContent = `Rendering · ${manifest.frames.length} / ${manifest.contract.segment.frames} frames`;
         }
@@ -100,7 +113,7 @@
     const pack = document.querySelector('#pack');
     if (cards.every(card => card.ready) && pack.hidden) {
       try {
-        const response = await fetch('./coffee-demo-clips.zip', {method: 'HEAD'});
+        const response = await fetch(packPath, {method: 'HEAD'});
         if (response.ok) pack.hidden = false;
       } catch { /* Retry with the next refresh. */ }
     }
