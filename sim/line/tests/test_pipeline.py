@@ -87,8 +87,8 @@ def test_flow_fraction_and_schedule():
     b = Blob(150, 50, (0, 0, 1, 1), 1, False)
     assert abs(flow_fraction(b, roi, "x") - 0.25) < 1e-9
     assert abs(flow_fraction(b, roi, "-x") - 0.75) < 1e-9
-    delay, dwell = fallback_gate_schedule(0.5, cfg)  # bean at 12 cm, door at 30 cm, 35 cm/s, 0.1 s lead
-    assert abs(delay - ((30 - 12) / 35 - 0.1)) < 1e-6 and dwell == cfg.gate.default_dwell_s
+    delay, dwell = fallback_gate_schedule(0.5, cfg)  # bean at 12 cm, door at 30 cm, 35 cm/s, lead from cfg (derived by timing.py)
+    assert abs(delay - max(0.0, (30 - 12) / 35 - cfg.timing.door_lead_s)) < 1e-6 and dwell == cfg.gate.default_dwell_s
 
 
 def test_back_to_back_beans_each_get_a_verdict():
