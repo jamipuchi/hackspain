@@ -12,44 +12,83 @@ let frames = 0;
 let fpsStart = performance.now();
 let previousPacket = null;
 let restartPending = false;
+let reconnectTimer = null;
+let heartbeatSeq = null;
+let heartbeatSeenAt = null;
+let staleConnection = false;
 const selectedEvents = new Map();
 const measurements = {fps: null, acknowledgment_ms: null, outcome_wall_s: null, pose_hz: null};
 window.coffeeMeasurements = measurements;
+const HEARTBEAT_IDLE_MS = 4500;
+
+const continuousMode = () => state?.mode === 'continuous';
+const pendingRequest = () => request && !request.acknowledged;
+
+function scheduleReconnect() {
+  clearTimeout(reconnectTimer);
+  reconnectTimer = setTimeout(connect, 1200);
+}
+
+function retryPending() {
+  if (!pendingRequest() || !state || socket?.readyState !== WebSocket.OPEN) return;
+  if (state.session_id !== request.payload.session_id) {
+    clearSelection('Engine session changed. The pending injection was not retried.');
+    return;
+  }
+  socket.send(JSON.stringify(request.payload));
+  request.lastSend = performance.now();
+  request.retryPending = false;
+  $('ack').textContent = 'Retrying the original injection request';
+}
 
 function connect() {
-  socket = new WebSocket(`ws://${location.host}/ws`);
-  socket.onopen = () => { $('error').textContent = ''; };
-  socket.onclose = () => {
+  heartbeatSeq = heartbeatSeenAt = null;
+  const ws = new WebSocket(`ws://${location.host}/ws`);
+  socket = ws;
+  ws.onopen = () => {
+    if (socket !== ws) return;
+    $('error').textContent = '';
+    staleConnection = false;
+  };
+  ws.onclose = () => {
+    if (socket !== ws) return;
+    if (pendingRequest()) request.retryPending = true;
     $('status').textContent = 'Disconnected';
     $('inject').disabled = true;
     $('restart').disabled = true;
     $('notice').textContent = 'Connection lost. Reconnecting to the engine.';
-    setTimeout(connect, 1200);
+    scheduleReconnect();
   };
-  socket.onmessage = event => {
+  ws.onmessage = event => {
+    if (socket !== ws) return;
     const packet = JSON.parse(event.data);
     if (packet.type === 'state') {
       if (shownSession && packet.session_id && shownSession !== packet.session_id) {
-        clearSelection();
+        heartbeatSeq = heartbeatSeenAt = null;
+        clearSelection(pendingRequest() ? 'Engine session changed. The pending injection was not retried.' : '');
       }
       if (packet.session_id) shownSession = packet.session_id;
+      const nextHeartbeat = Number(packet.heartbeat_seq);
+      if (Number.isFinite(nextHeartbeat) && nextHeartbeat !== heartbeatSeq) {
+        heartbeatSeq = nextHeartbeat;
+        heartbeatSeenAt = performance.now();
+      } else if (!packet.mode || packet.mode !== 'continuous') {
+        heartbeatSeenAt = performance.now();
+      }
       if (previousPacket !== null) measurements.pose_hz = 1000 / (performance.now() - previousPacket);
       previousPacket = performance.now();
       state = packet;
       window.coffeeState = state;
       update();
-      // A lost acknowledgment can be requested again without another physical injection.
-      if (request && !request.acknowledged && ['ready', 'running'].includes(state.status) && state.session_id === request.payload.session_id) {
-        if (performance.now() - request.lastSend > 2000) {
-          socket.send(JSON.stringify(request.payload));
-          request.lastSend = performance.now();
-        }
+      // Retry only the saved command after a new connection or an acknowledgment timeout.
+      if (pendingRequest() && ['ready', 'running'].includes(state.status) && state.session_id === request.payload.session_id) {
+        if (request.retryPending || performance.now() - request.lastSend > 2000) retryPending();
       }
     } else if (packet.type === 'ack' && request && packet.command_id === request.payload.command_id) {
       if (request.acknowledged) return;
       request.acknowledged = true;
       if (!packet.ok) {
-        $('error').textContent = packet.error;
+        $('error').textContent = packet.error || packet.error_code || 'Injection failed';
         $('ack').textContent = 'Injection failed';
       } else {
         selected = packet.object_id;
@@ -60,11 +99,23 @@ function connect() {
         $('command').textContent = request.payload.command_id;
       }
       update();
+    } else if (packet.type === 'pending' && pendingRequest() && packet.command_id === request.payload.command_id) {
+      $('ack').textContent = 'Server still has the original injection request';
     }
   };
 }
 
-function clearSelection() {
+setInterval(() => {
+  if (!continuousMode() || !state || socket?.readyState !== WebSocket.OPEN || heartbeatSeenAt === null) return;
+  if (performance.now() - heartbeatSeenAt < HEARTBEAT_IDLE_MS || staleConnection) return;
+  staleConnection = true;
+  if (pendingRequest()) request.retryPending = true;
+  $('error').textContent = 'No application heartbeat arrived. Reconnecting before retrying the original request.';
+  $('notice').textContent = 'Connection became stale. Reconnecting to the engine.';
+  socket.close(4000, 'application heartbeat timed out');
+}, 1000);
+
+function clearSelection(error = '') {
   selected = request = spawnWall = outcomeWall = null;
   selectedEvents.clear();
   previousPacket = null;
@@ -72,7 +123,7 @@ function clearSelection() {
   $('object-title').textContent = 'Follow your stone';
   $('command').textContent = 'No injection yet';
   $('ack').textContent = 'Waiting';
-  $('error').textContent = '';
+  $('error').textContent = error;
   for (const [id, text] of Object.entries({prediction:'Not observed', decision:'Not decided', hit:'Not recorded', outcome:'Unresolved', 'outcome-time':'Waiting'})) $(id).textContent = text;
 }
 
@@ -101,9 +152,13 @@ $('restart').onclick = async () => {
 };
 
 $('inject').onclick = () => {
-  if (!state || restartPending || socket.readyState !== WebSocket.OPEN) return;
+  if (!state || restartPending || socket?.readyState !== WebSocket.OPEN) return;
   const payload = {type: 'inject', command_id: crypto.randomUUID(), session_id: state.session_id, class_name: 'stone'};
-  request = {payload, sent: performance.now(), lastSend: performance.now(), acknowledged: false};
+  if (continuousMode()) {
+    if (!state.command_epoch) return;
+    payload.command_epoch = state.command_epoch;
+  }
+  request = {payload, sent: performance.now(), lastSend: performance.now(), acknowledged: false, retryPending: false};
   selected = null;
   selectedEvents.clear();
   spawnWall = outcomeWall = null;
@@ -117,22 +172,85 @@ $('inject').onclick = () => {
   $('inject').disabled = true;
 };
 
+function formatScore(score) {
+  return Number.isFinite(score?.value) ? `${(score.value * 100).toFixed(1)}%` : 'Unavailable';
+}
+
+function formatCount(score, emptyLabel) {
+  return Number.isFinite(score?.denominator) && score.denominator > 0
+    ? `${score.numerator ?? 0} / ${score.denominator}`
+    : `0 / 0 · ${emptyLabel}`;
+}
+
+function updateScoreboard() {
+  const scores = state.rolling_scores;
+  $('scoreboard').hidden = !continuousMode();
+  if (!continuousMode()) return;
+  if (!scores) {
+    $('score-status').textContent = 'Waiting for server score aggregates';
+    for (const [valueId, countId, emptyLabel] of [
+      ['score-accuracy', 'score-accuracy-count', 'No eligible objects'],
+      ['score-capture', 'score-capture-count', 'No required defects'],
+      ['score-loss', 'score-loss-count', 'No keep objects'],
+      ['score-unresolved', 'score-unresolved-count', 'No eligible objects'],
+    ]) {
+      $(valueId).textContent = 'Unavailable';
+      $(countId).textContent = `0 / 0 · ${emptyLabel}`;
+    }
+    $('score-context').textContent = 'Scores use a rolling simulated-time window.';
+    $('score-versions').textContent = 'Version context is unavailable.';
+    return;
+  }
+  const metricIds = [
+    ['sorting_accuracy', 'score-accuracy', 'score-accuracy-count', 'No eligible objects'],
+    ['defect_capture', 'score-capture', 'score-capture-count', 'No required defects'],
+    ['good_loss', 'score-loss', 'score-loss-count', 'No keep objects'],
+    ['unresolved', 'score-unresolved', 'score-unresolved-count', 'No eligible objects'],
+  ];
+  for (const [name, valueId, countId, emptyLabel] of metricIds) {
+    $(valueId).textContent = formatScore(scores[name]);
+    $(countId).textContent = formatCount(scores[name], emptyLabel);
+  }
+  const asOf = Number(scores.as_of_sim_time_s || 0);
+  const available = Number(scores.available_seconds || 0);
+  const window = Number(scores.window_seconds || 0);
+  const settling = Number(scores.settling_seconds || 0);
+  const start = Number(scores.window_start_exclusive_s || 0);
+  const end = Number(scores.window_end_inclusive_s || 0);
+  $('score-status').textContent = `As of ${asOf.toFixed(1)} simulated seconds${scores.warming_up ? ' · warming up' : ' · full window'}`;
+  $('score-context').textContent = `Window (${start.toFixed(1)}, ${end.toFixed(1)}] simulated seconds. Available ${available.toFixed(1)} / ${window.toFixed(1)} simulated seconds. ${scores.settling_objects ?? 0} settling object${scores.settling_objects === 1 ? '' : 's'}. Manual injections ${scores.manual_injections_excluded ? 'excluded' : 'not excluded'}. Settling delay ${settling.toFixed(1)} simulated seconds.`;
+  const versions = scores.versions || {};
+  $('score-versions').textContent = `Score epoch ${scores.score_epoch_id?.slice(0, 8) || 'unavailable'} · Source ${versions.source_revision?.slice(0, 7) || 'unavailable'} · Model ${versions.model?.slice(0, 12) || 'unavailable'} · Policy ${versions.policy?.slice(0, 12) || 'unavailable'}`;
+}
+
 function update() {
   if (!state) return;
   const status = state.status;
   const connected = socket?.readyState === WebSocket.OPEN;
-  $('status').textContent = !connected ? 'Disconnected' : ({starting:'Preparing', restarting:'Restarting', ready:'Ready', running:'Live', completed:'Session complete', failed:'Engine failed'})[status] || status;
+  const heartbeatAge = heartbeatSeenAt === null ? null : performance.now() - heartbeatSeenAt;
+  const heartbeatText = continuousMode() ? (heartbeatAge === null ? 'waiting for heartbeat' : `heartbeat ${(heartbeatAge / 1000).toFixed(1)} s ago`) : '';
+  const statusLabel = ({starting:'Preparing', restarting:'Restarting', ready:'Ready', running:'Live', completed:'Session complete', failed:'Engine failed'})[status] || status;
+  $('status').textContent = !connected ? 'Disconnected' : `${statusLabel}${heartbeatText ? ` · ${heartbeatText}` : ''}`;
   $('status').dataset.state = status;
-  $('inject').disabled = !connected || restartPending || !['ready', 'running'].includes(status) || (request && !request.acknowledged) || state.sim_time_s >= (state.limits?.sim_seconds || 10) - 0.6;
+  const durationComplete = !continuousMode() && state.sim_time_s >= (state.limits?.sim_seconds || 10) - 0.6;
+  const awaitingHeartbeat = continuousMode() && heartbeatSeenAt === null;
+  $('inject').disabled = !connected || restartPending || awaitingHeartbeat || !['ready', 'running'].includes(status) || pendingRequest() || durationComplete || (continuousMode() && !state.command_epoch);
+  $('restart').hidden = !state.restart_supported;
   $('restart').disabled = !connected || !state.restart_supported || restartPending || !state.session_id || !['ready', 'running', 'completed', 'failed'].includes(status);
   $('restart').textContent = restartPending || status === 'restarting' ? 'Restarting…' : 'Restart session';
-  $('notice').textContent = ({starting:'Preparing the engine', restarting:'Stopping the old session and preparing a new one', ready:'Ready for a physical injection', running:'The simulation clock shows the actual engine rate', completed:'Session complete. Select Restart session to inject again.', failed:'The engine stopped. Select Restart session to try again.'})[status] || 'Waiting for the engine';
+  const boundedNotice = {starting:'Preparing the engine', restarting:'Stopping the old session and preparing a new one', ready:'Ready for a physical injection', running:'The simulation clock shows the actual engine rate', completed:'Session complete. Select Restart session to inject again.', failed:'The engine stopped. Select Restart session to try again.'};
+  const continuousNotice = {starting:'Preparing the continuous engine', restarting:'Restarting the engine session', ready:'Continuous engine ready', running:'Continuous engine runs without this page', completed:'Continuous engine completed unexpectedly', failed:'The continuous engine stopped'};
+  $('notice').textContent = (continuousMode() ? continuousNotice : boundedNotice)[status] || 'Waiting for the engine';
+  $('mode-note').textContent = continuousMode()
+    ? 'The conveyor runs continuously. Injection adds one manual object to the shared stream and does not change feed scores.'
+    : 'The first injection starts the conveyor. Restart resets the shared session for all browsers.';
   if (state.error) $('error').textContent = state.error;
   $('sim-time').textContent = `${(state.sim_time_s || 0).toFixed(2)} s`;
   $('engine-rate').textContent = state.engine_rate ? `${state.engine_rate.toFixed(2)}×` : 'Waiting';
   $('admitted').textContent = `${(state.admitted_rate || 0).toFixed(0)} /s`;
   const objects = state.objects || [];
   $('active').textContent = objects.filter(o => o.active).length;
+  updateScoreboard();
   const object = objects.find(o => o.object_id === selected) || (state.injected_objects || []).find(o => o.object_id === selected);
   if (object) {
     const decision = object.decision;
@@ -146,7 +264,11 @@ function update() {
     }
     if (object.spawn_to_outcome_wall_s != null) $('outcome-time').textContent = `${object.spawn_to_outcome_wall_s.toFixed(2)} wall seconds from physical spawn`;
   }
-  $('versions').textContent = state.model_version ? `Engine source ${state.source_revision?.slice(0,7) || 'unavailable'} · Session ${state.session_id.slice(0,8)} · Model ${state.model_version.slice(0,12)} · Policy ${state.policy_version.slice(0,12)} · Preset ${state.preset_version.slice(0,12)}` : 'Source, model, and policy versions appear when the engine is ready.';
+  const scoreVersions = state.rolling_scores?.versions || {};
+  const modelVersion = scoreVersions.model || state.model_version;
+  const policyVersion = scoreVersions.policy || state.policy_version;
+  const sourceRevision = scoreVersions.source_revision || state.source_revision;
+  $('versions').textContent = modelVersion ? `Engine source ${sourceRevision?.slice(0,7) || 'unavailable'} · Session ${state.session_id?.slice(0,8) || 'unavailable'} · Model ${modelVersion.slice(0,12)} · Policy ${policyVersion?.slice(0,12) || 'unavailable'}${state.preset_version ? ` · Preset ${state.preset_version.slice(0,12)}` : ''}` : 'Source, model, and policy versions appear when the engine is ready.';
   for (const event of state.events || []) {
     if (selected !== null && (event.object_id === selected || event.object_ids?.includes(selected))) selectedEvents.set(event.event_id, event);
   }
@@ -158,7 +280,10 @@ function update() {
     return li;
   }));
   if (!relevant.length) { const li = document.createElement('li'); li.textContent = 'Waiting for an associated camera decision.'; $('events').append(li); }
-  $('limit-note').textContent = `Requested feed ${state.requested_rate || 500}/s. Session limit ${state.limits?.sim_seconds || 10} simulated seconds or ${state.limits?.wall_seconds || 300} wall seconds. Restart session resets the shared session for all browsers.`;
+  const evicted = state.injection_history_evicted ?? state.retention?.injection_history_evicted ?? 0;
+  $('limit-note').textContent = continuousMode()
+    ? `Requested feed ${state.requested_rate || 500}/s. Manual injections stay outside rolling feed scores. Injection history evicted: ${evicted} completed record${evicted === 1 ? '' : 's'}.`
+    : `Requested feed ${state.requested_rate || 500}/s. Session limit ${state.limits?.sim_seconds || 10} simulated seconds or ${state.limits?.wall_seconds || 300} wall seconds. Restart session resets the shared session for all browsers.`;
 }
 
 function draw() {
