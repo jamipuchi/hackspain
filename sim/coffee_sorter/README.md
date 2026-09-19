@@ -91,6 +91,21 @@ Environment: the `../.venv` from the parent folder (MuJoCo 3.13, numpy, OpenCV, 
   its OpenMP team turns a 120-row fit into 86 s when several processes fit at once — pin to one thread; models trained from
   a `python -m` entry point pickle their class under `__main__` — import the module first.
 
+**Day 1, evening — first real beans on the physical line (what the bench taught the classifier)**
+
+- The first 26 live verdicts were the USB cable and the table edge inside the inspection zone ("foreign, 25–45 mm"): check
+  what the ROI covers before tuning any threshold. The panel's own overlay labels inside the zone also read as blobs on snapshots.
+- A dark-roast bean has most pixels below gray 60 even under good light, so a "burnt = dark_frac > 0.35" rule rejects every
+  healthy bean. Burnt must mean essentially all black (> 0.92) or mean gray < 25, and only under a bright floor.
+- The chute floor in shadow (paper median 85 instead of ≥ 150) makes every bean read black and merges its shadow into the blob
+  (minor 12–15 mm, aspect 5–11): 22/22 beans rejected. Colour rules are meaningless there; size rules must be widened or the
+  detector must split core from shadow (camera agent's Otsu shadow-split). Light is the real fix.
+- 30 fps Continuity Camera has no exposure control; at 35 cm/s a bean smears ~12 mm along the flow. Added optional width rules
+  (`min/max_minor_mm`): the axis across the flow is not smeared when the chute aligns the bean with its travel.
+- The demo ended up on a simple "white vs dark" colour criterion (integrator's), because darkness is the one thing the shadowed
+  floor measures reliably. Labelled crops for the learned model were bean-plus-shadow at first (a 96 mm "bean"); the dataset
+  loader now skips blobs flagged partial.
+
 **Next**
 
 - [x] speed up `vision.detect` (statistics over foreground pixels only)
