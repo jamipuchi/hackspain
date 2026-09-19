@@ -17,6 +17,16 @@ The swarm owns rendering assets. This task does not merge its branch or accept i
 This revision addresses [Claude's review](../reviews/2026-09-19-review-of-coffee-interactive-learning-demo.md).
 Only the first bounded increment is authorized here. Later phases remain proposed work with separate feedback checkpoints.
 
+## Current checkpoint
+
+The first increment from Phases 1 and 2 is implemented and pushed. Taras's functional QA remains pending.
+The [checkpoint report](../research/coffee-core-live/REPORT.md) records measurements and evidence from implementation revision `51181c3`.
+The [run guide](../../../sim/coffee_sorter/LIVE.md) provides installation, startup, and reset commands.
+The final live run achieved 52.82% capture, 6.45% good loss, and 0.189 simulated seconds per wall second.
+These results miss all three targets. The injected stone received rejection commands but spilled without jet contact.
+The selected 400-body pool remains provisional. Existing UI ownership remains unconfirmed, so overlapping files remain unchanged.
+No deferred phase starts before Taras's feedback checkpoint.
+
 ## Desired End State
 
 Start one local engine session from a fresh checkout. Open a webpage and inject a stone.
@@ -66,7 +76,7 @@ A lower feed rate is an explicit throughput tradeoff.
 
 ### Metric definitions and pass rules
 
-The quality cohort contains objects spawned after 0.8 simulated seconds and before the run ends minus 0.6 seconds.
+The quality cohort uses the closed spawn-time interval `[0.8, run_end - 0.6]` in simulated seconds, matching the existing evaluator.
 All cohort objects remain in denominators, including spilled and unresolved objects.
 A policy-required defect is a class the active policy requires rejecting.
 A keep object is a class the policy requires keeping. Under specialty, this is the good class.
@@ -81,9 +91,9 @@ A keep object is a class the policy requires keeping. Under specialty, this is t
 | Browser FPS | Render callbacks / browser wall interval | Target 30 at the preset's reported active object count |
 | Injection acknowledgment | Browser send to receipt of successful worker spawn | Proposed p95 below 250 ms on local loopback |
 
-Quality acceptance needs locked seeds 101, 102, and 103 with at least 2,000 eligible objects per seed.
+Quality acceptance needs locked seeds 111, 112, and 113 with at least 2,000 eligible objects per seed.
 Every seed must meet the bound rules. Also report pooled counts and intervals.
-Use seeds 7 and 8 for training and development. Reserve separate object IDs and seed 9 for model holdout.
+Use seed 7 for training and seed 8 for development. An initial exploratory diagnostic exposed seed 101, so acceptance excludes it. Reserve separate object IDs and seed 9 for model holdout.
 Do not use locked physical evaluation seeds for tuning or training.
 The first short diagnostic run does not fulfill these acceptance requirements.
 
@@ -99,6 +109,7 @@ Revise the plan before implementation. Deliver a provisional preset and diagnost
 The preset begins at 500 requested beans/s, 250 Hz inspection, the existing resolution, and 0.06 N jets.
 Pool size and every runtime parameter belong in the preset. The live engine and diagnostics load that same file.
 The preset is provisional. It is not a quality-qualified default.
+The bounded comparison selected 400 ellipsoid bodies, down from 1,150, with unchanged measured quality counts and zero starvation in both short runs.
 
 Assign each missed required defect one diagnostic category with this precedence:
 
@@ -140,9 +151,9 @@ python -m py_compile sim/coffee_sorter/engine.py sim/coffee_sorter/controller.py
 python sim/coffee_sorter/engine.py --preset sim/coffee_sorter/configs/default_demo.json --seconds 2 --out /tmp/coffee-core-baseline
 ```
 
-- [ ] Save counts, attribution, source/model/policy/preset versions, and component timings.
-- [ ] Select one bounded performance or quality candidate only after reading attribution and timings.
-- [ ] Compare the candidate with the same seed and preset, changing only the named parameter.
+- [x] Save counts, attribution, source/model/policy/preset versions, and component timings.
+- [x] Select one bounded performance or quality candidate only after reading attribution and timings.
+- [x] Compare the candidate with the same seed and preset, changing only the named parameter.
 - [ ] Taras reviews the result before a wider sweep or quality claim.
 
 ## Phase 2: reproducible startup and one live injection
@@ -181,10 +192,10 @@ python sim/coffee_sorter/live.py --host 127.0.0.1 --port 8890 --preset sim/coffe
 curl --fail http://127.0.0.1:8890/health
 ```
 
-- [ ] Supply the actual dependency installation and bootstrap duration.
-- [ ] Demonstrate one injected stone reaching a recorded physical outcome.
-- [ ] Save that object's command ID, observation association, decision, hit status, and outcome.
-- [ ] Report browser FPS separately from engine rate and admitted throughput.
+- [x] Supply the actual dependency installation and bootstrap duration.
+- [x] Demonstrate one injected stone reaching a recorded physical outcome.
+- [x] Save that object's command ID, observation association, decision, hit status, and outcome.
+- [x] Report browser FPS separately from engine rate and admitted throughput.
 - [ ] Taras performs functional QA and acceptance before more controls or broader evaluation.
 
 ## Phase 3: language policy contract, deferred
@@ -295,7 +306,7 @@ No public service or DNS changes belong to this increment.
 | Exact preset diagnostics | `python sim/coffee_sorter/engine.py --preset sim/coffee_sorter/configs/default_demo.json --seconds 2 --out /tmp/coffee-core-baseline` |
 | Live service | `python sim/coffee_sorter/live.py --host 127.0.0.1 --port 8890 --preset sim/coffee_sorter/configs/default_demo.json` |
 
-Commands become runnable as each implementation commit lands. Evidence must identify what actually ran.
+Commands in this reference are now runnable. Evidence identifies the revision that actually ran.
 Existing tests remain available for Taras. Current source contains 72 simulator test functions and six replay test functions. One replay function is opt-in.
 Five default replay checks can pass while the optional sixth remains skipped. Old counts do not verify this increment.
 
@@ -322,7 +333,7 @@ Taras runs the completed increment from its isolated checkout:
 
 ```bash
 cd /private/tmp/hackspain-coffee-core
-python3 -m venv .venv-coffee
+python3.13 -m venv .venv-coffee
 source .venv-coffee/bin/activate
 python -m pip install -r sim/coffee_sorter/requirements.txt
 python sim/coffee_sorter/bootstrap_model.py

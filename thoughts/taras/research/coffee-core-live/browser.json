@@ -1,0 +1,56 @@
+{
+  "active_objects": 277,
+  "command_id": "4e01df2b-c107-4ab2-8245-b398bdc95670",
+  "engine_rate": 0.20225705564685237,
+  "injected_object": {
+    "active": false,
+    "appearance_key": "9951271037eca6ee49b4",
+    "axes": [
+      0.0033174306915139022,
+      0.003974553686675851,
+      0.002137421676971034
+    ],
+    "decision": {
+      "association": "last_component",
+      "association_approximate": true,
+      "late": false,
+      "predicted_class": "stone",
+      "reject": true,
+      "scheduled": true,
+      "track_id": 24
+    },
+    "jet_hits": 0,
+    "object_id": 0,
+    "outcome": "spilled",
+    "own_pulse_hit": false,
+    "pos": [
+      -0.338,
+      0.057,
+      0.158
+    ],
+    "quat": [
+      -0.2950535310620107,
+      0.7249786688324356,
+      -0.6199826267411174,
+      -0.05450583532957117
+    ],
+    "rgb": [
+      0.421870619058609,
+      0.2549934685230255,
+      0.4079105854034424
+    ],
+    "shape": "box",
+    "spawn_to_outcome_wall_s": 0.9753014999441804
+  },
+  "measurements": {
+    "acknowledgment_ms": 23.299999952316284,
+    "fps": 60.00393468987057,
+    "outcome_wall_s": 0.9817999999523164,
+    "pose_hz": 9.000900097735308
+  },
+  "model_version": "4798a2b39cee572da0baa982739e8f891a71e869a6eaf3e6c72d8eefe9946b85",
+  "policy_version": "e1f84378ba7e7c79aaecf8aec0eaa9b725e086b6ec1106a9e3e2ca05810bed04",
+  "preset_version": "44ce78c89d45112f29a9561bb517990e398602d83323147d1a5a013fec5ba538",
+  "session_id": "ab06b56a-c177-4503-973f-c30d4624b94f",
+  "sim_time_s": 3.593999999999826
+}
