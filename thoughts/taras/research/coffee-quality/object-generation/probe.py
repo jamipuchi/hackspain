@@ -19,6 +19,8 @@ ROOT = Path(__file__).resolve().parents[5]
 sys.path.insert(0, str(ROOT / "contracts" / "learning"))
 from providers import OPENROUTER_URL, TYPESAFE_URL, credentials
 
+DEFAULT_MODEL = "google/gemini-3.8-flash"
+
 CASES = {
     "earring": "A single small gold hoop earring with a connected turquoise bead pendant. "
     "Make the opening clearly visible. The assembled object must fit within 28 mm. "
@@ -181,13 +183,22 @@ def provider_schema(value):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--env-file", type=Path, required=True)
+    parser.add_argument("--env-file", type=Path, default=Path(".env"), help="Credential file. Process environment credentials also work.")
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--case", choices=list(CASES) + ["all"], default="all")
-    parser.add_argument("--model", default="google/gemini-2.5-flash-lite")
+    parser.add_argument("--description", help="Generate one custom object from this description instead of the comparison cases.")
+    parser.add_argument("--model", default=DEFAULT_MODEL, help=f"OpenRouter model ID. Default: {DEFAULT_MODEL}.")
     parser.add_argument("--max-tokens", type=int, default=10000)
     parser.add_argument("--live", action="store_true", help="Permit new billable requests. Cached requests never repeat.")
     args = parser.parse_args()
+    if args.description is not None:
+        if args.case != "all":
+            parser.error("--description cannot be combined with a named --case")
+        if not 1 <= len(args.description.strip()) <= 2000:
+            parser.error("--description must contain between 1 and 2000 characters")
+        cases = {"custom": args.description.strip()}
+    else:
+        cases = CASES if args.case == "all" else {args.case: CASES[args.case]}
     keys = credentials(args.env_file)
     if not keys.get("OPENROUTER_API_KEY"):
         raise SystemExit("OPENROUTER_API_KEY is missing")
@@ -203,13 +214,14 @@ def main():
     }
     if not (args.out / "environment.json").exists():
         save(args.out / "environment.json", environment)
-    for case in CASES if args.case == "all" else [args.case]:
+    for case, description in cases.items():
         folder = args.out / case
         folder.mkdir(exist_ok=True)
         classification = {"status": "unavailable", "reason": "Jev credential missing"}
-        if keys.get("TYPESAFE_API_KEY"):
+        jev_response_path = folder / "jev_response.json"
+        if keys.get("TYPESAFE_API_KEY") or jev_response_path.exists():
             jev_payload = {
-                "model": "jev-1.13.0", "state": {"requested_object": CASES[case]},
+                "model": "jev-1.13.0", "state": {"requested_object": description},
                 "questions": {"geometry_family": {
                     "type": "choice",
                     "instructions": "Classify the requested design from its description. Use defer if the design is unclear.",
@@ -222,14 +234,17 @@ def main():
                 }},
             }
             save_attempt(folder / "jev_request.json", jev_payload)
-            try:
-                classification = call(TYPESAFE_URL, keys["TYPESAFE_API_KEY"], jev_payload, args.out, args.live)
-                save_attempt(folder / "jev_response.json", classification)
-            except Exception as error:
-                classification = {"status": "failed", "reason": str(error)}
-                save_attempt(folder / "jev_response.json", classification)
+            if jev_response_path.exists():
+                classification = json.loads(jev_response_path.read_text())
+            else:
+                try:
+                    classification = call(TYPESAFE_URL, keys["TYPESAFE_API_KEY"], jev_payload, args.out, args.live)
+                    save_attempt(jev_response_path, classification)
+                except Exception as error:
+                    classification = {"status": "failed", "reason": str(error)}
+                    save_attempt(jev_response_path, classification)
         context = classification.get("response", {}).get("answers", classification)
-        prompt = CASES[case] + "\nPreliminary text classification from Jev: " + json.dumps(context)
+        prompt = description + "\nPreliminary text classification from Jev: " + json.dumps(context)
         payload = {
             "model": args.model, "temperature": 0, "max_tokens": args.max_tokens,
             "provider": {"require_parameters": True},

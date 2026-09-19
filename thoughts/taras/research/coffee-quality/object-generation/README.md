@@ -3,6 +3,10 @@
 Taras requested actual model calls, Blender renders, and a visual comparison.
 This experiment owns only this directory. It does not modify the sorter or shared assets.
 
+Taras selected **Gemini 3.8 Flash** as the default generator after the comparison.
+The [integration guide](INTEGRATION.md) documents custom-object generation, artifact paths, and the future application boundary.
+The benchmark suite still names every compared model explicitly. Its recorded results remain unchanged.
+
 ## Frozen comparison
 
 Each model receives the same earring, star, and fictional NOVA badge descriptions.

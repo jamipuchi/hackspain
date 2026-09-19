@@ -14,12 +14,17 @@ HERE = Path(__file__).resolve().parent
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--results-root", type=Path, default=HERE / "results")
+    parser.add_argument("--blender", default="blender", help="Blender executable name or absolute path.")
     parser.add_argument("--model", default="*")
     parser.add_argument("--case", default="*")
     args = parser.parse_args()
     renderer = HERE / "render_recipe.py"
     renderer_hash = hashlib.sha256(renderer.read_bytes()).hexdigest()
-    for recipe in sorted((HERE / "results").glob(f"{args.model}/{args.case}/recipe.json")):
+    recipes = sorted(args.results_root.resolve().glob(f"{args.model}/{args.case}/recipe.json"))
+    if not recipes:
+        raise SystemExit("No recipes match the requested results root, model folder, and case.")
+    for recipe in recipes:
         out = recipe.parent / "render"
         if (out / "render.json").exists():
             previous = json.loads((out / "render.json").read_text())
@@ -40,7 +45,7 @@ def main():
             out.mkdir(exist_ok=True)
             env = {**os.environ, **{key: "1" for key in (
                 "OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "VECLIB_MAXIMUM_THREADS")}}
-            command = ["/opt/homebrew/bin/blender", "--background", "--threads", "1",
+            command = [args.blender, "--background", "--threads", "1",
                        "--python-exit-code", "1", "--python", str(renderer), "--",
                        "--recipe", str(recipe), "--out", str(out)]
             started = time.monotonic()
@@ -59,7 +64,7 @@ def main():
                           "OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "VECLIB_MAXIMUM_THREADS")},
                       "exclusive_lock": "/private/tmp/hackspain-coffee-runtime.lock"}
             (out / "execution.json").write_text(json.dumps(record, indent=2) + "\n")
-            print(json.dumps({"case": str(recipe.parent.relative_to(HERE)),
+            print(json.dumps({"case": str(recipe.parent.relative_to(args.results_root.resolve())),
                               "returncode": returncode, "wall_s": record["subprocess_wall_seconds"]}), flush=True)
             if returncode:
                 raise SystemExit(returncode)
