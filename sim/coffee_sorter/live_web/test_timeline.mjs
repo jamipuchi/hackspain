@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {PolicyIntentBuffer, emptyMetricState, normalizedClassPreview, profilePreviewScale, samePresentationTimeline} from './timeline.mjs';
+import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, normalizedClassPreview, profilePreviewScale, samePresentationTimeline} from './timeline.mjs';
 
 const snapshot = {
   session_id: 'session-a',
@@ -74,4 +74,10 @@ test('empty score metrics distinguish warm-up from structurally empty cohorts', 
   assert.equal(emptyMetricState({metric: 'reject_capture', warmingUp: true, catalogSize: 10, rejectSize: 0}), 'No samples');
   assert.equal(emptyMetricState({metric: 'keep_loss', warmingUp: true, catalogSize: 10, rejectSize: 10}), 'No samples');
   assert.equal(emptyMetricState({metric: 'sorting_accuracy', warmingUp: false, catalogSize: 10, rejectSize: 9}), 'No samples');
+});
+
+test('physical outcome comparison treats spills as unexpected', () => {
+  assert.deepEqual(compareExpectedOutcome('reject', 'reject'), {expectedLabel: 'Reject', actualLabel: 'Rejected', verdict: 'As expected'});
+  assert.deepEqual(compareExpectedOutcome('accept', 'spilled'), {expectedLabel: 'Keep', actualLabel: 'Spilled', verdict: 'Unexpected'});
+  assert.deepEqual(compareExpectedOutcome('reject', null), {expectedLabel: 'Reject', actualLabel: 'In progress', verdict: 'In progress'});
 });

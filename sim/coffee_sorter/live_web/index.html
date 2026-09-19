@@ -43,7 +43,7 @@ button:hover{background:#e6e9e3}button:disabled{opacity:.45;cursor:default}butto
 button.primary,button[aria-pressed=true]{background:var(--rule);color:var(--sheet)}button.primary:hover{background:#1f2b26}
 .card{margin-top:8px;border:1px solid var(--rule);border-left:4px solid var(--accent);padding:6px 8px}.card .head{border-bottom:1px solid var(--rule-soft)}
 .card-empty{margin:0;color:var(--ink);font-weight:700;text-transform:uppercase;letter-spacing:.6px}
-.card-state{font-weight:700;color:#6d481f;font-size:11px;text-transform:uppercase;letter-spacing:.6px}
+.card-state{font-weight:700;color:#6d481f;font-size:11px;text-transform:uppercase;letter-spacing:.6px}.card-state.ok{color:var(--good)}.card-state.unexpected{color:var(--bad)}
 .card .row b{font-size:11.5px;text-align:left;overflow-wrap:anywhere}.card .row{grid-template-columns:96px 1fr}
 .card-command,.card-error{font-size:10px;margin:6px 0 0;color:var(--ink-soft);overflow-wrap:anywhere}.card-error{color:var(--bad)}
 .legend{display:flex;gap:9px;flex-wrap:wrap;margin-top:7px;color:var(--ink-soft);font-size:10px}.legend span{display:flex;align-items:center;gap:4px}.legend i{width:9px;height:9px;border-radius:50%;border:1px solid #ffffff88;box-shadow:0 0 0 1px #25342d55}.legend .pulse{background:var(--pulse)}.legend .reject{background:var(--reject)}.legend .spill{background:var(--spill)}
@@ -95,11 +95,11 @@ footer{margin-top:16px;padding-top:12px;border-top:1px solid var(--rule);font-si
 <div id="card-content" hidden>
 <div class="head"><h2>Latest stone</h2><strong id="card-state" class="card-state">In progress</strong></div>
 <div class="table" style="margin-top:0;border-top:0">
-<div class="row"><span>Prediction</span><b id="card-prediction">Not observed</b></div>
-<div class="row"><span>Action / contact</span><b id="card-action">Waiting</b></div>
-<div class="row"><span>Physical outcome</span><b id="card-outcome">Unresolved</b></div>
+<div class="row"><span>Expected</span><b id="card-expected">In progress</b></div>
+<div class="row"><span>Actual</span><b id="card-actual">In progress</b></div>
+<div class="row"><span>Result</span><b id="card-comparison">In progress</b></div>
 </div>
-<span id="card-decision" hidden></span><span id="card-hit" hidden></span><span id="card-outcome-time" hidden></span><span id="card-command" hidden></span><p id="card-error" class="card-error" hidden></p>
+<span id="card-prediction" hidden></span><span id="card-decision" hidden></span><span id="card-hit" hidden></span><span id="card-outcome" hidden></span><span id="card-outcome-time" hidden></span><span id="card-command" hidden></span><p id="card-error" class="card-error" hidden></p>
 </div>
 </section>
 <div class="legend" aria-label="Outcome legend"><span><i class="pulse"></i>Air command</span><span><i class="reject"></i>Confirmed reject</span><span><i class="spill"></i>Spill</span></div>
@@ -132,7 +132,7 @@ footer{margin-top:16px;padding-top:12px;border-top:1px solid var(--rule);font-si
 </div>
 <section class="details">
 <div class="object"><h2 id="object-title">Follow your stone</h2><p>The ring follows the selected physical object.</p>
-<dl><dt>Request</dt><dd id="command">No injection yet</dd><dt>Acknowledgment</dt><dd id="ack">Waiting</dd><dt>Prediction</dt><dd id="prediction">Not observed</dd><dt>Air command</dt><dd id="decision">Not decided</dd><dt>Force contact</dt><dd id="hit">Not recorded</dd><dt>Physical outcome</dt><dd id="outcome">Unresolved</dd><dt>Time to outcome</dt><dd id="outcome-time">Waiting</dd></dl>
+<dl><dt>Request</dt><dd id="command">No injection yet</dd><dt>Acknowledgment</dt><dd id="ack">Waiting</dd><dt>Policy at drop</dt><dd id="expectation-policy">Waiting</dd><dt>Prediction</dt><dd id="prediction">Not observed</dd><dt>Air command</dt><dd id="decision">Not decided</dd><dt>Force contact</dt><dd id="hit">Not recorded</dd><dt>Physical outcome</dt><dd id="outcome">Unresolved</dd><dt>Time to outcome</dt><dd id="outcome-time">Waiting</dd></dl>
 </div>
 <div><h2>Engine events</h2><ol id="events"><li>Waiting for the engine.</li></ol><p id="limit-note">One shared session, four browsers maximum. Restart session resets all connected browsers.</p></div>
 </section>

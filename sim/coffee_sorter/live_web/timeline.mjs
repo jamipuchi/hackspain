@@ -99,3 +99,12 @@ export function emptyMetricState({metric, warmingUp, catalogSize, rejectSize}) {
       : catalogSize > 0;
   return warmingUp && cohortCanReceiveSamples ? 'Computing' : 'No samples';
 }
+
+export function compareExpectedOutcome(expected, outcome) {
+  const expectedLabel = expected === 'reject' ? 'Reject' : expected === 'accept' ? 'Keep' : 'In progress';
+  const actualLabel = outcome === 'reject' ? 'Rejected' : outcome === 'accept' ? 'Passed' : outcome === 'spilled' ? 'Spilled' : 'In progress';
+  if (!['reject', 'accept'].includes(expected) || !['reject', 'accept', 'spilled'].includes(outcome)) {
+    return {expectedLabel, actualLabel, verdict: 'In progress'};
+  }
+  return {expectedLabel, actualLabel, verdict: expected === outcome ? 'As expected' : 'Unexpected'};
+}

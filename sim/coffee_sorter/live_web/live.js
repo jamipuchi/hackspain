@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {OrbitControls} from '/vendor/OrbitControls.js';
 import {RoomEnvironment} from '/vendor/RoomEnvironment.js';
 import {GLTFLoader} from '/assets/vendor/loaders/GLTFLoader.js';
-import {PolicyIntentBuffer, emptyMetricState, normalizedClassPreview, profilePreviewScale, samePresentationTimeline} from './timeline.mjs';
+import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, normalizedClassPreview, profilePreviewScale, samePresentationTimeline} from './timeline.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('scene');
@@ -613,6 +613,8 @@ function updateLatestEvidence() {
       || (state?.injected_objects || []).find(item => item.object_id === request.object_id);
   selected = request?.object_id ?? null;
   const decision = object?.decision;
+  const expectedOutcome = request?.ack?.expected_outcome || object?.expected_outcome || null;
+  const comparison = compareExpectedOutcome(expectedOutcome, object?.outcome);
   const values = {
     prediction: decision ? `${decision.predicted_class}${decision.association_approximate ? ' (approximate object match)' : ''}` : 'Not observed',
     decision: decision ? (decision.scheduled ? 'Pulse commanded' : decision.reject ? (decision.late ? 'Reject decision, too late' : 'Reject decision, no pulse') : 'No pulse commanded') : 'Not decided',
@@ -630,16 +632,18 @@ function updateLatestEvidence() {
     $(id).textContent = text;
     $(`card-${id}`).textContent = text;
   }
-  $('card-action').textContent = decision ? `${values.decision} · ${values.hit}` : 'Waiting';
+  $('card-expected').textContent = comparison.expectedLabel;
+  $('card-actual').textContent = comparison.actualLabel;
+  $('card-comparison').textContent = comparison.verdict;
   $('card-empty').hidden = Boolean(request);
   $('card-content').hidden = !request;
-  const stateLabel = request?.error || request?.invalidated ? 'Command failed'
-    : object?.outcome === 'reject' ? 'Rejected'
-    : object?.outcome === 'spilled' ? 'Spilled'
-      : object?.outcome === 'accept' ? 'Passed'
-        : request?.acknowledged ? 'Spawn confirmed'
-          : request ? 'Command pending' : 'No request';
+  const stateLabel = request?.error || request?.invalidated ? '[!] Command failed'
+    : comparison.verdict === 'As expected' ? '[OK] As expected'
+      : comparison.verdict === 'Unexpected' ? '[!] Unexpected'
+        : '[...] In progress';
   $('card-state').textContent = stateLabel;
+  $('card-state').classList.toggle('ok', comparison.verdict === 'As expected');
+  $('card-state').classList.toggle('unexpected', comparison.verdict === 'Unexpected' || Boolean(request?.error || request?.invalidated));
   $('object-title').textContent = request?.object_id == null ? (request ? 'Following your stone' : 'Follow your stone') : `Your stone, object ${request.object_id}`;
   $('command').textContent = request ? request.payload.command_id : 'No injection yet';
   $('card-command').textContent = request
@@ -656,6 +660,8 @@ function updateLatestEvidence() {
   else if (request?.retryPending) acknowledgment = 'Retrying the original injection request';
   else if (request) acknowledgment = 'Waiting for physical spawn';
   $('ack').textContent = acknowledgment;
+  const expectationPolicy = request?.ack?.expectation_policy_version || object?.expectation_policy_version;
+  $('expectation-policy').textContent = expectationPolicy || 'Waiting for authoritative injection evidence';
   $('card-error').hidden = !request?.error;
   $('card-error').textContent = request?.error ? `Injection failed: ${request.error}` : '';
   measurements.acknowledgment_ms = request?.acknowledgment_ms ?? null;
