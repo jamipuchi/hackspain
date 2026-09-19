@@ -176,6 +176,7 @@ preview_ready
 proposing_physics
 validating_physics
 physics_blocked
+selecting_training_baseline
 queued_for_training
 training
 validating_candidate
@@ -200,31 +201,59 @@ stateDiagram-v2
     preview_ready --> proposing_physics
     proposing_physics --> validating_physics
     validating_physics --> physics_blocked: unsupported proxy
-    validating_physics --> queued_for_training: validation passed
+    validating_physics --> selecting_training_baseline: validation passed
+    selecting_training_baseline --> waiting_for_replacement: no current Keep victim
+    waiting_for_replacement --> selecting_training_baseline: victim becomes eligible
+    selecting_training_baseline --> queued_for_training: catalog and victim recorded
     queued_for_training --> training
     training --> validating_candidate
-    validating_candidate --> waiting_for_replacement: no current Keep victim
-    waiting_for_replacement --> queued_for_training: victim selected
     validating_candidate --> draining_for_activation: candidate passed
+    validating_candidate --> failed: metrics or anomaly gate failed
     validating_candidate --> activation_conflict: stale model or catalog
     draining_for_activation --> replacement_conflict: victim changed
     draining_for_activation --> activating
     activating --> active
-    generating_recipe --> failed: safe retry exhausted
-    rendering_previews --> failed: safe retry exhausted
-    training --> failed: safe retry exhausted
+    generating_recipe --> generating_recipe: first safe failure, attempt 2
+    rendering_previews --> rendering_previews: first safe failure, attempt 2
+    training --> training: first safe failure, attempt 2
+    generating_recipe --> failed: second safe failure
+    rendering_previews --> failed: second safe failure
+    training --> failed: second safe failure
     activating --> failed: rollback completed
+
+    note right of physics_blocked
+        Job is blocked and retained.
+        The global worker continues.
+    end note
+    note right of failed
+        Job is terminal and retained.
+        The global worker continues.
+    end note
 ```
+
+`physics_blocked`, `waiting_for_replacement`, `replacement_conflict`, and `activation_conflict` block only their job. The global worker continues later eligible jobs.
+
+`failed` is terminal for that job. The retained job remains visible, and the global worker continues.
+
+`selecting_training_baseline` starts only after the job acquires the training turn. It records the latest catalog and current `Keep` victim immediately before training.
 
 The service never auto-retries a provider request after an interrupted or uncertain call. A user must resolve that state.
 
 Cached exact-request evidence can resume without billing. A new provider request requires a new explicit action.
 
-Retry a safe transient failure once. Safe failures include a renderer or trainer process failure, or a generator failure before any provider submission.
+Each safely retryable generation, rendering, or training stage has `max_attempts: 2`. Persist its attempt count across process and service restarts.
+
+The second attempt is the only automatic retry. It applies to a renderer or trainer failure, or a generator failure proven to precede provider submission.
 
 Never auto-retry when provider submission or billing is uncertain. Preserve `interrupted_uncertain` until exact cached evidence or an explicit new request resolves it.
 
-Persist the attempt number, lease deadline, provider submission status, timestamps, and terminal error. Release an expired worker lease and continue later jobs.
+An uncertain provider call never triggers or consumes an automatic billable retry. Any new paid request requires a new explicit user action.
+
+Persist the attempt number, lease deadline, provider submission status, timestamps, terminal error, and an opaque lease ownership token.
+
+On lease expiry, terminate the owned child process and wait for its exit. If termination cannot complete, fence the token before another worker starts.
+
+Only the current token may publish artifacts or state transitions. Ignore late output from a terminated or fenced attempt.
 
 A stalled job cannot block the queue indefinitely. Retain every failed job visibly after the single safe retry is exhausted.
 
@@ -238,8 +267,10 @@ credentials_missing
 provider_interrupted
 generation_failed
 render_failed
+worker_timeout
 physics_unsupported
 training_failed
+candidate_validation_failed
 replacement_conflict
 activation_failed
 ```
@@ -381,6 +412,9 @@ git diff --check
 - Restart recovery never rebills uncertain provider work.
 - A busy render lock stays visible as `waiting_for_render`.
 - Queue and presentation limits appear in state and tests.
+- Persisted stage counts permit at most two safe attempts per stage across restart.
+- An expired lease cannot overlap a replacement renderer or trainer process.
+- A blocked or terminal job releases its worker and does not stop later jobs.
 - The compact main page remains unchanged outside the existing Items modal entry point.
 
 ### Verification
@@ -435,6 +469,12 @@ Use fake provider and renderer adapters for retries, crashes, and queue limits. 
 A recognized Stone reached 99.9995% classifier confidence but still rejected because its anomaly score was `412.9917` above `15.6529`.
 
 This result proves label compatibility alone is insufficient. Candidate validation must exercise both classifier and anomaly paths.
+
+### Planned Phase 3 deliverables
+
+Phase 3 adds `test_generated_physics.py`, `validate_object_route.py`, and both fixture definitions under `tests/fixtures/`.
+
+The following commands become runnable after that implementation creates these files. This plan revision does not claim those validations ran.
 
 ### Verification
 
@@ -538,9 +578,10 @@ curl --fail http://127.0.0.1:8899/state
 4. Confirm a selected item uses one rotating preview while cards use thumbnails.
 5. Confirm **Wall of Fame** loads inactive entries in bounded pages and never changes the active count.
 6. Submit the ring fixture and confirm it becomes `physics_blocked` with `physics_unsupported`.
-7. Force one safe renderer failure and confirm one retry occurs before the retained terminal failure.
-8. Simulate an uncertain provider result and confirm no automatic retry or second billable request occurs.
-9. Confirm later queued jobs continue after either terminal failure.
+7. Inject one safe renderer failure and confirm the single retry succeeds.
+8. Inject two consecutive safe renderer failures and confirm a retained terminal failure.
+9. Confirm the next queued job starts after the terminal failure.
+10. Simulate an uncertain provider result and confirm no automatic retry or second billable request occurs.
 
 ### Deployment implications
 

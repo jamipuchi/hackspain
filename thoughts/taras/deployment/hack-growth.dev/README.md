@@ -260,6 +260,47 @@ The [CINTA generated-item controls plan](../../plans/2026-09-19-cinta-item-contr
 describes a future automatic queue, training, and activation flow. That flow is
 not implemented by this deployment guide. Do not expose or promise it yet.
 
+### Future generated-item deployment contract
+
+The current UI deployment does not enable the generated-item queue. These
+requirements apply only after the linked plan is implemented and reviewed.
+
+Use one persistent root such as `/var/lib/hackspain-coffee/item-control/`.
+Keep these subdirectories separate:
+
+| Subdirectory | Purpose |
+| --- | --- |
+| `catalog/` | validated active manifest, definitions, and immutable activation bundles |
+| `jobs/` | durable request state, attempt counts, leases, previews, and training evidence |
+| `wall-of-fame/` | immutable inactive assets, provenance, and retirement records |
+
+Mount this root as writable only for the queue and activation workers. Mount
+the selected active bundle read-only in the live engine after activation.
+Do not scan archived definitions into the active catalog during startup.
+
+Allow only one background training process. Set explicit CPU, memory, wall-time,
+disk, queue, and artifact-retention limits for generation, rendering, and
+training workers. A worker timeout must terminate or fence its child process
+before the next worker acquires the lease.
+
+Keep at most four queued jobs and 32 presentation summaries, as specified by
+the plan. Set benchmark-approved CPU and memory limits before enabling the
+feature. Record disk and artifact-retention limits in the release configuration.
+
+Give provider credentials only to the generation worker. Keep them out of the
+browser, image layers, logs, and live engine environment. Host and Origin checks
+remain required, but they do not authenticate a user. Protect paid Add item
+controls with the selected access policy before public exposure.
+
+Back up the active manifest, definitions, complete activation bundles, durable
+job records, and Wall of Fame. Test restoration into a separate path. Rollback
+must select one prior complete bundle. It must not combine individual catalog,
+model, policy, or manifest files from different releases.
+
+Local manual checks use canonical port `8899`. The remote Compose service keeps
+the configured internal port from this guide, currently `8890`. Do not copy the
+local port into the Caddy upstream or remote service command.
+
 ## Public control decision
 
 The current page permits injection commands from every connected browser. It
