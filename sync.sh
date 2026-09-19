@@ -7,6 +7,14 @@ REPO=~/hackspain
 SRC=~/robotics
 cd "$REPO"
 
+# RETIRED 19 Sep 2026 20:07 (INTEGRATOR.md 19:57 + agreement of arduino, build, coffee-sim): origin/main is canonical for every
+# directory someone else pushes to, and rsync from the older ~/robotics copies overwrites their versions even without --delete.
+# Agents push their own files with plain git add/commit/push. Set SYNC_FORCE=1 only if Jaume explicitly re-enables mirroring.
+if [ "${SYNC_FORCE:-0}" != "1" ]; then
+  echo "sync.sh is retired ($(date '+%H:%M:%S')): nothing mirrored, nothing pushed. See INTEGRATOR.md 19:57."
+  exit 0
+fi
+
 # GUARD (19 Sep 19:55): origin/main now carries Taras's coffee sorter under sim/coffee_sorter — the SAME path this
 # script mirrors ~/robotics/coffee_sorter into with. If this clone is ever behind origin, syncing would
 # overwrite/delete his files and push that. Refuse to run until a human has rebased and re-pointed the coffee rsync.
