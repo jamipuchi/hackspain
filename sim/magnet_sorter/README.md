@@ -69,7 +69,82 @@ Each run writes `runs/<timestamp>/`: `roundN_photo.png` (what GPT-6 saw), `round
 (its answer), `phone/*.png` (raw Cycles frames), `serial.log`, `trajectory.npz` + `events.json`.
 The OpenAI key is read from `OPENAI_API_KEY`, `OPEN_AI_KEY`, or `~/Documents/leads-gpt/api/.env`.
 
-## TypeSafe Jev brain (`--planner jev`)
+## Jev tool decisions
+
+The [experiment handoff](experiments/2026-09-19-jev/HANDOFF.md) contains measured results, reproducible commands, and the routing continuation scope.
+
+Use `--decision-model jev` to let Jev select one tool call per step.
+Astra describes the camera photos as structured observations by default. Jev receives those observations and the robot's feedback as text.
+Local code supplies the available tools and their arguments. Jev selects a candidate with a typed Choice response.
+
+From this repository's root, use the existing simulation environment:
+
+```bash
+python3 -m venv contracts/.venv  # only if this environment does not exist
+contracts/.venv/bin/python -m pip install -r contracts/learning/requirements.txt openai
+contracts/.venv/bin/python sim/magnet_sorter/run_demo.py \
+  --build theker_v1 --brain agent --decision-model jev \
+  --cameras A,B --phone mujoco --seed 4 --max-steps 60 --budget 4
+```
+
+For a visible simulation on macOS, use `mjpython` and add `--viewer`:
+
+```bash
+contracts/.venv/bin/mjpython sim/magnet_sorter/run_demo.py \
+  --build theker_v1 --brain agent --decision-model jev \
+  --cameras A,B --phone mujoco --viewer --seed 4 --max-steps 60 --budget 4
+```
+
+The viewer runs arm motion at approximately real time. Pauses include live API calls.
+By default, the vision model describes each fresh photo before Jev selects the next tool.
+The decision trace records each provider's latency separately.
+
+Add `--reuse-pick-observation` to reuse the known part description immediately after a successful pickup.
+Jev can then select the placement without another vision request.
+The agent still captures photos and refreshes vision after placement, failed pickups, explicit photos, and final confirmation.
+
+For the requested DeepSeek vision variant, set `OPENROUTER_API_KEY` and run:
+
+```bash
+contracts/.venv/bin/mjpython sim/magnet_sorter/run_demo.py \
+  --build theker_v1 --brain agent --decision-model jev \
+  --vision-provider openrouter --vision-model deepseek/deepseek-v4.1-flash \
+  --reuse-pick-observation --cameras A,B --phone mujoco --viewer \
+  --seed 4 --max-steps 60 --budget 4
+```
+
+OpenRouter uses the same structured observation schema through its Responses API. Jev still selects every tool call.
+This variant requires no OpenAI key. The run budget includes OpenRouter's reported cost and Jev's estimated cost.
+
+For the Gemini variant with lower reasoning, use:
+
+```bash
+contracts/.venv/bin/mjpython sim/magnet_sorter/run_demo.py \
+  --build theker_v1 --brain agent --decision-model jev \
+  --vision-provider openrouter --vision-model google/gemini-3.8-flash \
+  --reuse-pick-observation --effort low --cameras A,B --phone mujoco --viewer \
+  --seed 4 --max-steps 60 --budget 4
+```
+
+Set `OPENAI_API_KEY` when using Astra. Set `TYPESAFE_API_KEY` in the environment or the repository's `.env` file.
+The existing `~/.config/typesafe/api_key` fallback also works.
+`GPT6_MODEL` selects the vision model. `JEV_MODEL` selects the decision model and defaults to `jev-latest`.
+
+This experiment supports `pick_at`, `place_in`, `home`, `take_photo`, `done`, and `belt_advance` for conveyor builds.
+It does not expose free-form movement or inventory-editing tools to Jev.
+Both brains use the existing robot controller, action limits, and final-photo confirmation.
+The final observation includes visible container contents. Task-specific failure limits apply even when a part's visual ID changes.
+The budget includes both providers. A request can exceed the remaining budget before its usage arrives.
+
+Each run stores its available photos, traces, and metadata under `sim/magnet_sorter/runs/<timestamp>/`.
+Completed runs save `result.json`. Failed runs save `error.json` and a partial result when the agent was initialized.
+Missing OpenRouter cost stops the run and marks cost accounting incomplete.
+The result records the simulator's score separately from the agent's completion claim.
+The simulator's hidden part labels never enter the vision or decision requests.
+
+Use `--decision-model astra` for the original agent. It remains the default.
+
+## TypeSafe Jev program planner (`--planner jev`)
 
 ```bash
 ../.venv/bin/python run_demo.py --planner jev --phone mujoco          # any build; program brain, one plan per photo
