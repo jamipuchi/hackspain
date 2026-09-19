@@ -124,6 +124,7 @@ The reviewed image contract must include:
 - exactly the source at `c599bd9988b9fff95c78209040e31e28697a4041`,
 - packages from `thoughts/taras/research/coffee-quality/requirements-resolved.txt`,
 - the selected model and adjacent manifest in the image release path,
+- a POSIX shell with `mktemp` for atomic evidence-directory allocation,
 - a validated headless MuJoCo backend,
 - a recorded final image digest.
 
@@ -185,9 +186,8 @@ services:
       - /bin/sh
       - -ec
       - |
-        start_id="$(date -u +%Y%m%dT%H%M%SZ)-$HOSTNAME"
-        out="/var/lib/hackspain-coffee/runs/$start_id"
-        mkdir -p "$out"
+        runs_root=/var/lib/hackspain-coffee/runs
+        out="$(mktemp -d "$runs_root/$(date -u +%Y%m%dT%H%M%SZ)-XXXXXX")"
         exec /app/.venv-coffee/bin/python sim/coffee_sorter/live.py \
           --host 0.0.0.0 --port 8890 \
           --preset sim/coffee_sorter/configs/continuous_demo.json \
@@ -219,9 +219,9 @@ backup policy, and free-space budget before launch. If a named volume is
 required, give it an explicit `name`, record `docker volume inspect` output,
 and never rely on an implicit project-scoped volume name or host path.
 
-Every process start gets a new `<start-id>` directory. A restart creates a new
-engine session and begins score warm-up again. Preserve all prior run
-directories for evidence and rollback.
+`mktemp -d` atomically allocates a new `<start-id>` directory for every process
+start. A restart creates a new engine session and begins score warm-up again.
+Preserve all prior run directories for evidence and rollback.
 
 Docker recommends a production-specific Compose file and explicit restart
 policy. See [Docker Compose production guidance](https://docs.docker.com/compose/how-tos/production/).
