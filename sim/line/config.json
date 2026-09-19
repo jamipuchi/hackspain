@@ -58,7 +58,8 @@
       "min_mean_gray": 40,
       "max_mean_gray": 150,
       "max_n_dark_spots": 2
-    }
+    },
+    "algo": "extratrees"
   },
   "timing": {
     "slope_deg": 15.0,

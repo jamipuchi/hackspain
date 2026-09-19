@@ -212,3 +212,65 @@ def draw_blobs(bgr: np.ndarray, blobs: list[Blob], roi: ROI | None = None, label
         txt = labels[i] if labels else f"{b.features.get('major_mm', 0):.1f}x{b.features.get('minor_mm', 0):.1f}mm g{b.features.get('mean_gray', 0):.0f}"
         cv2.putText(out, txt, (x, max(y - 4, 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.45, c, 1, cv2.LINE_AA)
     return out
+
+
+# ----------------------------------------------------------------------------- stillness trigger (tilting tray)
+def is_still(prev: list[Blob], cur: list[Blob], tol_px: float = 3.0) -> list[Blob]:
+    """Whole blobs in `cur` whose centroid moved less than `tol_px` since `prev` (nearest-centroid match).
+
+    The tilting-tray trigger: a bean that rolled onto the tray and stopped shows the same centroid in two
+    consecutive frames; a bean still rolling at 35 cm/s moves ~12 mm (70 px at 6 px/mm) per frame at 30 fps.
+    """
+    out = []
+    for b in cur:
+        if b.partial or not prev:
+            continue
+        d = min(((b.u - p.u) ** 2 + (b.v - p.v) ** 2) ** 0.5 for p in prev)
+        if d <= tol_px:
+            out.append(b)
+    return out
+
+
+class StillTracker:
+    """Feed every frame's blobs; `update()` returns the blobs that have been still for `n_frames` consecutive frames.
+
+    `n_frames=2` is the plain two-frame trigger; a higher value ignores a bean that is only pausing on the rim.
+    `features_mean(blob)` averages the features of the still frames so the verdict does not depend on one frame.
+    """
+
+    def __init__(self, n_frames: int = 2, tol_px: float = 3.0):
+        self.n_frames, self.tol_px = max(n_frames, 2), tol_px
+        self._tracks: list[dict] = []  # {"u","v","count","feats": [dict,...]}
+
+    def update(self, blobs: list[Blob]) -> list[Blob]:
+        new_tracks = []
+        still = []
+        for b in blobs:
+            if b.partial:
+                continue
+            match = None
+            for t in self._tracks:
+                if ((b.u - t["u"]) ** 2 + (b.v - t["v"]) ** 2) ** 0.5 <= self.tol_px:
+                    match = t
+                    break
+            if match is None:
+                new_tracks.append({"u": b.u, "v": b.v, "count": 1, "feats": [b.features]})
+            else:
+                match["count"] += 1
+                match["feats"].append(b.features)
+                match["u"], match["v"] = b.u, b.v
+                new_tracks.append(match)
+                if match["count"] >= self.n_frames:
+                    still.append(b)
+        self._tracks = new_tracks
+        return still
+
+    def features_mean(self, blob: Blob) -> dict[str, float]:
+        for t in self._tracks:
+            if ((blob.u - t["u"]) ** 2 + (blob.v - t["v"]) ** 2) ** 0.5 <= self.tol_px and t["feats"]:
+                keys = t["feats"][-1].keys()
+                return {k: float(np.mean([f[k] for f in t["feats"] if k in f])) for k in keys}
+        return dict(blob.features)
+
+    def reset(self) -> None:
+        self._tracks = []

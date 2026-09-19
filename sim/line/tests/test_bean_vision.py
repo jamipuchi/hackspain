@@ -142,3 +142,32 @@ def test_draw_blobs_returns_copy():
 def test_selftest_passes():
     checks = PaperBeanDetector(config.LineConfig()).selftest()
     assert all(ch.ok for ch in checks), [(ch.name, ch.detail) for ch in checks]
+
+
+def _blob(u, v, partial=False, **feats):
+    return Blob(u=u, v=v, bbox=(int(u) - 10, int(v) - 10, 20, 20), area_px=400.0, partial=partial, features=feats)
+
+
+def test_is_still_two_frame_trigger():
+    from line.bean_vision import is_still
+
+    prev = [_blob(100, 100), _blob(300, 120)]
+    cur = [_blob(101, 100), _blob(370, 120), _blob(500, 100, partial=True)]
+    still = is_still(prev, cur, tol_px=3)
+    assert [b.u for b in still] == [101]  # moved 1 px: still; moved 70 px: rolling; partial: ignored
+    assert is_still([], cur) == []
+
+
+def test_still_tracker_counts_consecutive_frames_and_averages():
+    from line.bean_vision import StillTracker
+
+    tr = StillTracker(n_frames=3, tol_px=3)
+    assert tr.update([_blob(200, 100, mean_gray=80)]) == []
+    assert tr.update([_blob(201, 100, mean_gray=90)]) == []
+    still = tr.update([_blob(200, 101, mean_gray=100)])
+    assert len(still) == 1
+    assert tr.features_mean(still[0])["mean_gray"] == pytest.approx(90.0)
+    # the bean rolls away: track breaks, a new one starts
+    assert tr.update([_blob(280, 100, mean_gray=100)]) == []
+    tr.reset()
+    assert tr.update([_blob(200, 100)]) == []

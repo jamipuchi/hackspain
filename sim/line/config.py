@@ -64,6 +64,7 @@ class VisionCfg:  # owner: camera agent
 class ClassifierCfg:  # owner: coffee-sim agent
     backend: str = "rule"  # 'rule' | 'sklearn'
     model_path: str = "models/beans_v1.joblib"
+    algo: str = "extratrees"  # learner for train_from_*: 'extratrees' (2 ms/bean) | 'mlp' (0.2 ms) | 'hgb' (accurate, ~100 ms/bean: too slow live)
     suspect_threshold: float = 0.5
     rules: dict = field(default_factory=lambda: {
         "min_major_mm": 8.0, "max_major_mm": 16.0,  # roasted arabica ~10–13 mm long

@@ -205,8 +205,13 @@ class LineModel:
 
 
 def _load_model(path: Path):
-    """joblib.load that can also unpickle a coffee_sorter Model (pickled with module name 'classifier')."""
+    """joblib.load that also accepts (a) a LineModel pickled from a `python -m line.classifier` run (module '__main__')
+    and (b) a coffee_sorter Model (pickled with module name 'classifier')."""
     import joblib
+    main = sys.modules.get("__main__")
+    shim = main is not None and not hasattr(main, "LineModel")
+    if shim:
+        main.LineModel = LineModel
     try:
         return joblib.load(path)
     except (AttributeError, ModuleNotFoundError):
@@ -224,6 +229,9 @@ def _load_model(path: Path):
                 sys.modules["classifier"] = prev
             else:
                 sys.modules.pop("classifier", None)
+    finally:
+        if shim:
+            delattr(main, "LineModel")
 
 
 def _model_features(model) -> list[str]:
@@ -352,8 +360,27 @@ def load_dataset(dataset_dir, features: list[str] | None = None):
     return X, np.array(labels, dtype=object), list(features)
 
 
-def fit(X, y, features, classes=None, seed=0, source="dataset") -> tuple[LineModel, dict]:
-    from sklearn.ensemble import HistGradientBoostingClassifier
+def make_learner(algo: str, n: int, seed: int = 0):
+    """Single-row latency is what matters live (one bean at a time, 30 ms budget). Measured on this Mac, 23 features,
+    6 classes: ExtraTrees(100) 2.4 ms, MLP 0.2 ms, HistGradientBoosting 90–160 ms (per-call overhead, any n_iter)."""
+    algo = (algo or "extratrees").lower()
+    small = n < 400
+    if algo == "hgb":
+        from sklearn.ensemble import HistGradientBoostingClassifier
+        return HistGradientBoostingClassifier(max_iter=100, learning_rate=0.12, max_leaf_nodes=15 if small else 31,
+                                              min_samples_leaf=5 if small else 20, l2_regularization=0.1,
+                                              early_stopping=not small, random_state=seed)
+    if algo == "mlp":
+        from sklearn.neural_network import MLPClassifier
+        from sklearn.pipeline import make_pipeline
+        from sklearn.preprocessing import StandardScaler
+        return make_pipeline(StandardScaler(), MLPClassifier((64, 64), alpha=1e-3, max_iter=600, random_state=seed))
+    from sklearn.ensemble import ExtraTreesClassifier
+    return ExtraTreesClassifier(n_estimators=100 if small else 150, min_samples_leaf=2 if small else 3,
+                                class_weight="balanced", random_state=seed, n_jobs=1)
+
+
+def fit(X, y, features, classes=None, seed=0, source="dataset", algo: str = "extratrees") -> tuple[LineModel, dict]:
     from sklearn.model_selection import StratifiedKFold, cross_val_predict
     from sklearn.metrics import confusion_matrix
 
@@ -361,10 +388,7 @@ def fit(X, y, features, classes=None, seed=0, source="dataset") -> tuple[LineMod
     cid = {c: i for i, c in enumerate(classes)}
     yi = np.array([cid[v] for v in y])
     counts = np.bincount(yi, minlength=len(classes))
-    small = len(y) < 400
-    clf = HistGradientBoostingClassifier(max_iter=150 if small else 300, learning_rate=0.1 if small else 0.08,
-                                         max_leaf_nodes=15 if small else 31, min_samples_leaf=5 if small else 20,
-                                         l2_regularization=0.1, early_stopping=not small, random_state=seed)
+    clf = make_learner(algo, len(y), seed)
     k = int(min(5, counts[counts > 0].min()))
     with _single_thread():
         if k >= 2 and len(classes) > 1:
@@ -394,7 +418,7 @@ def fit(X, y, features, classes=None, seed=0, source="dataset") -> tuple[LineMod
         for _ in range(20):
             clf.predict_proba(Xb[:1])
         ms1 = (time.perf_counter() - t0) / 20 * 1e3
-    report = dict(source=source, n_train=int(len(y)), classes=classes, counts={c: int(n) for c, n in zip(classes, counts)},
+    report = dict(source=source, algo=algo, n_train=int(len(y)), classes=classes, counts={c: int(n) for c, n in zip(classes, counts)},
                   features=list(features), accuracy=float((pred == yi).mean()), cv=cv_note,
                   defect_recall=float((pr_def & te_def).sum() / max(te_def.sum(), 1)),
                   good_false_reject=float((pr_def & ~te_def).sum() / max((~te_def).sum(), 1)),
@@ -414,10 +438,14 @@ def save_model(model: LineModel, out_path: Path, report: dict | None = None) -> 
     return out_path
 
 
-def train_from_dataset(dataset_dir, out_path=None, cfg=None, seed=0) -> tuple[LineModel, dict]:
+def _algo(cfg, algo):
+    return algo or (cfg.classifier.algo if cfg is not None and hasattr(cfg.classifier, "algo") else "extratrees")
+
+
+def train_from_dataset(dataset_dir, out_path=None, cfg=None, seed=0, algo: str | None = None) -> tuple[LineModel, dict]:
     """Fit from the camera agent's labelled crops and write models/beans_v1.joblib (+ report.json next to it)."""
     X, y, features = load_dataset(dataset_dir)
-    model, report = fit(X, y, features, seed=seed, source=str(dataset_dir))
+    model, report = fit(X, y, features, seed=seed, source=str(dataset_dir), algo=_algo(cfg, algo))
     out = _resolve(out_path, cfg) if (out_path or cfg) else LINE_DIR / "models" / "beans_v1.joblib"
     save_model(model, out, report)
     return model, report
@@ -446,8 +474,18 @@ def evaluate(dataset_dir, model_path=None, cfg=None, verbose=True) -> dict:
     return dict(labels=labels, confusion=cm.tolist(), accuracy=acc, n=int(len(y)), anomalies=anomalies)
 
 
+def train_from_npz(npz_path, out_path=None, cfg=None, seed=0, algo: str | None = None) -> tuple[LineModel, dict]:
+    """Refit from a harvested sim dataset (datasets/sim_<profile>.npz) without running the simulator again."""
+    d = np.load(npz_path, allow_pickle=True)
+    X, y, features = d["X"], d["y"].astype(object), [str(f) for f in d["features"]]
+    model, report = fit(X, y, features, seed=seed, source=f"npz:{Path(npz_path).name}", algo=_algo(cfg, algo))
+    out = Path(out_path) if out_path else LINE_DIR / "models" / (Path(npz_path).stem.replace("sim_", "beans_sim_") + ".joblib")
+    save_model(model, _resolve(out), report)
+    return model, report
+
+
 def train_from_sim(profile: str = "roasted", seconds: float = 8.0, rate: float = 250.0, defect_boost: float = 4.0,
-                   out_path=None, seed: int = 3, verbose: bool = True) -> tuple[LineModel, dict]:
+                   out_path=None, seed: int = 3, verbose: bool = True, algo: str = "extratrees") -> tuple[LineModel, dict]:
     """Bootstrap: run the MuJoCo sorter with white paper under the camera, harvest (features, label) from the
     rendered strip exactly as the live detector would, and fit. Feature names are coffee_sorter's; at run time
     the line detector's blobs are matched by name (missing names -> 0, flagged in status)."""
@@ -481,7 +519,10 @@ def train_from_sim(profile: str = "roasted", seconds: float = 8.0, rate: float =
     insp.close()
     X = np.concatenate(Xs)
     y = np.array(ys, dtype=object)
-    model, report = fit(X, y, _coffee_features(), seed=seed, source=f"sim:{profile} on white paper, {seconds}s @ {rate}/s")
+    ds = LINE_DIR / "datasets"
+    ds.mkdir(exist_ok=True)
+    np.savez_compressed(ds / f"sim_{profile}.npz", X=X, y=y, features=np.array(_coffee_features()))
+    model, report = fit(X, y, _coffee_features(), seed=seed, source=f"sim:{profile} on white paper, {seconds}s @ {rate}/s", algo=algo)
     out = Path(out_path) if out_path else LINE_DIR / "models" / f"beans_sim_{profile}.joblib"
     save_model(model, _resolve(out), report)
     if verbose:
@@ -491,15 +532,21 @@ def train_from_sim(profile: str = "roasted", seconds: float = 8.0, rate: float =
 
 if __name__ == "__main__":  # pragma: no cover
     import argparse
+    # pickle LineModel as line.classifier.LineModel, not __main__.LineModel
+    from line import classifier as _self
+    train_from_dataset, evaluate, train_from_sim = _self.train_from_dataset, _self.evaluate, _self.train_from_sim
     ap = argparse.ArgumentParser(description="train / evaluate the line's bean classifier")
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("train"); p.add_argument("dataset"); p.add_argument("--out", default=None)
     p = sub.add_parser("eval"); p.add_argument("dataset"); p.add_argument("--model", default=None)
-    p = sub.add_parser("train-sim"); p.add_argument("--profile", default="roasted"); p.add_argument("--seconds", type=float, default=8); p.add_argument("--rate", type=float, default=250)
+    p = sub.add_parser("train-sim"); p.add_argument("--profile", default="roasted"); p.add_argument("--seconds", type=float, default=8); p.add_argument("--rate", type=float, default=250); p.add_argument("--algo", default="extratrees")
+    p = sub.add_parser("train-npz"); p.add_argument("npz"); p.add_argument("--algo", default=None)
     a = ap.parse_args()
     if a.cmd == "train":
         _, r = train_from_dataset(a.dataset, a.out); print(json.dumps({k: r[k] for k in ("n_train", "accuracy", "defect_recall", "good_false_reject", "cv")}, indent=1))
     elif a.cmd == "eval":
         evaluate(a.dataset, a.model)
+    elif a.cmd == "train-npz":
+        _, r = _self.train_from_npz(a.npz, algo=a.algo); print(json.dumps({k: r[k] for k in ("algo", "n_train", "accuracy", "defect_recall", "good_false_reject", "predict_ms_single")}, indent=1))
     else:
-        train_from_sim(a.profile, a.seconds, a.rate)
+        train_from_sim(a.profile, a.seconds, a.rate, algo=a.algo)
