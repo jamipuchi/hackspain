@@ -236,6 +236,17 @@ another virtual environment); `plot.py` in that directory regenerates the
 physical chart. `bash runs/generalization/publish.sh` uploads and byte-verifies
 the six visual outputs using an authenticated agent-fs CLI.
 
+**19 September — sensor realism and economics (in progress)**
+
+The historical rate sweep now has a rerunnable [mass/value ledger](runs/economics/report.md).
+At 1,000 effective objects/s, 0.20 g/object and 80% duty imply 576 kg/h input
+and 497.6 kg/h accepted. Assuming EUR 6/kg unsorted, an additional EUR 0.50/kg
+on accepted output and zero reject salvage gives **EUR −221.76/h before costs**.
+The accepted stream still has 7.03% policy defects by count; the buyer premium
+is hypothetical. Break-even needs EUR 0.946/kg additional accepted-stream value.
+Run `.venv/bin/python economics.py --config configs/economics.json --output runs/economics`.
+See [NIGHT_LOG.md](NIGHT_LOG.md) for every assumption, loss component and all four rates.
+
 **Next**
 
 - [x] foreground-only `vision.detect` with exact equivalence proof; train the classifier
@@ -245,6 +256,8 @@ the six visual outputs using an authenticated agent-fs CLI.
 - [x] physical tuning screen, separate merged-bean metrics, fresh-seed demo and phone evidence
 - [ ] longer paired seeds for 0.06 N; improve merged-target jet intersection and capture
 - [ ] model camera backlog before claiming hardware timing margin
+- [ ] sensor degradation sweep and throughput/value ledger with stated assumptions
+- [ ] calibrate exposure, sensor noise and belt jitter from real hardware; verify buyer grade premium
 - [x] `roasted` profile without touching the controller; matched quality measured
 - [x] unseen colour/material/size experiment, anomaly and physical threshold tradeoffs
 - [ ] UR5e (Menagerie + mink) picking oversize foreign matter off the infeed — the one thing the air jets cannot do

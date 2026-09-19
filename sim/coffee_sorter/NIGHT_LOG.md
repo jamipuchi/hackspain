@@ -659,3 +659,83 @@ independent Standards and Spec reviews pass. [Actual test output](runs/generaliz
 is also included in the PR body. No CI workflows are configured; this is local
 verification. Human morning acceptance remains pending. Keep the existing
 [fork PR #1](https://github.com/tarasyarema/hackspain/pull/1) draft and unmerged.
+
+## 19 September: sensor realism and economics
+
+Task `29f7117e-b13a-481c-adcd-8a249331141a` continues the same branch and draft
+fork PR #1 from `6515364`. Shared production defaults remain unchanged.
+The implementation plan is [SENSOR_PLAN.md](SENSOR_PLAN.md).
+
+### Assumptions and execution constraints
+
+No camera model, measured shutter exposure, electron conversion gain, read-noise
+calibration or belt encoder trace is present in the repository. The controller's
+4 ms exposure-plus-transfer floor does not specify shutter duration. The sweep
+therefore tests explicit assumed exposures/noise/jitter, not a calibrated digital
+twin. At 3 m/s and 4,000 px/m, 100 µs integrates 0.30 mm (1.2 px) of travel and
+500 µs integrates 1.50 mm (6 px). Image rows follow travel; the 2,080 columns span
+the belt width. Brightness and gradient perturb the rendered RGB signal rather
+than reconstructing raw sensor radiometry.
+
+Native background-agent launch failed with a missing parent-thread error. The
+installed Codex executor provides the implementation/review fallback. Its initial
+workspace sandbox could not create a namespace; the restarted executor uses the
+session's existing unrestricted filesystem mode. Work remains scoped to this
+worktree. These infrastructure failures do not establish a simulation failure.
+
+Economics uses a declared 0.20 g/object approximation, 80% duty cycle and measured
+effective feed rate. EUR 6/kg unsorted and EUR 0.50/kg additional accepted-stream
+value are hypothetical scenario prices, not market observations. The premium is
+conditional on buyer acceptance of the remaining defect level. Rejected material
+has zero assumed salvage, and spilled/unresolved material is unsold. Operating,
+labor and capital costs are excluded, so the reported uplift is not net profit.
+The complete ledger must count all lost mass, including good-bean spills.
+
+### Historical rate-sweep economics
+
+**Headline: 576.0 kg/h input, 497.6 kg/h accepted, EUR −221.76/h conditional
+uplift before operating costs** at the historical 1,000 beans/s setting.
+This reuses the earlier 0.09 N rate sweep, not the later 0.06 N sensor sweep.
+The arithmetic is:
+
+- Input: `1000 objects/s × 3600 s/h × 0.00020 kg/object × 0.80 = 576 kg/h`.
+- Accepted: `576 × 2246/2600 = 497.575 kg/h`.
+- Grade-premium credit, conditional on buyer acceptance:
+  `497.575 kg/h × EUR 0.50/kg = EUR 248.788/h`.
+- Lost unsorted-feed opportunity value:
+  `(576 − 497.575) kg/h × EUR 6/kg = EUR 470.548/h`.
+- Uplift: `248.788 − 470.548 = EUR −221.760/h`.
+
+It rejects 164/369 defects (44.44%), or **36.332 kg/h** under equal mass.
+It falsely ejects 128/2,231 good beans (5.74%), or **28.357 kg/h**, and spills
+another **3.323 kg/h** of good beans. Total good loss is **31.680 kg/h**.
+No spilled defect is credited as a successful rejection. The accepted stream
+still contains 158/2,246 policy defects (**7.03% by count**), down from 14.19%
+incoming; whether that earns any grade premium is unknown. These are policy
+labels in simulation, not a measured coffee grading score.
+
+Break-even requires **EUR 0.946/kg additional accepted-stream value**, before
+operating costs, at zero salvage. With no premium the same run loses EUR
+470.55/h against selling all input unsorted. Neither value demonstrates a
+business case. Salvage contracts, measured class masses, real buyer grades and
+actual labor/compressor costs are the next inputs to obtain.
+
+| Requested objects/s | Effective objects/s | Input kg/h | Accepted kg/h | Conditional uplift EUR/h | Break-even premium EUR/kg |
+| --- | --- | --- | --- | --- | --- |
+| 500 | 500.0 | 288.00 | 251.45 | −93.60 | 0.872 |
+| 1,000 | 1,000.0 | 576.00 | 497.58 | −221.76 | 0.946 |
+| 2,000 | 2,000.0 | 1,152.00 | 947.52 | −753.12 | 1.295 |
+| 3,000 | 2,214.4 | 1,275.48 | 1,038.20 | −904.60 | 1.371 |
+
+All rows use the same prices, duty and mass assumptions. Effective rates are
+simulated admitted feed, not real-time processing capability. The source's
+throughput window is 0.8–4.0 s and its completed-outcome eligibility window is
+0.8–3.4 s; extrapolation assumes those outcome fractions remain representative.
+
+[Ledger JSON](runs/economics/summary.json), [CSV](runs/economics/summary.csv),
+[plot](runs/economics/summary.png) and [assumptions](configs/economics.json)
+preserve counts, input hashes and the calculation. Reproduce from this directory:
+
+```bash
+.venv/bin/python economics.py --config configs/economics.json --output runs/economics
+```
