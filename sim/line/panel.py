@@ -64,6 +64,7 @@ class DoorOnD6:
         self.angle = int(cfg.gate.flush_deg)
         self.n_translated = 0
         self.pos = None  # 'OPEN' | 'CLOSED' | None (unknown until the first pulse)
+        self._t_support: bool | None = None
 
     @staticmethod
     def deg_to_speed(deg: float) -> int:
@@ -78,14 +79,35 @@ class DoorOnD6:
         if sp == 0:
             sp = 1 if direction * int(self.cfg.door_d6_dir) > 0 else -1
         self.n_translated += 1
+        ms = max(0, int(ms))
         t0 = time.monotonic()
+        if self._has_T():
+            # firmware times the pulse on the MCU (T <speed> <ms>): no host/USB jitter, detaches itself at the deadline
+            reply = self.inner.cmd(f"T {sp} {ms}")
+            time.sleep(ms / 1000.0 + 0.02)  # keep the operator/loop semantics (call returns when the move is over)
+            log(f"door→D6 {what}: T {sp} {ms} (MCU-timed) → {reply.strip()}")
+            return reply
         try:
             reply = self.inner.cmd(f"C {sp}")
-            time.sleep(max(0, int(ms)) / 1000.0)
+            time.sleep(ms / 1000.0)
         finally:
             stop = self.inner.cmd("C 0")
-        log(f"door→D6 {what}: C {sp} for {ms} ms, stop → {stop.strip()} ({(time.monotonic() - t0) * 1000:.0f} ms)")
+        log(f"door→D6 {what}: C {sp} for {ms} ms host-timed, stop → {stop.strip()} ({(time.monotonic() - t0) * 1000:.0f} ms)")
         return reply
+
+    def _has_T(self) -> bool:
+        """Probe once per connection whether the flashed firmware knows `T` (a `T 0 0` is a harmless abort)."""
+        if self._t_support is None:
+            try:
+                self._t_support = self.inner.cmd("T 0 0").strip().startswith("ok")
+            except Exception:  # noqa: BLE001
+                self._t_support = False
+            log(f"door→D6: firmware {'HAS' if self._t_support else 'lacks'} the MCU-timed pulse command T")
+        return self._t_support
+
+    def reprobe(self) -> bool:
+        self._t_support = None
+        return self._has_T()
 
     def go(self, pos: str, force: bool = False) -> str:
         """Operator action: move the door to 'OPEN' or 'CLOSED' with the configured pulse (ignores dry_run: a human pressed it)."""
@@ -150,7 +172,7 @@ class DoorOnD6:
 
     def status(self) -> dict:
         d = dict(self.inner.status())
-        d.update({"name": f"{d.get('name', '?')} +door-on-D6", "door_pos": self.pos or "unknown", "door_deg": self.angle, "door_speed_cmd": self.deg_to_speed(self.angle), "translated": self.n_translated})
+        d.update({"name": f"{d.get('name', '?')} +door-on-D6", "door_pos": self.pos or "unknown", "pulse_timing": "MCU (T)" if self._t_support else ("host (C/sleep/C 0)" if self._t_support is False else "unknown"), "door_deg": self.angle, "door_speed_cmd": self.deg_to_speed(self.angle), "translated": self.n_translated})
         if isinstance(d.get("pos"), list) and len(d["pos"]) == 3:
             d["pos"][self.IDX.get(self.cfg.gate.channel, 1) - 1] = self.angle
         return d
@@ -401,6 +423,8 @@ def make_handler(panel: Panel):
                         return self._json({"ok": True, "door_pos": ard.pos})
                     if act == "nudge" and hasattr(ard, "nudge"):
                         return self._json({"ok": True, "reply": ard.nudge(str(b.get("towards", "open")), int(b.get("ms", 60))), "door_pos": ard.pos})
+                    if act == "reprobe" and hasattr(ard, "reprobe"):
+                        return self._json({"ok": True, "mcu_timed": ard.reprobe()})
                     if act == "stop":
                         return self._json({"ok": True, "reply": ard.cmd("STOP") if hasattr(ard, "go") else panel.cmd("C 0")})
                     if not hasattr(ard, "go"):
