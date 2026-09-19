@@ -1,0 +1,13 @@
+SKIP base-1000: complete matching evidence exists
+SKIP brightness-minus30-1000: complete matching evidence exists
+SKIP brightness-plus30-1000: complete matching evidence exists
+SKIP gradient-30-1000: complete matching evidence exists
+SKIP exposure-nominal-100us-1000: complete matching evidence exists
+SKIP exposure-stress-500us-1000: complete matching evidence exists
+SKIP noise-nominal-1000: complete matching evidence exists
+SKIP noise-stress-1000: complete matching evidence exists
+SKIP belt-jitter-5pct-1000: complete matching evidence exists
+SKIP high-feed-reference-3000: complete matching evidence exists
+SKIP touching-3000: complete matching evidence exists
+SKIP combined-assumed-worst-3000: complete matching evidence exists
+wrote /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/sensor-realism/summary.json /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/sensor-realism/summary.png /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/sensor-realism/REPORT.md

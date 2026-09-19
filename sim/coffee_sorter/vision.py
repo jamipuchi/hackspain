@@ -7,7 +7,7 @@ except the final packing.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import numpy as np
 import cv2
 import mujoco
@@ -34,6 +34,8 @@ class Blobs:
     bbox: np.ndarray       # (n,4) x,y,w,h px
     partial: np.ndarray    # touching top/bottom edge -> not fully visible yet
     X: np.ndarray          # (n, F) features
+    member_uids: list[np.ndarray] = field(default_factory=list)  # evaluation only: GT centres in component
+    component_ids: np.ndarray = field(default_factory=lambda: np.zeros(0, int))
 
 
 class Inspector:
@@ -48,6 +50,9 @@ class Inspector:
         self.cull_margin = cull_margin
         self.ppm = L.px_per_m
         self.bg = np.array(sim.P.belt_rgb) * 255
+        self._grid_shape = (L.cam_h, L.cam_w)
+        self._xs = np.tile(np.arange(L.cam_w, dtype=np.float64), L.cam_h)
+        self._ys = np.repeat(np.arange(L.cam_h, dtype=np.float64), L.cam_w)
 
     # -------- geometry: image rows run along +x (belt travel), columns along +y
     def pixel_to_world(self, u, v):
@@ -72,43 +77,48 @@ class Inspector:
 
     # -------- segmentation (override for other backgrounds, see vision_paper.py)
     def segment(self, r, g, b) -> np.ndarray:
-        """uint8 foreground mask from int16 channels. Default: everything that is not the saturated blue belt."""
-        belt = (b > r + 35) & (b > g + 10)
-        return (~belt).astype(np.uint8)
+        """Return a foreground mask from uint8 channels, excluding the blue belt."""
+        belt = cv2.bitwise_and(cv2.compare(cv2.subtract(b, r), 35, cv2.CMP_GT),
+                               cv2.compare(cv2.subtract(b, g), 10, cv2.CMP_GT))
+        return cv2.bitwise_not(belt)
 
     # -------- detection + features
     def detect(self, frame, t) -> Blobs:
         H, W, _ = frame.shape
-        f = frame.astype(np.int16)
-        r, g, b = f[..., 0], f[..., 1], f[..., 2]
+        r, g, b = cv2.split(frame)
         mask = self.segment(r, g, b)
-        n, labels, stats, cents = cv2.connectedComponentsWithStats(mask, connectivity=8)
+        n, labels, stats, cents = cv2.connectedComponentsWithStatsWithAlgorithm(
+            mask, 8, cv2.CV_32S, cv2.CCL_DEFAULT)
+        self._last_labels = labels
         if n <= 1:
             return Blobs(t, 0, *[np.zeros(0)] * 4, np.zeros((0, 4), int), np.zeros(0, bool), np.zeros((0, len(FEATURES))))
         keep = np.where(stats[1:, cv2.CC_STAT_AREA] >= MIN_AREA_PX)[0] + 1
         if len(keep) == 0:
             return Blobs(t, 0, *[np.zeros(0)] * 4, np.zeros((0, 4), int), np.zeros(0, bool), np.zeros((0, len(FEATURES))))
-        # all per-blob statistics over FOREGROUND pixels only (a few % of the strip)
-        idx = np.flatnonzero(mask.ravel())
+        if self._grid_shape != (H, W):
+            self._grid_shape = (H, W)
+            self._xs = np.tile(np.arange(W, dtype=np.float64), H)
+            self._ys = np.repeat(np.arange(H, dtype=np.float64), W)
+        idx = np.flatnonzero(mask)
         lab = labels.ravel()[idx]
-        area = np.bincount(lab, minlength=n).astype(np.float64)
+        area = stats[:, cv2.CC_STAT_AREA].astype(np.float64)
         area_safe = np.maximum(area, 1)
-        rf, gf, bf = r.ravel()[idx].astype(np.float32), g.ravel()[idx].astype(np.float32), b.ravel()[idx].astype(np.float32)
-        gray = 0.299 * rf + 0.587 * gf + 0.114 * bf
-        hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV).reshape(-1, 3)[idx]
-        hh, ss, vv = hsv[:, 0].astype(np.float32), hsv[:, 1].astype(np.float32), hsv[:, 2].astype(np.float32)
+        pixels = frame.reshape(-1, 3)[idx]
+        rgb = pixels.astype(np.int16)
+        gray = (0.299 * rgb[:, 0] + 0.587 * rgb[:, 1] + 0.114 * rgb[:, 2]).astype(np.float32)
+        hsv = cv2.cvtColor(pixels.reshape(-1, 1, 3), cv2.COLOR_RGB2HSV).reshape(-1, 3)
+        hh, ss, vv = hsv[:, 0], hsv[:, 1].astype(np.float32), hsv[:, 2]
 
         def bmean(w): return np.bincount(lab, weights=w, minlength=n) / area_safe
-        mr, mg, mb = bmean(rf), bmean(gf), bmean(bf)
+        mr, mg, mb = bmean(rgb[:, 0]), bmean(rgb[:, 1]), bmean(rgb[:, 2])
         mgray = bmean(gray); sgray = np.sqrt(np.maximum(bmean(gray * gray) - mgray ** 2, 0))
         mh, ms, mv = bmean(hh), bmean(ss), bmean(vv)
         ssat = np.sqrt(np.maximum(bmean(ss * ss) - ms ** 2, 0))
-        dark_frac = bmean((gray < DARK_T).astype(np.float32))
-        bright_frac = bmean((gray > BRIGHT_T).astype(np.float32))
+        dark_frac = bmean(gray < DARK_T)
+        bright_frac = bmean(gray > BRIGHT_T)
         # second moments -> equivalent ellipse
-        ys, xs = np.divmod(idx, W)
-        xs = xs.astype(np.float64); ys = ys.astype(np.float64)
-        mx, my = bmean(xs), bmean(ys)
+        xs, ys = self._xs[idx], self._ys[idx]
+        mx, my = cents[:, 0], cents[:, 1]
         cxx = bmean(xs * xs) - mx ** 2; cyy = bmean(ys * ys) - my ** 2; cxy = bmean(xs * ys) - mx * my
         tr, det = cxx + cyy, cxx * cyy - cxy ** 2
         disc = np.sqrt(np.maximum(tr * tr / 4 - det, 0))
@@ -116,8 +126,10 @@ class Inspector:
         major, minor = 4 * np.sqrt(l1), 4 * np.sqrt(l2)
         # dark spots (insect holes, mould) inside blobs: one extra components pass on the whole strip
         spot_mask = np.zeros(H * W, np.uint8)
-        spot_mask[idx[gray < SPOT_T]] = 1
-        ns, slab, sstats, scents = cv2.connectedComponentsWithStats(spot_mask.reshape(H, W), connectivity=8)
+        spot_mask[idx] = gray < SPOT_T
+        spot_mask = spot_mask.reshape(H, W)
+        ns, slab, sstats, scents = cv2.connectedComponentsWithStatsWithAlgorithm(
+            spot_mask, 8, cv2.CV_32S, cv2.CCL_DEFAULT)
         n_spots = np.zeros(n); spot_area = np.zeros(n)
         if ns > 1:
             sc = np.clip(np.round(scents[1:]).astype(int), 0, [W - 1, H - 1])
@@ -141,7 +153,25 @@ class Inspector:
         partial = (top <= 0) | (bottom >= H) | (st[:, cv2.CC_STAT_LEFT] <= 0) | (st[:, cv2.CC_STAT_LEFT] + w_px >= W)
         u, v = cents[k, 0], cents[k, 1]
         x, y = self.pixel_to_world(u, v)
-        return Blobs(t, len(k), x, y, u, v, st[:, :4], partial, X)
+        return Blobs(t, len(k), x, y, u, v, st[:, :4], partial, X,
+                     component_ids=keep.copy())
+
+    def component_members(self, blobs):
+        """Map rendered bean centres to components after controller timing is complete."""
+        bodies, pos, _ = self.sim.active_state(rendered=True)
+        members = [[] for _ in blobs.component_ids]
+        if len(bodies) == 0:
+            return [np.zeros(0, int) for _ in blobs.component_ids]
+        u, v = self.world_to_pixel(pos[:, 0], pos[:, 1])
+        ui, vi = np.rint(u).astype(int), np.rint(v).astype(int)
+        labels = self._last_labels
+        inside = (ui >= 0) & (ui < labels.shape[1]) & (vi >= 0) & (vi < labels.shape[0])
+        output_index = {int(component): i for i, component in enumerate(blobs.component_ids)}
+        for body, col, row in zip(bodies[inside], ui[inside], vi[inside]):
+            i = output_index.get(int(labels[row, col]))
+            if i is not None:
+                members[i].append(self.sim.bean_of[body].uid)
+        return [np.asarray(x, dtype=int) for x in members]
 
     def close(self): self.r.close()
 

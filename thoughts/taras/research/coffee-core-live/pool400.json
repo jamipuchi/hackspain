@@ -1,0 +1,240 @@
+{
+  "versions": {
+    "preset": "44ce78c89d45112f29a9561bb517990e398602d83323147d1a5a013fec5ba538",
+    "model": "4798a2b39cee572da0baa982739e8f891a71e869a6eaf3e6c72d8eefe9946b85",
+    "policy": "e1f84378ba7e7c79aaecf8aec0eaa9b725e086b6ec1106a9e3e2ca05810bed04",
+    "source_revision": "05fab1d2540b5f88ffacf266f559e8ba32d3c0a4",
+    "source_sha256": {
+      "engine.py": "35d906e8b4dd0b503d9f5ed27c706b92a7cc85d071c712b445c9576255a330b8",
+      "controller.py": "f7c2f975dca2358986054c6d3d389aa286444d73cb2571e45c854b40c0172575",
+      "sim.py": "25c01335c9d037d96a27e4a2d19c612a22919b052d2eee004a63fa6c8cb21d1b",
+      "vision.py": "b539b9a9d2fe04c81058526b2990aee89b1f88629578d8bc50ee41d17059c1c4",
+      "classifier.py": "d6257f348db6a82aa152f57de1ee0976228685f226000dfc62f3e82bf933325d",
+      "profiles.py": "e47a848e1331d902bb1bd1eb7d29306529339100edfb8175f9918e1ab09d6948",
+      "scene.py": "5fff8ea2b049fcf58556599c05e5d4585dd445dc4aa6615d9e1021b813982a27"
+    }
+  },
+  "preset": {
+    "name": "provisional-live-v1",
+    "version": 1,
+    "provisional": true,
+    "profile": "green_arabica",
+    "seed": 8,
+    "requested_rate": 500.0,
+    "camera_every_steps": 2,
+    "jet_force_n": 0.06,
+    "model_path": "models/live_green_arabica.joblib",
+    "layout": {
+      "belt_len": 1.1,
+      "belt_w": 0.5,
+      "belt_z": 0.6,
+      "belt_speed": 3.0,
+      "feed_x": [
+        -1.05,
+        -0.95
+      ],
+      "feed_vx": 2.6,
+      "feed_drop": 0.006,
+      "cam_x": -0.12,
+      "cam_fov": 0.048,
+      "cam_w": 2080,
+      "cam_h": 192,
+      "ej_x": 0.1,
+      "n_nozzles": 64,
+      "ej_z_offset": 0.045,
+      "split_x": 0.34,
+      "split_z_drop": 0.125,
+      "n_ellipsoid": 400,
+      "n_half": 48,
+      "n_box": 20,
+      "n_capsule": 20,
+      "timestep": 0.002
+    },
+    "policy": {
+      "name": "specialty",
+      "reject_severities": [
+        "minor",
+        "major",
+        "foreign"
+      ],
+      "threshold": 0.5,
+      "anomaly": true,
+      "base_pulse_s": 0.003,
+      "ref_mass_kg": 0.0002,
+      "max_pulse_s": 0.012,
+      "lead_s": 0.0015,
+      "latency_floor_s": 0.004,
+      "induced_delay_s": 0.0,
+      "fixed_latency_s": null,
+      "target_nozzles": null
+    },
+    "limits": {
+      "max_sim_seconds": 10.0,
+      "max_wall_seconds": 300.0,
+      "max_events": 2000,
+      "max_recent_resolved_objects": 200
+    }
+  },
+  "runtime": {
+    "simulation_seconds": 2.0000000000000013,
+    "active_wall_seconds": 9.335514958016574,
+    "engine_rate": 0.2142356376690892,
+    "requested_rate": 500.0,
+    "admitted_rate": 499.99999999999966,
+    "objects_spawned": 1000,
+    "peak_active_bodies": 266,
+    "pool_starved": 0,
+    "platform": "macOS-26.6-arm64-arm-64bit-Mach-O",
+    "python": "3.13.12",
+    "packages": {
+      "mujoco": "3.13.0",
+      "numpy": "2.5.3",
+      "opencv-python-headless": "5.0.0.93",
+      "scikit-learn": "1.9.1",
+      "joblib": "1.6.0",
+      "aiohttp": "3.14.3"
+    },
+    "native_thread_limits": {
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "VECLIB_MAXIMUM_THREADS": "1"
+    }
+  },
+  "quality": {
+    "cohort_start_s": 0.8,
+    "cohort_end_s": 1.4000000000000012,
+    "eligible_objects": 301,
+    "required_defects": 40,
+    "keep_objects": 261,
+    "captured_required_defects": 31,
+    "capture": 0.775,
+    "capture_interval_95": [
+      0.6249660359590695,
+      0.8768404674532148
+    ],
+    "good_objects_lost": 13,
+    "good_loss": 0.04980842911877394,
+    "good_loss_interval_95": [
+      0.029335952401165113,
+      0.08334121009898592
+    ],
+    "unresolved_objects": 0,
+    "unresolved_rate": 0.0,
+    "spills_in_denominators": true,
+    "unresolved_in_denominators": true
+  },
+  "loss_partition": {
+    "unresolved": 0,
+    "not_detected": 1,
+    "merged_without_target": 0,
+    "classification_or_tracking": 2,
+    "targeted_not_hit": 3,
+    "hit_not_captured": 3
+  },
+  "diagnostics": {
+    "categories_are_partition_labels_not_proven_causes": true,
+    "captures_without_own_pulse_hit": 1,
+    "associated_decisions": 833,
+    "unassociated_decisions": 2,
+    "last_component_associations": 4,
+    "events_retained": 2000,
+    "event_counts": {
+      "decision": 595,
+      "spawned": 607,
+      "outcome": 606,
+      "valve_activated": 92,
+      "collateral_jet_hit": 7,
+      "own_pulse_hit": 93
+    }
+  },
+  "timings": {
+    "startup_seconds": 0.46596512477844954,
+    "active_wall_seconds": 9.335514958016574,
+    "physics": {
+      "count": 1000,
+      "total_ms": 1114.303678041324,
+      "per_sim_second_ms": 557.1518390206617,
+      "p50_ms": 1.1505834991112351,
+      "p95_ms": 1.374448195565492,
+      "p99_ms": 1.483448965009302,
+      "max_ms": 1.7996251117438078
+    },
+    "inspection_render": {
+      "count": 500,
+      "total_ms": 1451.225244672969,
+      "per_sim_second_ms": 725.612622336484,
+      "p50_ms": 2.7685415698215365,
+      "p95_ms": 3.8698472781106816,
+      "p99_ms": 4.129618788138031,
+      "max_ms": 10.057083098217845
+    },
+    "detection": {
+      "count": 500,
+      "total_ms": 1677.0402889233083,
+      "per_sim_second_ms": 838.5201444616536,
+      "p50_ms": 3.389395889826119,
+      "p95_ms": 3.9245418505743146,
+      "p99_ms": 4.409707223530859,
+      "max_ms": 5.41470805183053
+    },
+    "model_inference": {
+      "count": 500,
+      "total_ms": 4067.2658514231443,
+      "per_sim_second_ms": 2033.6329257115708,
+      "p50_ms": 9.407542063854635,
+      "p95_ms": 9.997136949095875,
+      "p99_ms": 10.493571136612445,
+      "max_ms": 12.990583898499608
+    },
+    "control": {
+      "count": 500,
+      "total_ms": 83.2673239056021,
+      "per_sim_second_ms": 41.63366195280102,
+      "p50_ms": 0.17812452279031277,
+      "p95_ms": 0.3103711525909602,
+      "p99_ms": 0.3997226292267442,
+      "max_ms": 0.47320802696049213
+    },
+    "control_path": {
+      "count": 500,
+      "total_ms": 5827.573464252055,
+      "per_sim_second_ms": 2913.7867321260255,
+      "p50_ms": 13.002249877899885,
+      "p95_ms": 14.137575379572809,
+      "p99_ms": 14.641506003681569,
+      "max_ms": 16.97575021535158
+    },
+    "evaluation": {
+      "count": 1000,
+      "total_ms": 898.1947361025959,
+      "per_sim_second_ms": 449.0973680512977,
+      "p50_ms": 0.987979001365602,
+      "p95_ms": 1.2078988715074956,
+      "p99_ms": 1.3184391055256128,
+      "max_ms": 1.8458759877830744
+    },
+    "snapshot": {
+      "count": 94,
+      "total_ms": 33.46599475480616,
+      "per_sim_second_ms": 16.73299737740307,
+      "p50_ms": 0.3693539183586836,
+      "p95_ms": 0.6127871689386665,
+      "p99_ms": 0.7817554334178549,
+      "max_ms": 1.0303750168532133
+    },
+    "camera_frame": {
+      "count": 500,
+      "total_ms": 7326.201485004276,
+      "per_sim_second_ms": 3663.1007425021357,
+      "p50_ms": 15.937312506139278,
+      "p95_ms": 17.4688852741383,
+      "p99_ms": 18.390936804935336,
+      "max_ms": 20.289500011131167
+    },
+    "camera_interval_ms": 4.0,
+    "control_path_overruns": 428,
+    "camera_overruns": 500
+  },
+  "evidence_note": "Matched two-second development screen. Final source later added reporting and transport instrumentation."
+}

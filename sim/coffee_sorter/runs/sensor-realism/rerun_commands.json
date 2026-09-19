@@ -1,0 +1,15 @@
+{
+  "base-1000": "/workspace/personal/venvs/coffee-sorter/bin/python -u run_sensor_realism.py run --scenario base-1000 --rerun",
+  "brightness-minus30-1000": "/workspace/personal/venvs/coffee-sorter/bin/python -u run_sensor_realism.py run --scenario brightness-minus30-1000 --rerun",
+  "brightness-plus30-1000": "/workspace/personal/venvs/coffee-sorter/bin/python -u run_sensor_realism.py run --scenario brightness-plus30-1000 --rerun",
+  "gradient-30-1000": "/workspace/personal/venvs/coffee-sorter/bin/python -u run_sensor_realism.py run --scenario gradient-30-1000 --rerun",
+  "exposure-nominal-100us-1000": "/workspace/personal/venvs/coffee-sorter/bin/python -u run_sensor_realism.py run --scenario exposure-nominal-100us-1000 --rerun",
+  "exposure-stress-500us-1000": "/workspace/personal/venvs/coffee-sorter/bin/python -u run_sensor_realism.py run --scenario exposure-stress-500us-1000 --rerun",
+  "noise-nominal-1000": "/workspace/personal/venvs/coffee-sorter/bin/python -u run_sensor_realism.py run --scenario noise-nominal-1000 --rerun",
+  "noise-stress-1000": "/workspace/personal/venvs/coffee-sorter/bin/python -u run_sensor_realism.py run --scenario noise-stress-1000 --rerun",
+  "belt-jitter-5pct-1000": "/workspace/personal/venvs/coffee-sorter/bin/python -u run_sensor_realism.py run --scenario belt-jitter-5pct-1000 --rerun",
+  "high-feed-reference-3000": "/workspace/personal/venvs/coffee-sorter/bin/python -u run_sensor_realism.py run --scenario high-feed-reference-3000 --rerun",
+  "touching-3000": "/workspace/personal/venvs/coffee-sorter/bin/python -u run_sensor_realism.py run --scenario touching-3000 --rerun",
+  "combined-assumed-worst-3000": "/workspace/personal/venvs/coffee-sorter/bin/python -u run_sensor_realism.py run --scenario combined-assumed-worst-3000 --rerun",
+  "full_suite": "/workspace/personal/venvs/coffee-sorter/bin/python -u run_sensor_realism.py all"
+}

@@ -1,0 +1,8 @@
+{
+  "case": "earring",
+  "model": "qwen/qwen3.8-max-0902",
+  "returncode": 0,
+  "wall_seconds": 185.8643132080324,
+  "stdout": "{\"case\": \"earring\", \"model\": \"qwen/qwen3.8-max-0902\", \"latency_s\": 185.76247587497346, \"usage\": {\"prompt_tokens\": 510, \"completion_tokens\": 9285, \"total_tokens\": 9795, \"cost\": 0.05673, \"is_byok\": false, \"prompt_tokens_details\": {\"cached_tokens\": 0, \"cache_write_tokens\": 0, \"audio_tokens\": 0, \"video_tokens\": 0}, \"cost_details\": {\"upstream_inference_cost\": 0.05673, \"upstream_inference_prompt_cost\": 0.00102, \"upstream_inference_completions_cost\": 0.05571}, \"completion_tokens_details\": {\"reasoning_tokens\": 8516, \"image_tokens\": 0, \"audio_tokens\": 0}}, \"parts\": 5, \"cached\": false}\n",
+  "stderr": ""
+}

@@ -1,0 +1,26 @@
+  t= 0.40s  wall=  4.4s  active=402  queued=14  decisions=103
+  t= 0.80s  wall= 11.3s  active=509  queued=80  decisions=510
+  t= 1.20s  wall= 18.1s  active=504  queued=141  decisions=901
+  t= 1.60s  wall= 25.2s  active=516  queued=197  decisions=1296
+  t= 2.00s  wall= 32.0s  active=524  queued=254  decisions=1688
+  t= 2.40s  wall= 38.9s  active=521  queued=302  decisions=2087
+  t= 2.80s  wall= 46.1s  active=529  queued=363  decisions=2478
+  t= 3.20s  wall= 52.9s  active=540  queued=425  decisions=2895
+  t= 3.60s  wall= 59.7s  active=541  queued=491  decisions=3301
+
+== green_arabica @ 1000 beans/s, policy specialty ==
+throughput 1000 beans/s  (753 kg/h)   evaluated 2600   wall 16.7 s per sim s
+defect removal 45.4%   good yield loss 5.58%   accept stream 70.3 defects/1000 (incoming 139/1000)   spilled 1.85%
+decisions 3703  valves 544  late 0  obs/track 2.48  latency p50 60.0 ms p99 60.0 ms (budget 73 ms)  starved 0
+class         n  rejected  targeted  jet hit  hit/rej  spilled
+good       2239       125        71       89       80       10   keep none
+faded        73        36        64       38       34        1   DEFECT minor
+black        61        41        60       41       41        0   DEFECT major
+sour         59        39        55       39       37        0   DEFECT major
+insect       41        18        36       18       17        2   DEFECT major
+broken       59        20        39       16       16        3   DEFECT major
+shell        22         2        10        4        0       13   DEFECT major
+husk         21         2         8        2        0       10   DEFECT foreign
+stone        15         1         5        0        0        9   DEFECT foreign
+stick        10         5         9        5        5        0   DEFECT foreign
+wrote /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/tuning-sweep/target-nozzles-1

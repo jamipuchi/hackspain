@@ -1,0 +1,105 @@
+{
+  "recipe_name": "NOVA Company Logo Badge",
+  "engine": "CYCLES",
+  "samples": 24,
+  "blender_version": "5.2.2 LTS",
+  "blender_build_hash": "d13f752e3b9c",
+  "seed": 20260919,
+  "recipe_sha256": "b3023a0185f44f5b76dbf07b13d484118e07ec932bdc8031e79ad4d1f26ecd92",
+  "renderer_sha256": "42924fc046d5fd500c55e4517089bc138ca9c880f12cb18d8389a4290320499b",
+  "scene_threads": {
+    "mode": "FIXED",
+    "threads": 1
+  },
+  "mesh_counts": {
+    "objects": 4,
+    "vertices": 960,
+    "polygons": 698
+  },
+  "bounding_dimensions_mm": [
+    26.0,
+    26.0,
+    1.5
+  ],
+  "part_bounds_mm": [
+    {
+      "name": "Base Disk",
+      "minimum_mm": [
+        -13.0,
+        -13.0,
+        0.0
+      ],
+      "maximum_mm": [
+        13.0,
+        13.0,
+        1.0
+      ],
+      "dimensions_mm": [
+        26.0,
+        26.0,
+        1.0
+      ]
+    },
+    {
+      "name": "Geometric N",
+      "minimum_mm": [
+        -6.0,
+        -7.468693256378174,
+        0.5
+      ],
+      "maximum_mm": [
+        6.0,
+        7.46869421005249,
+        1.5
+      ],
+      "dimensions_mm": [
+        12.0,
+        14.937387466430664,
+        1.0
+      ]
+    },
+    {
+      "name": "NOVA Text",
+      "minimum_mm": [
+        -5.0,
+        -9.5,
+        0.5
+      ],
+      "maximum_mm": [
+        5.0,
+        -6.5,
+        1.5
+      ],
+      "dimensions_mm": [
+        10.0,
+        3.0,
+        1.0
+      ]
+    },
+    {
+      "name": "Gold Star",
+      "minimum_mm": [
+        -1.9710434675216675,
+        2.2276573181152344,
+        0.5
+      ],
+      "maximum_mm": [
+        1.9710434675216675,
+        5.963603973388672,
+        1.5
+      ],
+      "dimensions_mm": [
+        3.942086935043335,
+        3.7359466552734375,
+        1.0
+      ]
+    }
+  ],
+  "glb_units": "meters",
+  "glb_scale_from_recipe_mm": 0.001,
+  "render_timings_seconds": {
+    "perspective": 18.318442666204646,
+    "top": 20.560140416957438,
+    "total": 38.878583083162084
+  }
+}

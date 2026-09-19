@@ -1,0 +1,30 @@
+{
+  "purpose": "bounded restart lifecycle, not sorting or performance acceptance",
+  "sim_limit_s": 0.7,
+  "initial_session": "576cbd27-e572-4017-92bc-690b95a28302",
+  "initial_completed": true,
+  "injection_ack": {
+    "type": "ack",
+    "command_id": "3c2f6493-7ca0-45f5-ad1c-327c69f4288f",
+    "session_id": "576cbd27-e572-4017-92bc-690b95a28302",
+    "ok": true,
+    "object_id": 0,
+    "sim_time_s": 0.0
+  },
+  "restart_session": "5b149900-4995-4fa3-b68e-f57230e48cf0",
+  "restart_statuses": [
+    200,
+    409
+  ],
+  "both_clients_same_new_session": true,
+  "stale_status": 409,
+  "invalid_status": 400,
+  "origin_statuses": [
+    403,
+    403
+  ],
+  "prior_report_preserved": true,
+  "prior_report_sha256": "828256015dcc2d5272b0bb23d043dd46a403d7c6b5d55ea1f40696479c3f9b48",
+  "new_evidence_directory": "/private/tmp/coffee-ui-restart-bounded-final-restart-001-f36da84a",
+  "source_revision": "6b51c36ed18018d46e9b683e0525ccb8bf143961"
+}

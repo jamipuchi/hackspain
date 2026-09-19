@@ -1,0 +1,25 @@
+{
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "destination": {
+        "type": "choice",
+        "choice": "bin_A",
+        "confidence": 1.0,
+        "probabilities": {
+          "bin_A": 1.0,
+          "bin_B": 0.0,
+          "defer": 0.0,
+          "bin_C": 0.0
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 2141,
+      "output_tokens": 50
+    }
+  },
+  "latency_s": 0.7295758749824017,
+  "request_sha256": "dc4acb907f963b3b61db1c9ebd0ca53fe54a194e015b8db11510fb4bb17af89f",
+  "endpoint": "https://api.typesafe.ai/v1/systemone"
+}

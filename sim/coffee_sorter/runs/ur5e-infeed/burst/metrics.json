@@ -1,0 +1,216 @@
+{
+  "claim_boundary": "Kinematic ideal-grasp simulation with collision-disabled fixtures and ideal bin placement; no contact grasp, actuator dynamics, dynamic bin capture, or hardware validation.",
+  "config": {
+    "belt_speed_m_s": 0.28,
+    "camera_period_s": 0.08,
+    "configured_workspace_x_m": [
+      0.35,
+      0.75
+    ],
+    "dt_s": 0.02,
+    "duration_s": 11.0,
+    "grasp_tolerance_m": 0.018,
+    "items": [
+      {
+        "arrival_s": 0.0,
+        "is_large_debris": true,
+        "item_id": "a-large-1",
+        "kind": "debris",
+        "lane_x_m": 0.48,
+        "size_m": 0.056
+      },
+      {
+        "arrival_s": 0.1,
+        "is_large_debris": false,
+        "item_id": "a-bean",
+        "kind": "bean",
+        "lane_x_m": 0.56,
+        "size_m": 0.018
+      },
+      {
+        "arrival_s": 0.45,
+        "is_large_debris": true,
+        "item_id": "a-large-2",
+        "kind": "debris",
+        "lane_x_m": 0.58,
+        "size_m": 0.058
+      },
+      {
+        "arrival_s": 0.9,
+        "is_large_debris": true,
+        "item_id": "a-large-3",
+        "kind": "debris",
+        "lane_x_m": 0.43,
+        "size_m": 0.052
+      },
+      {
+        "arrival_s": 1.35,
+        "is_large_debris": true,
+        "item_id": "a-large-4",
+        "kind": "debris",
+        "lane_x_m": 0.64,
+        "size_m": 0.055
+      },
+      {
+        "arrival_s": 1.8,
+        "is_large_debris": false,
+        "item_id": "a-small",
+        "kind": "debris",
+        "lane_x_m": 0.52,
+        "size_m": 0.03
+      }
+    ],
+    "joint_position_limits_rad": {
+      "elbow_joint": [
+        -3.1415,
+        3.1415
+      ],
+      "shoulder_lift_joint": [
+        -6.28319,
+        6.28319
+      ],
+      "shoulder_pan_joint": [
+        -6.28319,
+        6.28319
+      ],
+      "wrist_1_joint": [
+        -6.28319,
+        6.28319
+      ],
+      "wrist_2_joint": [
+        -6.28319,
+        6.28319
+      ],
+      "wrist_3_joint": [
+        -6.28319,
+        6.28319
+      ]
+    },
+    "joint_velocity_limits_rad_s": {
+      "elbow_joint": 3.142,
+      "shoulder_lift_joint": 2.094,
+      "shoulder_pan_joint": 2.094,
+      "wrist_1_joint": 3.142,
+      "wrist_2_joint": 3.142,
+      "wrist_3_joint": 3.142
+    },
+    "oversize_threshold_m": 0.045,
+    "pick_timeout_s": 3.2,
+    "reach_tolerance_m": 0.012,
+    "scenario": "burst"
+  },
+  "config_sha256": "96d987631b0c9f384793c7f3ed4fa08787711461cb59dc5518d72cb5c9a82646",
+  "denominators": {
+    "camera_selected": 4,
+    "feed_items": 6,
+    "large_debris": 4,
+    "nonlarge_items": 2
+  },
+  "large_debris_success_rate": 0.75,
+  "method": "fixed-cadence camera selection + mink kinematics + ideal tolerance-gated attachment and placement",
+  "nonlarge_selected": 0,
+  "nonlarge_selected_ids": [],
+  "nonlarge_terminal_outcomes": {},
+  "observed_peak_joint_velocity_rad_s": {
+    "elbow_joint": 3.142000000000051,
+    "shoulder_lift_joint": 2.094000000000064,
+    "shoulder_pan_joint": 2.0940000000000407,
+    "wrist_1_joint": 3.142000000000026,
+    "wrist_2_joint": 3.142000000000019,
+    "wrist_3_joint": 3.1420000000000314
+  },
+  "outcomes": {
+    "missed": 1,
+    "outside_workspace": 0,
+    "success": 3,
+    "timed_out": 0
+  },
+  "per_item_outcome": {
+    "a-bean": "not_target",
+    "a-large-1": "success",
+    "a-large-2": "success",
+    "a-large-3": "success",
+    "a-large-4": "missed",
+    "a-small": "not_target"
+  },
+  "queue_wait_s": {
+    "by_item": {
+      "a-large-1": 0.0,
+      "a-large-2": 1.5,
+      "a-large-3": 2.68,
+      "a-large-4": 3.38
+    },
+    "max": 3.3799999999999986,
+    "samples": [
+      0.0,
+      1.5,
+      2.68,
+      3.38
+    ]
+  },
+  "scenario": "burst",
+  "seed": 0,
+  "source": {
+    "files_sha256": {
+      "render.py": "33a2b3047c7143b78861cfcb64d8538fedeb636f66258b356de7a63da8e65ac6",
+      "run_ur5e_infeed.py": "e1712e5f5d157ae11535d9b2264b0878433704904b287794681c8efff9c1b989",
+      "ur5e_infeed.py": "8793e5d3efce83fb76c9a090ff3b5ef4af9a71893f0bc9aaa1b0fbba5b2b9228"
+    },
+    "menagerie_license": "BSD-3-Clause",
+    "menagerie_revision": "8161bba264d7fa7c99ca301e91e7fb44737676ad",
+    "mesa_fallback_recipe": {
+      "packages": [
+        "libosmesa6",
+        "libllvm17t64",
+        "libdrm2",
+        "libelf1t64",
+        "libzstd1",
+        "libsensors5",
+        "libedit2",
+        "libffi8",
+        "libpciaccess0",
+        "libglapi-mesa"
+      ],
+      "pinned": false
+    },
+    "mink": "1.3.0",
+    "model": {
+      "files_sha256": {
+        "CHANGELOG.md": "ef67f701df8698fb2e1a77a5de5d9a39aa22e7b4b101f68fc311d34e3ace87ed",
+        "LICENSE": "5ec71ccf66c8d03261448f2441a586765b97f2248c860a1ae19689fb1c45cee6",
+        "README.md": "435600d4f00cfdbd7edec4b60f0cd7fbb539f39abaefcd8bb3994beed3b1156a",
+        "assets/base_0.obj": "9a3b21f1524baef6af8a52d7af90b6e94b79f7e3c2b04a0f6581f74d22291b0b",
+        "assets/base_1.obj": "cf7d54691a2c1eeda280955ebd6bd83c2dbecfc46fb53c10198f05d107511b50",
+        "assets/forearm_0.obj": "64c049a55149c2ab355594d52302b53d3e34da3677ceaa1917c427cde7743146",
+        "assets/forearm_1.obj": "a96fe203015cf532b193f414cd01268c7c36795e51a837dd33afd122334f81f2",
+        "assets/forearm_2.obj": "05b436505fc595aeab26675590c2b56b88a65b2d52d6352096fed9f07cb4c4ca",
+        "assets/forearm_3.obj": "fa31af19cfad7a765b62e8a2d5931cb014b88de84195a7850b4e5ee902112e9a",
+        "assets/shoulder_0.obj": "477387a7e7312782a6040484a3c2c2fcee33f40109f419076e31b6f6e1692c68",
+        "assets/shoulder_1.obj": "8537bba02804640ddf6e260f79fe66e895b3229ed3d44298a95e8e027eb5d435",
+        "assets/shoulder_2.obj": "291714518416bb8f0bafbf123867db011ecbf5146a05245ca5893ee8c57d4e21",
+        "assets/upperarm_0.obj": "14143d4f1175a7dbacc8e2f2f98f1cac5a2b2e238cd46cd03654d31f2610eb53",
+        "assets/upperarm_1.obj": "272899e927f4a32b7c25e34560ec70654c0346cc8ed1c616c0555f3f53b32d14",
+        "assets/upperarm_2.obj": "86c05350d60eb0e7e28a81b544267478b7db997baba41cef19088ebbeffecfa1",
+        "assets/upperarm_3.obj": "b257dab441e6fab64ea03b4b87029d8a96554ad1a513cce944d56acba0ad948a",
+        "assets/wrist1_0.obj": "7ef0c59b5c5d56a9902435c9a058b27d2a38c85fe2bae02d00a9284dd1f4d519",
+        "assets/wrist1_1.obj": "ee6d5c562e6becef94109b0543329080d285d1aef521a01ed98e18a5bf1e8684",
+        "assets/wrist1_2.obj": "88c66dc64f15391287147d50add37729a3f41dadd80b1f859cf2cb6d45daf32a",
+        "assets/wrist2_0.obj": "2ac2e2e39d8f7005bc3b3ab26cd61634be2e14930074615da5318b9ee7c569a8",
+        "assets/wrist2_1.obj": "a721d06dc61d3b3a8ec58c035c9e3358ed30d6991a72e077d8abf3c3c203b633",
+        "assets/wrist2_2.obj": "6df4335c8bd5e881fda2c224f770115ffe9ddd0cd321ebe3c0a4a310796f0987",
+        "assets/wrist3.obj": "0e51748f9c93bd66604360a5cf7e2e8a6e754550be64076333ff4fc19ec90c61",
+        "scene.xml": "e877852d40095926ff7db9cfb85e595b550e03da398bd6f6f58885d39038d1b6",
+        "ur5e.png": "90310086f1187fcda94252ff68f8c4f8be97f65bec8f4eea449179b0979da795",
+        "ur5e.xml": "ffd0a7b336d3c2d27c35a15cc0d4aaa95196769aca190ac8d6522d3318c345a0"
+      },
+      "model_directory": "universal_robots_ur5e",
+      "repository_revision": "8161bba264d7fa7c99ca301e91e7fb44737676ad",
+      "tree_sha256": "1c52f88324a88562ba7aaefeb7c54fc9da1c5eda1a3eea07e983e2503e2e648e"
+    },
+    "mujoco": "3.13.0",
+    "numpy": "2.5.3",
+    "opencv": "5.0.0",
+    "python": "3.12.3",
+    "runtime_os": "Linux-6.8.0-139-generic-x86_64-with-glibc2.39"
+  }
+}

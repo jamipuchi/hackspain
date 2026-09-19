@@ -1,0 +1,18 @@
+{
+  "session_before": "5b149900-4995-4fa3-b68e-f57230e48cf0",
+  "session_after": "5b7e2833-3e1e-41c1-a44c-438a029c76bd",
+  "status": "ready",
+  "old_worker_pid": 61502,
+  "old_worker_exited": true,
+  "restart_supported": true,
+  "inject_enabled": true,
+  "restart_enabled": true,
+  "visible_error": "",
+  "source_revision": "6b51c36ed18018d46e9b683e0525ccb8bf143961",
+  "note": "Verified the uncommitted restart increment on this source revision. Exact file hashes follow.",
+  "file_sha256": {
+    "sim/coffee_sorter/live.py": "29466e357aa8a1ed850d35c583b506b4365c5f0e344d7aac55d952c119645496",
+    "sim/coffee_sorter/live_web/live.js": "7a4de920675e1dd9efe0d72ad33e0145fe075d946e8c25aa70fe2fd26b9f7433",
+    "sim/coffee_sorter/live_web/index.html": "3abe1bbf38b09e5b8c7b078be8c205f55c3debccf5957e28437834586306a016"
+  }
+}

@@ -167,6 +167,7 @@ TARAS_V1 = BuildConfig(
         kinds=["screw", "nut", "washer", "other"],
         materials=["zinc_steel", "black_steel", "stainless", "aluminum", "brass", "copper", "unknown"],
         targets_help="screws / nuts / washers: the three clear cups; unknown: the small tray.",
+        max_failed_pick_attempts=1,
     ),
     pieces="screws_nuts_washers",
     home_servo=(150, 125, 75),  # parked up and to the +y side: clear of the pad, the cups and the camera view
@@ -209,6 +210,7 @@ THEKER_V1 = _derive(
         kinds=["screw", "nut", "washer", "other"],
         materials=["zinc_steel", "black_steel", "stainless", "aluminum", "brass", "copper", "unknown"],
         targets_help="screws / nuts / washers: the three shallow lids; unknown: the small tray.",
+        max_failed_pick_attempts=1,
     ),
     pieces="m3_m4",
     home_servo=(150, 125, 75),
@@ -239,6 +241,7 @@ TARAS_CONVEYOR = _derive(
         kinds=["screw", "nut", "washer", "other"],
         materials=["zinc_steel", "black_steel", "stainless", "aluminum", "brass", "copper", "unknown"],
         targets_help="screws / nuts / washers: the three clear cups; unknown: the small tray.",
+        max_failed_pick_attempts=1,
     ),
 )
 
@@ -258,6 +261,7 @@ TARAS_KITTING = _derive(
         kinds=["screw", "nut", "washer", "other"],
         materials=["zinc_steel", "black_steel", "stainless", "aluminum", "brass", "copper", "unknown"],
         targets_help="kit_A / kit_B / kit_C: the three shallow lids; unknown: the small tray.",
+        max_failed_pick_attempts=1,
     ),
     pieces="kitting_set",
 )

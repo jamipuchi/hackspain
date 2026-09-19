@@ -1,0 +1,11 @@
+physics video: 8s at 100 beans/s
+  t= 0.80s decisions=56 active=49
+  t= 1.60s decisions=136 active=52
+  t= 2.40s decisions=219 active=54
+  t= 3.20s decisions=297 active=56
+  t= 4.00s decisions=381 active=58
+  t= 4.80s decisions=458 active=57
+  t= 5.60s decisions=538 active=61
+  t= 6.40s decisions=624 active=61
+  t= 7.20s decisions=715 active=62
+wrote /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/generalization/physical-thresholds/low

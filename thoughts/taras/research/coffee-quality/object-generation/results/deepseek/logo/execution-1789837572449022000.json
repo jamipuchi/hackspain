@@ -1,0 +1,8 @@
+{
+  "case": "logo",
+  "model": "deepseek/deepseek-v4.1-flash",
+  "returncode": 1,
+  "wall_seconds": 0.20000075013376772,
+  "stdout": "",
+  "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/probe.py\", line 259, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/probe.py\", line 219, in main\n    raise ValueError(f\"{case}: response did not finish\")\nValueError: logo: response did not finish\n"
+}

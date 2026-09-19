@@ -1,0 +1,26 @@
+  t= 0.80s  wall= 25.1s  active=1009  fired=216  decisions=1005
+  t= 1.60s  wall= 55.4s  active=1034  fired=593  decisions=2590
+  t= 2.40s  wall= 86.0s  active=1040  fired=907  decisions=4154
+  t= 3.20s  wall=116.4s  active=1068  fired=1241  decisions=5733
+  t= 4.00s  wall=147.1s  active=1084  fired=1572  decisions=7346
+  t= 4.80s  wall=178.0s  active=1121  fired=1903  decisions=8926
+  t= 5.60s  wall=207.4s  active=1149  fired=2235  decisions=10513
+  t= 6.40s  wall=236.3s  active=1176  fired=2552  decisions=12145
+  t= 7.20s  wall=265.1s  active=1161  fired=2881  decisions=13780
+
+== green_arabica @ 2000 beans/s, policy specialty ==
+throughput 1983 beans/s  (1494 kg/h)   evaluated 13148   wall 36.7 s per sim s
+defect removal 38.9%   good yield loss 7.95%   accept stream 79.7 defects/1000 (incoming 146/1000)   spilled 4.72%
+decisions 15387  valves 3149  late 0  obs/track 2.27  latency p50 40.0 ms p99 46.4 ms (budget 73 ms)  starved 122
+class         n  rejected  targeted  jet hit  hit/rej  spilled
+good      11233       893       409      637      503      318   keep none
+faded       389       154       294      148      137       15   DEFECT minor
+black       326       154       295      155      146       18   DEFECT major
+sour        295       155       266      151      137        7   DEFECT major
+insect      241       107       201      112      101       13   DEFECT major
+broken      265        88       139       87       64       67   DEFECT major
+shell       136        21        85       36        3       63   DEFECT major
+husk        138        28        61       19        0       62   DEFECT foreign
+stone        68         9        11        2        2       44   DEFECT foreign
+stick        57        28        36       25       21       13   DEFECT foreign
+wrote /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/baseline-2000-measured

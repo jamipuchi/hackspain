@@ -1,0 +1,59 @@
+{
+  "response": {
+    "id": "gen-1789837272-Y9amrw0oALk8hPm2kgSt",
+    "object": "chat.completion",
+    "created": 1789837272,
+    "model": "google/gemini-3.8-flash",
+    "provider": "Google",
+    "system_fingerprint": null,
+    "service_tier": "provisioned",
+    "choices": [
+      {
+        "index": 0,
+        "logprobs": null,
+        "finish_reason": "stop",
+        "native_finish_reason": "STOP",
+        "message": {
+          "role": "assistant",
+          "content": "{\n  \"name\": \"nova_company_logo_badge\",\n  \"design_notes\": \"A 26mm midnight-blue badge featuring a raised geometric N emblem, a gold five-pointed star accent, and crisp NOVA typography on its front face.\",\n  \"parts\": [\n    {\n      \"name\": \"base_disk\",\n      \"kind\": \"cylinder\",\n      \"position_mm\": [0.0, 0.0, 1.0],\n      \"rotation_deg\": [0.0, 0.0, 0.0],\n      \"size_mm\": [26.0, 26.0, 2.0],\n      \"color\": [0.02, 0.04, 0.12],\n      \"metallic\": 0.1,\n      \"roughness\": 0.35,\n      \"tube_mm\": 0.0,\n      \"outline\": [],\n      \"text\": \"\"\n    },\n    {\n      \"name\": \"outer_rim\",\n      \"kind\": \"ring\",\n      \"position_mm\": [0.0, 0.0, 2.0],\n      \"rotation_deg\": [0.0, 0.0, 0.0],\n      \"size_mm\": [25.4, 25.4, 0.8],\n      \"color\": [0.85, 0.7, 0.25],\n      \"metallic\": 0.9,\n      \"roughness\": 0.25,\n      \"tube_mm\": 0.4,\n      \"outline\": [],\n      \"text\": \"\"\n    },\n    {\n      \"name\": \"logo_n_left_stem\",\n      \"kind\": \"box\",\n      \"position_mm\": [-3.5, 2.8, 2.3],\n      \"rotation_deg\": [0.0, 0.0, 0.0],\n      \"size_mm\": [1.4, 7.5, 0.8],\n      \"color\": [0.95, 0.96, 0.98],\n      \"metallic\": 0.15,\n      \"roughness\": 0.2,\n      \"tube_mm\": 0.0,\n      \"outline\": [],\n      \"text\": \"\"\n    },\n    {\n      \"name\": \"logo_n_right_stem\",\n      \"kind\": \"box\",\n      \"position_mm\": [3.5, 2.8, 2.3],\n      \"rotation_deg\": [0.0, 0.0, 0.0],\n      \"size_mm\": [1.4, 7.5, 0.8],\n      \"color\": [0.95, 0.96, 0.98],\n      \"metallic\": 0.15,\n      \"roughness\": 0.2,\n      \"tube_mm\": 0.0,\n      \"outline\": [],\n      \"text\": \"\"\n    },\n    {\n      \"name\": \"logo_n_diagonal\",\n      \"kind\": \"box\",\n      \"position_mm\": [0.0, 2.8, 2.3],\n      \"rotation_deg\": [0.0, 0.0, -43.0],\n      \"size_mm\": [1.4, 9.8, 0.8],\n      \"color\": [0.95, 0.96, 0.98],\n      \"metallic\": 0.15,\n      \"roughness\": 0.2,\n      \"tube_mm\": 0.0,\n      \"outline\": [],\n      \"text\": \"\"\n    },\n    {\n      \"name\": \"gold_star_accent\",\n      \"kind\": \"polygon\",\n      \"position_mm\": [4.8, 6.8, 2.35],\n      \"rotation_deg\": [0.0, 0.0, 0.0],\n      \"size_mm\": [3.2, 3.2, 0.9],\n      \"color\": [0.95, 0.78, 0.22],\n      \"metallic\": 0.85,\n      \"roughness\": 0.22,\n      \"tube_mm\": 0.0,\n      \"outline\": [\n        [0.0, 0.5],\n        [0.118, 0.162],\n        [0.476, 0.155],\n        [0.19, -0.062],\n        [0.294, -0.405],\n        [0.0, -0.2],\n        [-0.294, -0.405],\n        [-0.19, -0.062],\n        [-0.476, 0.155],\n        [-0.118, 0.162]\n      ],\n      \"text\": \"\"\n    },\n    {\n      \"name\": \"nova_text\",\n      \"kind\": \"text\",\n      \"position_mm\": [0.0, -4.5, 2.3],\n      \"rotation_deg\": [0.0, 0.0, 0.0],\n      \"size_mm\": [12.0, 3.0, 0.8],\n      \"color\": [0.95, 0.96, 0.98],\n      \"metallic\": 0.15,\n      \"roughness\": 0.2,\n      \"tube_mm\": 0.0,\n      \"outline\": [],\n      \"text\": \"NOVA\"\n    }\n  ]\n}",
+          "refusal": null,
+          "reasoning": null,
+          "reasoning_details": [
+            {
+              "type": "reasoning.text",
+              "signature": "AY89a1/pp98Q+Jh0uBirp+HwM+hhiiPomjOP5lSDL29CFcFsvZMYyR6FpD3rRH41SQtxgBRz7iG2y7qQUCX8c190rW5PatxbEJL9ybmL",
+              "format": "google-gemini-v1",
+              "index": 0
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 990,
+      "completion_tokens": 1355,
+      "total_tokens": 2345,
+      "cost": 0.00582375,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.00582375,
+        "upstream_inference_prompt_cost": 0.0007425,
+        "upstream_inference_completions_cost": 0.00508125
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    }
+  },
+  "latency_s": 7.410158999962732,
+  "request_sha256": "5a7c51954264f018ea35e6b6ec91508af84fbfb6aecf2508a6a64b6220ca3366",
+  "endpoint": "https://openrouter.ai/api/v1/chat/completions"
+}

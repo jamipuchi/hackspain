@@ -1,0 +1,84 @@
+{
+  "name": "gold_star_token",
+  "design_notes": "A single continuous solid: a five-pointed star silhouette extruded 2 mm thick, laid flat in the XY plane. The outline uses ten vertices (five outer points, five inner valleys) in boundary order, scaled to 18 mm width. Metallic gold material with moderate roughness for a token-like finish.",
+  "parts": [
+    {
+      "name": "star_body",
+      "kind": "polygon",
+      "position_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        18.0,
+        18.0,
+        2.0
+      ],
+      "color": [
+        0.9,
+        0.72,
+        0.25
+      ],
+      "metallic": 0.9,
+      "roughness": 0.35,
+      "tube_mm": 0,
+      "outline": [
+        [
+          0.5,
+          0.0
+        ],
+        [
+          0.191,
+          0.139
+        ],
+        [
+          0.118,
+          0.363
+        ],
+        [
+          0.0,
+          0.2
+        ],
+        [
+          -0.118,
+          0.363
+        ],
+        [
+          -0.191,
+          0.139
+        ],
+        [
+          -0.5,
+          0.0
+        ],
+        [
+          -0.191,
+          -0.139
+        ],
+        [
+          -0.118,
+          -0.363
+        ],
+        [
+          0.0,
+          -0.2
+        ],
+        [
+          0.118,
+          -0.363
+        ],
+        [
+          0.191,
+          -0.139
+        ]
+      ],
+      "text": ""
+    }
+  ]
+}

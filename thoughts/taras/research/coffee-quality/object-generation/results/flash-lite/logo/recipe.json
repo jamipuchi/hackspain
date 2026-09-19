@@ -1,0 +1,188 @@
+{
+  "name": "NOVA Company Logo Badge",
+  "design_notes": "A midnight-blue disk with a raised white geometric N, raised white NOVA lettering, and a small gold five-point star accent. All raised elements are on the disk and read from the +Z side. The disk lies in the XY plane.",
+  "parts": [
+    {
+      "name": "Base Disk",
+      "kind": "cylinder",
+      "position_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        26.0,
+        26.0,
+        1.0
+      ],
+      "color": [
+        0.0,
+        0.0,
+        0.5
+      ],
+      "metallic": 0.1,
+      "roughness": 0.8,
+      "tube_mm": 0.0,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "Geometric N",
+      "kind": "polygon",
+      "position_mm": [
+        0.0,
+        0.0,
+        0.5
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        12.0,
+        15.0,
+        1.0
+      ],
+      "color": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "metallic": 0.2,
+      "roughness": 0.7,
+      "tube_mm": 0.0,
+      "outline": [
+        [
+          -0.5,
+          0.5
+        ],
+        [
+          -0.5,
+          -0.5
+        ],
+        [
+          0.0,
+          -0.25
+        ],
+        [
+          0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5
+        ],
+        [
+          0.0,
+          0.25
+        ]
+      ],
+      "text": ""
+    },
+    {
+      "name": "NOVA Text",
+      "kind": "text",
+      "position_mm": [
+        0.0,
+        -8.0,
+        0.5
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        10.0,
+        3.0,
+        1.0
+      ],
+      "color": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "metallic": 0.2,
+      "roughness": 0.7,
+      "tube_mm": 0.0,
+      "outline": [],
+      "text": "NOVA"
+    },
+    {
+      "name": "Gold Star",
+      "kind": "polygon",
+      "position_mm": [
+        0.0,
+        4.0,
+        0.5
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        4.0,
+        4.0,
+        1.0
+      ],
+      "color": [
+        1.0,
+        0.84,
+        0.0
+      ],
+      "metallic": 0.9,
+      "roughness": 0.3,
+      "tube_mm": 0.0,
+      "outline": [
+        [
+          0.0,
+          0.5
+        ],
+        [
+          0.21,
+          0.15
+        ],
+        [
+          0.5,
+          0.15
+        ],
+        [
+          0.31,
+          -0.05
+        ],
+        [
+          0.38,
+          -0.45
+        ],
+        [
+          0.0,
+          -0.25
+        ],
+        [
+          -0.38,
+          -0.45
+        ],
+        [
+          -0.31,
+          -0.05
+        ],
+        [
+          -0.5,
+          0.15
+        ],
+        [
+          -0.21,
+          0.15
+        ]
+      ],
+      "text": ""
+    }
+  ]
+}

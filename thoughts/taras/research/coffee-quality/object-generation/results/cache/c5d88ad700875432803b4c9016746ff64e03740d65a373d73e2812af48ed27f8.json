@@ -1,0 +1,59 @@
+{
+  "response": {
+    "id": "gen-1789837264-xFdBZgi26Y9dAPeAdaOQ",
+    "object": "chat.completion",
+    "created": 1789837264,
+    "model": "google/gemini-3.8-flash",
+    "provider": "Google",
+    "system_fingerprint": null,
+    "service_tier": "default",
+    "choices": [
+      {
+        "index": 0,
+        "logprobs": null,
+        "finish_reason": "stop",
+        "native_finish_reason": "STOP",
+        "message": {
+          "role": "assistant",
+          "content": "{\n  \"name\": \"five_point_gold_star_token\",\n  \"design_notes\": \"A continuous five-point star token extruded as a single polygon solid, measuring 18 mm wide and 2 mm thick, with polished gold material properties.\",\n  \"parts\": [\n    {\n      \"name\": \"star_body\",\n      \"kind\": \"polygon\",\n      \"position_mm\": [0.0, 0.0, 0.0],\n      \"rotation_deg\": [0.0, 0.0, 0.0],\n      \"size_mm\": [18.0, 18.0, 2.0],\n      \"color\": [1.0, 0.78, 0.22],\n      \"metallic\": 0.95,\n      \"roughness\": 0.2,\n      \"tube_mm\": 0.0,\n      \"outline\": [\n        [0.0, 0.5],\n        [0.1176, 0.1618],\n        [0.4755, 0.1545],\n        [0.1902, -0.0618],\n        [0.2939, -0.4045],\n        [0.0, -0.2],\n        [-0.2939, -0.4045],\n        [-0.1902, -0.0618],\n        [-0.4755, 0.1545],\n        [-0.1176, 0.1618]\n      ],\n      \"text\": \"\"\n    }\n  ]\n}",
+          "refusal": null,
+          "reasoning": "**Defining Star Geometry**\n\nI'm currently solidifying the geometric parameters for the gold star token. My focus is on establishing the precise outer and inner radii and calculating the vertex angles to ensure a standard 5-point star shape.\n\n",
+          "reasoning_details": [
+            {
+              "type": "reasoning.text",
+              "text": "**Defining Star Geometry**\n\nI'm currently solidifying the geometric parameters for the gold star token. My focus is on establishing the precise outer and inner radii and calculating the vertex angles to ensure a standard 5-point star shape.\n\n",
+              "format": "google-gemini-v1",
+              "index": 0
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 965,
+      "completion_tokens": 1009,
+      "total_tokens": 1974,
+      "cost": 0.0045075,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.0045075,
+        "upstream_inference_prompt_cost": 0.00072375,
+        "upstream_inference_completions_cost": 0.00378375
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 610,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    }
+  },
+  "latency_s": 7.875764959026128,
+  "request_sha256": "c5d88ad700875432803b4c9016746ff64e03740d65a373d73e2812af48ed27f8",
+  "endpoint": "https://openrouter.ai/api/v1/chat/completions"
+}

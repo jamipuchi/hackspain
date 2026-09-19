@@ -1,0 +1,21 @@
+[
+  {
+    "association_error_m": 0.00172,
+    "event": "camera_observed",
+    "item_id": "w-outside",
+    "measured_size_m": 0.05833,
+    "selected": true,
+    "time_s": 3.12
+  },
+  {
+    "detected_x_m": 0.83854,
+    "event": "outside_configured_workspace",
+    "item_id": "w-outside",
+    "queue_wait_s": 0.0,
+    "time_s": 3.12,
+    "workspace_x_m": [
+      0.35,
+      0.75
+    ]
+  }
+]

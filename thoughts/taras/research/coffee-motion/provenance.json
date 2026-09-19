@@ -1,0 +1,8 @@
+{
+  "source_before_revision": "5088d09",
+  "source_before_sha256": "25c01335c9d037d96a27e4a2d19c612a22919b052d2eee004a63fa6c8cb21d1b",
+  "source_after_revision": "91dedc3",
+  "source_after_sha256": "1bda4e58ee7c7c7635ac81062891a8189d56639b35ba48b5459357ec1df7e7c9",
+  "scope": "Physics-only, seed 8, 1.5 simulated seconds, 500 requested objects per second, no camera or jets.",
+  "diagnostic_note": "Saved script uses a repository-relative import path. Measurement logic matches the temporary diagnostic."
+}

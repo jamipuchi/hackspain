@@ -1,0 +1,12 @@
+{
+  "source": "overview_h264.mp4",
+  "source_sha256": "f5c62d31e3bedecf2bba5c8c25032ac43b33c0008cf2f2ffb7aec1df5ce48e2f",
+  "output_sha256": "ca36dbac6fc84a5d054a5baf27dd355e60cfb95f440f97562f44377bf8108b43",
+  "source_start_seconds": 1.18,
+  "source_duration_seconds": 0.24,
+  "slow_factor": 8,
+  "final_frame_hold_seconds": 2,
+  "decoded_frames": 188,
+  "fps": 50.0,
+  "note": "Crop and time stretch of existing recorded frames, with repeated frames; no new simulation or optical flow."
+}

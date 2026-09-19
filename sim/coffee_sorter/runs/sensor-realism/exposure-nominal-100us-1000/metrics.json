@@ -1,0 +1,580 @@
+{
+  "beans_evaluated": 2600,
+  "beans_resolved": 2598,
+  "beans_unresolved": 2,
+  "throughput_beans_per_s": 1000.0000000000686,
+  "feed_kg_per_h": 757.7551985344163,
+  "defect_removal": 0.48936170212765956,
+  "physical_reject_recall": 0.48936170212765956,
+  "physical_reject_precision": 0.580441640378549,
+  "good_yield_loss": 0.0598021582733813,
+  "good_false_eject_rate": 0.0598021582733813,
+  "physical_reject_accuracy": 0.8696153846153846,
+  "accept_purity_defects_per_1000": 68.19201435621355,
+  "accept_purity_defects_per_1000_incoming": 144.6153846153846,
+  "spilled_rate": 0.02,
+  "decisions": 3751,
+  "reject_decisions": 649,
+  "scheduled_reject_decisions": 649,
+  "activated_reject_decisions": 636,
+  "associated_reject_decisions": 614,
+  "associated_activated": 602,
+  "associated_jet_hit": 374,
+  "associated_rejected": 323,
+  "associated_constituents": 600,
+  "own_pulse_hit_constituents": 382,
+  "scheduled_valves": 950,
+  "fired_valves": 931,
+  "late_decisions": 0,
+  "obs_per_track_mean": 2.46574246867502,
+  "latency_ms": {
+    "p50": 60.0,
+    "p99": 60.0,
+    "max": 60.0
+  },
+  "measured_compute_ms": {
+    "p50": 33.40468450005574,
+    "p99": 37.688633219822805,
+    "max": 40.88457699981518
+  },
+  "latency_budget_ms": 73.33333333333333,
+  "deadline_headroom_ms": {
+    "p01": 2.5475635370721506,
+    "p50": 11.26109610039161,
+    "minimum": 0.4089703514256193
+  },
+  "pool_starved": 0,
+  "frames": 1000,
+  "denominators": {
+    "eligible_beans": 2600,
+    "resolved_beans": 2598,
+    "defects_to_remove": 376,
+    "keep_beans": 2224,
+    "accepted_beans": 2229,
+    "rejected_beans": 317,
+    "decisions": 3751,
+    "reject_decisions": 649,
+    "frames": 1000,
+    "cohort_start_s": 0.8,
+    "cohort_end_s": 3.399999999999781
+  },
+  "intervals_95": {
+    "defect_removal": [
+      0.4391971417442002,
+      0.539741447394009
+    ],
+    "physical_reject_recall": [
+      0.4391971417442002,
+      0.539741447394009
+    ],
+    "physical_reject_precision": [
+      0.525470821823316,
+      0.6334861214159648
+    ],
+    "good_yield_loss": [
+      0.050685501382697486,
+      0.07043693389277274
+    ],
+    "good_false_eject_rate": [
+      0.050685501382697486,
+      0.07043693389277274
+    ],
+    "physical_reject_accuracy": [
+      0.8561247955985655,
+      0.8820153431871426
+    ]
+  },
+  "camera_blobs": {
+    "full_observations": 11329,
+    "constituent_observations": 11761,
+    "single_observations": 10852,
+    "single_action_tn": 8980,
+    "single_class_correct": 10416,
+    "single_action_tp": 1454,
+    "merged_observations": 442,
+    "merged_action_tn": 332,
+    "single_action_fp": 374,
+    "unmatched_observations": 35,
+    "single_action_fn": 44,
+    "merged_action_fn": 61,
+    "merged_action_tp": 44,
+    "merged_action_fp": 5
+  },
+  "camera_bean_cohorts": {
+    "single_only": {
+      "n": 2225,
+      "defects_to_remove": 295,
+      "keep": 1930,
+      "unresolved": 1,
+      "defects_rejected": 164,
+      "keep_rejected": 103,
+      "defect_removal": 0.5559322033898305,
+      "good_yield_loss": 0.05336787564766839
+    },
+    "ever_merged": {
+      "n": 306,
+      "defects_to_remove": 39,
+      "keep": 267,
+      "unresolved": 1,
+      "defects_rejected": 14,
+      "keep_rejected": 24,
+      "defect_removal": 0.358974358974359,
+      "good_yield_loss": 0.0898876404494382
+    },
+    "never_observed": {
+      "n": 69,
+      "defects_to_remove": 42,
+      "keep": 27,
+      "unresolved": 0,
+      "defects_rejected": 6,
+      "keep_rejected": 6,
+      "defect_removal": 0.14285714285714285,
+      "good_yield_loss": 0.2222222222222222
+    }
+  },
+  "keep_jet_outcomes": {
+    "any_jet_hit": 118,
+    "all_rejected": 133,
+    "denominator": 2224,
+    "note": "all_rejected is an outcome count, not causal attribution to a jet"
+  },
+  "per_class": {
+    "good": {
+      "n": 2224,
+      "resolved": 2222,
+      "unresolved": 2,
+      "rejected": 133,
+      "spilled": 12,
+      "targeted": 98,
+      "fired_target": 98,
+      "defect": false,
+      "severity": "none",
+      "jet_hit": 118,
+      "targeted_rejected": 52,
+      "jet_hit_rejected": 75,
+      "reject_rate": 0.0598021582733813,
+      "target_rate": 0.044064748201438846
+    },
+    "faded": {
+      "n": 74,
+      "resolved": 74,
+      "unresolved": 0,
+      "rejected": 50,
+      "spilled": 0,
+      "targeted": 65,
+      "fired_target": 65,
+      "defect": true,
+      "severity": "minor",
+      "jet_hit": 53,
+      "targeted_rejected": 50,
+      "jet_hit_rejected": 50,
+      "reject_rate": 0.6756756756756757,
+      "target_rate": 0.8783783783783784
+    },
+    "black": {
+      "n": 73,
+      "resolved": 73,
+      "unresolved": 0,
+      "rejected": 40,
+      "spilled": 0,
+      "targeted": 73,
+      "fired_target": 73,
+      "defect": true,
+      "severity": "major",
+      "jet_hit": 44,
+      "targeted_rejected": 40,
+      "jet_hit_rejected": 40,
+      "reject_rate": 0.547945205479452,
+      "target_rate": 1.0
+    },
+    "sour": {
+      "n": 65,
+      "resolved": 65,
+      "unresolved": 0,
+      "rejected": 34,
+      "spilled": 0,
+      "targeted": 62,
+      "fired_target": 62,
+      "defect": true,
+      "severity": "major",
+      "jet_hit": 40,
+      "targeted_rejected": 33,
+      "jet_hit_rejected": 33,
+      "reject_rate": 0.5230769230769231,
+      "target_rate": 0.9538461538461539
+    },
+    "insect": {
+      "n": 44,
+      "resolved": 44,
+      "unresolved": 0,
+      "rejected": 23,
+      "spilled": 0,
+      "targeted": 39,
+      "fired_target": 39,
+      "defect": true,
+      "severity": "major",
+      "jet_hit": 22,
+      "targeted_rejected": 23,
+      "jet_hit_rejected": 22,
+      "reject_rate": 0.5227272727272727,
+      "target_rate": 0.8863636363636364
+    },
+    "broken": {
+      "n": 45,
+      "resolved": 45,
+      "unresolved": 0,
+      "rejected": 20,
+      "spilled": 7,
+      "targeted": 30,
+      "fired_target": 30,
+      "defect": true,
+      "severity": "major",
+      "jet_hit": 19,
+      "targeted_rejected": 19,
+      "jet_hit_rejected": 19,
+      "reject_rate": 0.4444444444444444,
+      "target_rate": 0.6666666666666666
+    },
+    "shell": {
+      "n": 27,
+      "resolved": 27,
+      "unresolved": 0,
+      "rejected": 7,
+      "spilled": 11,
+      "targeted": 18,
+      "fired_target": 18,
+      "defect": true,
+      "severity": "major",
+      "jet_hit": 7,
+      "targeted_rejected": 5,
+      "jet_hit_rejected": 3,
+      "reject_rate": 0.25925925925925924,
+      "target_rate": 0.6666666666666666
+    },
+    "husk": {
+      "n": 26,
+      "resolved": 26,
+      "unresolved": 0,
+      "rejected": 5,
+      "spilled": 15,
+      "targeted": 9,
+      "fired_target": 9,
+      "defect": true,
+      "severity": "foreign",
+      "jet_hit": 2,
+      "targeted_rejected": 1,
+      "jet_hit_rejected": 0,
+      "reject_rate": 0.19230769230769232,
+      "target_rate": 0.34615384615384615
+    },
+    "stone": {
+      "n": 12,
+      "resolved": 12,
+      "unresolved": 0,
+      "rejected": 1,
+      "spilled": 6,
+      "targeted": 5,
+      "fired_target": 5,
+      "defect": true,
+      "severity": "foreign",
+      "jet_hit": 0,
+      "targeted_rejected": 1,
+      "jet_hit_rejected": 0,
+      "reject_rate": 0.08333333333333333,
+      "target_rate": 0.4166666666666667
+    },
+    "stick": {
+      "n": 10,
+      "resolved": 10,
+      "unresolved": 0,
+      "rejected": 4,
+      "spilled": 1,
+      "targeted": 6,
+      "fired_target": 6,
+      "defect": true,
+      "severity": "foreign",
+      "jet_hit": 3,
+      "targeted_rejected": 3,
+      "jet_hit_rejected": 3,
+      "reject_rate": 0.4,
+      "target_rate": 0.6
+    }
+  },
+  "profile": "green_arabica",
+  "policy": "specialty",
+  "threshold": 0.5,
+  "rate": 1000.0,
+  "seconds": 4.0,
+  "simulation_seconds": 3.999999999999781,
+  "simulation_end_s": 3.999999999999781,
+  "seed": 1,
+  "wall_seconds": 73.11983648100068,
+  "wall_per_sim_second": 18.27995912025017,
+  "classifier_sha256": "0b9e164cbf4df18f904f30fde38e0b7ed352877653849cc55da25e6f143051c8",
+  "source_sha256": {
+    "run.py": "6200c17d588ff73d80a175c52ab17d243d2c180769bc6da86a528113134dae9e",
+    "controller.py": "88bc0337ae5d90192b928581c6e33574b29a1b3631e2d2eacd30bf73ee089b32",
+    "sim.py": "25c01335c9d037d96a27e4a2d19c612a22919b052d2eee004a63fa6c8cb21d1b",
+    "vision.py": "04aa92dba238e4b342244a37bc91f7edfc09f8bd30416beb20b7528a103f54cf",
+    "evidence.py": "d4066440233a90294d57e1841b5c4e18ac1cae0325989e3d26ea83892e509c59",
+    "render.py": "33a2b3047c7143b78861cfcb64d8538fedeb636f66258b356de7a63da8e65ac6",
+    "scene.py": "5fff8ea2b049fcf58556599c05e5d4585dd445dc4aa6615d9e1021b813982a27"
+  },
+  "config": {
+    "layout": {
+      "belt_len": 1.1,
+      "belt_w": 0.5,
+      "belt_z": 0.6,
+      "belt_speed": 3.0,
+      "feed_x": [
+        -1.05,
+        -0.95
+      ],
+      "feed_vx": 2.6,
+      "feed_drop": 0.006,
+      "cam_x": -0.12,
+      "cam_fov": 0.048,
+      "cam_w": 2080,
+      "cam_h": 192,
+      "ej_x": 0.1,
+      "n_nozzles": 64,
+      "ej_z_offset": 0.045,
+      "split_x": 0.34,
+      "split_z_drop": 0.125,
+      "n_ellipsoid": 1800,
+      "n_half": 72,
+      "n_box": 30,
+      "n_capsule": 30,
+      "timestep": 0.002
+    },
+    "policy": {
+      "name": "specialty",
+      "reject_severities": [
+        "minor",
+        "major",
+        "foreign"
+      ],
+      "threshold": 0.5,
+      "anomaly": true,
+      "base_pulse": 0.003,
+      "ref_mass": 0.0002,
+      "max_pulse": 0.012,
+      "lead": 0.0015,
+      "latency_floor": 0.004,
+      "induced_delay": 0.0,
+      "fixed_latency": 0.06,
+      "target_nozzles": null
+    },
+    "jet_force_n": 0.06,
+    "requested_rate_beans_per_s": 1000.0
+  },
+  "timing_semantics": {
+    "availability": "fixed minimum total latency",
+    "pulse_queue": "t_on=max(nominal_on,t_available)",
+    "camera_backlog_modeled": false,
+    "late_definition": "reject result available more than 2 ms after predicted t_fire",
+    "rendering_in_measured_latency": false,
+    "ground_truth_evaluation_in_measured_latency": false
+  },
+  "decision_scope": "all camera frames; bean outcome metrics use the explicit eligible cohort",
+  "sensor_realism": {
+    "identity": {
+      "config_sha256": "c17fccac4f9f6da7b1cdcf4682b6892ae4b0d82297a26d78f6e4fff317e9cc1f",
+      "scenario": {
+        "slug": "exposure-nominal-100us-1000",
+        "label": "one factor: ASSUMED nominal 100 us exposure",
+        "requested_rate": 1000.0,
+        "sensor": {
+          "exposure_us": 100.0
+        },
+        "physical": {},
+        "comparison": "base-1000"
+      },
+      "shared": {
+        "profile": "green_arabica",
+        "seed": 1,
+        "seconds": 4.0,
+        "policy": "specialty",
+        "threshold": 0.5,
+        "fixed_controller_latency_ms": 60.0,
+        "jet_force_n": 0.06,
+        "camera_cadence_hz": 250.0,
+        "pool_ellipsoid": 1800,
+        "pool_half": 72,
+        "pool_box": 30,
+        "pool_capsule": 30
+      },
+      "classifier_sha256": "0b9e164cbf4df18f904f30fde38e0b7ed352877653849cc55da25e6f143051c8",
+      "source_sha256": {
+        "sensor_realism.py": "95ab3737a143480cc1be65b4fcab58c1e5fbc524953531b7ace178353aca8666",
+        "run_sensor_realism.py": "7064b7162b977c4e95924a6125af63a3b044f2b677e063b9df02856276ca14c3",
+        "run.py": "6200c17d588ff73d80a175c52ab17d243d2c180769bc6da86a528113134dae9e",
+        "controller.py": "88bc0337ae5d90192b928581c6e33574b29a1b3631e2d2eacd30bf73ee089b32",
+        "sim.py": "25c01335c9d037d96a27e4a2d19c612a22919b052d2eee004a63fa6c8cb21d1b",
+        "vision.py": "04aa92dba238e4b342244a37bc91f7edfc09f8bd30416beb20b7528a103f54cf",
+        "evidence.py": "d4066440233a90294d57e1841b5c4e18ac1cae0325989e3d26ea83892e509c59",
+        "scene.py": "5fff8ea2b049fcf58556599c05e5d4585dd445dc4aa6615d9e1021b813982a27",
+        "profiles.py": "e47a848e1331d902bb1bd1eb7d29306529339100edfb8175f9918e1ab09d6948",
+        "classifier.py": "d6257f348db6a82aa152f57de1ee0976228685f226000dfc62f3e82bf933325d",
+        "assets.py": "c727b35d60c009e8d067a68521d296e475105067fa16bdc17dfba42d824dd247",
+        "render.py": "33a2b3047c7143b78861cfcb64d8538fedeb636f66258b356de7a63da8e65ac6",
+        "run_characterization.py": "6ebd9f963f76254a5fed09d5505a87c3741374524f7c2b4e8920ece2e1031883"
+      },
+      "environment": {
+        "python": "3.12.3",
+        "mujoco": "3.13.0",
+        "opencv": "5.0.0",
+        "numpy": "2.5.3"
+      }
+    },
+    "sensor_config": {
+      "brightness_gain": 1.0,
+      "horizontal_gradient": 0.0,
+      "exposure_us": 100.0,
+      "shot_electrons_per_dn": null,
+      "read_noise_dn": 0.0,
+      "noise_label": "none",
+      "seed": 0
+    },
+    "physical_config": {
+      "belt_jitter_fraction": 0.0,
+      "belt_jitter_hz": 0.0,
+      "belt_jitter_phase_rad": 0.0,
+      "crowded_feed_half_width_m": null,
+      "crowded_spawn_gap_m": 0.0002
+    },
+    "blur_formula": "3 m/s * exposure_seconds * 4000 px/m",
+    "blur_pixels": 1.2,
+    "blur_kernel_rows": 3,
+    "camera_width_px": 2080,
+    "exposure_vs_latency": "Hardware exposure is an image-formation assumption, separate from the existing 4 ms pipeline latency floor. The controller retains a 60 ms minimum total latency.",
+    "diagnostics": {
+      "vision": {
+        "single_top1_correct": 10416,
+        "single_top1_denominator": 10852,
+        "single_top1_accuracy": 0.9598230740877257,
+        "defect_action_true_positive": 1498,
+        "defect_action_false_negative": 105,
+        "defect_action_recall_denominator": 1603,
+        "defect_action_recall": 0.9344978165938864,
+        "good_action_false_positive": 379,
+        "good_action_true_negative": 9312,
+        "good_false_eject_denominator": 9691,
+        "good_false_eject_rate": 0.03910845114023321,
+        "note": "Observation-level diagnostics; merged truth means any constituent is rejectable."
+      },
+      "camera_decision_coverage": {
+        "eligible_beans": 2600,
+        "beans_seen_in_full_blob": 2531,
+        "bean_coverage": 0.9734615384615385,
+        "full_blob_observations": 11294,
+        "tracks_created": 3756,
+        "finalized_decisions": 3751,
+        "track_decision_coverage": 0.9986687965921193,
+        "frames": 1000
+      },
+      "late_miss_own_hit_funnel": {
+        "reject_decisions": 649,
+        "late_no_fire_decisions": 0,
+        "scheduled_reject_decisions": 649,
+        "scheduled_not_activated": 13,
+        "activated_reject_decisions": 636,
+        "reject_decisions_with_ground_truth_association": 614,
+        "associated_activated_own_pulse_miss": 228,
+        "own_pulse_hit_decisions": 374,
+        "own_pulse_hit_and_rejected": 323,
+        "note": "Diagnostic funnel only; final outcomes alone do not isolate vision or timing causality."
+      },
+      "merged_cohorts": {
+        "single_only_beans": 2225,
+        "ever_merged_beans": 306,
+        "never_observed_beans": 69,
+        "eligible_beans": 2600,
+        "ever_merged_occupancy": 0.1176923076923077,
+        "merged_blob_observations": 442,
+        "full_blob_observations": 11294,
+        "merged_observation_fraction": 0.039135824331503456
+      },
+      "runtime": {
+        "camera_interval_ms": 4.0,
+        "detector_controller_cpu_overruns": 987,
+        "detector_controller_frames": 1000,
+        "detector_controller_overrun_fraction": 0.987,
+        "sensor_transform_ms": {
+          "p50": 2.2992319991317345,
+          "p99": 2.6209564990313083,
+          "max": 4.95468500048446
+        },
+        "sensor_transform_excluded_from_detector_controller_cpu": true,
+        "effective_camera_fps_sim_time": 250.00000000001367,
+        "no_real_time_claim": true
+      },
+      "physical": {
+        "actual_belt_speed_m_per_s": {
+          "minimum": 3.0,
+          "mean": 3.0,
+          "maximum": 3.0
+        },
+        "controller_nominal_belt_speed_m_per_s": 3.0,
+        "crowded_spawn_failures": 0,
+        "minimum_admitted_spawn_surface_gap_m": null,
+        "desired_feed_events": 4000,
+        "admission_limited_events": 0,
+        "pending_planned_feed_item": null,
+        "crowded_bean_contact_steps": 0,
+        "crowded_bean_contact_pairs": 0
+      }
+    },
+    "feed_manifest_sha256": "7c9a75889cbe072d4d5a8777253e534b4db0df107aff52d7e3eef28b275a7b11",
+    "feed": {
+      "eligible_product_identity_sha256": "29dc915302b63d5726ad87e221ff190d51da3646a7a35a1dce2f85249583e333",
+      "eligible_product_cohort": {
+        "good": 2224,
+        "faded": 74,
+        "broken": 45,
+        "sour": 65,
+        "shell": 27,
+        "stick": 10,
+        "insect": 44,
+        "black": 73,
+        "husk": 26,
+        "stone": 12
+      },
+      "eligible_product_count": 2600
+    },
+    "artifact_sha256": {
+      "decisions.csv": "9979dabd87be61ee82d4169da73be353aad685a177861ea4642d4f3c1f93f333",
+      "inspection_evidence.json": "e2e6d0225693d79b2920ed52a29a4845e78d6484583f20b9a435ec95a0d34348",
+      "feed_manifest.json": "7c9a75889cbe072d4d5a8777253e534b4db0df107aff52d7e3eef28b275a7b11",
+      "inspection_0.png": "9b2e9f68e3a861bed9f929eae8e749a82cbabe73a00e5a2616f00d427246a32f",
+      "inspection_1.png": "92ba79a815cc703370a4269750bf22e32d2c63e0d0164a98b93f9c83d34515ee",
+      "inspection_2.png": "b62c7e5f8beccd4a1716c8b0f4fc36ea8747f88e1fa0455b954f5d9bcfc717bc",
+      "inspection_3.png": "07f8723963c003f4d8d1095aa6a753fe11e34956540e5c15913524f32d22494c",
+      "inspection_4.png": "27a0c4b7f2d5a5f86283d90f079cf1f5978a49509fc71ae2fa469b6bf7fbf455",
+      "inspection_5.png": "e5cec91f8d0830690e11403a46845b622ab23f753322e05a3c4dd211b4d130e3"
+    },
+    "source_sha256": {
+      "sensor_realism.py": "95ab3737a143480cc1be65b4fcab58c1e5fbc524953531b7ace178353aca8666",
+      "run_sensor_realism.py": "7064b7162b977c4e95924a6125af63a3b044f2b677e063b9df02856276ca14c3",
+      "run.py": "6200c17d588ff73d80a175c52ab17d243d2c180769bc6da86a528113134dae9e",
+      "controller.py": "88bc0337ae5d90192b928581c6e33574b29a1b3631e2d2eacd30bf73ee089b32",
+      "sim.py": "25c01335c9d037d96a27e4a2d19c612a22919b052d2eee004a63fa6c8cb21d1b",
+      "vision.py": "04aa92dba238e4b342244a37bc91f7edfc09f8bd30416beb20b7528a103f54cf",
+      "evidence.py": "d4066440233a90294d57e1841b5c4e18ac1cae0325989e3d26ea83892e509c59",
+      "scene.py": "5fff8ea2b049fcf58556599c05e5d4585dd445dc4aa6615d9e1021b813982a27",
+      "profiles.py": "e47a848e1331d902bb1bd1eb7d29306529339100edfb8175f9918e1ab09d6948",
+      "classifier.py": "d6257f348db6a82aa152f57de1ee0976228685f226000dfc62f3e82bf933325d",
+      "assets.py": "c727b35d60c009e8d067a68521d296e475105067fa16bdc17dfba42d824dd247",
+      "render.py": "33a2b3047c7143b78861cfcb64d8538fedeb636f66258b356de7a63da8e65ac6",
+      "run_characterization.py": "6ebd9f963f76254a5fed09d5505a87c3741374524f7c2b4e8920ece2e1031883"
+    },
+    "config_source": "configs/sensor_realism_scenarios.json",
+    "exact_rerun_command": "/workspace/personal/venvs/coffee-sorter/bin/python -u run_sensor_realism.py run --scenario exposure-nominal-100us-1000 --rerun",
+    "limits": [
+      "Synthetic single runs do not establish hardware performance or real-time throughput.",
+      "Final physical outcomes alone do not isolate vision errors from tracking, timing, contact, or jet effects.",
+      "Exposure, noise, illumination gradient, jitter waveform, and crowded-feed geometry are assumptions until measured.",
+      "The item-keyed feed stream preserves product identity across placement retries; crowded admission can still change the eligible cohort."
+    ]
+  }
+}

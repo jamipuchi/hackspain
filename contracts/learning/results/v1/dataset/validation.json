@@ -1,0 +1,488 @@
+[
+  {
+    "sample_id": "validation_screw_00",
+    "split": "validation",
+    "image": "images/validation/validation_screw_00.png",
+    "features": {
+      "aspect_ratio": 4.599999784208135,
+      "solidity": 0.6982600732600732,
+      "circularity": 0.2478163853233049,
+      "hole_fraction": 0.0,
+      "extent": 0.17773892773892774,
+      "enclosing_circle_fill": 0.1452133080328955,
+      "hull_radial_variance": 0.0062415036372840405,
+      "area_px": 762.5,
+      "foreground_fraction": 0.01139113177282984
+    },
+    "valid": true,
+    "fixture": {
+      "body_name": "screw_m3x20_zinc",
+      "x_cm": 7.157,
+      "y_cm": 0.996,
+      "rotation_rad": 5.481327
+    },
+    "evaluator": {
+      "expected_kind": "screw",
+      "label_source": "simulated_demonstration"
+    }
+  },
+  {
+    "sample_id": "validation_screw_01",
+    "split": "validation",
+    "image": "images/validation/validation_screw_01.png",
+    "features": {
+      "aspect_ratio": 4.550459059328856,
+      "solidity": 0.7031753336401289,
+      "circularity": 0.25094265958393763,
+      "hole_fraction": 0.0,
+      "extent": 0.42350332594235035,
+      "enclosing_circle_fill": 0.14574139401724526,
+      "hull_radial_variance": 0.119287870824337,
+      "area_px": 764.0,
+      "foreground_fraction": 0.011649403256939347
+    },
+    "valid": true,
+    "fixture": {
+      "body_name": "screw_m3x20_zinc",
+      "x_cm": 7.867,
+      "y_cm": 0.356,
+      "rotation_rad": 4.601964
+    },
+    "evaluator": {
+      "expected_kind": "screw",
+      "label_source": "simulated_demonstration"
+    }
+  },
+  {
+    "sample_id": "validation_screw_02",
+    "split": "validation",
+    "image": "images/validation/validation_screw_02.png",
+    "features": {
+      "aspect_ratio": 4.461538573265026,
+      "solidity": 0.6846925425207152,
+      "circularity": 0.24197936529000824,
+      "hole_fraction": 0.0,
+      "extent": 0.18021120293847567,
+      "enclosing_circle_fill": 0.14706723298900656,
+      "hull_radial_variance": 0.006522501818835735,
+      "area_px": 785.0,
+      "foreground_fraction": 0.011758149144985455
+    },
+    "valid": true,
+    "fixture": {
+      "body_name": "screw_m3x20_zinc",
+      "x_cm": 7.592,
+      "y_cm": -0.245,
+      "rotation_rad": 5.493023
+    },
+    "evaluator": {
+      "expected_kind": "screw",
+      "label_source": "simulated_demonstration"
+    }
+  },
+  {
+    "sample_id": "validation_screw_03",
+    "split": "validation",
+    "image": "images/validation/validation_screw_03.png",
+    "features": {
+      "aspect_ratio": 4.666666812477308,
+      "solidity": 0.6994867008866076,
+      "circularity": 0.23530700553763484,
+      "hole_fraction": 0.0,
+      "extent": 0.2163059163059163,
+      "enclosing_circle_fill": 0.14259444693018186,
+      "hull_radial_variance": 0.02722000889480114,
+      "area_px": 749.5,
+      "foreground_fraction": 0.011350352064812549
+    },
+    "valid": true,
+    "fixture": {
+      "body_name": "screw_m3x20_zinc",
+      "x_cm": 8.171,
+      "y_cm": 0.78,
+      "rotation_rad": 2.021185
+    },
+    "evaluator": {
+      "expected_kind": "screw",
+      "label_source": "simulated_demonstration"
+    }
+  },
+  {
+    "sample_id": "validation_screw_04",
+    "split": "validation",
+    "image": "images/validation/validation_screw_04.png",
+    "features": {
+      "aspect_ratio": 3.5,
+      "solidity": 0.7180493273542601,
+      "circularity": 0.3222448585150573,
+      "hole_fraction": 0.0,
+      "extent": 0.5267269736842105,
+      "enclosing_circle_fill": 0.19812968755008434,
+      "hull_radial_variance": 0.15424256026744843,
+      "area_px": 640.5,
+      "foreground_fraction": 0.009722165724281008
+    },
+    "valid": true,
+    "fixture": {
+      "body_name": "screw_m3x20_zinc",
+      "x_cm": 8.883,
+      "y_cm": 0.38,
+      "rotation_rad": 0.053332
+    },
+    "evaluator": {
+      "expected_kind": "screw",
+      "label_source": "simulated_demonstration"
+    }
+  },
+  {
+    "sample_id": "validation_screw_05",
+    "split": "validation",
+    "image": "images/validation/validation_screw_05.png",
+    "features": {
+      "aspect_ratio": 4.423076990910908,
+      "solidity": 0.6851363236587511,
+      "circularity": 0.2449587190516434,
+      "hole_fraction": 0.0,
+      "extent": 0.18158508158508158,
+      "enclosing_circle_fill": 0.14800271589100908,
+      "hull_radial_variance": 0.025777049362659454,
+      "area_px": 779.0,
+      "foreground_fraction": 0.01166299649294511
+    },
+    "valid": true,
+    "fixture": {
+      "body_name": "screw_m3x20_zinc",
+      "x_cm": 7.586,
+      "y_cm": -0.224,
+      "rotation_rad": 5.509195
+    },
+    "evaluator": {
+      "expected_kind": "screw",
+      "label_source": "simulated_demonstration"
+    }
+  },
+  {
+    "sample_id": "validation_nut_00",
+    "split": "validation",
+    "image": "images/validation/validation_nut_00.png",
+    "features": {
+      "aspect_ratio": 1.05,
+      "solidity": 0.9678362573099415,
+      "circularity": 0.8708075183861347,
+      "hole_fraction": 0.6858006042296072,
+      "extent": 0.7164502164502164,
+      "enclosing_circle_fill": 0.8547047501770672,
+      "hull_radial_variance": 0.011029936373233795,
+      "area_px": 331.0,
+      "foreground_fraction": 0.002147731288910638
+    },
+    "valid": true,
+    "fixture": {
+      "body_name": "nut_m3_zinc",
+      "x_cm": 7.451,
+      "y_cm": -0.364,
+      "rotation_rad": 3.986298
+    },
+    "evaluator": {
+      "expected_kind": "nut",
+      "label_source": "simulated_demonstration"
+    }
+  },
+  {
+    "sample_id": "validation_nut_01",
+    "split": "validation",
+    "image": "images/validation/validation_nut_01.png",
+    "features": {
+      "aspect_ratio": 1.05,
+      "solidity": 0.968562874251497,
+      "circularity": 0.8656888656957672,
+      "hole_fraction": 0.6120556414219475,
+      "extent": 0.7002164502164502,
+      "enclosing_circle_fill": 0.8399413297081415,
+      "hull_radial_variance": 0.0039832270704209805,
+      "area_px": 323.5,
+      "foreground_fraction": 0.0024875621890547263
+    },
+    "valid": true,
+    "fixture": {
+      "body_name": "nut_m3_zinc",
+      "x_cm": 8.389,
+      "y_cm": 0.089,
+      "rotation_rad": 4.990641
+    },
+    "evaluator": {
+      "expected_kind": "nut",
+      "label_source": "simulated_demonstration"
+    }
+  },
+  {
+    "sample_id": "validation_nut_02",
+    "split": "validation",
+    "image": "images/validation/validation_nut_02.png",
+    "features": {
+      "aspect_ratio": 1.05,
+      "solidity": 0.9683734939759037,
+      "circularity": 0.8603368479789464,
+      "hole_fraction": 0.7045101088646968,
+      "extent": 0.6958874458874459,
+      "enclosing_circle_fill": 0.8299265657718653,
+      "hull_radial_variance": 0.009905482642352581,
+      "area_px": 321.5,
+      "foreground_fraction": 0.0020117989288530027
+    },
+    "valid": true,
+    "fixture": {
+      "body_name": "nut_m3_zinc",
+      "x_cm": 7.899,
+      "y_cm": -0.005,
+      "rotation_rad": 1.184631
+    },
+    "evaluator": {
+      "expected_kind": "nut",
+      "label_source": "simulated_demonstration"
+    }
+  },
+  {
+    "sample_id": "validation_nut_03",
+    "split": "validation",
+    "image": "images/validation/validation_nut_03.png",
+    "features": {
+      "aspect_ratio": 1.1071428846673317,
+      "solidity": 0.9676945668135095,
+      "circularity": 0.8608064214000641,
+      "hole_fraction": 0.6828528072837633,
+      "extent": 0.6807851239669421,
+      "enclosing_circle_fill": 0.8555186606922391,
+      "hull_radial_variance": 0.0015544723719358444,
+      "area_px": 329.5,
+      "foreground_fraction": 0.0021530872272869737
+    },
+    "valid": true,
+    "fixture": {
+      "body_name": "nut_m3_zinc",
+      "x_cm": 7.245,
+      "y_cm": 0.888,
+      "rotation_rad": 0.262387
+    },
+    "evaluator": {
+      "expected_kind": "nut",
+      "label_source": "simulated_demonstration"
+    }
+  },
+  {
+    "sample_id": "validation_nut_04",
+    "split": "validation",
+    "image": "images/validation/validation_nut_04.png",
+    "features": {
+      "aspect_ratio": 1.0,
+      "solidity": 0.96996996996997,
+      "circularity": 0.8705045287329743,
+      "hole_fraction": 0.6099071207430341,
+      "extent": 0.7324263038548753,
+      "enclosing_circle_fill": 0.8474778692095286,
+      "hull_radial_variance": 0.0014616533881053329,
+      "area_px": 323.0,
+      "foreground_fraction": 0.0024528841829851602
+    },
+    "valid": true,
+    "fixture": {
+      "body_name": "nut_m3_zinc",
+      "x_cm": 8.321,
+      "y_cm": -0.482,
+      "rotation_rad": 0.366181
+    },
+    "evaluator": {
+      "expected_kind": "nut",
+      "label_source": "simulated_demonstration"
+    }
+  },
+  {
+    "sample_id": "validation_nut_05",
+    "split": "validation",
+    "image": "images/validation/validation_nut_05.png",
+    "features": {
+      "aspect_ratio": 1.05,
+      "solidity": 0.9652567975830816,
+      "circularity": 0.8549848391861058,
+      "hole_fraction": 0.6964006259780907,
+      "extent": 0.6915584415584416,
+      "enclosing_circle_fill": 0.8362981499024728,
+      "hull_radial_variance": 0.008389205671846867,
+      "area_px": 319.5,
+      "foreground_fraction": 0.0020389854008645296
+    },
+    "valid": true,
+    "fixture": {
+      "body_name": "nut_m3_zinc",
+      "x_cm": 8.168,
+      "y_cm": 0.999,
+      "rotation_rad": 2.721133
+    },
+    "evaluator": {
+      "expected_kind": "nut",
+      "label_source": "simulated_demonstration"
+    }
+  },
+  {
+    "sample_id": "validation_washer_00",
+    "split": "validation",
+    "image": "images/validation/validation_washer_00.png",
+    "features": {
+      "aspect_ratio": 1.0,
+      "solidity": 0.9700103412616339,
+      "circularity": 0.8674610325874463,
+      "hole_fraction": 0.0,
+      "extent": 0.6937869822485208,
+      "enclosing_circle_fill": 0.9186768299072179,
+      "hull_radial_variance": 0.0028496289160102606,
+      "area_px": 469.0,
+      "foreground_fraction": 0.006864584182910583
+    },
+    "valid": true,
+    "fixture": {
+      "body_name": "washer_m3_zinc",
+      "x_cm": 7.983,
+      "y_cm": -0.848,
+      "rotation_rad": 4.844264
+    },
+    "evaluator": {
+      "expected_kind": "washer",
+      "label_source": "simulated_demonstration"
+    }
+  },
+  {
+    "sample_id": "validation_washer_01",
+    "split": "validation",
+    "image": "images/validation/validation_washer_01.png",
+    "features": {
+      "aspect_ratio": 1.0416666666666667,
+      "solidity": 0.9763617677286742,
+      "circularity": 0.8964883896511875,
+      "hole_fraction": 0.0,
+      "extent": 0.7307692307692307,
+      "enclosing_circle_fill": 0.9241306070084688,
+      "hull_radial_variance": 0.0013558060163632035,
+      "area_px": 475.0,
+      "foreground_fraction": 0.006946143598945165
+    },
+    "valid": true,
+    "fixture": {
+      "body_name": "washer_m3_zinc",
+      "x_cm": 7.001,
+      "y_cm": -0.312,
+      "rotation_rad": 2.611785
+    },
+    "evaluator": {
+      "expected_kind": "washer",
+      "label_source": "simulated_demonstration"
+    }
+  },
+  {
+    "sample_id": "validation_washer_02",
+    "split": "validation",
+    "image": "images/validation/validation_washer_02.png",
+    "features": {
+      "aspect_ratio": 1.0416666666666667,
+      "solidity": 0.9803921568627451,
+      "circularity": 0.8964883896511875,
+      "hole_fraction": 0.0,
+      "extent": 0.7307692307692307,
+      "enclosing_circle_fill": 0.9126712588529182,
+      "hull_radial_variance": 0.014552688226103783,
+      "area_px": 475.0,
+      "foreground_fraction": 0.006946143598945165
+    },
+    "valid": true,
+    "fixture": {
+      "body_name": "washer_m3_zinc",
+      "x_cm": 7.445,
+      "y_cm": 0.963,
+      "rotation_rad": 2.016539
+    },
+    "evaluator": {
+      "expected_kind": "washer",
+      "label_source": "simulated_demonstration"
+    }
+  },
+  {
+    "sample_id": "validation_washer_03",
+    "split": "validation",
+    "image": "images/validation/validation_washer_03.png",
+    "features": {
+      "aspect_ratio": 1.0416666666666667,
+      "solidity": 0.9753086419753086,
+      "circularity": 0.8946010404451609,
+      "hole_fraction": 0.0,
+      "extent": 0.7292307692307692,
+      "enclosing_circle_fill": 0.9197228939658006,
+      "hull_radial_variance": 0.003358386689797044,
+      "area_px": 474.0,
+      "foreground_fraction": 0.006932550362939402
+    },
+    "valid": true,
+    "fixture": {
+      "body_name": "washer_m3_zinc",
+      "x_cm": 8.05,
+      "y_cm": 0.214,
+      "rotation_rad": 0.285204
+    },
+    "evaluator": {
+      "expected_kind": "washer",
+      "label_source": "simulated_demonstration"
+    }
+  },
+  {
+    "sample_id": "validation_washer_04",
+    "split": "validation",
+    "image": "images/validation/validation_washer_04.png",
+    "features": {
+      "aspect_ratio": 1.0,
+      "solidity": 0.9884937238493724,
+      "circularity": 0.9235039970522537,
+      "hole_fraction": 0.0,
+      "extent": 0.756,
+      "enclosing_circle_fill": 0.912897975113076,
+      "hull_radial_variance": 0.00012567272642627358,
+      "area_px": 472.5,
+      "foreground_fraction": 0.006888228992935497
+    },
+    "valid": true,
+    "fixture": {
+      "body_name": "washer_m3_zinc",
+      "x_cm": 7.147,
+      "y_cm": 0.339,
+      "rotation_rad": 4.376984
+    },
+    "evaluator": {
+      "expected_kind": "washer",
+      "label_source": "simulated_demonstration"
+    }
+  },
+  {
+    "sample_id": "validation_washer_05",
+    "split": "validation",
+    "image": "images/validation/validation_washer_05.png",
+    "features": {
+      "aspect_ratio": 1.0416666666666667,
+      "solidity": 0.9718456725755996,
+      "circularity": 0.8795022938472702,
+      "hole_fraction": 0.0,
+      "extent": 0.7169230769230769,
+      "enclosing_circle_fill": 0.9107676156425906,
+      "hull_radial_variance": 0.0018697486957535148,
+      "area_px": 466.0,
+      "foreground_fraction": 0.006840821443658613
+    },
+    "valid": true,
+    "fixture": {
+      "body_name": "washer_m3_zinc",
+      "x_cm": 8.212,
+      "y_cm": 0.796,
+      "rotation_rad": 1.395955
+    },
+    "evaluator": {
+      "expected_kind": "washer",
+      "label_source": "simulated_demonstration"
+    }
+  }
+]

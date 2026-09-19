@@ -1,0 +1,131 @@
+{
+  "centroid_v1_descriptive_baseline": {
+    "baseline_test": {
+      "abstentions": 28,
+      "confusion_matrix": {
+        "bin_A": {
+          "abstain": 10
+        },
+        "bin_B": {
+          "abstain": 10
+        },
+        "bin_C": {
+          "abstain": 8,
+          "bin_A": 2
+        }
+      },
+      "correct": 0,
+      "coverage": 0.06666666666666667,
+      "selective_accuracy": 0.0,
+      "total": 30,
+      "total_accuracy": 0.0,
+      "ungated_nearest_accuracy": 0.8,
+      "ungated_total": 30
+    },
+    "candidate_test": {
+      "abstentions": 9,
+      "confusion_matrix": {
+        "bin_A": {
+          "abstain": 1,
+          "bin_A": 9
+        },
+        "bin_B": {
+          "abstain": 8,
+          "bin_B": 2
+        },
+        "bin_C": {
+          "bin_A": 2,
+          "bin_C": 8
+        }
+      },
+      "correct": 19,
+      "coverage": 0.7,
+      "selective_accuracy": 0.9047619047619048,
+      "total": 30,
+      "total_accuracy": 0.6333333333333333,
+      "ungated_nearest_accuracy": 0.9333333333333333,
+      "ungated_total": 30
+    }
+  },
+  "comparison_limit": "The vision model and the decision model changed from v1. This comparison cannot isolate the effect of Jev.",
+  "dataset": {
+    "described_records": 51,
+    "described_splits": [
+      "correction",
+      "test",
+      "train"
+    ],
+    "path": "contracts/learning/results/v1/dataset/records.json",
+    "sha256": "474b8c26e76899c58f78772bc0b0d47f385c58f13b0bb1257709b2c0a5268949",
+    "split_counts": {
+      "correction": 18,
+      "test": 30,
+      "train": 3,
+      "validation": 18
+    }
+  },
+  "limits": "This runner reuses simulated test images. It does not execute physical actions, learn from human video, or establish physical sorting success.",
+  "models": {
+    "jev_requested": "jev-1.13.0",
+    "vision_requested": "google/gemini-3-flash-preview"
+  },
+  "policies": {
+    "baseline_3_demo": {
+      "correct": 28,
+      "coverage": 0.9333333333333333,
+      "deferred": 2,
+      "scoring_destinations": "teacher",
+      "selective_accuracy": 1.0,
+      "total": 30,
+      "total_accuracy": 0.9333333333333333,
+      "wrong": 0
+    },
+    "candidate_21_demo": {
+      "correct": 30,
+      "coverage": 1.0,
+      "deferred": 0,
+      "scoring_destinations": "teacher",
+      "selective_accuracy": 1.0,
+      "total": 30,
+      "total_accuracy": 1.0,
+      "wrong": 0
+    },
+    "swapped_21_demo": {
+      "correct": 30,
+      "coverage": 1.0,
+      "deferred": 0,
+      "scoring_destinations": "swapped_teacher",
+      "selective_accuracy": 1.0,
+      "total": 30,
+      "total_accuracy": 1.0,
+      "wrong": 0
+    }
+  },
+  "policy_config": {
+    "automatic_billable_retries": false,
+    "clarity_gate": "visibility=clear and object_count=1",
+    "max_concurrent_calls": 4,
+    "minimum_probability_lead": 0.2,
+    "minimum_top_probability": 0.8,
+    "network_enabled": true
+  },
+  "swapped_label_control": {
+    "conclusive": true,
+    "deferred_after_swap": 0,
+    "followed_swapped_mapping": 30,
+    "mismatches_after_swap": 0,
+    "original_accepted_predictions": 30
+  },
+  "teacher_examples": {
+    "baseline_3_demo": 3,
+    "candidate_21_demo": 21,
+    "swapped_21_demo": 21
+  },
+  "vision": {
+    "errors": 0,
+    "returned_models": [
+      "google/gemini-3-flash-preview"
+    ],
+    "total": 51
+  }
+}

@@ -1,0 +1,127 @@
+{
+ "profile": "roasted",
+ "n_train": 43607,
+ "n_test": 14536,
+ "fit_seconds": 3.3974812899996323,
+ "iters": 124,
+ "accuracy": 0.9861722619702806,
+ "defect_recall": 0.9693318729463308,
+ "good_false_reject": 0.0054157055460836425,
+ "predict_ms_per_40": 5.0626874199952,
+ "anomaly_thresh": 15.253417525616921,
+ "classes": [
+  "good",
+  "quaker",
+  "burnt",
+  "broken",
+  "stone",
+  "stick"
+ ],
+ "features": [
+  "area_mm2",
+  "major_mm",
+  "minor_mm",
+  "aspect",
+  "fill",
+  "solidity",
+  "mean_r",
+  "mean_g",
+  "mean_b",
+  "mean_gray",
+  "std_gray",
+  "mean_h",
+  "mean_s",
+  "mean_v",
+  "std_s",
+  "dark_frac",
+  "bright_frac",
+  "n_dark_spots",
+  "dark_spot_area_frac",
+  "bbox_w_mm",
+  "bbox_h_mm",
+  "rg_ratio",
+  "gb_ratio"
+ ],
+ "per_class": {
+  "good": {
+   "precision": 0.9860793477180073,
+   "recall": 0.9945842944539164,
+   "n": 9971
+  },
+  "quaker": {
+   "precision": 0.9885714285714285,
+   "recall": 0.9951327433628319,
+   "n": 2260
+  },
+  "burnt": {
+   "precision": 0.9925994449583718,
+   "recall": 0.9907663896583564,
+   "n": 1083
+  },
+  "broken": {
+   "precision": 0.9720605355064028,
+   "recall": 0.8752620545073375,
+   "n": 954
+  },
+  "stone": {
+   "precision": 0.9732142857142857,
+   "recall": 0.9819819819819819,
+   "n": 111
+  },
+  "stick": {
+   "precision": 1.0,
+   "recall": 0.9681528662420382,
+   "n": 157
+  }
+ },
+ "confusion": [
+  [
+   9917,
+   23,
+   7,
+   24,
+   0,
+   0
+  ],
+  [
+   10,
+   2249,
+   0,
+   0,
+   1,
+   0
+  ],
+  [
+   10,
+   0,
+   1073,
+   0,
+   0,
+   0
+  ],
+  [
+   116,
+   2,
+   1,
+   835,
+   0,
+   0
+  ],
+  [
+   1,
+   1,
+   0,
+   0,
+   109,
+   0
+  ],
+  [
+   3,
+   0,
+   0,
+   0,
+   2,
+   152
+  ]
+ ]
+}

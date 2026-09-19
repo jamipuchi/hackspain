@@ -1,0 +1,52 @@
+{
+  "response": {
+    "id": "gen-1789836780-64QXVrcz9rLrIycu34GC",
+    "object": "chat.completion",
+    "created": 1789836780,
+    "model": "deepseek/deepseek-v4.1-flash",
+    "provider": "Together",
+    "system_fingerprint": "default",
+    "service_tier": null,
+    "choices": [
+      {
+        "index": 0,
+        "logprobs": null,
+        "finish_reason": "length",
+        "native_finish_reason": "length",
+        "message": {
+          "role": "assistant",
+          "content": "{}",
+          "refusal": null,
+          "reasoning": null
+        }
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 525,
+      "completion_tokens": 10000,
+      "total_tokens": 10525,
+      "cost": 0.012082236,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 256,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.012082236,
+        "upstream_inference_prompt_cost": 8.2236e-05,
+        "upstream_inference_completions_cost": 0.012
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    }
+  },
+  "latency_s": 43.609958625165746,
+  "request_sha256": "981bb84a3e6624bf817268de198dda960b45dcd6fed0d26cf711a86f319148fb",
+  "endpoint": "https://openrouter.ai/api/v1/chat/completions",
+  "cached": true
+}

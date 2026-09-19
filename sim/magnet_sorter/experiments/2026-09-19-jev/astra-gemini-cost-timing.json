@@ -1,0 +1,13 @@
+{
+  "gemini_estimate_successful_calls_usd": 0.10700756399999999,
+  "astra_estimate_usd": 2.239519526,
+  "cost_reduction_percent": 95.22185170713266,
+  "gemini_vision_median_s": 4.244,
+  "vision_latency_reduction_percent": 47.37103174603175,
+  "astra_model_wait_s": 384.18399999999997,
+  "gemini_recorded_model_wait_s": 170.358,
+  "gemini_approx_wall_s_from_file_times": 330.13743805885315,
+  "gemini_vision_estimate_usd": 0.10296749999999999,
+  "gemini_jev_estimate_usd": 0.0040400639999999995,
+  "astra_jev_estimate_usd": 0.005489526
+}

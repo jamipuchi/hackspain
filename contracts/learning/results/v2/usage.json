@@ -1,0 +1,25 @@
+{
+  "providers": {
+    "openrouter": {
+      "saved_unique_calls": 54,
+      "input_tokens": 74412,
+      "median_latency_s": 2.294,
+      "returned_models": [
+        "google/gemini-3-flash-preview"
+      ],
+      "reported_cost_usd": 0.044706
+    },
+    "typesafe": {
+      "saved_unique_calls": 64,
+      "input_tokens": 106326,
+      "median_latency_s": 1.022,
+      "returned_models": [
+        "jev-1.13.0"
+      ],
+      "estimated_cost_usd": 0.004465692,
+      "estimate_basis": "TypeSafe published input price of $0.042 per million tokens; actual billing was not returned.",
+      "pricing_source": "https://typesafe.ai/blog/introducing-system-one-models-and-jev"
+    }
+  },
+  "estimated_total_cost_usd": 0.049171692
+}

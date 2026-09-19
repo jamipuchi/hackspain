@@ -1,0 +1,78 @@
+[
+  {
+    "association_error_m": 0.00116,
+    "event": "camera_observed",
+    "item_id": "n-large-1",
+    "measured_size_m": 0.05625,
+    "selected": true,
+    "time_s": 3.36
+  },
+  {
+    "event": "pick_started",
+    "item_id": "n-large-1",
+    "queue_wait_s": 0.0,
+    "time_s": 3.36
+  },
+  {
+    "association_error_m": 0.00122,
+    "event": "camera_observed",
+    "item_id": "n-bean",
+    "measured_size_m": 0.01042,
+    "selected": false,
+    "time_s": 3.52
+  },
+  {
+    "event": "ideal_attachment",
+    "grasp_error_m": 0.01612,
+    "item_id": "n-large-1",
+    "time_s": 3.68
+  },
+  {
+    "event": "lift_complete",
+    "item_id": "n-large-1",
+    "time_s": 3.9
+  },
+  {
+    "association_error_m": 0.00165,
+    "event": "camera_observed",
+    "item_id": "n-small",
+    "measured_size_m": 0.02917,
+    "selected": false,
+    "time_s": 4.16
+  },
+  {
+    "event": "ideal_placement_in_reject_bin",
+    "item_id": "n-large-1",
+    "time_s": 4.72
+  },
+  {
+    "association_error_m": 0.00165,
+    "event": "camera_observed",
+    "item_id": "n-large-2",
+    "measured_size_m": 0.05208,
+    "selected": true,
+    "time_s": 10.16
+  },
+  {
+    "event": "pick_started",
+    "item_id": "n-large-2",
+    "queue_wait_s": 0.0,
+    "time_s": 10.16
+  },
+  {
+    "event": "ideal_attachment",
+    "grasp_error_m": 0.01072,
+    "item_id": "n-large-2",
+    "time_s": 10.54
+  },
+  {
+    "event": "lift_complete",
+    "item_id": "n-large-2",
+    "time_s": 10.74
+  },
+  {
+    "event": "ideal_placement_in_reject_bin",
+    "item_id": "n-large-2",
+    "time_s": 11.5
+  }
+]

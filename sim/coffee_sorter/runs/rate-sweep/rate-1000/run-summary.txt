@@ -1,0 +1,16 @@
+
+== green_arabica @ 1000 beans/s, policy specialty ==
+throughput 1000 beans/s  (753 kg/h)   evaluated 2600   wall 17.0 s per sim s
+defect removal 44.4%   good yield loss 5.74%   accept stream 70.3 defects/1000 (incoming 142/1000)   spilled 2.38%
+decisions 3718  valves 780  late 0  obs/track 2.47  latency p50 37.4 ms p99 43.0 ms (budget 73 ms)  starved 0
+class         n  rejected  targeted  jet hit  hit/rej  spilled
+good       2231       128        71       97       80       15   keep none
+faded        66        40        58       43       39        3   DEFECT minor
+black        59        34        56       34       33        2   DEFECT major
+sour         69        34        66       36       34        3   DEFECT major
+insect       45        22        42       23       22        1   DEFECT major
+broken       56        20        39       23       18        8   DEFECT major
+shell        23         0        13        4        0       11   DEFECT major
+husk         25         5        12        2        0       10   DEFECT foreign
+stone        11         3         6        0        0        5   DEFECT foreign
+stick        15         6        10        6        5        4   DEFECT foreign

@@ -1,0 +1,113 @@
+{
+  "backend": "Jaume RobotAPI + ArmController + SimArduino + MuJoCo",
+  "pickup_location_source": "fixed taught station at (8, 0) cm, not visual localization",
+  "physical_hardware_used": false,
+  "trials": [
+    {
+      "evaluator_kind": "screw",
+      "destination": "bin_B",
+      "prediction_reason": null,
+      "target": "screws",
+      "expected_target": "screws",
+      "correct_destination": true,
+      "receipts": [
+        {
+          "action": "pick_at",
+          "reported_ok": true,
+          "task_verified": null,
+          "text": "pick at (0.080,0.000) done, magnet on, arm lifted; magnet face now at (8.1, 0.0, z=5.4) cm, magnet ON"
+        },
+        {
+          "action": "place_in",
+          "reported_ok": true,
+          "task_verified": null,
+          "text": "pick at (8.0, 0.0) cm succeeded: the spot changed in camera A (part left it); released in the container; magnet face now at (9.7, -8.0, z=5.4) cm, magnet off"
+        }
+      ],
+      "oracle_center_in_expected_bin_footprint": true,
+      "final_center_m": [
+        0.09784138036305717,
+        -0.07935241765540559,
+        0.004194811275309875
+      ],
+      "calibration_fit_residual_mm": 0.5704111826454865
+    },
+    {
+      "evaluator_kind": "nut",
+      "destination": "bin_C",
+      "prediction_reason": null,
+      "target": "nuts",
+      "expected_target": "nuts",
+      "correct_destination": true,
+      "receipts": [
+        {
+          "action": "pick_at",
+          "reported_ok": true,
+          "task_verified": null,
+          "text": "pick at (0.080,0.000) done, magnet on, arm lifted; magnet face now at (8.2, 0.0, z=5.4) cm, magnet ON"
+        },
+        {
+          "action": "place_in",
+          "reported_ok": true,
+          "task_verified": null,
+          "text": "pick at (8.0, 0.0) cm succeeded: the spot changed in camera A (part left it); released in the container; magnet face now at (12.9, -0.1, z=5.4) cm, magnet off"
+        }
+      ],
+      "oracle_center_in_expected_bin_footprint": true,
+      "final_center_m": [
+        0.12692394234779072,
+        -0.001013965356174554,
+        0.004039817108010191
+      ],
+      "calibration_fit_residual_mm": 0.5704111826454865
+    },
+    {
+      "evaluator_kind": "washer",
+      "destination": "bin_A",
+      "prediction_reason": null,
+      "target": "washers",
+      "expected_target": "washers",
+      "correct_destination": true,
+      "receipts": [
+        {
+          "action": "pick_at",
+          "reported_ok": true,
+          "task_verified": null,
+          "text": "pick at (0.080,0.000) done, magnet on, arm lifted; magnet face now at (8.2, 0.0, z=5.4) cm, magnet ON"
+        },
+        {
+          "action": "place_in",
+          "reported_ok": true,
+          "task_verified": null,
+          "text": "pick at (8.0, 0.0) cm succeeded: the spot changed in camera A (part left it); released in the container; magnet face now at (9.7, 8.0, z=5.4) cm, magnet off"
+        }
+      ],
+      "oracle_center_in_expected_bin_footprint": true,
+      "final_center_m": [
+        0.09536856333979252,
+        0.07856254422031712,
+        0.0028671631972104366
+      ],
+      "calibration_fit_residual_mm": 0.5704111826454865
+    }
+  ],
+  "limits": "Three isolated trials check integration. Oracle footprint checks are not physical or visual proof of a correct sort.",
+  "base_commit": "91f6200c0d7c83233487b419fca8cac89356b8a2",
+  "provider_calls": 0,
+  "provider_source": "Exact request hashes matched recorded OpenRouter and Jev responses. No network client was called.",
+  "passed": true,
+  "observation_checks": [
+    {
+      "image_sha256": "aeea92b7be16355844174b15e64881f3630fab6d5a8d747e151c7c76ce4e56d7",
+      "destination": "bin_B"
+    },
+    {
+      "image_sha256": "63f72f665bc9247638adb8785c9d9391d95e2642b75923b0fdd7de563768487b",
+      "destination": "bin_C"
+    },
+    {
+      "image_sha256": "032db47f0feda047e1a30cdfd3c053a140c074e52e75f5dbf74e9dd30a96a0f7",
+      "destination": "bin_A"
+    }
+  ]
+}

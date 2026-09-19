@@ -1,0 +1,162 @@
+[
+  {
+    "model": "flash-lite",
+    "case": "earring",
+    "latency_s": 2.00577704096213,
+    "cost_usd": 0.0002655,
+    "finish_reason": "stop",
+    "validated_recipe": true,
+    "prompt_tokens": 475,
+    "completion_tokens": 545
+  },
+  {
+    "model": "flash-lite",
+    "case": "logo",
+    "latency_s": 2.5407914160750806,
+    "cost_usd": 0.0004189,
+    "finish_reason": "stop",
+    "validated_recipe": true,
+    "prompt_tokens": 497,
+    "completion_tokens": 923
+  },
+  {
+    "model": "flash-lite",
+    "case": "star",
+    "latency_s": 1.6184915418270975,
+    "cost_usd": 0.0001916,
+    "finish_reason": "stop",
+    "validated_recipe": true,
+    "prompt_tokens": 472,
+    "completion_tokens": 361
+  },
+  {
+    "model": "deepseek",
+    "case": "earring",
+    "latency_s": 42.73205375019461,
+    "cost_usd": 0.0105165,
+    "finish_reason": "stop",
+    "validated_recipe": true,
+    "prompt_tokens": 503,
+    "completion_tokens": 8638
+  },
+  {
+    "model": "deepseek",
+    "case": "logo",
+    "latency_s": 43.609958625165746,
+    "cost_usd": 0.012082236,
+    "finish_reason": "length",
+    "validated_recipe": false,
+    "prompt_tokens": 525,
+    "completion_tokens": 10000
+  },
+  {
+    "model": "deepseek",
+    "case": "star",
+    "latency_s": 24.7879025421571,
+    "cost_usd": 0.006599736,
+    "finish_reason": "stop",
+    "validated_recipe": true,
+    "prompt_tokens": 498,
+    "completion_tokens": 5438
+  },
+  {
+    "model": "glm",
+    "case": "earring",
+    "latency_s": 5.949758500093594,
+    "cost_usd": 0.0118503,
+    "finish_reason": "stop",
+    "validated_recipe": true,
+    "prompt_tokens": 462,
+    "completion_tokens": 2706
+  },
+  {
+    "model": "glm",
+    "case": "logo",
+    "latency_s": 8.175144624896348,
+    "cost_usd": 0.0070539,
+    "finish_reason": "stop",
+    "validated_recipe": true,
+    "prompt_tokens": 486,
+    "completion_tokens": 1558
+  },
+  {
+    "model": "glm",
+    "case": "star",
+    "latency_s": 3.0558990829158574,
+    "cost_usd": 0.00216195,
+    "finish_reason": "stop",
+    "validated_recipe": true,
+    "prompt_tokens": 459,
+    "completion_tokens": 400
+  },
+  {
+    "model": "qwen",
+    "case": "earring",
+    "latency_s": 185.76247587497346,
+    "cost_usd": 0.05673,
+    "finish_reason": "stop",
+    "validated_recipe": true,
+    "prompt_tokens": 510,
+    "completion_tokens": 9285
+  },
+  {
+    "model": "qwen",
+    "case": "logo",
+    "latency_s": 78.63345466693863,
+    "cost_usd": 0.023772,
+    "finish_reason": "stop",
+    "validated_recipe": true,
+    "prompt_tokens": 534,
+    "completion_tokens": 3784
+  },
+  {
+    "model": "qwen",
+    "case": "star",
+    "latency_s": 49.69896779186092,
+    "cost_usd": 0.015194,
+    "finish_reason": "stop",
+    "validated_recipe": false,
+    "prompt_tokens": 508,
+    "completion_tokens": 2363
+  },
+  {
+    "model": "gemini",
+    "case": "earring",
+    "latency_s": 8.168534124968573,
+    "cost_usd": 0.00598725,
+    "finish_reason": "stop",
+    "validated_recipe": true,
+    "prompt_tokens": 968,
+    "completion_tokens": 1403
+  },
+  {
+    "model": "gemini",
+    "case": "logo",
+    "latency_s": 7.410158999962732,
+    "cost_usd": 0.00582375,
+    "finish_reason": "stop",
+    "validated_recipe": true,
+    "prompt_tokens": 990,
+    "completion_tokens": 1355
+  },
+  {
+    "model": "gemini",
+    "case": "star",
+    "latency_s": 7.875764959026128,
+    "cost_usd": 0.0045075,
+    "finish_reason": "stop",
+    "validated_recipe": true,
+    "prompt_tokens": 965,
+    "completion_tokens": 1009
+  },
+  {
+    "model": "deepseek-repair",
+    "case": "logo",
+    "latency_s": 20.253612041007727,
+    "cost_usd": 0.007371372,
+    "finish_reason": "stop",
+    "validated_recipe": true,
+    "prompt_tokens": 525,
+    "completion_tokens": 6137
+  }
+]

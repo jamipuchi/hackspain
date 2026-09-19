@@ -1,0 +1,52 @@
+{
+  "response": {
+    "id": "gen-1789836640-tl0D1H4i33lVGFkeAZ5g",
+    "object": "chat.completion",
+    "created": 1789836640,
+    "model": "google/gemini-2.5-flash-lite",
+    "provider": "Google",
+    "system_fingerprint": null,
+    "service_tier": "default",
+    "choices": [
+      {
+        "index": 0,
+        "logprobs": null,
+        "finish_reason": "stop",
+        "native_finish_reason": "STOP",
+        "message": {
+          "role": "assistant",
+          "content": "{\n  \"name\": \"Gold Hoop Earring with Turquoise Pendant\",\n  \"design_notes\": \"A small gold hoop earring with a connected turquoise bead pendant. The hoop lies in the XY plane, and the pendant hangs below it, touching the hoop. The overall assembly fits within 28mm.\",\n  \"parts\": [\n    {\n      \"name\": \"Hoop\",\n      \"kind\": \"ring\",\n      \"position_mm\": [0.0, 0.0, 0.0],\n      \"rotation_deg\": [0.0, 0.0, 0.0],\n      \"size_mm\": [24.0, 24.0, 3.0],\n      \"color\": [0.8, 0.7, 0.2],\n      \"metallic\": 0.9,\n      \"roughness\": 0.2,\n      \"tube_mm\": 1.5,\n      \"outline\": [],\n      \"text\": \"\"\n    },\n    {\n      \"name\": \"Turquoise Pendant\",\n      \"kind\": \"ellipsoid\",\n      \"position_mm\": [0.0, 0.0, -13.5],\n      \"rotation_deg\": [0.0, 0.0, 0.0],\n      \"size_mm\": [8.0, 8.0, 8.0],\n      \"color\": [0.2, 0.8, 0.7],\n      \"metallic\": 0.1,\n      \"roughness\": 0.6,\n      \"tube_mm\": 0.0,\n      \"outline\": [],\n      \"text\": \"\"\n    },\n    {\n      \"name\": \"Pendant Attachment\",\n      \"kind\": \"cylinder\",\n      \"position_mm\": [0.0, 0.0, -12.0],\n      \"rotation_deg\": [0.0, 0.0, 0.0],\n      \"size_mm\": [2.0, 2.0, 2.0],\n      \"color\": [0.8, 0.7, 0.2],\n      \"metallic\": 0.9,\n      \"roughness\": 0.2,\n      \"tube_mm\": 0.0,\n      \"outline\": [],\n      \"text\": \"\"\n    }\n  ]\n}",
+          "refusal": null,
+          "reasoning": null
+        }
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 475,
+      "completion_tokens": 545,
+      "total_tokens": 1020,
+      "cost": 0.0002655,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.0002655,
+        "upstream_inference_prompt_cost": 4.75e-05,
+        "upstream_inference_completions_cost": 0.000218
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    }
+  },
+  "latency_s": 2.00577704096213,
+  "request_sha256": "e5da6e3a69ee00cbc5043a6121fe3eb72983f01528b9985a0a02e2e000292456",
+  "endpoint": "https://openrouter.ai/api/v1/chat/completions",
+  "cached": true
+}

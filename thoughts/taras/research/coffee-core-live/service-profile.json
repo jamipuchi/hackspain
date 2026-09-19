@@ -1,0 +1,27 @@
+{
+  "snapshot_reads": 496,
+  "broadcasts": 498,
+  "json_encode_ms": 1469.7793687228113,
+  "send_wait_ms": 992.7987940609455,
+  "session_id": "ab06b56a-c177-4503-973f-c30d4624b94f",
+  "scope": "HTTP process through terminal state broadcast",
+  "note": "Send wait includes backpressure. Worker IPC and scheduling remain in unattributed_wall_ms.",
+  "distributions": {
+    "json_encode_ms": {
+      "retained_samples": 498,
+      "retention_limit": 4096,
+      "p50_ms": 3.0012079514563084,
+      "p95_ms": 3.4576249308884144,
+      "max_ms": 6.199917057529092,
+      "over_100ms_update_interval": 0
+    },
+    "send_wait_ms": {
+      "retained_samples": 498,
+      "retention_limit": 4096,
+      "p50_ms": 2.0004999823868275,
+      "p95_ms": 2.3752921260893345,
+      "max_ms": 4.890916869044304,
+      "over_100ms_update_interval": 0
+    }
+  }
+}

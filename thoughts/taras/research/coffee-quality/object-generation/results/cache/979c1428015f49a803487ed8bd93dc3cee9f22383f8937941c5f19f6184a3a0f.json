@@ -1,0 +1,26 @@
+{
+  "error": {
+    "message": "No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection",
+    "code": 404,
+    "metadata": {
+      "routing_funnel": [
+        {
+          "step": "Initial Endpoints",
+          "endpoint_count": 6
+        },
+        {
+          "step": "Filter by Tier Endpoint Rows",
+          "endpoint_count": 2
+        },
+        {
+          "step": "Filter by Guardrails",
+          "endpoint_count": 1
+        }
+      ],
+      "failed_routing_step": "Filter by Parameters"
+    }
+  },
+  "latency_s": 0.13426504214294255,
+  "request_sha256": "979c1428015f49a803487ed8bd93dc3cee9f22383f8937941c5f19f6184a3a0f",
+  "endpoint": "https://openrouter.ai/api/v1/chat/completions"
+}

@@ -1,0 +1,83 @@
+[
+  {
+    "sample_id": "train_screw_00",
+    "split": "train",
+    "image": "images/train/train_screw_00.png",
+    "features": {
+      "aspect_ratio": 4.550000005331201,
+      "solidity": 0.6880941602535083,
+      "circularity": 0.2333428653550794,
+      "hole_fraction": 0.0,
+      "extent": 0.21000276319425257,
+      "enclosing_circle_fill": 0.1439652416807029,
+      "hull_radial_variance": 0.006036464590579271,
+      "area_px": 760.0,
+      "foreground_fraction": 0.011442947573445869
+    },
+    "valid": true,
+    "fixture": {
+      "body_name": "screw_m3x20_zinc",
+      "x_cm": 7.804,
+      "y_cm": -0.389,
+      "rotation_rad": 4.251709
+    },
+    "evaluator": {
+      "expected_kind": "screw",
+      "label_source": "simulated_demonstration"
+    }
+  },
+  {
+    "sample_id": "train_nut_00",
+    "split": "train",
+    "image": "images/train/train_nut_00.png",
+    "features": {
+      "aspect_ratio": 1.1,
+      "solidity": 0.9623733719247467,
+      "circularity": 0.8400241729463487,
+      "hole_fraction": 0.6796992481203008,
+      "extent": 0.6884057971014492,
+      "enclosing_circle_fill": 0.8559270573782933,
+      "hull_radial_variance": 0.017860449850559235,
+      "area_px": 332.5,
+      "foreground_fraction": 0.0021885109969279285
+    },
+    "valid": true,
+    "fixture": {
+      "body_name": "nut_m3_zinc",
+      "x_cm": 7.316,
+      "y_cm": 0.585,
+      "rotation_rad": 0.591843
+    },
+    "evaluator": {
+      "expected_kind": "nut",
+      "label_source": "simulated_demonstration"
+    }
+  },
+  {
+    "sample_id": "train_washer_00",
+    "split": "train",
+    "image": "images/train/train_washer_00.png",
+    "features": {
+      "aspect_ratio": 1.029411797373337,
+      "solidity": 0.9699792960662525,
+      "circularity": 0.8789853560059739,
+      "hole_fraction": 0.0,
+      "extent": 0.6930473372781065,
+      "enclosing_circle_fill": 0.920352282241253,
+      "hull_radial_variance": 0.003284245962277055,
+      "area_px": 468.5,
+      "foreground_fraction": 0.0068509909469048206
+    },
+    "valid": true,
+    "fixture": {
+      "body_name": "washer_m3_zinc",
+      "x_cm": 7.735,
+      "y_cm": -0.872,
+      "rotation_rad": 6.058977
+    },
+    "evaluator": {
+      "expected_kind": "washer",
+      "label_source": "simulated_demonstration"
+    }
+  }
+]

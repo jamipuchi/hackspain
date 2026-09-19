@@ -1,0 +1,15 @@
+equivalent blank           blobs=0 contiguous=True
+equivalent noise           blobs=1 contiguous=True
+equivalent touching        blobs=1 contiguous=True
+equivalent edge            blobs=2 contiguous=True
+equivalent all_edges       blobs=4 contiguous=True
+equivalent noncontiguous   blobs=1 contiguous=False
+equivalent fortran         blobs=4 contiguous=False
+equivalent negative_stride blobs=4 contiguous=False
+equivalent preview         blobs=38 contiguous=True
+equivalent validation      blobs=33 contiguous=True
+OpenCV threads=32 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+benchmark context=validation shape=(192, 2080) foreground=36890/399360 density=9.237%
+old detect: p50=78.834 ms p95=79.408 ms
+new detect: p50=5.212 ms p95=5.255 ms
+<5 ms target: missed

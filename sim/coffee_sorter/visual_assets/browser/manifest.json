@@ -1,0 +1,50 @@
+{
+  "blender": "4.5.4 LTS",
+  "threads": 16,
+  "texture_size": 256,
+  "seed": 230948,
+  "script_sha256": "c013d741d747104a2ee8c2b94a5d812d37326bbdc707dc71f088e870e02c1840",
+  "coordinates": "GLB uses Y up: (x,y,z)=(Blender x, Blender z, -Blender y); restore Z up with +90 degrees about X.",
+  "objects": {
+    "good": {
+      "file": "bean_good_lod.glb",
+      "bytes": 181792,
+      "sha256": "d1a7a45fbb55aea244d9db07d1f2c235aa7b23345d59989788ae90173839e837",
+      "hero_triangles": 12096,
+      "lod_triangles": 600,
+      "material_count": 1,
+      "hero_obj_bytes": 610052,
+      "bake_and_export_seconds": 0.566
+    },
+    "black": {
+      "file": "bean_black_lod.glb",
+      "bytes": 179848,
+      "sha256": "b0d62b04367a4dc8b9fbacf13ae9c1c395c21cb183757a827123a8fdf1e1a52b",
+      "hero_triangles": 12096,
+      "lod_triangles": 600,
+      "material_count": 1,
+      "hero_obj_bytes": 610053,
+      "bake_and_export_seconds": 0.437
+    },
+    "insect": {
+      "file": "bean_insect_lod.glb",
+      "bytes": 199912,
+      "sha256": "f56e2d39bf09fc29a94b7a5c8e14b4a71c83a076895559aff6f8458f26ce1f29",
+      "hero_triangles": 12652,
+      "lod_triangles": 598,
+      "material_count": 1,
+      "hero_obj_bytes": 631016,
+      "bake_and_export_seconds": 0.452
+    },
+    "broken": {
+      "file": "bean_broken_lod.glb",
+      "bytes": 172232,
+      "sha256": "f7df27655b8219e4fb20c0646eb8e02fe4195cc5d0ee7b87f28f55152ce864c0",
+      "hero_triangles": 4752,
+      "lod_triangles": 600,
+      "material_count": 1,
+      "hero_obj_bytes": 253049,
+      "bake_and_export_seconds": 0.319
+    }
+  }
+}

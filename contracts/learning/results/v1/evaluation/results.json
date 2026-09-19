@@ -1,0 +1,217 @@
+{
+  "baseline": {
+    "method": "centroid",
+    "test": {
+      "abstentions": 28,
+      "confusion_matrix": {
+        "bin_A": {
+          "abstain": 10
+        },
+        "bin_B": {
+          "abstain": 10
+        },
+        "bin_C": {
+          "abstain": 8,
+          "bin_A": 2
+        }
+      },
+      "correct": 0,
+      "coverage": 0.06666666666666667,
+      "selective_accuracy": 0.0,
+      "total": 30,
+      "total_accuracy": 0.0,
+      "ungated_nearest_accuracy": 0.8,
+      "ungated_total": 30
+    },
+    "validation": {
+      "abstentions": 8,
+      "confusion_matrix": {
+        "bin_A": {
+          "abstain": 1,
+          "bin_A": 5
+        },
+        "bin_B": {
+          "abstain": 4,
+          "bin_B": 2
+        },
+        "bin_C": {
+          "abstain": 3,
+          "bin_C": 3
+        }
+      },
+      "correct": 10,
+      "coverage": 0.5555555555555556,
+      "selective_accuracy": 1.0,
+      "total": 18,
+      "total_accuracy": 0.5555555555555556,
+      "ungated_nearest_accuracy": 0.8333333333333334,
+      "ungated_total": 18
+    }
+  },
+  "candidate": {
+    "method": "centroid",
+    "test": {
+      "abstentions": 9,
+      "confusion_matrix": {
+        "bin_A": {
+          "abstain": 1,
+          "bin_A": 9
+        },
+        "bin_B": {
+          "abstain": 8,
+          "bin_B": 2
+        },
+        "bin_C": {
+          "bin_A": 2,
+          "bin_C": 8
+        }
+      },
+      "correct": 19,
+      "coverage": 0.7,
+      "selective_accuracy": 0.9047619047619048,
+      "total": 30,
+      "total_accuracy": 0.6333333333333333,
+      "ungated_nearest_accuracy": 0.9333333333333333,
+      "ungated_total": 30
+    },
+    "validation": {
+      "abstentions": 2,
+      "confusion_matrix": {
+        "bin_A": {
+          "bin_A": 6
+        },
+        "bin_B": {
+          "abstain": 2,
+          "bin_B": 4
+        },
+        "bin_C": {
+          "bin_C": 6
+        }
+      },
+      "correct": 16,
+      "coverage": 0.8888888888888888,
+      "selective_accuracy": 1.0,
+      "total": 18,
+      "total_accuracy": 0.8888888888888888,
+      "ungated_nearest_accuracy": 1.0,
+      "ungated_total": 18
+    }
+  },
+  "dataset": {
+    "path": "contracts/learning/results/v1/dataset/records.json",
+    "sha256": "474b8c26e76899c58f78772bc0b0d47f385c58f13b0bb1257709b2c0a5268949",
+    "split_counts": {
+      "correction": 18,
+      "test": 30,
+      "train": 3,
+      "validation": 18
+    }
+  },
+  "demonstration_counts": {
+    "baseline": 3,
+    "candidate": 21
+  },
+  "deployed_method": "centroid",
+  "limits": "This experiment evaluates a simulated manifest. It does not establish human video learning or physical robot success.",
+  "promoted": true,
+  "swapped_label_control": {
+    "checked_non_abstained": 21,
+    "conclusive": true,
+    "metrics": {
+      "abstentions": 9,
+      "confusion_matrix": {
+        "bin_A": {
+          "bin_A": 8,
+          "bin_B": 2
+        },
+        "bin_B": {
+          "abstain": 1,
+          "bin_B": 9
+        },
+        "bin_C": {
+          "abstain": 8,
+          "bin_C": 2
+        }
+      },
+      "correct": 19,
+      "coverage": 0.7,
+      "selective_accuracy": 0.9047619047619048,
+      "total": 30,
+      "total_accuracy": 0.6333333333333333,
+      "ungated_nearest_accuracy": 0.9333333333333333,
+      "ungated_total": 30
+    },
+    "predictions_follow_demonstrations": true,
+    "test_features_reused": true
+  },
+  "test": {
+    "abstentions": 9,
+    "confusion_matrix": {
+      "bin_A": {
+        "abstain": 1,
+        "bin_A": 9
+      },
+      "bin_B": {
+        "abstain": 8,
+        "bin_B": 2
+      },
+      "bin_C": {
+        "bin_A": 2,
+        "bin_C": 8
+      }
+    },
+    "correct": 19,
+    "coverage": 0.7,
+    "selective_accuracy": 0.9047619047619048,
+    "total": 30,
+    "total_accuracy": 0.6333333333333333,
+    "ungated_nearest_accuracy": 0.9333333333333333,
+    "ungated_total": 30
+  },
+  "validation_candidates": {
+    "centroid": {
+      "abstentions": 2,
+      "confusion_matrix": {
+        "bin_A": {
+          "bin_A": 6
+        },
+        "bin_B": {
+          "abstain": 2,
+          "bin_B": 4
+        },
+        "bin_C": {
+          "bin_C": 6
+        }
+      },
+      "correct": 16,
+      "coverage": 0.8888888888888888,
+      "selective_accuracy": 1.0,
+      "total": 18,
+      "total_accuracy": 0.8888888888888888,
+      "ungated_nearest_accuracy": 1.0,
+      "ungated_total": 18
+    },
+    "exemplar": {
+      "abstentions": 2,
+      "confusion_matrix": {
+        "bin_A": {
+          "bin_A": 6
+        },
+        "bin_B": {
+          "abstain": 2,
+          "bin_B": 4
+        },
+        "bin_C": {
+          "bin_C": 6
+        }
+      },
+      "correct": 16,
+      "coverage": 0.8888888888888888,
+      "selective_accuracy": 1.0,
+      "total": 18,
+      "total_accuracy": 0.8888888888888888,
+      "ungated_nearest_accuracy": 1.0,
+      "ungated_total": 18
+    }
+  }
+}

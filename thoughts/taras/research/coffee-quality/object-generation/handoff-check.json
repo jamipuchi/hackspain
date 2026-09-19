@@ -1,0 +1,45 @@
+{
+  "purpose": "Verify Gemini default, custom description, and configurable results root with cached provider and render artifacts.",
+  "python": "3.13.12 (main, Feb  3 2026, 17:53:27) [Clang 17.0.0 (clang-1700.6.3.2)]",
+  "provider_requests_started": 0,
+  "blender_processes_started": 0,
+  "credential_source": "Placeholder process credentials with a nonexistent env file. No --live flag.",
+  "probe_command": [
+    "/opt/homebrew/opt/python@3.13/bin/python3.13",
+    "/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/probe.py",
+    "--env-file",
+    "/private/tmp/coffee-gemini-handoff-4t2vmcrz/absent.env",
+    "--out",
+    "/private/tmp/coffee-gemini-handoff-4t2vmcrz/results/sample",
+    "--description",
+    "A small five-point gold star token, about 18 mm wide and 2 mm thick. Make one continuous solid with five clear points and five concave valleys. Lay the silhouette in the XY plane."
+  ],
+  "probe_returncode": 0,
+  "default_model": "google/gemini-3.8-flash",
+  "cached_provider_result": true,
+  "custom_recipe_matches_recorded_gemini_star": true,
+  "recipe_sha256": "ab172827287041a6d98b836b37e7297ff9d5438e397ef7c213ed25f47293549b",
+  "render_command": [
+    "/opt/homebrew/opt/python@3.13/bin/python3.13",
+    "/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/render_suite.py",
+    "--results-root",
+    "/private/tmp/coffee-gemini-handoff-4t2vmcrz/results",
+    "--model",
+    "sample",
+    "--case",
+    "custom",
+    "--blender",
+    "/not-started-cached-render"
+  ],
+  "render_returncode": 0,
+  "render_stdout": "Cached render: /private/tmp/coffee-gemini-handoff-4t2vmcrz/results/sample/custom",
+  "conflicting_named_case_exit_code": 2,
+  "syntax_check": "passed",
+  "replay_without_jev_credential": "passed, provider evidence unchanged",
+  "missing_recipe_exit_code": 1,
+  "verified_source_sha256": {
+    "probe.py": "4c9de2baeb932d85f300f35a8f4d6dbb25827859b4a1be7658fd7dea875409d3",
+    "render_suite.py": "1380830bfb7a00325e7a6f9c315bc129c9fc5718cd3fd45cd633682acfe2f571",
+    "render_recipe.py": "42924fc046d5fd500c55e4517089bc138ca9c880f12cb18d8389a4290320499b"
+  }
+}

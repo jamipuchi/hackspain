@@ -1,0 +1,32 @@
+[
+  {
+    "model": "flash-lite",
+    "vertices": 10,
+    "concave_valleys": 5,
+    "convex_vertices": 5
+  },
+  {
+    "model": "deepseek",
+    "vertices": 10,
+    "concave_valleys": 0,
+    "convex_vertices": 10
+  },
+  {
+    "model": "glm",
+    "vertices": 12,
+    "concave_valleys": 6,
+    "convex_vertices": 6
+  },
+  {
+    "model": "qwen-repair",
+    "vertices": 10,
+    "concave_valleys": 4,
+    "convex_vertices": 6
+  },
+  {
+    "model": "gemini",
+    "vertices": 10,
+    "concave_valleys": 5,
+    "convex_vertices": 5
+  }
+]
