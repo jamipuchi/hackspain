@@ -47,6 +47,13 @@ class Fire:
     force: float
     uid: int | None = None
     activated: bool = False
+    hit_objects: set[int] = field(default_factory=set)
+
+    def records_first_hit(self, object_id: int) -> bool:
+        if object_id in self.hit_objects:
+            return False
+        self.hit_objects.add(object_id)
+        return True
 
 
 class SorterSim:
@@ -289,7 +296,8 @@ class SorterSim:
                             bean.jet_hits += 1
                             if fr.uid is not None:
                                 if self.continuous:
-                                    self._fire_hit_events.append((fr.uid, bean.uid))
+                                    if fr.records_first_hit(bean.uid):
+                                        self._fire_hit_events.append((fr.uid, bean.uid))
                                 else:
                                     self.fire_hits.add((fr.uid, bean.uid))
             d.xfrc_applied[bodies, :3] = f

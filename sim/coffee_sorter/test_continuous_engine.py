@@ -6,6 +6,7 @@ import numpy as np
 
 from engine import Engine, MAX_COMPLETED_INJECTIONS
 from rolling_scores import RollingScoreLedger
+from sim import Fire
 
 
 VERSIONS = {
@@ -99,6 +100,14 @@ class RollingScoreLedgerTest(unittest.TestCase):
 
 
 class ContinuousRetentionTest(unittest.TestCase):
+    def test_pending_fire_records_each_object_contact_once(self):
+        fire = Fire(nozzle=1, t_on=0.0, t_off=0.01, force=0.06, uid=42)
+
+        self.assertTrue(fire.records_first_hit(7))
+        self.assertFalse(fire.records_first_hit(7))
+        self.assertTrue(fire.records_first_hit(8))
+        self.assertEqual(fire.hit_objects, {7, 8})
+
     def test_engine_exposes_session_scoped_scores_only_in_continuous_mode(self):
         engine = Engine.__new__(Engine)
         engine.continuous = True
@@ -159,7 +168,7 @@ class ContinuousRetentionTest(unittest.TestCase):
         engine._decision_by_track = {10: object(), 11: object(), 12: object()}
         engine._track_members = {10: {}, 11: {}, 12: {}}
         engine._seen_fired_tracks = {10, 11, 12}
-        engine._seen_fire_hits = {(10, 1), (12, 4)}
+        engine._seen_fire_hits = {(track_id, 1) for track_id in range(10_000)}
         engine._seen_outcomes = {2, 3, 4}
         engine.sim = SimpleNamespace(
             data=SimpleNamespace(time=61.0),
@@ -176,7 +185,7 @@ class ContinuousRetentionTest(unittest.TestCase):
         self.assertEqual(set(engine._track_members), {10, 11})
         self.assertEqual(engine._active_injections, {1})
         self.assertEqual(engine._injected_ids, {1, 3})
-        self.assertEqual(engine._seen_fire_hits, {(10, 1)})
+        self.assertEqual(engine._seen_fire_hits, set())
         self.assertEqual(len(engine._score_ledger), 0)
 
     def test_completed_injection_history_has_fixed_limit(self):
