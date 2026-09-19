@@ -14,7 +14,9 @@ import uuid
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from live import COMMAND_EPOCH_SECONDS, MAX_COMMANDS, MAX_PENDING_COMMANDS, LiveService, load_preset, worker
+from live import (COMMAND_EPOCH_SECONDS, MAX_COMMANDS, MAX_COMMANDS_PER_EPOCH,
+                  MAX_PENDING_COMMANDS, PUMP_STALE_SECONDS, LiveService,
+                  load_preset, worker)
 
 
 class RecordingQueue:
@@ -40,11 +42,21 @@ class FakeWebSocket:
 
 
 class FakeClient:
-    def __init__(self):
+    def __init__(self, blocked=False, failed=False):
         self.packets = []
+        self.blocked = blocked
+        self.failed = failed
+        self.force_closed = False
 
     async def send_str(self, packet):
+        if self.blocked:
+            await asyncio.Event().wait()
+        if self.failed:
+            raise ConnectionError('test send failure')
         self.packets.append(json.loads(packet))
+
+    def force_close(self):
+        self.force_closed = True
 
 
 class WorkerQueue:
@@ -87,6 +99,7 @@ def service(continuous=True):
     value.heartbeat_seq = 0
     value.last_state_broadcast = time.monotonic()
     value.clients = set()
+    value.client_sends = {}
     value.service_timings = {'snapshot_reads': 0, 'broadcasts': 0,
                              'json_encode_ms': 0.0, 'send_wait_ms': 0.0}
     value.service_samples = {key: deque(maxlen=4096)
@@ -267,6 +280,69 @@ class ContinuousCommandTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(all(packet['session_id'] == value.state['session_id']
                             for packet in client.packets))
 
+    async def test_blocked_client_cannot_freeze_state_broadcasts(self):
+        value = service()
+        client = FakeClient(blocked=True)
+        value.clients.add(client)
+
+        await asyncio.wait_for(value.broadcast(value._state_packet()), timeout=1.0)
+        await asyncio.sleep(0)
+
+        self.assertNotIn(client, value.clients)
+        self.assertTrue(client.force_closed)
+        self.assertEqual(value.heartbeat_seq, 1)
+
+    async def test_cancelled_broadcast_cleans_blocked_client_task(self):
+        value = service()
+        client = FakeClient(blocked=True)
+        value.clients.add(client)
+        broadcast = asyncio.create_task(value.broadcast(value._state_packet()))
+        await asyncio.sleep(0)
+
+        broadcast.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await broadcast
+
+        self.assertNotIn(client, value.clients)
+        self.assertNotIn(client, value.client_sends)
+        self.assertTrue(client.force_closed)
+
+    async def test_failed_send_closes_client(self):
+        value = service()
+        client = FakeClient(failed=True)
+        value.clients.add(client)
+
+        await value.broadcast(value._state_packet())
+        await asyncio.sleep(0)
+
+        self.assertNotIn(client, value.clients)
+        self.assertTrue(client.force_closed)
+
+    async def test_health_reports_a_stopped_state_pump(self):
+        value = service()
+
+        async def fail():
+            raise RuntimeError('test pump failure')
+
+        value.task = asyncio.create_task(fail())
+        await asyncio.sleep(0)
+        response = await value.health(None)
+
+        self.assertEqual(response.status, 503)
+        self.assertIn('test pump failure', json.loads(response.text)['error'])
+
+    async def test_health_reports_a_blocked_state_pump(self):
+        value = service()
+        value.state.update(status='running', session_id='test-session')
+        value.last_state_broadcast = time.monotonic() - PUMP_STALE_SECONDS - 0.1
+        value.task = asyncio.create_task(asyncio.Event().wait())
+        self.addAsyncCleanup(value.task.cancel)
+
+        response = await value.health(None)
+
+        self.assertEqual(response.status, 503)
+        self.assertIn('stopped publishing', json.loads(response.text)['error'])
+
     async def test_pending_and_epoch_limits_reject_without_admission(self):
         value = service()
         ws = FakeWebSocket()
@@ -278,7 +354,8 @@ class ContinuousCommandTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(value.commands.items, [])
 
         value.requests.clear()
-        value.epoch_admissions[value.command_epoch] = MAX_COMMANDS
+        self.assertEqual(MAX_COMMANDS_PER_EPOCH, 256)
+        value.epoch_admissions[value.command_epoch] = MAX_COMMANDS_PER_EPOCH
         await value._handle_command(command(value), ws)
         self.assertEqual(ws.packets[-1]['error_code'], 'command_epoch_full')
         self.assertEqual(value.commands.items, [])

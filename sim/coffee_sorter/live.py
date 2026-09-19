@@ -24,7 +24,9 @@ HERE = Path(__file__).resolve().parent
 MAX_COMMANDS = 64
 MAX_CLIENTS = 4
 MAX_PENDING_COMMANDS = 16
+MAX_COMMANDS_PER_EPOCH = 256
 COMMAND_EPOCH_SECONDS = 60
+PUMP_STALE_SECONDS = 3.0
 
 
 def _file_hash(path):
@@ -151,7 +153,8 @@ def worker(preset, states, acknowledgments, commands, stop, out):
             state['rolling_scores'] = rolling_scores
         state.update(status=status, error=error, limits={
             'sim_seconds': sim_limit, 'wall_seconds': wall_limit,
-            'clients': MAX_CLIENTS, 'commands': MAX_COMMANDS,
+            'clients': MAX_CLIENTS,
+            'commands': MAX_COMMANDS_PER_EPOCH if continuous else MAX_COMMANDS,
         })
         if engine:
             state.update(source_revision=engine.source_revision, source_hashes=engine.source_hashes)
@@ -172,7 +175,7 @@ def worker(preset, states, acknowledgments, commands, stop, out):
         engine = Engine(Path(preset))
         continuous = engine.continuous
         if continuous:
-            command_results = deque(maxlen=MAX_COMMANDS * 2)
+            command_results = deque(maxlen=MAX_COMMANDS_PER_EPOCH * 2)
             sim_limit = wall_limit = None
         else:
             sim_limit = float(engine.preset['limits']['max_sim_seconds'])
@@ -253,6 +256,7 @@ class LiveService:
         self.recovery_session_id = str(uuid.uuid4())
         self.state = {'status': 'starting'}
         self.clients = set()
+        self.client_sends = {}
         self.requests = {}
         self.command_epoch_seconds = COMMAND_EPOCH_SECONDS
         self.command_epoch = str(uuid.uuid4()) if self.continuous else None
@@ -463,15 +467,55 @@ class LiveService:
         self.service_timings['json_encode_ms'] += elapsed
         self.service_samples['json_encode_ms'].append(elapsed)
         self.service_timings['broadcasts'] += 1
-        async def send(client):
-            try:
-                await asyncio.wait_for(client.send_str(encoded), timeout=0.5)
-            except (TimeoutError, ConnectionError, RuntimeError):
-                self.clients.discard(client)
-                with contextlib.suppress(TimeoutError, ConnectionError, RuntimeError):
-                    await asyncio.wait_for(client.close(), timeout=0.5)
         started = time.perf_counter()
-        await asyncio.gather(*(send(client) for client in tuple(self.clients)))
+        sends = {}
+        for client in tuple(self.clients):
+            previous = self.client_sends.get(client)
+            if previous is not None and not previous.done():
+                self.clients.discard(client)
+                self.client_sends.pop(client, None)
+                with contextlib.suppress(Exception):
+                    client.force_close()
+                previous.cancel()
+                continue
+            task = asyncio.create_task(client.send_str(encoded))
+            self.client_sends[client] = task
+            sends[task] = client
+
+            def finished(completed, *, target=client):
+                if self.client_sends.get(target) is completed:
+                    self.client_sends.pop(target, None)
+                with contextlib.suppress(asyncio.CancelledError, Exception):
+                    completed.result()
+
+            task.add_done_callback(finished)
+        if sends:
+            try:
+                done, pending = await asyncio.wait(sends, timeout=0.5)
+                for task in done:
+                    with contextlib.suppress(asyncio.CancelledError):
+                        if task.exception() is not None:
+                            client = sends[task]
+                            self.clients.discard(client)
+                            with contextlib.suppress(Exception):
+                                client.force_close()
+                for task in pending:
+                    client = sends[task]
+                    self.clients.discard(client)
+                    self.client_sends.pop(client, None)
+                    with contextlib.suppress(Exception):
+                        client.force_close()
+                    task.cancel()
+            except asyncio.CancelledError:
+                for task, client in sends.items():
+                    self.clients.discard(client)
+                    if self.client_sends.get(client) is task:
+                        self.client_sends.pop(client, None)
+                    with contextlib.suppress(Exception):
+                        client.force_close()
+                    task.cancel()
+                await asyncio.gather(*sends, return_exceptions=True)
+                raise
         elapsed = (time.perf_counter() - started) * 1000
         self.service_timings['send_wait_ms'] += elapsed
         self.service_samples['send_wait_ms'].append(elapsed)
@@ -649,8 +693,20 @@ class LiveService:
 
     async def health(self, request):
         status = self.state['status']
+        error = self.state.get('error')
+        if self.task is not None and self.task.done() and status not in ('completed', 'failed'):
+            status = 'failed'
+            if self.task.cancelled():
+                error = 'The service state pump stopped.'
+            else:
+                exception = self.task.exception()
+                error = f'The service state pump stopped: {exception}'
+        elif (self.continuous and status in ('ready', 'running')
+              and time.monotonic() - self.last_state_broadcast > PUMP_STALE_SECONDS):
+            status = 'failed'
+            error = 'The service state pump stopped publishing application heartbeats.'
         return web.json_response({'status': status, 'session_id': self.state.get('session_id'),
-                                  'error': self.state.get('error')}, status=503 if status == 'failed' else 200)
+                                  'error': error}, status=503 if status == 'failed' else 200)
 
     async def state_handler(self, request):
         self._advance_command_epoch()
@@ -712,7 +768,7 @@ class LiveService:
                         ws, command_id, 'The command queue is full. Retry shortly.',
                         'command_queue_full', command_epoch)
                     return
-                if self.epoch_admissions[self.command_epoch] >= MAX_COMMANDS:
+                if self.epoch_admissions[self.command_epoch] >= MAX_COMMANDS_PER_EPOCH:
                     await self._command_error(
                         ws, command_id, 'This command epoch reached its admission limit.',
                         'command_epoch_full', command_epoch)
