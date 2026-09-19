@@ -162,6 +162,10 @@ class SorterSim:
             mujoco.mju_euler2Quat(q, np.array([tilt[0], np.pi / 2 + tilt[1], yaw]), "xyz")
         else:
             mujoco.mju_euler2Quat(q, np.array([tilt[0], tilt[1], yaw]), "xyz")
+        if spec.shape == CAPSULE:
+            rotation = np.empty(9)
+            mujoco.mju_quat2Mat(rotation, q)
+            half[2] = r + hl * abs(rotation[8])
         qa, va = self.body_qpos[b], self.body_qvel[b]
         margin = 0.012
         pos = self._free_spot(half, margin)
