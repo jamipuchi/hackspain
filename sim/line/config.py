@@ -48,6 +48,7 @@ class CameraCfg:  # owner: camera agent
     zone: list = field(default_factory=lambda: [400, 200, 880, 520])  # ROI x0,y0,x1,y1 px over the 9–15 cm stretch
     px_per_mm: float = 6.0  # measured from the pencil ticks 6 cm apart on the wall tops
     flow_axis: str = "x"  # image axis along which beans travel, '+x' | '-x' | '+y' | '-y'
+    trigger_frac: float = 0.0  # a bean is judged once it has travelled this fraction of the zone (0 = as soon as fully visible)
 
 
 @dataclass
@@ -88,6 +89,8 @@ class TimingCfg:  # owner: coffee-sim agent (kinematics) with as-built numbers f
     drag_k_per_s: float = 1.6  # linear drag -> terminal speed a/k = 40 cm/s at 15°
     lead_margin_s: float = 0.0  # extra margin on top of the door swing (gate.settle_ms): photo age + jitter
     door_lead_s: float = 0.40  # DERIVED (timing.refresh): gate.settle_ms/1000 + lead_margin_s. 0.40 stock ramp, 0.12 with ramp_override
+    mode: str = "fixed"  # 'fixed': open fixed_delay_s after the verdict; 'model': chute kinematics (timing.py)
+    fixed_delay_s: float = 0.0  # 'fixed' mode: seconds from verdict to door open
 
 
 @dataclass
@@ -99,6 +102,8 @@ class LineConfig:
     classifier: ClassifierCfg = field(default_factory=ClassifierCfg)
     timing: TimingCfg = field(default_factory=TimingCfg)
     panel_port: int = 8800
+    act_on: str = "all"  # 'all': the door moves for every bean (bring-up); 'suspect': only for suspect verdicts (sorting)
+    lost_after_s: float = 0.4  # no blob for this long while tracking → bean lost, re-arm
     dry_run: bool = True  # the closed loop logs gate pulses instead of sending them until switched off in the panel
 
 

@@ -108,8 +108,21 @@ td.mono{font-family:var(--mono);font-size:.8rem}
     <div><div class="hint">beans</div><div class="big" id="cBeans">0</div></div><div><div class="hint">good</div><div class="big" id="cGood" style="color:var(--ok)">0</div></div><div><div class="hint">suspect</div><div class="big" id="cSus" style="color:var(--bad)">0</div></div>
     <div><div class="hint">gate pulses</div><div class="big" id="cGate">0</div></div><div><div class="hint">lost</div><div class="big" id="cLost">0</div></div><div><div class="hint">errors</div><div class="big" id="cErr">0</div></div></div>
    <div class="kv" id="lineKv"></div>
-   <label>bean speed cm/s <input class="num" id="tSpeed" type="number" step="1" onchange="setCfg('timing.bean_speed_cm_s',+this.value)"></label>
-   <label>door lead s <input class="num" id="tLead" type="number" step="0.02" onchange="setCfg('timing.door_lead_s',+this.value)"></label>
+  </div>
+  <div class="card"><h2>Tuning (live, saved to config.json)</h2>
+   <label>door moves for<select id="actOn" onchange="setCfg('act_on',this.value)"><option value="all">every bean (bring-up)</option><option value="suspect">suspect beans only (sorting)</option></select></label>
+   <label>trigger point: judge the bean once it has crossed this fraction of the zone <b id="trigV"></b><input id="trig" type="range" min="0" max="0.95" step="0.05" oninput="trigV.textContent=this.value" onchange="setCfg('camera.trigger_frac',+this.value)"></label>
+   <label>door timing<select id="tMode" onchange="setCfg('timing.mode',this.value)"><option value="fixed">fixed delay after the verdict</option><option value="model">chute kinematics model (timing.py)</option></select></label>
+   <div class="row"><label>fixed delay s <input class="num" id="tFixed" type="number" step="0.05" min="0" onchange="setCfg('timing.fixed_delay_s',+this.value)"></label>
+    <label>dwell s (door stays open) <input class="num" id="tDwell" type="number" step="0.05" min="0.05" onchange="setCfg('gate.default_dwell_s',+this.value)"></label>
+    <label>lost after s <input class="num" id="tLost" type="number" step="0.1" min="0.1" onchange="setCfg('lost_after_s',+this.value)"></label></div>
+   <div class="row"><label>bean speed cm/s (model) <input class="num" id="tSpeed" type="number" step="1" onchange="setCfg('timing.bean_speed_cm_s',+this.value)"></label>
+    <label>door lead s (model) <input class="num" id="tLead" type="number" step="0.02" onchange="setCfg('timing.door_lead_s',+this.value)"></label></div>
+   <h2>Detection thresholds</h2>
+   <div class="row"><label>bean darker than (gray) <input class="num" id="vGray" type="number" min="10" max="250" onchange="setCfg('vision.bean_gray_max',+this.value)"></label>
+    <label>min area px <input class="num" id="vMin" type="number" min="10" step="10" onchange="setCfg('vision.min_area_px',+this.value)"></label>
+    <label>max area px <input class="num" id="vMax" type="number" min="100" step="100" onchange="setCfg('vision.max_area_px',+this.value)"></label></div>
+   <p class="hint">Zone: drag on the Cameras tab. Door angles: Motors tab. Space/Esc = belt stop + door flush.</p>
   </div>
   <div class="card"><h2>Timeline</h2><div id="events" style="max-height:520px;overflow:auto"></div></div>
  </div>
@@ -146,7 +159,7 @@ const img=$('stream'),cv=$('roiCanvas');let drag=null;
 function toNat(e){const r=cv.getBoundingClientRect();const nw=S?.modules?.camera?.resolution?.[0]||img.naturalWidth||1280,nh=S?.modules?.camera?.resolution?.[1]||img.naturalHeight||720;return[Math.round((e.clientX-r.left)/r.width*nw),Math.round((e.clientY-r.top)/r.height*nh)];}
 cv.onmousedown=e=>{drag=toNat(e);};cv.onmousemove=e=>{if(!drag)return;const p=toNat(e);drawRoi([Math.min(drag[0],p[0]),Math.min(drag[1],p[1]),Math.max(drag[0],p[0]),Math.max(drag[1],p[1])],true);};
 cv.onmouseup=e=>{if(!drag)return;const p=toNat(e);const z=[Math.min(drag[0],p[0]),Math.min(drag[1],p[1]),Math.max(drag[0],p[0]),Math.max(drag[1],p[1])];drag=null;if(z[2]-z[0]>20&&z[3]-z[1]>20)setCfg('camera.zone',z);};
-function drawRoi(z,temp){const nw=S?.modules?.camera?.resolution?.[0]||1280,nh=S?.modules?.camera?.resolution?.[1]||720;cv.width=nw;cv.height=nh;const c=cv.getContext('2d');c.clearRect(0,0,nw,nh);if(!temp)return;c.strokeStyle='#7aa7ff';c.lineWidth=3;c.setLineDash([8,6]);c.strokeRect(z[0],z[1],z[2]-z[0],z[3]-z[1]);}
+function drawRoi(z,temp){const nw=S?.modules?.camera?.resolution?.[0]||1280,nh=S?.modules?.camera?.resolution?.[1]||720;cv.width=nw;cv.height=nh;const c=cv.getContext('2d');c.clearRect(0,0,nw,nh);if(!temp){const Z=S?.cfg?.camera?.zone,f=S?.cfg?.camera?.trigger_frac||0,ax=S?.cfg?.camera?.flow_axis||'x';if(Z&&f>0){c.strokeStyle='#f2a93b';c.lineWidth=3;c.setLineDash([6,6]);c.beginPath();if(ax.endsWith('x')){const x=ax.startsWith('-')?Z[2]-f*(Z[2]-Z[0]):Z[0]+f*(Z[2]-Z[0]);c.moveTo(x,Z[1]);c.lineTo(x,Z[3]);}else{const y=ax.startsWith('-')?Z[3]-f*(Z[3]-Z[1]):Z[1]+f*(Z[3]-Z[1]);c.moveTo(Z[0],y);c.lineTo(Z[2],y);}c.stroke();}return;}c.strokeStyle='#7aa7ff';c.lineWidth=3;c.setLineDash([8,6]);c.strokeRect(z[0],z[1],z[2]-z[0],z[3]-z[1]);}
 // render
 function kv(el,obj,skip=[]){el.innerHTML=Object.entries(obj||{}).filter(([k])=>!skip.includes(k)).map(([k,v])=>`<span>${k}</span><span>${typeof v==='object'?JSON.stringify(v):v}</span>`).join('');}
 function setIf(id,v){const e=$(id);if(e&&document.activeElement!==e&&e.value!=String(v))e.value=v;}
@@ -167,7 +180,7 @@ function render(){const m=S.modules,c=S.cfg,l=S.line;
  if(document.activeElement?.closest('#rules')==null)$('rules').innerHTML=Object.entries(c.classifier.rules).map(([k,v])=>`<label>${k}<input type="number" step="0.05" value="${v}" onchange="setCfg('classifier.rules',Object.assign({},S.cfg.classifier.rules,{'${k}':+this.value}))"></label>`).join('');
  $('cBeans').textContent=l.counters.beans;$('cGood').textContent=l.counters.good;$('cSus').textContent=l.counters.suspect;$('cGate').textContent=l.counters.gate_pulses;$('cLost').textContent=l.counters.lost;$('cErr').textContent=l.counters.errors;
  kv($('lineKv'),{state:l.state,enabled:l.enabled,zone:JSON.stringify(l.zone),last:l.last_verdict?`${l.last_verdict.label} p=${l.last_verdict.p_defect.toFixed(2)} — ${l.last_verdict.reason}`:'—',zone_to_door_s:c.timing.zone_to_door_s,gate_state:m.gate.state});
- setIf('tSpeed',c.timing.bean_speed_cm_s);setIf('tLead',c.timing.door_lead_s);
+ setIf('tSpeed',c.timing.bean_speed_cm_s);setIf('tLead',c.timing.door_lead_s);setIf('actOn',c.act_on);setIf('trig',c.camera.trigger_frac);$('trigV').textContent=c.camera.trigger_frac;setIf('tMode',c.timing.mode);setIf('tFixed',c.timing.fixed_delay_s);setIf('tDwell',c.gate.default_dwell_s);setIf('tLost',c.lost_after_s);setIf('vGray',c.vision.bean_gray_max);setIf('vMin',c.vision.min_area_px);setIf('vMax',c.vision.max_area_px);
  const t0=S.events.length?S.events[0].t:0;$('events').innerHTML=S.events.slice().reverse().map(e=>`<div class="ev ${e.kind} ${e.suspect?'suspect':''}"><span>+${(e.t-t0).toFixed(2)}s</span><span class="k">${e.kind}</span><span>${Object.entries(e).filter(([k])=>!['t','kind'].includes(k)).map(([k,v])=>`${k}=${v}`).join(' ')}</span></div>`).join('');
  $('log').textContent=S.log.slice().reverse().join('\n');}
 async function refresh(){try{const r=await fetch('/api/state');S=await r.json();render();}catch(e){$('pServer').textContent='panel unreachable';$('pServer').className='pill bad';}}

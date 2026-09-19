@@ -16,7 +16,7 @@
       75
     ],
     "settle_ms": 400,
-    "default_dwell_s": 0.5,
+    "default_dwell_s": 0.6,
     "ramp_override": false,
     "door_vmax_deg_s": 400,
     "door_accel_deg_s2": 8000
@@ -29,13 +29,14 @@
     "fps": 60,
     "file_paths": [],
     "zone": [
-      400,
-      200,
-      880,
-      520
+      110,
+      300,
+      470,
+      500
     ],
     "px_per_mm": 6.0,
-    "flow_axis": "x"
+    "flow_axis": "-x",
+    "trigger_frac": 0.5
   },
   "vision": {
     "paper_gray_min": 150,
@@ -48,6 +49,7 @@
   "classifier": {
     "backend": "rule",
     "model_path": "models/beans_v1.joblib",
+    "algo": "extratrees",
     "suspect_threshold": 0.5,
     "rules": {
       "min_major_mm": 8.0,
@@ -58,8 +60,7 @@
       "min_mean_gray": 40,
       "max_mean_gray": 150,
       "max_n_dark_spots": 2
-    },
-    "algo": "extratrees"
+    }
   },
   "timing": {
     "slope_deg": 15.0,
@@ -73,13 +74,17 @@
     ],
     "bean_speed_cm_s": 35.0,
     "zone_to_door_s": 0.567,
-    "door_lead_s": 0.4,
     "speed_model": "drag",
     "drag_accel_cm_s2_at_15deg": 64.0,
-    "drag_k_per_s": 1.6,
     "drag_friction_cm_s2": 19.2,
-    "lead_margin_s": 0.0
+    "drag_k_per_s": 1.6,
+    "lead_margin_s": 0.0,
+    "door_lead_s": 0.4,
+    "mode": "fixed",
+    "fixed_delay_s": 0.0
   },
   "panel_port": 8800,
+  "act_on": "all",
+  "lost_after_s": 0.4,
   "dry_run": true
 }

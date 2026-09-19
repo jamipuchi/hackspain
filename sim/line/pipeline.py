@@ -48,6 +48,8 @@ def fallback_gate_schedule(frac: float, cfg: LineConfig) -> tuple[float, float]:
 
 
 def gate_schedule(frac: float, cfg: LineConfig) -> tuple[float, float]:
+    if getattr(cfg.timing, "mode", "fixed") == "fixed":
+        return max(0.0, float(cfg.timing.fixed_delay_s)), float(cfg.gate.default_dwell_s)
     try:
         from line import timing  # coffee-sim agent's module, optional
 
@@ -115,9 +117,9 @@ class SortingLine:
                 self.track_started = frame.t
                 self.counters["beans"] += 1
                 self.event("bean_seen", u=round(best.u), v=round(best.v), partial=best.partial)
-            if self.state == "tracking" and not best.partial and self.enabled:
+            if self.state == "tracking" and not best.partial and self.enabled and self.track_frac >= float(getattr(self.cfg.camera, "trigger_frac", 0.0)):
                 verdict = self._decide(frame, best, roi)
-        elif self.state != "armed" and frame.t - self.last_seen > self.lost_after_s:
+        elif self.state != "armed" and frame.t - self.last_seen > float(getattr(self.cfg, "lost_after_s", self.lost_after_s)):
             if self.state == "tracking":
                 self.counters["lost"] += 1
                 self.event("bean_lost", after_s=round(frame.t - self.track_started, 2))
@@ -160,12 +162,13 @@ class SortingLine:
         self.event("verdict", label=verdict.label, p=round(verdict.p_defect, 2), suspect=verdict.suspect, reason=verdict.reason, ms=round(verdict.ms, 1), frac=round(frac, 2))
         if verdict.suspect:
             self.counters["suspect"] += 1
+        else:
+            self.counters["good"] += 1
+        if verdict.suspect or getattr(self.cfg, "act_on", "suspect") == "all":
             delay, dwell = gate_schedule(frac, self.cfg)
             self.gate.pulse(delay, dwell)
             self.counters["gate_pulses"] += 1
-            self.event("gate_open", in_s=round(delay, 3), dwell_s=round(dwell, 2), dry_run=getattr(self.gate, "dry_run", True))
-        else:
-            self.counters["good"] += 1
+            self.event("gate_open", in_s=round(delay, 3), dwell_s=round(dwell, 2), dry_run=getattr(self.gate, "dry_run", True), because="every bean" if not verdict.suspect else "suspect")
         return verdict
 
     # ------------------------------------------------------------ preview
