@@ -66,12 +66,12 @@ class ControllerTest(unittest.TestCase):
 
     def test_decided_track_consumes_remaining_observations_through_pruning(self):
         sim, ctrl = self.controller([blob(-0.130), blob(-0.118), blob(-0.106)])
-        with patch("controller.time.perf_counter", side_effect=[0.0, 0.001, 1.0, 1.001, 1.002]):
+        with patch("controller.time.perf_counter", return_value=0.0):
             ctrl.on_frame(None, 0.000)
             ctrl.on_frame(None, 0.004)
         decided = ctrl.tracks[0]
         ctrl.tracks.extend(Track(i + 1, 0, 0, 0, misses=2, done=True) for i in range(4000))
-        with patch("controller.time.perf_counter", side_effect=[2.0, 2.001]):
+        with patch("controller.time.perf_counter", return_value=0.0):
             ctrl.on_frame(None, 0.008)
 
         self.assertEqual(len(ctrl.decisions), 1)
@@ -82,7 +82,8 @@ class ControllerTest(unittest.TestCase):
 
     def test_latency_adds_capture_delay_and_includes_finalize(self):
         _, ctrl = self.controller([blob(-0.118)])
-        with patch("controller.time.perf_counter", side_effect=[10.0, 10.003, 10.005]):
+        clock = [10.0, 10.001, 10.001, 10.002, 10.002, 10.003, 10.004, 10.005]
+        with patch("controller.time.perf_counter", side_effect=clock):
             ctrl.on_frame(None, 1.0)
 
         self.assertAlmostEqual(ctrl.decisions[0].t_available, 1.007)
@@ -91,7 +92,8 @@ class ControllerTest(unittest.TestCase):
 
     def test_deadline_is_checked_at_scheduling_point(self):
         sim, ctrl = self.controller([blob(0.09)])
-        with patch("controller.time.perf_counter", side_effect=[20.0, 20.003, 20.005]):
+        clock = [20.0, 20.001, 20.001, 20.002, 20.002, 20.003, 20.004, 20.005]
+        with patch("controller.time.perf_counter", side_effect=clock):
             ctrl.on_frame(None, 1.0)
 
         self.assertAlmostEqual(ctrl.decisions[0].t_available, 1.007)
@@ -102,7 +104,8 @@ class ControllerTest(unittest.TestCase):
         sim = FakeSim()
         policy = Policy(latency_floor=0.004, induced_delay=0.080)
         ctrl = Controller(sim, FakeInspector([blob(-0.118)]), FakeModel(), policy)
-        with patch("controller.time.perf_counter", side_effect=[10.0, 10.003, 10.005]):
+        clock = [10.0, 10.001, 10.001, 10.002, 10.002, 10.003, 10.004, 10.005]
+        with patch("controller.time.perf_counter", side_effect=clock):
             ctrl.on_frame(None, 1.0)
 
         self.assertAlmostEqual(ctrl.decisions[0].t_available, 1.087)
@@ -115,7 +118,8 @@ class ControllerTest(unittest.TestCase):
         sim = FakeSim()
         policy = Policy(latency_floor=0.004, fixed_latency=0.006)
         ctrl = Controller(sim, FakeInspector([blob(-0.118)]), FakeModel(), policy)
-        with patch("controller.time.perf_counter", side_effect=[10.0, 10.003, 10.005]):
+        clock = [10.0, 10.001, 10.001, 10.002, 10.002, 10.003, 10.004, 10.005]
+        with patch("controller.time.perf_counter", side_effect=clock):
             ctrl.on_frame(None, 1.0)
 
         self.assertAlmostEqual(ctrl.decisions[0].t_available, 1.007)
@@ -127,7 +131,7 @@ class ControllerTest(unittest.TestCase):
                 sim = FakeSim()
                 policy = Policy(latency_floor=0.004, target_nozzles=count)
                 ctrl = Controller(sim, FakeInspector([blob(-0.118)]), FakeModel(), policy)
-                with patch("controller.time.perf_counter", side_effect=[10.0, 10.003, 10.005]):
+                with patch("controller.time.perf_counter", return_value=10.0):
                     ctrl.on_frame(None, 1.0)
 
                 self.assertEqual(len(ctrl.decisions[0].nozzles), count)
@@ -139,7 +143,7 @@ class ControllerTest(unittest.TestCase):
                 sim = FakeSim()
                 policy = Policy(latency_floor=0.004, target_nozzles=3)
                 ctrl = Controller(sim, FakeInspector([blob(-0.118, y)]), FakeModel(), policy)
-                with patch("controller.time.perf_counter", side_effect=[10.0, 10.003, 10.005]):
+                with patch("controller.time.perf_counter", return_value=10.0):
                     ctrl.on_frame(None, 1.0)
 
                 self.assertEqual(ctrl.decisions[0].nozzles, expected)
