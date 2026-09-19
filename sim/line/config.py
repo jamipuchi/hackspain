@@ -128,11 +128,48 @@ def load(path: Path = CONFIG_PATH) -> LineConfig:
     cfg = LineConfig()
     if path.exists():
         _merge(cfg, json.loads(path.read_text()))
+    cfg.__dict__["_loaded_snapshot"] = asdict(cfg)  # what this copy saw on disk; save() writes only what changed since
     return cfg
 
 
+def _changed(old: dict, new: dict) -> dict:
+    """Keys of `new` whose value differs from `old` (recursing into dict sections)."""
+    out = {}
+    for k, v in new.items():
+        o = old.get(k, object())
+        if isinstance(v, dict) and isinstance(o, dict):
+            d = _changed(o, v)
+            if d:
+                out[k] = d
+        elif v != o:
+            out[k] = v
+    return out
+
+
 def save(cfg: LineConfig, path: Path = CONFIG_PATH) -> None:
-    path.write_text(json.dumps(asdict(cfg), indent=2) + "\n")
+    """Write `cfg`, but never clobber another process's edits: re-read the file, apply only the keys this copy
+    changed since its own load(), write the merge, and refresh the snapshot. Several agents and the panel share
+    config.json; before this, a panel save() wrote its whole stale in-memory copy over everyone (19 Sep 14:38–14:50)."""
+    mine = asdict(cfg)
+    snapshot = cfg.__dict__.get("_loaded_snapshot")
+    if snapshot is None or not path.exists():
+        merged = mine
+    else:
+        on_disk = json.loads(path.read_text())
+        edits = _changed(snapshot, mine)
+        merged = _deep_update(on_disk, edits)
+    path.write_text(json.dumps(merged, indent=2) + "\n")
+    _merge(cfg, merged)  # pick up others' edits into this copy too
+    cfg.__dict__["_loaded_snapshot"] = asdict(cfg)
+
+
+def _deep_update(base: dict, edits: dict) -> dict:
+    for k, v in edits.items():
+        if isinstance(v, dict) and isinstance(base.get(k), dict):
+            _deep_update(base[k], v)
+        else:
+            base[k] = v
+    return base
 
 
 if __name__ == "__main__":

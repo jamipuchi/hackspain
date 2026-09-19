@@ -10,7 +10,7 @@
   "gate": {
     "channel": "belt",
     "flush_deg": 90,
-    "open_deg": 44,
+    "open_deg": 83,
     "hold_deg": [
       90,
       75
@@ -29,10 +29,10 @@
     "fps": 60,
     "file_paths": [],
     "zone": [
-      992,
-      431,
-      1274,
-      590
+      960,
+      209,
+      1266,
+      329
     ],
     "px_per_mm": 6.0,
     "flow_axis": "-x",

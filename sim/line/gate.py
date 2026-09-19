@@ -18,6 +18,8 @@ a pulse against a FakeArduino with the same config and checks the open/flush tim
 
 from __future__ import annotations
 
+import json
+import os
 import threading
 from collections import deque
 
@@ -47,6 +49,8 @@ class Gate:
         self.cfg = cfg
         self.dry_run = dry_run
         self.clock = clock or now
+        self._cfg_mtime = None
+        self._disk_channel = None
         self.state = "flush"
         self.log: deque = deque(maxlen=500)
         self.n_pulses = 0
@@ -89,12 +93,30 @@ class Gate:
         self.log.append(entry)
 
     # --- command building
+    def channel(self) -> str:
+        """`gate.channel`, preferring config.json on disk over the cfg object we were handed (the panel's in-memory
+        copy went stale three times on 19 Sep and drove the door on D9). Re-read only when the file's mtime changes."""
+        try:
+            from line.config import CONFIG_PATH
+
+            m = os.stat(CONFIG_PATH).st_mtime
+            if m != self._cfg_mtime:
+                ch = json.loads(CONFIG_PATH.read_text()).get("gate", {}).get("channel")
+                self._cfg_mtime, self._disk_channel = m, ch
+            if self._disk_channel:
+                if self._disk_channel != self.cfg.gate.channel:
+                    self.cfg.gate.channel = self._disk_channel  # heal the copy we were given
+                return self._disk_channel
+        except (OSError, ValueError, AttributeError):
+            pass
+        return self.cfg.gate.channel
+
     @property
     def on_belt(self) -> bool:
-        return self.cfg.gate.channel == BELT
+        return self.channel() == BELT
 
     def _slot(self) -> int:
-        ch = self.cfg.gate.channel
+        ch = self.channel()
         if ch not in _CHANNEL_INDEX:
             raise ValueError(f"gate.channel must be one of {list(_CHANNEL_INDEX) + [BELT]}, got {ch!r}")
         return _CHANNEL_INDEX[ch]
