@@ -13,6 +13,18 @@ rsync -a --delete \
   "$SRC/magnet_sorter/" sim/magnet_sorter/
 rsync -a --delete --exclude '__pycache__' --exclude 'runs/' "$SRC/astra_sort/" sim/astra_sort_v0/
 rsync -a "$SRC/demos/" sim/demos/
+# coffee bean optical sorter (belt + camera + air jets); keep its preview renders, drop models/videos/run dirs
+rsync -a --delete --exclude '.git' --exclude '__pycache__' --exclude 'runs/' --exclude 'models/' --exclude '*.mp4' \
+  "$SRC/coffee_sorter/" sim/coffee_sorter/
+mkdir -p sim/coffee_sorter/runs/preview
+cp -f "$SRC"/coffee_sorter/runs/preview/*.png sim/coffee_sorter/runs/preview/ 2>/dev/null || true
+for d in "$SRC"/coffee_sorter/runs/*/; do
+  n=$(basename "$d")
+  [ -f "$d/metrics.json" ] || [ -f "$d/report.json" ] || [ -f "$d/bench.json" ] || continue
+  mkdir -p "sim/coffee_sorter/runs/$n"
+  cp -f "$d"/*.json "$d"/*.png "$d"/*.csv "sim/coffee_sorter/runs/$n"/ 2>/dev/null || true
+  for v in "$d"/overview.mp4; do [ -f "$v" ] && [ $(stat -f %z "$v") -lt 40000000 ] && cp -f "$v" "sim/coffee_sorter/runs/$n"/ || true; done
+done
 cp "$SRC/README.md" sim/README-toolchain.md
 
 # selected run artifacts: GPT-6 photos/plans and preview videos (small), never Cycles frame dumps

@@ -2,6 +2,30 @@
 
 Updated automatically with the code. Newest at the top of each section.
 
+## Track 2 — coffee bean optical sorter (`sim/coffee_sorter`)
+Hand-sorting green coffee is still done by people; the industrial answer is a belt/chute optical sorter with
+air ejectors at thousands of beans per second, not an arm. We simulate that plant in MuJoCo end to end.
+- **Conveyor idiom.** A static belt geom makes beans roll like wheels (friction + forward push = torque) at
+  ~1000 rad/s and hop. Correct: belt = body on a slide joint, `qpos` reset to 0 and `qvel` set to the belt
+  speed every step. Friction alone then transports the beans; no fake forces.
+- **Tiny ellipsoids are bad colliders.** Ellipsoid–ellipsoid goes through the generic convex collider and
+  catapults 0.2 g beans. Use an analytic capsule collision geom (same length, same resting height) and keep
+  the ellipsoid visual-only. Boxes/capsules for stones/sticks are analytic already.
+- **Light bodies + `implicitfast` = gyroscopic blow-up.** A bean landing on a corner picks up hundreds of
+  rad/s in one 2 ms step and the explicit ω×Iω term diverges (NaN → MuJoCo silently resets the whole state,
+  which looks like "all beans accepted"). Fix: per-body rotational damping `I/τ` (τ = 1.5 ms) and armature
+  `2I` set at spawn; `implicit` integrator also works but is 10× slower with 1200 bodies.
+- **Runtime mass/size edits** need `dof_invweight0`/`body_invweight0` updated too, or contact impedance is
+  scaled for the compiled mass.
+- **Rendering cost is per geom, not per pixel**: 46 ms/frame with 1200 bodies at any resolution. Move
+  off-strip geoms to a hidden geom group before each inspection render → 5.6 ms at 2080×192.
+- **The renderer is one step behind `qpos`**: it draws the kinematics of the last completed step. Timestamp
+  frames as `t − dt` and label training blobs from `xpos`, not `qpos` (6 mm error at 3 m/s otherwise).
+- Spawn beans in an overlap-free spot (a vibratory feeder meters one layer); overlapping spawns at 2000/s
+  were the other source of catapulted beans.
+- Vectorise per-blob statistics over foreground pixels only; `np.bincount` over the full 400k-pixel strip
+  is ~45 ms/frame and made classifier data collection take >10 min (still to do).
+
 ## What we are building
 A 3-servo wooden arm with an electromagnet that sorts screws, nuts and washers into three lids, controlled
 by GPT-6 (`gpt-6-astra`) from one phone camera. Everything in `sim/magnet_sorter` is the same software that

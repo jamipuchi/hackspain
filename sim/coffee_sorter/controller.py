@@ -1,0 +1,175 @@
+"""Real-time sorting controller: tracks blobs across frames, fuses per-frame class probabilities,
+decides, and schedules the air-jet valves with time-of-flight prediction.
+
+Only inputs: camera frames. Only output: `sim.fire(nozzle, t_on, duration, force)`.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+import time
+import numpy as np
+
+from vision import Inspector, Blobs
+from classifier import Model
+from sim import JET_FORCE
+
+
+@dataclass
+class Policy:
+    name: str = "specialty"
+    reject_severities: tuple = ("minor", "major", "foreign")   # 'commercial' keeps minor defects
+    threshold: float = 0.5           # P(reject) needed to fire
+    anomaly: bool = True             # fire on never-seen-before objects
+    base_pulse: float = 0.003        # s of air for a 0.2 g bean
+    ref_mass: float = 0.0002
+    max_pulse: float = 0.012
+    lead: float = 0.0015             # open the valve this early (jet rise time)
+    latency_floor: float = 0.004     # s: camera exposure + transfer, even if compute is instant
+
+
+COMMERCIAL = Policy("commercial", ("major", "foreign"))
+SPECIALTY = Policy("specialty")
+
+
+@dataclass
+class Track:
+    tid: int
+    y: float
+    x: float
+    t: float
+    obs_t: list = field(default_factory=list)
+    obs_x: list = field(default_factory=list)
+    prob_sum: np.ndarray | None = None
+    n: int = 0
+    anomaly: float = 0.0
+    area: float = 0.0
+    misses: int = 0
+    done: bool = False
+
+
+@dataclass
+class Decision:
+    tid: int
+    t_decided: float
+    t_available: float
+    x: float
+    y: float
+    v: float
+    probs: np.ndarray
+    anomaly: float
+    reject: bool
+    nozzles: list
+    t_fire: float
+    pulse: float
+    late: bool
+    n_obs: int
+    cls: str
+
+
+class Controller:
+    def __init__(self, sim, inspector: Inspector, model: Model, policy: Policy = SPECIALTY):
+        self.sim, self.insp, self.model, self.pol = sim, inspector, model, policy
+        self.L = sim.L
+        self.classes = model.classes
+        spec = {c.name: c for c in sim.P.classes}
+        self.reject_mask = np.array([spec[c].defect and spec[c].severity in policy.reject_severities for c in self.classes])
+        from profiles import sample_instance
+        rng = np.random.default_rng(0)
+        self.class_mass = np.array([np.mean([sample_instance(spec[c], rng)[2] for _ in range(64)]) for c in self.classes])
+        self.tracks: list[Track] = []
+        self.decisions: list[Decision] = []
+        self.next_tid = 0
+        self.latency_ms: list[float] = []
+        self.frames = 0
+        self.fov_exit_x = self.L.cam_x + self.L.cam_fov / 2
+
+    # -------------------------------------------------------------- per frame
+    def on_frame(self, frame, t):
+        t_wall = time.perf_counter()
+        blobs = self.insp.detect(frame, t)
+        full = ~blobs.partial
+        P, A = self.model.predict(blobs.X[full])
+        self._associate(blobs, full, P, A, t)
+        lat = time.perf_counter() - t_wall
+        self.latency_ms.append(lat * 1e3)
+        self.frames += 1
+        t_avail = t + max(lat, self.pol.latency_floor)
+        self._finalize(t, t_avail)
+        return blobs, P, A, full
+
+    def _associate(self, blobs: Blobs, full, P, A, t):
+        v_belt = self.L.belt_speed
+        live = [tr for tr in self.tracks if not tr.done]
+        if live:
+            px = np.array([tr.x + v_belt * (t - tr.t) for tr in live])
+            py = np.array([tr.y for tr in live])
+        used = np.zeros(len(live), bool)
+        idx_full = np.where(full)[0]
+        for k, i in enumerate(idx_full):
+            bx, by = blobs.x[i], blobs.y[i]
+            tr = None
+            if live:
+                d2 = ((px - bx) / 0.006) ** 2 + ((py - by) / 0.003) ** 2
+                d2[used] = np.inf
+                j = int(np.argmin(d2))
+                if d2[j] < 1.0:
+                    tr = live[j]; used[j] = True
+            if tr is None:
+                tr = Track(self.next_tid, by, bx, t); self.next_tid += 1
+                tr.prob_sum = np.zeros(len(self.classes))
+                self.tracks.append(tr)
+            tr.x, tr.y, tr.t = bx, 0.7 * tr.y + 0.3 * by if tr.n else by, t
+            tr.obs_t.append(t); tr.obs_x.append(bx)
+            tr.prob_sum += P[k]; tr.n += 1
+            tr.anomaly = max(tr.anomaly, A[k]); tr.area = blobs.X[i, 0]
+        for j, tr in enumerate(live):
+            if not used[j]:
+                tr.misses += 1
+
+    def _finalize(self, t, t_avail):
+        L, pol = self.L, self.pol
+        for tr in self.tracks:
+            if tr.done or tr.n == 0:
+                continue
+            x_pred = tr.x + L.belt_speed * (t - tr.t)
+            # the bean cannot be fully seen again once its centre is < 6 mm from the strip exit
+            if x_pred + L.belt_speed * 0.004 < self.fov_exit_x - 0.006 and tr.misses < 2:
+                continue
+            tr.done = True
+            probs = tr.prob_sum / tr.n
+            if tr.n >= 2 and (tr.obs_t[-1] - tr.obs_t[0]) > 1e-4:
+                v = float(np.polyfit(tr.obs_t, tr.obs_x, 1)[0])
+                v = float(np.clip(v, 0.6 * L.belt_speed, 1.15 * L.belt_speed))
+            else:
+                v = L.belt_speed
+            p_reject = float(probs[self.reject_mask].sum())
+            anomalous = pol.anomaly and tr.anomaly > self.model.anomaly_thresh
+            reject = p_reject >= pol.threshold or anomalous
+            cls = self.classes[int(np.argmax(probs))]
+            t_leave = tr.t + (0.0 - tr.x) / v
+            t_fire = t_leave + L.ej_x / v
+            nozzles, pulse = [], 0.0
+            late = False
+            if reject:
+                mass = float(probs @ self.class_mass)
+                if anomalous and p_reject < pol.threshold:
+                    mass = max(mass, 0.0006)                      # unknown object: assume heavy
+                pulse = float(np.clip(pol.base_pulse * mass / pol.ref_mass, pol.base_pulse * 0.8, pol.max_pulse))
+                j = int((tr.y + L.belt_w / 2) // L.nozzle_pitch)
+                nozzles = [j]
+                off = tr.y - L.nozzle_y(j)
+                if abs(off) > 0.3 * L.nozzle_pitch or mass > 0.0005:
+                    nozzles.append(j + (1 if off > 0 else -1))
+                if mass > 0.0005:
+                    nozzles.append(j - (1 if off > 0 else -1))
+                t_on = t_fire - pol.lead
+                if t_avail > t_fire + 0.002:
+                    late = True                                   # bean already past the jets
+                else:
+                    t_on = max(t_on, t_avail)
+                    for nz in nozzles:
+                        self.sim.fire(nz, t_on, pulse + (t_fire - pol.lead - t_on) * 0 + 0.001, JET_FORCE, uid=tr.tid)
+            self.decisions.append(Decision(tr.tid, t, t_avail, tr.x, tr.y, v, probs, tr.anomaly, reject, nozzles, t_fire, pulse, late, tr.n, cls))
+        # prune
+        if len(self.tracks) > 4000:
+            self.tracks = [tr for tr in self.tracks if not tr.done]

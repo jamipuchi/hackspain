@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+runs/*/
+!runs/preview/
+runs/*.png
+*.mp4
+models/*.joblib
+.DS_Store
