@@ -111,6 +111,19 @@ It spun half a turn in 0.4 s at `C 30` and creeps at `C 1`. It has no position c
    paddle tip rests on it square across the channel; OPEN stop = a block on the outside of the right wall 90° downstream.
    The tilting tray cannot be done with a continuous servo (no way to hold LEVEL).
 
+## Bench fact 19 Sep 17:12 (arduino test): the paddle servo behaves as POSITIONAL
+
+`C 30` held for 2.5 s: the horn moved, then stayed at the same angle at 1.6 s, 2.5 s and after release while the command was still
+active. A continuous servo would have kept turning. Caveat: the paddle ended against the servo lead, so a stall is not fully
+excluded; the decisive check is `C 30` on a bare horn (turns ~30° and holds = positional). Consequences for the build:
+- The "inconsistent movement" was the D6 belt path: `C <sp>` is a target angle, `C 0` detaches (limp, drifting start angle),
+  neutral is 1472 µs not 1500. Not a mechanical fault.
+- **Drive it as a positional servo.** Either move the orange signal wire from ~6 to ~9 and use `S <deg> 90 75` (no flash needed,
+  ramped, never detaches), or wait for the new `D <deg>` command on D6 (positional door, attaches, ramps, never detaches;
+  compiled, not flashed). Angles in these sheets are valid again: door FLUSH 90 / OPEN 65 (or 115), tray LEVEL 90 / 45 / 135.
+- The tilting tray is back on the table as an option. The `T` spin-pulse path and the mechanical end stops are not needed.
+- New firmware safety `L <ch> <min> <max>` travel limits: set the door channel to 40–140 once flashed.
+
 ## As built (fill in when the chute exists)
 
 ```
