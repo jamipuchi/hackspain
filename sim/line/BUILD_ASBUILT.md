@@ -93,6 +93,24 @@ position along the chute, and 10 stopwatch transit times.
   flush along the inside of the wall (there is no wall material to remove if the paddle sits in a 6 cm gap of the wall), swing
   25° in for a suspect while the bean rolls (timing per the table; D6 is unramped so settle 150 ms).
 
+## Bench fact 19 Sep 15:00 (integrator): the paddle servo on D6 is CONTINUOUS-ROTATION
+
+It spun half a turn in 0.4 s at `C 30` and creeps at `C 1`. It has no position control, so every angle in these sheets
+(FLUSH/OPEN, LEVEL/45°) is meaningless for it. Two ways forward, in order of preference:
+
+1. **Put a positional servo on the door** (SG90 / MG90S: the shopping sheet lists 2× MG90S). Then everything above applies
+   unchanged (`S` on D9, or `C`-mapping on D6 if it stays there). The continuous servo goes back to being the conveyor.
+2. **Keep the continuous servo and add two mechanical end stops** (paddle door only, not the tray): a foam-board block on
+   each side of the paddle's swing so it stalls against "CLOSED" and "OPEN". Drive it with timed pulses a little longer
+   than the swing needs (e.g. `C 40` for 250 ms, then `C 0`); the stops, not the timing, define the two positions, so it is
+   repeatable. A stalled micro servo at 5 V draws ~0.6–0.8 A for the extra ~100 ms, which the USB 5 V rail tolerates for
+   short pulses; the paddle must be light (foam board) and the stops padded (a second foam layer). This is the integrator's
+   current `panel.DoorOnD6` timed-pulse approach plus stops; without stops the door position will drift by a few degrees per
+   cycle and eventually miss the channel.
+   Stop geometry for the exit paddle: CLOSED stop = a 1.0 × 3.0 block glued on the floor outside the far wall line so the
+   paddle tip rests on it square across the channel; OPEN stop = a block on the outside of the right wall 90° downstream.
+   The tilting tray cannot be done with a continuous servo (no way to hold LEVEL).
+
 ## As built (fill in when the chute exists)
 
 ```

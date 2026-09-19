@@ -170,6 +170,12 @@ Bench: Arduino Uno R3 on USB, one blue 9 g micro servo (SG90/FS90R form factor) 
 - New tooling in `sim/magnet_sorter/`: `conveyor_button.py` (local RUN/STOP web panel on
   http://127.0.0.1:8765, holds the port, sends `C 0` on start and exit, auto-reconnects) and
   `docs/servo_wiring.html` (colour wiring guide: orange→`~6`, red→`5V`, black→`GND`, power-up order).
+- **Say what the servo IS, every time it is mentioned.** The D6 unit is a continuous-rotation servo (speed, not angle).
+  At 14:33 another agent called it an "SG90 paddle", the bench session built an angle→`C` mapping on that assumption, and
+  the door "did nothing" for 20 min. Rule: any request to position a servo starts with "which servo, positional or
+  continuous, which pin"; a continuous servo on `C` can only be driven by timed spin pulses.
+- **Shared config + several agents:** a whole-struct `save()` from a stale in-memory copy erases others' edits. Save = re-read
+  → apply only your changed keys → write (now in `line/config.py`). And never switch a live line's config without announcing.
 - Still to verify on the bench: does the micro servo stay still at power-up with the new firmware, and is
   it positional (RUN twitches to an angle) or continuous (RUN spins)? The conveyor needs a continuous one.
 

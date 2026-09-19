@@ -8,7 +8,7 @@
     "conveyor_default_speed": 60
   },
   "gate": {
-    "channel": "belt",
+    "channel": "base",
     "flush_deg": 90,
     "open_deg": 83,
     "hold_deg": [
@@ -29,10 +29,10 @@
     "fps": 60,
     "file_paths": [],
     "zone": [
-      960,
-      209,
-      1266,
-      329
+      936,
+      272,
+      1157,
+      385
     ],
     "px_per_mm": 6.0,
     "flow_axis": "-x",
