@@ -314,23 +314,6 @@ metrics, timed events, joint trajectories, plots and videos in the existing
 `runs/ur5e-infeed/` convention. These small synthetic cases do not establish
 hardware throughput, general perception accuracy or grasp reliability.
 
-**Next**
-
-- [x] foreground-only `vision.detect` with exact equivalence proof; train the classifier
-- [x] first closed-loop run with metrics + video
-- [ ] meet the <5 ms detector target and improve physical rejection/yield/spills
-- [x] rate sweep 500 → 3000 beans/s, latency vs the 73 ms camera-to-jet budget
-- [x] physical tuning screen, separate merged-bean metrics, fresh-seed demo and phone evidence
-- [ ] longer paired seeds for 0.06 N; improve merged-target jet intersection and capture
-- [ ] model camera backlog before claiming hardware timing margin
-- [x] sensor degradation sweep and throughput/value ledger with stated assumptions
-- [ ] stabilize illumination and validate photometric robustness before hardware accuracy claims
-- [ ] calibrate exposure, sensor noise and belt jitter from real hardware; verify buyer grade premium
-- [x] `roasted` profile without touching the controller; matched quality measured
-- [x] unseen colour/material/size experiment, anomaly and physical threshold tradeoffs
-- [x] UR5e (Menagerie + mink) infeed prototype with quantified ideal-grasp outcomes ([report](runs/ur5e-infeed/REPORT.md))
-- [ ] validate UR5e perception, contact grasp, collision avoidance and physical bin capture on hardware
-
 **Day 1, afternoon — physical line integration (`~/robotics/line/`, THEKER bench)**
 
 - Five Claude sessions (arduino, camera, coffee-sim = this project, build, integrator) wired a physical line through
@@ -348,12 +331,20 @@ hardware throughput, general perception accuracy or grasp reliability.
 
 **Next**
 
-- [x] speed up `vision.detect` (statistics over foreground pixels only)
-- [ ] train the belt-sorter classifier (`run.py train`) — now ~1 min
-- [ ] first closed-loop run with metrics + video
-- [ ] rate sweep 500 → 3000 beans/s, latency vs the 73 ms camera-to-jet budget
-- [ ] `roasted` profile without touching the controller (generalisation)
-- [ ] UR5e (Menagerie + mink) picking oversize foreign matter off the infeed — the one thing the air jets cannot do
+- [x] foreground-only `vision.detect` with exact equivalence proof; train the classifier
+- [x] first closed-loop run with metrics + video
+- [ ] meet the <5 ms detector target and improve physical rejection/yield/spills
+- [x] rate sweep 500 → 3000 beans/s, latency vs the 73 ms camera-to-jet budget
+- [x] physical tuning screen, separate merged-bean metrics, fresh-seed demo and phone evidence
+- [ ] longer paired seeds for 0.06 N; improve merged-target jet intersection and capture
+- [ ] model camera backlog before claiming hardware timing margin
+- [x] sensor degradation sweep and throughput/value ledger with stated assumptions
+- [ ] stabilize illumination and validate photometric robustness before hardware accuracy claims
+- [ ] calibrate exposure, sensor noise and belt jitter from real hardware; verify buyer grade premium
+- [x] `roasted` profile without touching the controller; matched quality measured
+- [x] unseen colour/material/size experiment, anomaly and physical threshold tradeoffs
+- [x] UR5e (Menagerie + mink) infeed prototype with quantified ideal-grasp outcomes ([report](runs/ur5e-infeed/REPORT.md))
+- [ ] validate UR5e perception, contact grasp, collision avoidance and physical bin capture on hardware
 - [ ] one-slide summary
 
 ## Renders so far
