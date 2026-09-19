@@ -25,22 +25,23 @@ contents or change its configuration.
 
 ## Public deployment blocker
 
-The current service cannot safely serve `https://hack-growth.dev`.
+The baseline service cannot safely serve `https://hack-growth.dev`.
 
 `sim/coffee_sorter/live.py` accepts only `--host 127.0.0.1`. Its middleware
-allows only loopback Host and Origin values. `sim/coffee_sorter/live_web/live.js`
-constructs `ws://` URLs. A browser on an HTTPS page must use `wss://`.
-`live.py` currently serves only `/` and `/live.js`. It does not serve 3D assets.
+allows only loopback Host and Origin values.
 
-Complete this small application change before deployment:
+Current integration code after the recorded baseline has fixed two application
+gaps. The browser now selects `ws:` or `wss:` from `location.protocol`.
+The server also exposes reviewed same-origin `/vendor` and `/assets` routes for
+the integrated 3D page. These changes do not permit public Host or Origin values.
+
+Complete the remaining application change before deployment:
 
 1. Keep `127.0.0.1` as the local default.
 2. Add an explicit public origin configuration. Example value: `https://hack-growth.dev`.
 3. Allow only the configured public Host and Origin in public mode.
 4. Permit an internal Docker listener such as `0.0.0.0:8890` in public mode.
-5. Build the browser WebSocket URL from `location.protocol`.
-6. Keep the browser and WebSocket on the same public origin.
-7. Add a reviewed same-origin route for required 3D assets.
+5. Keep the browser and WebSocket on the same public origin.
 
 Do not rewrite Host or Origin headers in Caddy to bypass the current checks.
 The application must validate the public host itself.
@@ -305,7 +306,7 @@ session result after rollback.
 
 Do not deploy until all items pass:
 
-- The public-host and WSS application change is reviewed.
+- The public Host, Origin, and bind application change is reviewed.
 - The reviewed Python 3.13 image and its digest are recorded.
 - Caddy configuration ownership is confirmed.
 - The public IPv4 target is confirmed before the DNS record is created.
