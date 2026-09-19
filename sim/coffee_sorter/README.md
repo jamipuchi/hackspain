@@ -146,6 +146,14 @@ the task's `final-validation.tar.gz` attachment.
 
 **Next**
 
+The overnight characterization baseline is now committed with a full 8 s HUD
+video and six post-run annotated inspection sheets. It records 81.79% physical
+accuracy, 45.45% rejection precision, 38.85% defect recall, 7.95% good false ejects,
+4.72% spills and zero late reject decisions. All eligible beans, including 14
+unresolved beans, remain in the denominator. Ever-merged defect recall is 26.23%
+versus 47.04% for single-only beans. Twenty-two regression tests pass.
+See [NIGHT_LOG.md](NIGHT_LOG.md) for the numbers, limits and phone video links.
+
 - [x] foreground-only `vision.detect` with exact equivalence proof; train the classifier
 - [x] first closed-loop run with metrics + video
 - [ ] meet the <5 ms detector target and improve physical rejection/yield/spills
@@ -159,12 +167,27 @@ the task's `final-validation.tar.gz` attachment.
 `runs/preview/overview.png`, `runs/preview/discharge.png`, `runs/preview/topdown.png`, and the camera strip
 `runs/preview/inspection_labeled.png` (boxes = detected blobs, text = ground-truth class where matched).
 
+New closed-loop runs also save annotated inspection sheets and
+`inspection_evidence.json`. Each sheet links a numbered camera blob to its
+predicted class/confidence, fused track decision, valve indices and final
+outcome. `FIRED` means that a queued pulse actually reached its activation time;
+it does not imply a physical hit. `own hits` identifies constituents touched by
+that track's pulse. These are post-run annotations using simulator ground truth,
+not information available to the controller.
+
+Merged-blob measurements count every projected bean centre inside a connected
+component. Their binary action truth is whether any constituent should be
+rejected under the current policy. Single-blob multiclass accuracy, merged-blob
+action correctness and physical bean outcomes have different denominators and
+must not be compared as interchangeable accuracy figures.
+
 ## Handoff notes (for whoever continues)
 
-- Python env: `~/robotics/.venv` (created with `uv`; add packages with `uv pip install --python ../.venv/bin/python <pkg>`). Run everything from this folder with `../.venv/bin/python run.py ...`. Assets regenerate automatically (`assets.build()` is called by the CLI).
-- **Known bottleneck**: `vision.Inspector.detect` builds `xs, ys = np.divmod(np.arange(H*W), W)` and runs ~20 `np.bincount` calls over all 400k pixels per frame (~40–50 ms). Restrict everything to `idx = np.flatnonzero(mask)` (foreground ≈ 5 % of pixels) and precompute the coordinate grids once in `__init__`. Target: < 5 ms per frame, so 250 fps of simulated camera costs ~1 s wall per simulated second. `run.py train` was started once and killed for being slow because of this; no model exists in `models/` yet.
-- Training then is: `../.venv/bin/python run.py train --profile green_arabica --seconds 24 --rate 900 --boost 5` → `models/green_arabica.joblib` + `runs/train_green_arabica/{report.json,confusion.png}`. `--boost` multiplies defect priors so classes are balanced.
-- The closed loop is `run.py run` (untested end to end until a model exists). Things to verify on the first run: (1) valves actually deflect beans below the splitter (`per_class[...]['rejected']` vs `['targeted']` in `metrics.json`; tune `JET_FORCE`, `Policy.base_pulse`, or `Layout.split_z_drop`), (2) `late_decisions` is 0 (latency budget is `(ej_x - cam_x)/belt_speed` = 73 ms), (3) `spilled_rate` stays low (beans lost off the belt sides or bouncing; `Bean.last_pos` says where).
+- See [NIGHT_LOG.md](NIGHT_LOG.md) for the overnight experiment record and phone-accessible evidence. [NIGHT_PLAN.md](NIGHT_PLAN.md) tracks the current characterization work.
+- Use the fresh-checkout environment instructions above. The previous workstation used `~/robotics/.venv`; environment paths are local and are not shipped. Assets regenerate automatically (`assets.build()` is called by the CLI).
+- Foreground-only detection and cached coordinate grids are implemented. The measured detector median is 5.44 ms; the <5 ms target remains open. Use `check_detect.py` to measure the current host and verify exact feature equivalence.
+- The first model was trained with `run.py train --profile green_arabica --seconds 24 --rate 900 --boost 5`. The model and training report are in the prior task's archive, linked in the night log. They are ignored by Git; train or restore them for a fresh checkout. `--boost` multiplies defect priors.
+- The closed loop runs end to end. Compare targeted, jet-hit and rejected counts separately in `metrics.json`; classification does not guarantee physical capture. The nominal camera-centre budget is `(ej_x - cam_x)/belt_speed` = 73.33 ms. Spills and missed jet intersections remain the primary physical issues.
 - Body pool: 1150 ellipsoid beans ≈ 2000 beans/s × 0.5 s transit. If `pool_starved` grows in `metrics.json`, raise `Layout.n_ellipsoid` (physics cost is roughly linear in active contacts).
 - Physics conventions: x = belt travel, y = across the belt, z = up; belt surface at `Layout.belt_z = 0.60`; belt end at x = 0; camera strip centred at `cam_x = -0.12`; nozzles at `ej_x = 0.10`; splitter blade at `split_x = 0.34`, `split_z_drop = 0.125` below the belt.
 - Do not put beans back on `implicit` integrator hoping for stability: it is 10× slower here; the per-body rotational damping/armature in `sim.spawn` is what keeps `implicitfast` stable.

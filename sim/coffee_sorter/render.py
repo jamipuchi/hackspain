@@ -35,9 +35,24 @@ class Video:
 
 
 def hud(frame, lines, org=(20, 36), scale=0.7, color=(255, 255, 255)):
-    y = org[1]
-    for ln in lines:
-        cv2.putText(frame, ln, (org[0], y), cv2.FONT_HERSHEY_SIMPLEX, scale, (0, 0, 0), 4, cv2.LINE_AA)
-        cv2.putText(frame, ln, (org[0], y), cv2.FONT_HERSHEY_SIMPLEX, scale, color, 1, cv2.LINE_AA)
-        y += int(34 * scale)
+    lines = [str(line) for line in lines if line]
+    if not lines:
+        return frame
+
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    padding = 8
+    available_width = frame.shape[1] - org[0] - 2 * padding
+    widest = max(cv2.getTextSize(line, font, scale, 1)[0][0] for line in lines)
+    if widest > available_width:
+        scale *= available_width / widest
+
+    sizes = [cv2.getTextSize(line, font, scale, 1) for line in lines]
+    line_height = max(height + baseline for (width, height), baseline in sizes) + 5
+    top = org[1] - max(height for (width, height), baseline in sizes) - padding
+    bottom = org[1] + (len(lines) - 1) * line_height + max(baseline for (size, baseline) in sizes) + padding
+    right = min(frame.shape[1] - 1, org[0] + max(width for (width, height), baseline in sizes) + padding)
+    cv2.rectangle(frame, (org[0] - padding, top), (right, bottom), (20, 20, 20), -1)
+
+    for i, line in enumerate(lines):
+        cv2.putText(frame, line, (org[0], org[1] + i * line_height), font, scale, color, 1, cv2.LINE_AA)
     return frame

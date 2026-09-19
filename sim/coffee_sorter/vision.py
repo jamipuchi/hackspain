@@ -7,7 +7,7 @@ except the final packing.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import numpy as np
 import cv2
 import mujoco
@@ -34,6 +34,8 @@ class Blobs:
     bbox: np.ndarray       # (n,4) x,y,w,h px
     partial: np.ndarray    # touching top/bottom edge -> not fully visible yet
     X: np.ndarray          # (n, F) features
+    member_uids: list[np.ndarray] = field(default_factory=list)  # evaluation only: GT centres in component
+    component_ids: np.ndarray = field(default_factory=lambda: np.zeros(0, int))
 
 
 class Inspector:
@@ -82,6 +84,7 @@ class Inspector:
         mask = cv2.bitwise_not(belt)
         n, labels, stats, cents = cv2.connectedComponentsWithStatsWithAlgorithm(
             mask, 8, cv2.CV_32S, cv2.CCL_DEFAULT)
+        self._last_labels = labels
         if n <= 1:
             return Blobs(t, 0, *[np.zeros(0)] * 4, np.zeros((0, 4), int), np.zeros(0, bool), np.zeros((0, len(FEATURES))))
         keep = np.where(stats[1:, cv2.CC_STAT_AREA] >= MIN_AREA_PX)[0] + 1
@@ -145,7 +148,25 @@ class Inspector:
         partial = (top <= 0) | (bottom >= H) | (st[:, cv2.CC_STAT_LEFT] <= 0) | (st[:, cv2.CC_STAT_LEFT] + w_px >= W)
         u, v = cents[k, 0], cents[k, 1]
         x, y = self.pixel_to_world(u, v)
-        return Blobs(t, len(k), x, y, u, v, st[:, :4], partial, X)
+        return Blobs(t, len(k), x, y, u, v, st[:, :4], partial, X,
+                     component_ids=keep.copy())
+
+    def component_members(self, blobs):
+        """Map rendered bean centres to components after controller timing is complete."""
+        bodies, pos, _ = self.sim.active_state(rendered=True)
+        members = [[] for _ in blobs.component_ids]
+        if len(bodies) == 0:
+            return [np.zeros(0, int) for _ in blobs.component_ids]
+        u, v = self.world_to_pixel(pos[:, 0], pos[:, 1])
+        ui, vi = np.rint(u).astype(int), np.rint(v).astype(int)
+        labels = self._last_labels
+        inside = (ui >= 0) & (ui < labels.shape[1]) & (vi >= 0) & (vi < labels.shape[0])
+        output_index = {int(component): i for i, component in enumerate(blobs.component_ids)}
+        for body, col, row in zip(bodies[inside], ui[inside], vi[inside]):
+            i = output_index.get(int(labels[row, col]))
+            if i is not None:
+                members[i].append(self.sim.bean_of[body].uid)
+        return [np.asarray(x, dtype=int) for x in members]
 
     def close(self): self.r.close()
 

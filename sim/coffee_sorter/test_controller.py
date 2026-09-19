@@ -97,6 +97,29 @@ class ControllerTest(unittest.TestCase):
         self.assertTrue(ctrl.decisions[0].late)
         self.assertEqual(sim.fires, [])
 
+    def test_induced_delay_changes_availability_and_prevents_late_pulse(self):
+        sim = FakeSim()
+        policy = Policy(latency_floor=0.004, induced_delay=0.080)
+        ctrl = Controller(sim, FakeInspector([blob(-0.118)]), FakeModel(), policy)
+        with patch("controller.time.perf_counter", side_effect=[10.0, 10.003, 10.005]):
+            ctrl.on_frame(None, 1.0)
+
+        self.assertAlmostEqual(ctrl.decisions[0].t_available, 1.087)
+        self.assertAlmostEqual(ctrl.latency_ms[0], 89.0)
+        self.assertTrue(ctrl.decisions[0].late)
+        self.assertFalse(ctrl.decisions[0].scheduled)
+        self.assertEqual(sim.fires, [])
+
+    def test_fixed_latency_is_a_minimum_and_never_hides_slower_compute(self):
+        sim = FakeSim()
+        policy = Policy(latency_floor=0.004, fixed_latency=0.006)
+        ctrl = Controller(sim, FakeInspector([blob(-0.118)]), FakeModel(), policy)
+        with patch("controller.time.perf_counter", side_effect=[10.0, 10.003, 10.005]):
+            ctrl.on_frame(None, 1.0)
+
+        self.assertAlmostEqual(ctrl.decisions[0].t_available, 1.007)
+        self.assertAlmostEqual(ctrl.latency_ms[0], 9.0)
+
 
 if __name__ == "__main__":
     unittest.main()

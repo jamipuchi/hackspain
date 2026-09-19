@@ -32,7 +32,10 @@ class Bean:
     outcome: str | None = None       # accept | reject | spilled
     resolved_t: float | None = None
     targeted: bool = False           # a valve was fired for this bean
+    fired_target: bool = False       # a scheduled valve actually reached its on-time
     jet_hits: int = 0                # physics steps during which a jet pushed it
+    camera_observations: int = 0     # full camera blobs containing this bean's rendered centre
+    merged_observations: int = 0     # those observations whose component contains >=2 bean centres
     last_pos: tuple | None = None    # where it was recycled (diagnostics)
 
 
@@ -43,6 +46,7 @@ class Fire:
     t_off: float
     force: float
     uid: int | None = None
+    activated: bool = False
 
 
 class SorterSim:
@@ -79,6 +83,7 @@ class SorterSim:
         self.active = np.zeros(len(self.all_bodies), bool)
         self.bean_of = {}                  # body -> Bean (active)
         self.beans: list[Bean] = []        # every bean ever spawned (ground truth log)
+        self.bean_by_uid: dict[int, Bean] = {}
         self.material_ids = {}
         for fam in ("good", "faded", "black", "sour", "insect", "roast"):
             self.material_ids[fam] = [mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_MATERIAL, f"m_{fam}_{k}") for k in range(N_VARIANTS)]
@@ -88,7 +93,10 @@ class SorterSim:
         self.roller_tail = m.jnt_qposadr[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, "roller_tail")]
         self.nozzle_y = np.array([layout.nozzle_y(j) for j in range(layout.n_nozzles)])
         self.fires: list[Fire] = []
-        self.n_fired = 0
+        self.n_fired = 0                   # valve commands accepted (legacy name)
+        self.n_activated = 0               # valve commands that reached t_on in simulation
+        self.fired_targets: set[int] = set()
+        self.fire_hits: set[tuple[int, int]] = set()  # (controller track id, bean uid)
         self.uid = 0
         self.starved = 0
         self.spawn_accum = 0.0
@@ -168,6 +176,7 @@ class SorterSim:
         self.uid += 1
         self.bean_of[b] = bean
         self.beans.append(bean)
+        self.bean_by_uid[bean.uid] = bean
         self.active[self.body_index[b]] = True
         return bean
 
@@ -211,8 +220,11 @@ class SorterSim:
     def fire(self, nozzle: int, t_on: float, duration: float, force: float = JET_FORCE, uid: int | None = None):
         """Open valve `nozzle` from t_on for `duration` seconds (the controller's only handle)."""
         if 0 <= nozzle < self.L.n_nozzles:
-            self.fires.append(Fire(nozzle, t_on, t_on + duration, force, uid))
+            fire = Fire(nozzle, t_on, t_on + duration, force, uid)
+            self.fires.append(fire)
             self.n_fired += 1
+            return fire
+        return None
 
     # ------------------------------------------------------------------ stepping
     def step(self):
@@ -242,12 +254,20 @@ class SorterSim:
                 inflight = pos[:, 0] > 0.02
                 for fr in live:
                     if fr.t_on <= t:
+                        if not fr.activated:
+                            fr.activated = True
+                            self.n_activated += 1
+                            if fr.uid is not None:
+                                self.fired_targets.add(fr.uid)
                         hit = inflight & (np.abs(pos[:, 0] - L.ej_x) < JET_HALF_X) & \
                               (np.abs(pos[:, 1] - self.nozzle_y[fr.nozzle]) < JET_HALF_Y_FACTOR * L.nozzle_pitch) & \
                               (pos[:, 2] > L.belt_z - 0.07) & (pos[:, 2] < L.belt_z + 0.03)
                         f[hit, 2] -= fr.force
                         for b in bodies[hit]:
-                            self.bean_of[b].jet_hits += 1
+                            bean = self.bean_of[b]
+                            bean.jet_hits += 1
+                            if fr.uid is not None:
+                                self.fire_hits.add((fr.uid, bean.uid))
             d.xfrc_applied[bodies, :3] = f
             # outcome capture at the splitter plane and recycling
             past = pos[:, 0] >= L.split_x

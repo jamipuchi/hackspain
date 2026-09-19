@@ -25,6 +25,8 @@ class Policy:
     max_pulse: float = 0.012
     lead: float = 0.0015             # open the valve this early (jet rise time)
     latency_floor: float = 0.004     # s: camera exposure + transfer, even if compute is instant
+    induced_delay: float = 0.0       # s: controlled extra availability delay for deadline experiments
+    fixed_latency: float | None = None  # s: imposed total exposure-to-availability latency
 
 
 COMMERCIAL = Policy("commercial", ("major", "foreign"))
@@ -64,13 +66,17 @@ class Decision:
     late: bool
     n_obs: int
     cls: str
+    scheduled: bool
+    target_uids: tuple = ()
 
 
 class Controller:
-    def __init__(self, sim, inspector: Inspector, model: Model, policy: Policy = SPECIALTY):
+    def __init__(self, sim, inspector: Inspector, model: Model, policy: Policy = SPECIALTY,
+                 jet_force: float = JET_FORCE):
         self.sim, self.insp, self.model, self.pol = sim, inspector, model, policy
         self.L = sim.L
         self.classes = model.classes
+        self.jet_force = jet_force
         spec = {c.name: c for c in sim.P.classes}
         self.reject_mask = np.array([spec[c].defect and spec[c].severity in policy.reject_severities for c in self.classes])
         from profiles import sample_instance
@@ -80,6 +86,7 @@ class Controller:
         self.decisions: list[Decision] = []
         self.next_tid = 0
         self.latency_ms: list[float] = []
+        self.compute_ms: list[float] = []
         self.frames = 0
 
     # -------------------------------------------------------------- per frame
@@ -88,12 +95,16 @@ class Controller:
         blobs = self.insp.detect(frame, t)
         full = ~blobs.partial
         P, A = self.model.predict(blobs.X[full])
-        self._associate(blobs, full, P, A, t)
+        blob_tracks = self._associate(blobs, full, P, A, t)
         self.frames += 1
         self._finalize(t, frame_started_wall)
-        latency = self.pol.latency_floor + time.perf_counter() - frame_started_wall
+        compute = time.perf_counter() - frame_started_wall
+        measured_latency = self.pol.latency_floor + compute
+        latency = (max(self.pol.fixed_latency, measured_latency) if self.pol.fixed_latency is not None else
+                   measured_latency + self.pol.induced_delay)
+        self.compute_ms.append(compute * 1e3)
         self.latency_ms.append(latency * 1e3)
-        return blobs, P, A, full
+        return blobs, P, A, full, blob_tracks
 
     def _associate(self, blobs: Blobs, full, P, A, t):
         v_belt = self.L.belt_speed
@@ -103,6 +114,7 @@ class Controller:
             py = np.array([tr.y for tr in live])
         used = np.zeros(len(live), bool)
         idx_full = np.where(full)[0]
+        blob_tracks = np.full(blobs.n, -1, int)
         for k, i in enumerate(idx_full):
             bx, by = blobs.x[i], blobs.y[i]
             tr = None
@@ -117,6 +129,7 @@ class Controller:
                 tr.prob_sum = np.zeros(len(self.classes))
                 self.tracks.append(tr)
             tr.x, tr.y, tr.t = bx, 0.7 * tr.y + 0.3 * by if tr.n else by, t
+            blob_tracks[i] = tr.tid
             tr.misses = 0
             if tr.done:
                 continue
@@ -126,6 +139,7 @@ class Controller:
         for j, tr in enumerate(live):
             if not used[j]:
                 tr.misses += 1
+        return blob_tracks
 
     def _finalize(self, t, frame_started_wall):
         L, pol = self.L, self.pol
@@ -151,7 +165,12 @@ class Controller:
             t_fire = t_leave + L.ej_x / v
             nozzles, pulse = [], 0.0
             late = False
-            t_available = t + pol.latency_floor + time.perf_counter() - frame_started_wall
+            measured_to_schedule = time.perf_counter() - frame_started_wall
+            measured_latency = pol.latency_floor + measured_to_schedule
+            available_latency = (max(pol.fixed_latency, measured_latency) if pol.fixed_latency is not None else
+                                  measured_latency + pol.induced_delay)
+            t_available = t + available_latency
+            scheduled = False
             if reject:
                 mass = float(probs @ self.class_mass)
                 if anomalous and p_reject < pol.threshold:
@@ -170,8 +189,10 @@ class Controller:
                 else:
                     t_on = max(t_on, t_available)
                     for nz in nozzles:
-                        self.sim.fire(nz, t_on, pulse + (t_fire - pol.lead - t_on) * 0 + 0.001, JET_FORCE, uid=tr.tid)
-            self.decisions.append(Decision(tr.tid, t, t_available, tr.x, tr.y, v, probs, tr.anomaly, reject, nozzles, t_fire, pulse, late, tr.n, cls))
+                        scheduled |= self.sim.fire(nz, t_on, pulse + 0.001,
+                                                   self.jet_force, uid=tr.tid) is not None
+            self.decisions.append(Decision(tr.tid, t, t_available, tr.x, tr.y, v, probs, tr.anomaly,
+                                           reject, nozzles, t_fire, pulse, late, tr.n, cls, scheduled))
         # prune
         if len(self.tracks) > 4000:
             self.tracks = [tr for tr in self.tracks if not tr.done or tr.misses < 2]
