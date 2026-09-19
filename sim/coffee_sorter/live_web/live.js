@@ -908,7 +908,7 @@ const clickTargets = [];
 const presets = {
   overview: {position: [1.82, -2.62, 1.98], target: [-.22, 0, .47]},
   sorting: {position: [.20, 1.75, .58], target: [.12, 0, .48]},
-  inspection: {position: [1.65, 0, 2.25], target: [-.50, 0, .56]},
+  inspection: {position: [.72, 0, 1.52], target: [-.50, 0, .58]},
 };
 const INK = '#25342d', EDGE = '#34463d', EDGE_SOFT = '#829188', PAPER = '#eef0ea';
 const REJECT_COLOR = new THREE.Color('#d26045'), SPILL_COLOR = new THREE.Color('#d49a27'), SELECT_COLOR = new THREE.Color('#d8781c');
@@ -1336,7 +1336,8 @@ function drawInset() {
     .reduce((top, panel) => Math.min(top, panel.getBoundingClientRect().top), height);
   let contentTop = Math.max(52, topBlockBottom + 18);
   let contentBottom = Math.min(height - 22, bottomBlockTop - 18);
-  if (contentBottom - contentTop < 220) {
+  const minimumAvailableHeight = mobile ? 88 : 220;
+  if (contentBottom - contentTop < minimumAvailableHeight) {
     contentTop = 52;
     contentBottom = height - 22;
   }
@@ -1349,14 +1350,14 @@ function drawInset() {
   const Y = y => topCenter + y / .25 * topHalfHeight;
   const Z = z => sideBottom - (z - .30) / .65 * (sideBottom - sideTop);
   const topY = Y(-.25), topHeight = Y(.25) - topY;
-  ctx.font = '12px ui-monospace, monospace';
+  ctx.font = `${mobile ? 9 : 12}px ui-monospace, monospace`;
   ctx.fillStyle = '#586b7c';
-  ctx.fillText('TOP', 18, contentTop);
-  ctx.fillText('SIDE', 18, sideTop - 10);
-  ctx.fillText('DROP ZONE', X(-1.05), contentTop);
+  ctx.fillText('TOP', mobile ? 42 : 18, contentTop);
+  ctx.fillText('SIDE', mobile ? 42 : 18, sideTop - 6);
+  ctx.fillText(mobile ? 'DROP' : 'DROP ZONE', X(-1.05), contentTop);
   ctx.fillText('INSPECT', X(-.18), contentTop);
   ctx.fillText('AIR', X(.045), contentTop);
-  ctx.fillText('PHYSICAL OUTCOME', X(.28), contentTop);
+  ctx.fillText(mobile ? 'OUTCOME' : 'PHYSICAL OUTCOME', X(.28), contentTop);
   ctx.fillStyle = '#24548b';
   ctx.fillRect(X(-1.1), topY, X(0) - X(-1.1), topHeight);
   ctx.fillStyle = '#dfe8ed';
