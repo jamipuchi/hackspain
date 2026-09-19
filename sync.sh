@@ -13,20 +13,8 @@ rsync -a --delete \
   "$SRC/magnet_sorter/" sim/magnet_sorter/
 rsync -a --delete --exclude '__pycache__' --exclude 'runs/' "$SRC/astra_sort/" sim/astra_sort_v0/
 rsync -a --exclude '__pycache__' --exclude 'avf_cameras' --exclude '*.jpg' "$SRC/demos/" sim/demos/
-# coffee bean optical sorter (belt + camera + air jets); keep its preview renders, drop models/videos/run dirs
-rsync -a --delete --exclude '.git' --exclude '__pycache__' --exclude 'runs/' --exclude 'models/' --exclude '*.mp4' --exclude 'MUJOCO_LOG.TXT' \
-  "$SRC/coffee_sorter/" sim/coffee_sorter/
-mkdir -p sim/coffee_sorter/runs/preview
-cp -f "$SRC"/coffee_sorter/runs/preview/*.png sim/coffee_sorter/runs/preview/ 2>/dev/null || true
-for d in "$SRC"/coffee_sorter/runs/*/; do
-  n=$(basename "$d")
-  [ -f "$d/metrics.json" ] || [ -f "$d/report.json" ] || [ -f "$d/bench.json" ] || continue
-  mkdir -p "sim/coffee_sorter/runs/$n"
-  cp -f "$d"/*.json "$d"/*.png "$d"/*.csv "sim/coffee_sorter/runs/$n"/ 2>/dev/null || true
-  for v in "$d"/overview.mp4; do [ -f "$v" ] && [ $(stat -f %z "$v") -lt 40000000 ] && cp -f "$v" "sim/coffee_sorter/runs/$n"/ || true; done
-done
-# physical sorting line: control panel, contracts, per-subsystem modules and tests (no models/datasets)
-rsync -a --delete --exclude '__pycache__' --exclude '.pytest_cache' --exclude 'models/' --exclude 'datasets/' "$SRC/line/" sim/line/
+# NOTE 19 Sep 19:55: the ~/robotics/coffee_sorter mirror was removed from this script. sim/coffee_sorter on origin/main is
+# Taras's fork of it (PR #3, merged 19:44) and is now the canonical version; an rsync --delete from the older local copy would erase it.
 cp "$SRC/README.md" sim/README-toolchain.md
 
 # selected run artifacts: GPT-6 photos/plans and preview videos (small), never Cycles frame dumps
