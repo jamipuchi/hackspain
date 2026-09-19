@@ -1,0 +1,119 @@
+{
+  "acceptance": {
+    "admitted_objects_per_second_min": 500.0,
+    "capture_wilson_lower_min": 0.8,
+    "cohort_spawn_window_s": [
+      0.8,
+      "simulation_end_minus_0.6"
+    ],
+    "eligible_objects_per_seed_min": 2000,
+    "floating_point_tolerance": 1e-09,
+    "good_loss_wilson_upper_max": 0.02,
+    "spills_and_unresolved_in_denominators": true,
+    "unresolved_objects_per_seed_max": 0
+  },
+  "created_at_utc": "2026-09-19T15:23:28.746809+00:00",
+  "expected_seeds": [
+    111,
+    112,
+    113
+  ],
+  "frozen": {
+    "assets_sha256": {
+      "half_bean.obj": "ad483a77b7b1946e2fc15e49ffacc0583af9ad07e30f9589859a0751147ffc41",
+      "tex_black_0.png": "a9f2c647aa2b7fcc3f0b1b676d19e8ed59e2f115a88074dba79d0e1b598d805d",
+      "tex_black_1.png": "b84a37b730721cbe634e36a708a0e3aa080ff8046cf9093a4c7f5f4124715650",
+      "tex_black_2.png": "aabfbfbdc2031797c1cf9f6e15c12d76e26e8f3225ef2c8731333ac7224bd29c",
+      "tex_black_3.png": "819b06be149ad80d9e8edf68ec82257a921fef62556daa073b68f2ab28302b88",
+      "tex_black_4.png": "da46129af3ee6cc6ee5352d00238490b2a66c41a44159a841272ab7036132e41",
+      "tex_black_5.png": "4b084ec03538c322139d88fb1a7781bf530e3b57dc42d8a8d83b14082404d6c9",
+      "tex_faded_0.png": "2a47cbd8c6dda9dcb5a31a98b2cf12c2b22bf749215919021fc3aedfca6f8b45",
+      "tex_faded_1.png": "a4d0329142f9dcc0d0c51c3a0d35771d06fa1c5183921a1377b34a69a9bcb129",
+      "tex_faded_2.png": "edf8df4a97ccb15077e6ad2c2f85fd0192beb886ffaaa594717435b460fdb4b6",
+      "tex_faded_3.png": "48f571430093cd81576fcd84e78bad07cf588bc50767e6e48a4f98a2786309fc",
+      "tex_faded_4.png": "f20fedd407c33510e836be03b14b338595b1880f14cca6f2bc153cf0b5d90050",
+      "tex_faded_5.png": "2772661b50a209618d4e04ff9c8e9083aadf5d205caf97e375940d122a0bc6c8",
+      "tex_good_0.png": "51e58100673da02d7a608ff1b89969001aa378ecedad4ea134e600d25415c384",
+      "tex_good_1.png": "b607105c687d4982ae0b252e08118a344b6107688fdf61acdce87d81c4f534e7",
+      "tex_good_2.png": "250abd384dcdd0fafcde85295b3faa8e32f136901d99c7d569757157fd00ba24",
+      "tex_good_3.png": "c2da036cf19f983657f9bfe9db39640950028212223bd90001d636f8d0a1b5c4",
+      "tex_good_4.png": "bba488583e23ec3d4ab1245d7739f976089292bc11b38cf27a4ee747504a4988",
+      "tex_good_5.png": "ca61af548e78c708684362603c41474a898600dc738bb160c2e06cf8a835933f",
+      "tex_insect_0.png": "0b76021a7996b3baa975e465f8ee528fdd5ea1ff188fef0d0966f2cff52d5477",
+      "tex_insect_1.png": "2d13a938346961318adcba1f6f65a36f77be92bb42c15d18850c4e033c585e1e",
+      "tex_insect_2.png": "68c926a967d5989559c9f5a488c065ec0b9b5472a14884e99e3138cd0a936b5f",
+      "tex_insect_3.png": "1590d2ab8f424fe71396f2f65eededc75b84466a2474e839956d41b77fd73c63",
+      "tex_insect_4.png": "4507654008d1f1f1ec5c7fa2de48dab8f83056fe0f10be7cfd6a1c40dcbc7034",
+      "tex_insect_5.png": "9b65594d50094e154e5e89344014cbb0224775193433260ef313407fa9e2da6c",
+      "tex_roast_0.png": "9227f1a2cdf51e6291c90010ed4362345de62c92ca2a1a69cdbeefb671f7ee0e",
+      "tex_roast_1.png": "bb3a42ae2b59d59a2d16c035af3fdf9890014b382fdf6f4cb5e83d701f664904",
+      "tex_roast_2.png": "8d180a7162982efd73df095f66e6ca4871f13d75a7df8ae0721dab5faf2e552d",
+      "tex_roast_3.png": "b92088256d4b77fef594fa71a3add11941543d9e4f9568af017d61e1fc81c6d5",
+      "tex_roast_4.png": "a0910d68a0085766adf3a95d89aea70321688111c9dd40bcd140621bc2a236fc",
+      "tex_roast_5.png": "6205ba1875cb44e271c9706a17c86697bc5eaf349b48dc496b623305100c6ac4",
+      "tex_sour_0.png": "ee0ebd0699c59c5e87c69b4f464d8cc05e12d890b61e3be78d8e0b53aa62dc10",
+      "tex_sour_1.png": "adba30f3a2270fd1735b532cff875567998ef2793914ce395ffc82d114a35edf",
+      "tex_sour_2.png": "82bb9f62048cc5cfab89fd4940302c927be64160a53927f0ff6acb087c8e8018",
+      "tex_sour_3.png": "880580e1b0b2d407fa1cb07abcdf7ad786e1aef590dc331f1275b2e92bb4512b",
+      "tex_sour_4.png": "d63fbb56450b09f6a998456421b6d4bbbfd5836ad5253d8e1fd57affd508d8f4",
+      "tex_sour_5.png": "8ba2eb55bdd488de2c9a24031348acb52f590446caefdfae421a9d21ffafa618"
+    },
+    "model": {
+      "bytes": 4273733,
+      "path": "sim/coffee_sorter/models/live_green_arabica.joblib",
+      "sha256": "89513398373c6e0e81286419962feb3e312742de14a76d02dd0d819ad5264a5a"
+    },
+    "native_thread_limits": {
+      "MKL_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "VECLIB_MAXIMUM_THREADS": "1"
+    },
+    "policy": {
+      "sha256": "2d7f41a11898ae3ec8d864c60d5af27fff3911ab6916e95b30c4578bfd8d414c",
+      "value": {
+        "anomaly": true,
+        "base_pulse": 0.003,
+        "fixed_latency": null,
+        "induced_delay": 0.0,
+        "latency_floor": 0.004,
+        "lead": 0.0015,
+        "max_pulse": 0.012,
+        "name": "specialty",
+        "ref_mass": 0.0002,
+        "reject_severities": [
+          "minor",
+          "major",
+          "foreign"
+        ],
+        "target_nozzles": null,
+        "threshold": 0.8
+      }
+    },
+    "preset": {
+      "path": "sim/coffee_sorter/configs/default_demo.json",
+      "sha256": "3fb88688f460271324d7987a16fb17e332e398006f98d01aa287902ad717720f",
+      "value_sha256": "b7a3f5f06d490daf780a5db7dde27d9c817468635b6c9cbdb02d53c633c5079b"
+    },
+    "source_sha256": {
+      "assets.py": "c727b35d60c009e8d067a68521d296e475105067fa16bdc17dfba42d824dd247",
+      "bootstrap_model.py": "780dfea90e2f509db2cfb08c26042ce644680709bb813e1e92efeffb7fd5a512",
+      "classifier.py": "221a98bd276d5f1a2ff10a5a3bb0a7708ac237a93d2cb295e8e672f1c43d99c4",
+      "controller.py": "ee2045d8c8694d2c19a90a63eeef33b9d3b29f51255bfcd79a2823ed10f712d6",
+      "engine.py": "c0f8fcb79bf93b27b5b78e10f2b777a231b023191d9066e60da4a5a6981dff1d",
+      "evaluate_frozen.py": "7203f7252a796590eccc551eea92f5faac4032306030a132a396f58b2bd0ce49",
+      "profiles.py": "e47a848e1331d902bb1bd1eb7d29306529339100edfb8175f9918e1ab09d6948",
+      "requirements.txt": "8bf73f830ec7ce941ce262dcb9327854284ef1fc5f5fdc52bbfafd84461d7a12",
+      "scene.py": "5fff8ea2b049fcf58556599c05e5d4585dd445dc4aa6615d9e1021b813982a27",
+      "sim.py": "1bda4e58ee7c7c7635ac81062891a8189d56639b35ba48b5459357ec1df7e7c9",
+      "vision.py": "b539b9a9d2fe04c81058526b2990aee89b1f88629578d8bc50ee41d17059c1c4"
+    }
+  },
+  "run": {
+    "max_wall_seconds": 300.0,
+    "seed_only_preset_copies": true,
+    "sequential": true,
+    "simulation_seconds": 6.0
+  },
+  "schema_version": 1
+}
