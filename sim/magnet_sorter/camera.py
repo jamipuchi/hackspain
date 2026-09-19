@@ -217,3 +217,61 @@ def annotate(frame: np.ndarray, plan: dict) -> np.ndarray:
         cv2.rectangle(out, (0, out.shape[0] - 36), (out.shape[1], out.shape[0]), (20, 20, 20), -1)
         cv2.putText(out, plan["message"][:120], (10, out.shape[0] - 12), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (240, 240, 240), 1, cv2.LINE_AA)
     return out
+
+
+def rectified_view(frames: dict[str, np.ndarray], cals: dict[str, "TableCalibration"], ppc: int = 24, step_cm: float = 2.0) -> np.ndarray | None:
+    """Top-down (bird's-eye) view of the pick area, warped from each calibrated oblique photo with the same ArUco
+    homography the robot uses. Straight cm grid, base at (0,0), container outlines. One panel per camera side by side.
+    This is how a real installation would read positions from a phone on a gooseneck: rectify, then measure."""
+    x0, x1 = -0.03, 0.17
+    y0, y1 = -0.13, 0.13
+    W, H = int((x1 - x0) * 100 * ppc), int((y1 - y0) * 100 * ppc)
+    # output pixel (i, j) -> table (x, y): x grows to the right, y grows upwards
+    T = np.array([[1.0 / (100 * ppc), 0, x0], [0, -1.0 / (100 * ppc), y1], [0, 0, 1.0]])
+    panels = []
+    for name, frame in frames.items():
+        cal = cals.get(name)
+        if cal is None or cal.H is None:
+            continue
+        M = cal.H_inv @ T  # output px -> source px
+        top = cv2.warpPerspective(frame, M, (W, H), flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP, borderValue=(40, 40, 40))
+        over = top.copy()
+
+        def px(x, y):
+            return int(round((x - x0) * 100 * ppc)), int(round((y1 - y) * 100 * ppc))
+
+        for xc in np.arange(np.ceil(x0 * 100 / step_cm) * step_cm, x1 * 100 + 0.01, step_cm):
+            major = abs(xc % 4) < 1e-6
+            cv2.line(over, px(xc / 100, y0), px(xc / 100, y1), (255, 255, 255), 2 if major else 1)
+            if major:
+                cv2.putText(over, f"x={xc:.0f}", (px(xc / 100, y0)[0] + 3, H - 6), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 0), 3, cv2.LINE_AA)
+                cv2.putText(over, f"x={xc:.0f}", (px(xc / 100, y0)[0] + 3, H - 6), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 0), 1, cv2.LINE_AA)
+        for yc in np.arange(np.ceil(y0 * 100 / step_cm) * step_cm, y1 * 100 + 0.01, step_cm):
+            major = abs(yc % 4) < 1e-6
+            cv2.line(over, px(x0, yc / 100), px(x1, yc / 100), (255, 255, 255), 2 if major else 1)
+            if major:
+                cv2.putText(over, f"y={yc:.0f}", (4, px(x0, yc / 100)[1] - 3), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 0), 3, cv2.LINE_AA)
+                cv2.putText(over, f"y={yc:.0f}", (4, px(x0, yc / 100)[1] - 3), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 0), 1, cv2.LINE_AA)
+        for tname, t in sd.TARGETS.items():
+            (tx, ty), (hx, hy) = t["pos"], (t["size"][0], t["size"][1])
+            cv2.rectangle(over, px(tx - hx, ty + hy), px(tx + hx, ty - hy), (0, 200, 255), 2)
+            cv2.putText(over, tname, (px(tx - hx, ty + hy)[0] + 3, px(tx - hx, ty + hy)[1] + 16), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 3, cv2.LINE_AA)
+            cv2.putText(over, tname, (px(tx - hx, ty + hy)[0] + 3, px(tx - hx, ty + hy)[1] + 16), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 200, 255), 1, cv2.LINE_AA)
+        r0, r1 = sd.WORKSPACE["r"]
+        a0, a1 = np.degrees(sd.WORKSPACE["yaw"])
+        for rr in (r0, r1):
+            cv2.ellipse(over, px(0, 0), (int(rr * 100 * ppc), int(rr * 100 * ppc)), 0, -a1, -a0, (0, 255, 120), 1)
+        cv2.circle(over, px(0, 0), 6, (0, 220, 255), -1)
+        cv2.putText(over, "arm base (0,0)", (px(0, 0)[0] + 8, px(0, 0)[1] - 6), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 3, cv2.LINE_AA)
+        cv2.putText(over, "arm base (0,0)", (px(0, 0)[0] + 8, px(0, 0)[1] - 6), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 220, 255), 1, cv2.LINE_AA)
+        panel = cv2.addWeighted(over, 0.55, top, 0.45, 0)
+        cv2.putText(panel, f"TOP-DOWN from camera {name} (tall objects smear: trust flat parts, read x,y at the part's centre)", (8, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 3, cv2.LINE_AA)
+        cv2.putText(panel, f"TOP-DOWN from camera {name} (tall objects smear: trust flat parts, read x,y at the part's centre)", (8, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+        panels.append(panel)
+    if not panels:
+        return None
+    sep = np.full((H, 6, 3), 200, np.uint8)
+    out = panels[0]
+    for p in panels[1:]:
+        out = np.hstack([out, sep, p])
+    return out

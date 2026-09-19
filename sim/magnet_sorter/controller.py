@@ -270,7 +270,7 @@ class ArmController:
         if gone and not still:
             return True, f"pick at {where} succeeded: the spot changed in camera {','.join(gone)} (part left it); released in the container"
         if still and not gone:
-            return False, f"pick at {where} FAILED: the spot looks unchanged in camera {','.join(still)} (part still there: not ferrous, or the magnet missed it); released over the container anyway"
+            return False, f"pick at {where} FAILED: the spot looks unchanged in camera {','.join(still)} (part still there). If it looks like steel your x,y were probably off by more than 1 cm: re-read its centre on the top-down view and try once more; if it is brass/aluminium/plastic leave it. Released over the container anyway"
         if still and gone:
             return False, f"pick at {where}: cameras disagree (camera {','.join(gone)} sees the spot changed, camera {','.join(still)} unchanged); released over the container anyway, check the photo"
         return True, f"pick at {where}: unclear from the cameras whether the part left; released over the container, check the photo"

@@ -17,3 +17,7 @@
   composed 3000/4087
   composed 3200/4087
   composed 3400/4087
+  composed 3600/4087
+  composed 3800/4087
+  composed 4000/4087
+[in#0/mov,mp4,m4a,3gp,3g2,mj2 @ 0xaf8c1c000] Error during demuxing: Immediate exit requested

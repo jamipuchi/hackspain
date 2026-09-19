@@ -25,7 +25,7 @@ from openai import OpenAI
 
 import scene_def as sd
 from brain import MODEL, load_api_key
-from camera import TableCalibration, draw_metric_grid
+from camera import TableCalibration, draw_metric_grid, rectified_view
 from robot_api import RobotAPI, ToolResult
 
 APPEARANCE = """Appearance cues (unreliable priors): zinc-plated steel = dull bluish/grey silver, sometimes a warm
@@ -54,7 +54,7 @@ How to work:
   on a small part or for the other camera. Never take more than two photos without acting.
 - Start by surveying the parts in the initial photos and write them down ONCE with note_parts (positions in
   cm, kind, material, target). Then work through the inventory part by part; update it when a part is done or
-  fails. Do not re-survey. Read part positions in cm off the grid;
+  fails. Do not re-survey. Read part positions in cm off the TOP-DOWN rectified view (straight grid, exact on the table plane) and use the oblique photos to identify the part type;
   with two cameras, cross-check a position in both views (the grid is exact on the table plane, and a
   part's base sits on that plane) and use the second view where the arm hides something in the first.
   When unsure about a small part, use take_photo with a zoom centre to inspect it.
@@ -159,8 +159,10 @@ class GPT6Agent:
         """Grab, overlay the metric grid, save; return input_image parts and file names."""
         parts, files = [], []
         names = list(self.cameras) if camera == "all" else [camera]
+        raw_frames: dict[str, np.ndarray] = {}
         for name in names:
             frame = self.cameras[name]()
+            raw_frames[name] = frame
             cal = self.cal[name]
             if cal.H is None:
                 cal.fit(frame)
@@ -181,6 +183,15 @@ class GPT6Agent:
             files.append(fname)
             parts.append({"type": "input_text", "text": f"camera {name}{' (zoom)' if zoom else ''}:"})
             parts.append({"type": "input_image", "image_url": f"data:image/jpeg;base64,{_jpeg_b64(img)}", "detail": "high"})
+        if zoom is None:
+            top = rectified_view(raw_frames, self.cal)
+            if top is not None:
+                self.photo_n += 1
+                fname = f"agent_{self.photo_n:03d}_topdown.png"
+                cv2.imwrite(str(self.run_dir / fname), top)
+                files.append(fname)
+                parts.append({"type": "input_text", "text": "top-down rectified view (same photo(s) warped onto the table plane with the marker homography; read x,y in cm here, at the centre of each part):"})
+                parts.append({"type": "input_image", "image_url": f"data:image/jpeg;base64,{_jpeg_b64(top)}", "detail": "high"})
         return parts, files
 
     def mosaic(self) -> tuple[list[dict], list[str]]:
