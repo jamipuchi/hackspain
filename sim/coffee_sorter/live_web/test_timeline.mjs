@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {PolicyIntentBuffer, samePresentationTimeline} from './timeline.mjs';
+import {PolicyIntentBuffer, normalizedClassPreview, samePresentationTimeline} from './timeline.mjs';
 
 const snapshot = {
   session_id: 'session-a',
@@ -55,4 +55,11 @@ test('expired command epoch retains intent until fresh command metadata arrives'
   assert.equal(pending.size, 1);
   assert.equal(pending.canDispatch('commands-2'), true);
   assert.deepEqual([...pending.apply(['stone'])], []);
+});
+
+test('class previews require explicit profile geometry with meter dimensions', () => {
+  const item = {preview: {schema_version: 1, source: 'profile', shape: 'box', axes_m: [.004, .003, .002], rgb: [.4, .5, .6]}};
+  assert.deepEqual(normalizedClassPreview(item), {shape: 'box', axes: [.004, .003, .002], rgb: [.4, .5, .6]});
+  assert.equal(normalizedClassPreview({...item, preview: {...item.preview, source: 'prediction'}}), null);
+  assert.equal(normalizedClassPreview({...item, preview: {...item.preview, axes_m: [4, 3, 0]}}), null);
 });

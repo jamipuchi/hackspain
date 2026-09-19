@@ -69,3 +69,15 @@ export class PolicyIntentBuffer {
     return this.intents.size;
   }
 }
+
+const PREVIEW_SHAPES = new Set(['ellipsoid', 'half', 'box', 'capsule']);
+
+export function normalizedClassPreview(item) {
+  const preview = item?.preview;
+  if (preview?.schema_version !== 1 || preview.source !== 'profile' || !PREVIEW_SHAPES.has(preview.shape)) return null;
+  const validVector = (value, positive = false) => Array.isArray(value) && value.length === 3
+    && value.every(component => Number.isFinite(component) && (!positive || component > 0));
+  if (!validVector(preview.axes_m, true) || !validVector(preview.rgb)
+      || preview.rgb.some(component => component < 0 || component > 1)) return null;
+  return {shape: preview.shape, axes: preview.axes_m.slice(), rgb: preview.rgb.slice()};
+}

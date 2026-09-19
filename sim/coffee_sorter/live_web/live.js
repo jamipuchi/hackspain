@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {OrbitControls} from '/vendor/OrbitControls.js';
 import {RoomEnvironment} from '/vendor/RoomEnvironment.js';
 import {GLTFLoader} from '/assets/vendor/loaders/GLTFLoader.js';
-import {PolicyIntentBuffer, samePresentationTimeline} from './timeline.mjs';
+import {PolicyIntentBuffer, normalizedClassPreview, samePresentationTimeline} from './timeline.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('scene');
@@ -23,6 +23,9 @@ let policyInitialized = false;
 let pendingPolicyPresentation = null;
 let policyError = '';
 let itemCatalogSignature = '';
+let currentView = '3d';
+let itemPreview = null;
+let selectedPreviewName = null;
 let shownSession = null;
 let frames = 0;
 let fpsStart = performance.now();
@@ -286,6 +289,8 @@ function resetPolicyControls(message = '') {
   policyInitialized = false;
   pendingPolicyPresentation = null;
   policyError = message;
+  itemCatalogSignature = '';
+  if ($('items-dialog').open) closeItems();
   updateItems();
 }
 
@@ -305,11 +310,26 @@ function queuePolicyChange(className, reject) {
   pendingPolicyIntents.setCatalog(policyCatalogNames());
   pendingPolicyIntents.record(className, reject);
   updateItems();
+  schedulePolicyDispatch();
+}
+
+function schedulePolicyDispatch() {
   clearTimeout(policyDispatchTimer);
   policyDispatchTimer = setTimeout(() => {
     policyDispatchTimer = null;
     processPolicyQueue();
   }, POLICY_COALESCE_MS);
+}
+
+function queuePolicySet(reject) {
+  const names = policyCatalogNames();
+  if (!names.size) return;
+  policyError = '';
+  policyDesiredClasses = reject ? new Set(names) : new Set();
+  pendingPolicyIntents.setCatalog(names);
+  for (const name of names) pendingPolicyIntents.record(name, reject);
+  updateItems();
+  schedulePolicyDispatch();
 }
 
 function processPolicyQueue() {
@@ -382,7 +402,10 @@ function updateItems() {
   const policy = normalizedPolicy(state?.reject_policy);
   if (!catalog.length || !policy) {
     $('items').replaceChildren();
+    itemCatalogSignature = '';
     $('policy-status').textContent = 'Waiting for catalog';
+    $('items-dialog-status').textContent = 'Waiting for catalog';
+    $('policy-summary').textContent = 'Waiting';
     return;
   }
   if (!policyInitialized) {
@@ -397,20 +420,29 @@ function updateItems() {
   if (!activePolicyRequest && !pendingPolicyIntents.size && !pendingPolicyPresentation) {
     policyDesiredClasses = new Set(policy.classes);
   }
-  const signature = catalog.map(item => `${item.name}:${item.severity}`).join('|');
+  const signature = catalog.map(item => `${item.name}:${item.severity}:${JSON.stringify(item.preview || null)}`).join('|');
   if (signature !== itemCatalogSignature) {
     itemCatalogSignature = signature;
     $('items').replaceChildren(...catalog.map(item => {
-      const row = document.createElement('div'); row.className = 'item-row'; row.dataset.className = item.name;
+      const row = document.createElement('div'); row.className = 'item-row'; row.dataset.className = item.name; row.tabIndex = 0; row.setAttribute('role', 'option'); row.setAttribute('aria-selected', 'false');
+      const thumb = document.createElement('img'); thumb.className = 'item-thumb'; thumb.alt = ''; thumb.dataset.previewName = item.name;
+      const copy = document.createElement('div');
       const name = document.createElement('span'); name.className = 'item-name';
       const dot = document.createElement('i'); dot.dataset.severity = item.severity;
       name.append(dot, document.createTextNode(item.name));
       name.title = item.defect ? `${item.severity} defect` : 'Keep item';
+      const preview = normalizedClassPreview(item);
+      const meta = document.createElement('small'); meta.className = 'item-meta';
+      meta.textContent = preview ? `${preview.shape} · ${preview.axes.map(value => (value * 1000).toFixed(1)).join(' × ')} mm` : 'Preview unavailable';
+      copy.append(name, meta);
       const button = document.createElement('button'); button.type = 'button'; button.className = 'policy-toggle';
-      button.onclick = () => queuePolicyChange(item.name, !policyDesiredClasses.has(item.name));
-      row.append(name, button);
+      button.onclick = event => { event.stopPropagation(); queuePolicyChange(item.name, !policyDesiredClasses.has(item.name)); };
+      row.onclick = () => selectItemPreview(item.name);
+      row.onkeydown = event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectItemPreview(item.name); } };
+      row.append(thumb, copy, button);
       return row;
     }));
+    if ($('items-dialog').open) refreshItemPreviews();
   }
   for (const row of $('items').children) {
     const className = row.dataset.className;
@@ -423,9 +455,129 @@ function updateItems() {
     button.classList.toggle('pending', pending);
   }
   const pendingCount = pendingPolicyIntents.size + (activePolicyRequest ? 1 : 0);
+  const keepCount = catalog.length - policyDesiredClasses.size;
+  $('policy-summary').textContent = `${keepCount} Keep · ${policyDesiredClasses.size} Reject`;
   $('policy-status').classList.toggle('error', Boolean(policyError));
-  $('policy-status').textContent = policyError || (pendingCount ? `${pendingCount} pending` : pendingPolicyPresentation ? 'Applying' : 'Synced');
+  const statusText = policyError || (pendingCount ? `${pendingCount} pending` : pendingPolicyPresentation ? 'Applying' : 'Synced');
+  $('policy-status').textContent = statusText;
+  $('items-dialog-status').textContent = statusText;
+  $('items-dialog-status').classList.toggle('error', Boolean(policyError));
 }
+
+function previewItem(name) {
+  return (state?.class_catalog || []).find(item => item.name === name) || null;
+}
+
+function setPreviewMesh(item) {
+  if (!itemPreview) return false;
+  const preview = normalizedClassPreview(item);
+  const pool = item?.name === 'black' && three.pools?.black ? three.pools.black : three.pools?.[preview?.shape];
+  if (!preview || !pool?.geometry) return false;
+  if (itemPreview.mesh) {
+    itemPreview.scene.remove(itemPreview.mesh);
+    itemPreview.mesh.geometry.dispose();
+    itemPreview.mesh.material.dispose();
+  }
+  const geometry = pool.geometry.clone();
+  geometry.computeBoundingBox();
+  geometry.center();
+  const material = new THREE.MeshStandardMaterial({color: new THREE.Color().setRGB(...preview.rgb), roughness: .58, metalness: .03});
+  const mesh = new THREE.Mesh(geometry, material);
+  const [x, y, z] = preview.axes;
+  if (preview.shape === 'capsule') mesh.scale.set(y, y, x + y);
+  else mesh.scale.set(x, y, z);
+  mesh.rotation.set(.38, 0, -.25);
+  itemPreview.scene.add(mesh);
+  itemPreview.mesh = mesh;
+  return true;
+}
+
+function renderPreviewThumbnail(item) {
+  if (!setPreviewMesh(item)) return '';
+  const {renderer, scene, camera, mesh} = itemPreview;
+  renderer.setSize(168, 116, false);
+  camera.aspect = 168 / 116; camera.updateProjectionMatrix();
+  mesh.rotation.set(.45, .15, -.35);
+  renderer.render(scene, camera);
+  return renderer.domElement.toDataURL('image/png');
+}
+
+function selectItemPreview(name) {
+  const item = previewItem(name);
+  if (!item || !itemPreview || !setPreviewMesh(item)) return;
+  selectedPreviewName = name;
+  for (const row of $('items').children) row.setAttribute('aria-selected', String(row.dataset.className === name));
+  const preview = normalizedClassPreview(item);
+  $('items-preview-name').textContent = item.name;
+  $('items-preview-meta').textContent = `${preview.shape} · ${preview.axes.map(value => (value * 1000).toFixed(1)).join(' × ')} mm · profile preview`;
+  resizeItemPreview();
+}
+
+function resizeItemPreview() {
+  if (!itemPreview) return;
+  const host = $('items-preview-stage');
+  const width = Math.max(1, host.clientWidth), height = Math.max(1, host.clientHeight);
+  itemPreview.renderer.setSize(width, height, false);
+  itemPreview.camera.aspect = width / height;
+  itemPreview.camera.updateProjectionMatrix();
+}
+
+function refreshItemPreviews() {
+  if (!itemPreview) return;
+  for (const item of state?.class_catalog || []) {
+    const image = $(`items`)?.querySelector(`img[data-preview-name="${CSS.escape(item.name)}"]`);
+    const dataUrl = renderPreviewThumbnail(item);
+    if (image && dataUrl) image.src = dataUrl;
+  }
+  const selected = previewItem(selectedPreviewName) ? selectedPreviewName : state?.class_catalog?.[0]?.name;
+  if (selected) selectItemPreview(selected);
+}
+
+function openItems() {
+  const dialog = $('items-dialog');
+  dialog.showModal();
+  const renderer = new THREE.WebGLRenderer({antialias: true, alpha: true, preserveDrawingBuffer: true, powerPreference: 'high-performance'});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(28, 1, .001, 1);
+  camera.position.set(.028, -.045, .026); camera.lookAt(0, 0, 0);
+  scene.add(new THREE.HemisphereLight('#fffdf6', '#79877f', 2));
+  const light = new THREE.DirectionalLight('#fff2dc', 3); light.position.set(-.03, -.04, .07); scene.add(light);
+  $('items-preview-stage').replaceChildren(renderer.domElement);
+  itemPreview = {renderer, scene, camera, mesh: null, raf: null, previous: performance.now()};
+  refreshItemPreviews();
+  const animate = now => {
+    if (!itemPreview || !$('items-dialog').open) return;
+    const elapsed = Math.min(.05, (now - itemPreview.previous) / 1000); itemPreview.previous = now;
+    if (itemPreview.mesh) itemPreview.mesh.rotation.z += elapsed * .75;
+    itemPreview.renderer.render(itemPreview.scene, itemPreview.camera);
+    itemPreview.raf = requestAnimationFrame(animate);
+  };
+  itemPreview.raf = requestAnimationFrame(animate);
+}
+
+function closeItems() {
+  $('items-dialog').close();
+  if (!itemPreview) return;
+  cancelAnimationFrame(itemPreview.raf);
+  if (itemPreview.mesh) {
+    itemPreview.mesh.geometry.dispose();
+    itemPreview.mesh.material.dispose();
+  }
+  itemPreview.renderer.dispose();
+  itemPreview.renderer.forceContextLoss();
+  $('items-preview-stage').replaceChildren();
+  itemPreview = null;
+}
+
+$('items-open').onclick = openItems;
+$('items-close').onclick = closeItems;
+$('items-dialog').addEventListener('cancel', event => { event.preventDefault(); closeItems(); });
+$('keep-all').onclick = () => queuePolicySet(false);
+$('reject-all').onclick = () => queuePolicySet(true);
 
 function updateLatestEvidence() {
   const request = latestRequest();
@@ -438,7 +590,7 @@ function updateLatestEvidence() {
     prediction: decision ? `${decision.predicted_class}${decision.association_approximate ? ' (approximate object match)' : ''}` : 'Not observed',
     decision: decision ? (decision.scheduled ? 'Pulse commanded' : decision.reject ? (decision.late ? 'Reject decision, too late' : 'Reject decision, no pulse') : 'No pulse commanded') : 'Not decided',
     hit: object?.jet_hits ? `${object.own_pulse_hit ? 'Own pulse' : 'Other pulse'}, ${object.jet_hits} force step${object.jet_hits === 1 ? '' : 's'}` : 'No force contact',
-    outcome: object?.outcome ? ({accept:'Accept path', reject:'Reject path', spilled:'Spilled'})[object.outcome] : 'Unresolved',
+    outcome: object?.outcome ? ({accept:'Keep path', reject:'Reject path', spilled:'Spilled'})[object.outcome] : 'Unresolved',
     'outcome-time': 'Waiting',
   };
   if (object?.outcome && request && request.outcomeWall === undefined && request.spawnWall !== undefined) {
@@ -484,7 +636,9 @@ function updateLatestEvidence() {
 }
 
 function formatScore(score) {
-  return Number.isFinite(score?.value) ? `${(score.value * 100).toFixed(1)}%` : 'Unavailable';
+  if (Number.isFinite(score?.value)) return `${(score.value * 100).toFixed(1)}%`;
+  if (score?.denominator === 0) return 'No samples';
+  return 'Computing';
 }
 
 function formatCount(score, emptyLabel) {
@@ -505,7 +659,7 @@ function updateScoreboard() {
       ['score-loss', 'score-loss-count', 'No keep items'],
       ['score-unresolved', 'score-unresolved-count', 'No eligible objects'],
     ]) {
-      $(valueId).textContent = 'Unavailable';
+      $(valueId).textContent = 'Computing';
       $(countId).textContent = `0 / 0 · ${emptyLabel}`;
     }
     $('score-context').textContent = 'Scores use a rolling simulated-time window.';
@@ -705,19 +859,18 @@ const _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion();
 
 // ---------------------------------------------------------------------------
 // 3D stage: an engineering-drawing style view built from the engine layout.
-// Conventions borrowed from technical drawings: matte fills, visible edges as
-// thin dark lines, dimension callouts in metres, an orthographic option, a title
-// block with the numbers that define the machine. No image or network assets.
+// Conventions borrowed from technical drawings: matte fills, visible edges,
+// dimension callouts in metres, and a title block with the machine dimensions.
 // ---------------------------------------------------------------------------
 const stage = $('stage');
-const three = {ready: false, machineBuilt: false, ortho: false, labels: true};
+const three = {ready: false, machineBuilt: false, labels: true, cameraPreset: 'overview', inspectionHousing: []};
 const dimLines = [];
 const annotations = [];
 const clickTargets = [];
 const presets = {
   overview: {position: [1.82, -2.62, 1.98], target: [-.22, 0, .47]},
   sorting: {position: [.52, -1.44, .90], target: [.16, 0, .45]},
-  inspection: {position: [-.20, -.15, 1.75], target: [-.32, 0, .6]},
+  inspection: {position: [.58, -1.10, 1.02], target: [-.18, 0, .57]},
 };
 const INK = '#25342d', EDGE = '#34463d', EDGE_SOFT = '#829188', PAPER = '#eef0ea';
 const REJECT_COLOR = new THREE.Color('#d26045'), SPILL_COLOR = new THREE.Color('#d49a27'), SELECT_COLOR = new THREE.Color('#d8781c');
@@ -738,8 +891,7 @@ function initThree() {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(PAPER);
     const persp = new THREE.PerspectiveCamera(33, 1, .005, 30);
-    const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, .005, 30);
-    for (const c of [persp, ortho]) c.up.set(0, 0, 1);
+    persp.up.set(0, 0, 1);
     const controls = new OrbitControls(persp, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = .08;
@@ -754,21 +906,19 @@ function initThree() {
     // 100 mm grid on the floor, 1 m major lines.
     const grid = new THREE.GridHelper(6, 60, '#b5bcb3', '#dfe3dc'); grid.rotation.x = Math.PI / 2; grid.position.z = .001; scene.add(grid);
     const major = new THREE.GridHelper(6, 6, '#9aa39a', '#9aa39a'); major.rotation.x = Math.PI / 2; major.position.z = .0015; scene.add(major);
-    Object.assign(three, {renderer, scene, persp, ortho, camera: persp, controls, gpuName});
+    Object.assign(three, {renderer, scene, persp, camera: persp, controls, gpuName});
     function resize() {
       const w = stage.clientWidth, h = stage.clientHeight;
       renderer.setSize(w, h);
       persp.aspect = w / h;
       persp.fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(33) / 2) * Math.max(1, 1.2 / persp.aspect)));
       persp.updateProjectionMatrix();
-      const half = 1.05 * Math.max(1, 1.2 / (w / h));
-      ortho.left = -half * (w / h); ortho.right = half * (w / h); ortho.top = half; ortho.bottom = -half;
-      ortho.updateProjectionMatrix();
     }
     new ResizeObserver(resize).observe(stage); resize();
     document.querySelectorAll('[data-camera]').forEach(b => b.onclick = () => setCamera(b.dataset.camera));
-    $('projection').onclick = () => setProjection(!three.ortho);
+    document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => setView(b.dataset.view));
     setCamera('overview');
+    setView('3d');
     // Click on the belt or table = inject a stone. A drag stays an orbit.
     const raycaster = new THREE.Raycaster(); const pointer = new THREE.Vector2(); let down = null;
     renderer.domElement.addEventListener('pointerdown', e => { down = {x: e.clientX, y: e.clientY, t: performance.now()}; });
@@ -785,7 +935,7 @@ function initThree() {
     measurements.webgl = gpuName;
   } catch (error) {
     const el = document.createElement('div'); el.id = 'webgl-error'; el.setAttribute('role', 'alert');
-    el.textContent = `The 3D view could not start: ${error.message}. The top and side projections in the corner still follow the engine. Use a current browser with WebGL 2 and hardware acceleration enabled.`;
+    el.textContent = `The 3D view could not start: ${error.message}. Top view still follows the engine. Use a current browser with WebGL 2 and hardware acceleration enabled.`;
     stage.append(el); console.error(error);
     measurements.webgl = 'unavailable';
   }
@@ -794,21 +944,23 @@ function initThree() {
 function setCamera(name) {
   const p = presets[name]; if (!p || !three.camera) return;
   three.camera.position.fromArray(p.position); three.controls.target.fromArray(p.target); three.controls.update();
+  three.cameraPreset = name;
+  updateMachineVisibility();
   document.querySelectorAll('[data-camera]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.camera === name)));
 }
 
-function setProjection(ortho) {
-  if (!three.ready) return;
-  const from = three.camera, to = ortho ? three.ortho : three.persp;
-  to.position.copy(from.position); to.quaternion.copy(from.quaternion);
-  if (ortho) to.zoom = Math.max(.3, 2.2 / from.position.distanceTo(three.controls.target)); else to.zoom = 1;
-  to.updateProjectionMatrix();
-  three.camera = to; three.ortho = ortho; three.controls.object = to; three.controls.update();
-  $('projection').setAttribute('aria-pressed', String(ortho));
-  $('projection').textContent = ortho ? 'Orthographic' : 'Perspective';
-  $('projection').title = ortho
-    ? 'Orthographic view removes perspective foreshortening'
-    : 'Perspective view uses natural depth and foreshortening';
+function updateMachineVisibility() {
+  const hideHousing = three.cameraPreset === 'inspection' || currentView !== '3d';
+  for (const mesh of three.inspectionHousing || []) mesh.visible = !hideHousing;
+}
+
+function setView(name) {
+  if (!['3d', 'top', 'split'].includes(name)) return;
+  currentView = name;
+  document.body.dataset.view = name;
+  document.querySelectorAll('[data-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.view === name)));
+  updateMachineVisibility();
+  resizeInset();
 }
 
 const matte = (color, opacity = 1, metalness = .04) => new THREE.MeshStandardMaterial({
@@ -1000,6 +1152,8 @@ async function loadBlenderAssets(L) {
   scene.add(machine.scene);
   scene.remove(three.machineGroup);
   disposeOwnedFallbackMachine(three.machineGroup);
+  three.inspectionHousing = meshes.filter(mesh => mesh.name === 'Camera shroud');
+  updateMachineVisibility();
   clickTargets.length = 0; clickTargets.push(...meshes.filter(m => m.visible));
   loaded.push(`machine ${meshes.length} parts`);
   // The recorded floor slab is a dark 8 x 6 m box; the drawing keeps the paper grid instead.
@@ -1115,64 +1269,59 @@ function render3d(now) {
   renderer.render(scene, camera);
 }
 
-// ---------------------------------------------------------------------------
-// Bottom-right inset: the original top and side projections.
-// ---------------------------------------------------------------------------
-function drawInset(now) {
-  ctx.clearRect(0,0,1250,430);
-  const X = x => 100 + (x + 1.1) / 1.6 * 1060;
-  const Y = y => 138 + y * 270;
-  const Z = z => 360 - (z - .35) * 260;
-  ctx.font = '13px Avenir Next, sans-serif';
-  ctx.fillStyle = '#586b7c';
-  ctx.fillText('Top view', 22, 30);
-  ctx.fillText('Side view', 22, 270);
-  ctx.fillText('Feed', X(-1.05), 30);
-  ctx.fillText('Inspection', X(-.18), 30);
-  ctx.fillText('Air jets', X(.045), 30);
-  ctx.fillText('Physical outcome', X(.28), 30);
-  ctx.fillStyle = '#24548b';
-  ctx.fillRect(X(-1.1),Y(-.25),X(0)-X(-1.1),135);
-  ctx.fillStyle = '#dfe8ed';
-  ctx.fillRect(X(0),Y(-.25),X(.48)-X(0),135);
-  ctx.fillStyle = '#93d9e4';
-  ctx.fillRect(X(-.144),Y(-.25),X(-.096)-X(-.144),135);
-  ctx.fillStyle = '#8a9ea9';
-  ctx.fillRect(X(.1)-2,Y(-.26),4,140);
-  ctx.fillStyle = '#b3c0c9';
-  ctx.fillRect(X(-1.1),Z(.6),X(0)-X(-1.1),8);
-  ctx.strokeStyle = '#91a2ad';
-  ctx.lineWidth = 3;
-  ctx.beginPath();ctx.moveTo(X(.34),Z(.475));ctx.lineTo(X(.49),Z(.475));ctx.stroke();
-  ctx.font = '12px Avenir Next, sans-serif';
-  ctx.fillStyle = '#466356';ctx.fillText('Accept',X(.36),Z(.56));
-  ctx.fillStyle = '#825231';ctx.fillText('Reject',X(.36),Z(.40));
+function resizeInset() {
+  requestAnimationFrame(() => {
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const ratio = Math.min(window.devicePixelRatio, 1.5);
+    canvas.width = Math.round(rect.width * ratio);
+    canvas.height = Math.round(rect.height * ratio);
+  });
+}
+
+function drawInset() {
+  const rect = canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const ratio = canvas.width / rect.width;
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  const width = rect.width, height = rect.height;
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = '#f8f8f4'; ctx.fillRect(0, 0, width, height);
+  const padX = Math.max(28, width * .06), padY = Math.max(46, height * .13);
+  const X = x => padX + (x + 1.1) / 1.6 * (width - padX * 2);
+  const Y = y => height / 2 + y / .5 * (height - padY * 2);
+  const beltTop = Y(-.25), beltHeight = Y(.25) - beltTop;
+  ctx.fillStyle = '#24548b'; ctx.fillRect(X(-1.1), beltTop, X(0) - X(-1.1), beltHeight);
+  ctx.fillStyle = '#dfe8ed'; ctx.fillRect(X(0), beltTop, X(.48) - X(0), beltHeight);
+  ctx.fillStyle = '#93d9e4'; ctx.fillRect(X(-.144), beltTop, X(-.096) - X(-.144), beltHeight);
+  ctx.fillStyle = '#8a9ea9'; ctx.fillRect(X(.1) - 2, beltTop, 4, beltHeight);
+  ctx.strokeStyle = '#34463d'; ctx.lineWidth = 1; ctx.strokeRect(X(-1.1), beltTop, X(.48) - X(-1.1), beltHeight);
+  ctx.font = '12px ui-monospace, monospace'; ctx.fillStyle = '#34463d';
+  for (const [label, x] of [['DROP ZONE', -1.0], ['INSPECT', -.12], ['AIR', .1], ['KEEP / REJECT', .35]]) ctx.fillText(label, X(x), 26);
   for (const o of state?.objects || []) {
     if ((!o.active && o.object_id !== selected) || !hasAuthoritativeRenderFields(o)) continue;
     displayedPose(o, _p, _q);
-    const x = _p.x, y = _p.y, z = _p.z;
+    const x = _p.x, y = _p.y;
     if (x < -1.2 || x > .55) continue;
     const rgb = o.rgb;
     const color = o.outcome === 'reject' ? '#d26045' : o.outcome === 'spilled' ? '#d49a27'
       : `rgb(${rgb.slice(0,3).map(v => Math.round(v <= 1 ? v * 255 : v)).join(',')})`;
-    const radius = Math.max(2, o.axes[0] * 500);
+    const radius = Math.max(2, o.axes[0] / 1.6 * (width - padX * 2));
     const qw = _q.w, qx = _q.x, qy = _q.y, qz = _q.z;
     const yaw = Math.atan2(2*(qx*qy+qw*qz),1-2*(qy*qy+qz*qz));
-    const pitch = Math.atan2(-2*(qx*qz-qw*qy),1-2*(qy*qy+qz*qz));
     ctx.globalAlpha = o.outcome ? .55 : 1;
     ctx.fillStyle = color;
-    for (const [oy,angle] of [[Y(y),yaw],[Z(z),pitch]]) {
-      ctx.save();ctx.translate(X(x),oy);ctx.rotate(angle);
-      if (o.shape === 'box') ctx.fillRect(-radius,-radius*.68,radius*2,radius*1.36);
-      else {ctx.beginPath();ctx.ellipse(0,0,radius,Math.max(1.4,radius*.65),0,0,Math.PI*2);ctx.fill();}
-      ctx.restore();
-    }
+    ctx.save();ctx.translate(X(x),Y(y));ctx.rotate(yaw);
+    if (o.shape === 'box') ctx.fillRect(-radius,-radius*.68,radius*2,radius*1.36);
+    else {ctx.beginPath();ctx.ellipse(0,0,radius,Math.max(1.4,radius*.65),0,0,Math.PI*2);ctx.fill();}
+    ctx.restore();
     if (o.object_id === selected) {
       ctx.globalAlpha = 1;ctx.strokeStyle = '#e59a32';ctx.lineWidth = 2;
-      for (const oy of [Y(y),Z(z)]) {ctx.beginPath();ctx.arc(X(x),oy,10,0,Math.PI*2);ctx.stroke();}
+      ctx.beginPath();ctx.arc(X(x),Y(y),10,0,Math.PI*2);ctx.stroke();
     }
   }
   ctx.globalAlpha = 1;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
 function draw(now) {
@@ -1190,8 +1339,8 @@ function draw(now) {
     frameIntervals = [];
   }
   advanceDisplayTimeline(now);
-  drawInset(now);
-  render3d(now);
+  if (currentView !== '3d') drawInset();
+  if (currentView !== 'top') render3d(now);
   requestAnimationFrame(draw);
 }
 
@@ -1213,7 +1362,7 @@ try {
   const storedLabels = localStorage.getItem('coffee.labels');
   setLabels(storedLabels === null ? false : storedLabels !== '0', false);
 } catch { setLabels(false, false); }
-const PANELS = ['panel-left', 'panel-right', 'title-block', 'inset'];
+const PANELS = ['panel-left', 'panel-right', 'title-block'];
 document.addEventListener('keydown', event => {
   if (event.metaKey || event.ctrlKey || event.altKey || $('diagnostics').open) return;
   if (/^(input|textarea|select|button)$/i.test(event.target.tagName)) return;
@@ -1230,6 +1379,7 @@ for (const button of document.querySelectorAll('[data-toggle]')) {
   const defaultCollapsed = window.innerWidth < 760 || id === 'title-block' || id === 'inset';
   setCollapsed(id, stored === null ? defaultCollapsed : stored === '1', false);
 }
+new ResizeObserver(resizeInset).observe($('inset'));
 initThree();
 connect();
 requestAnimationFrame(draw);
