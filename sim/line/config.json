@@ -56,8 +56,8 @@
       "max_major_mm": 16.0,
       "min_aspect": 1.1,
       "max_aspect": 2.2,
-      "max_dark_frac": 0.35,
-      "min_mean_gray": 40,
+      "max_dark_frac": 0.92,
+      "min_mean_gray": 25,
       "max_mean_gray": 150,
       "max_n_dark_spots": 2
     }
