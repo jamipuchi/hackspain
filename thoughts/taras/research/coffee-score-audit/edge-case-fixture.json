@@ -1,17 +1,18 @@
 {
-  "rows": [
-    {"object_id": 1, "spawn_time_s": 0.0, "required_reject": true, "outcome": "reject", "score_epoch_id": "epoch-a"},
-    {"object_id": 2, "spawn_time_s": 60.0, "required_reject": false, "outcome": "accept", "score_epoch_id": "epoch-a"},
-    {"object_id": 3, "spawn_time_s": 1.0, "required_reject": false, "outcome": null, "score_epoch_id": "epoch-a"},
-    {"object_id": 4, "spawn_time_s": 2.0, "required_reject": false, "outcome": "spilled", "score_epoch_id": "epoch-a"},
-    {"object_id": 5, "spawn_time_s": 3.0, "required_reject": true, "outcome": "reject", "score_epoch_id": "epoch-a"},
-    {"object_id": 6, "spawn_time_s": 4.0, "required_reject": true, "outcome": "accept", "score_epoch_id": "epoch-a"},
-    {"object_id": 7, "spawn_time_s": 60.1, "required_reject": true, "outcome": null, "score_epoch_id": "epoch-a"},
-    {"object_id": 8, "spawn_time_s": 5.0, "required_reject": true, "outcome": "reject", "manual_injection": true, "score_epoch_id": "epoch-a"},
-    {"object_id": 1, "spawn_time_s": 1.0, "required_reject": false, "outcome": "accept", "score_epoch_id": "epoch-b"}
-  ],
+  "window_seconds": 60.0,
+  "settling_seconds": 0.6,
   "snapshots": [
     {
+      "rows": [
+        {"object_id": 1, "spawn_time_s": 0.0, "required_reject": true, "outcome": "reject", "score_epoch_id": "epoch-a"},
+        {"object_id": 2, "spawn_time_s": 60.0, "required_reject": false, "outcome": "accept", "score_epoch_id": "epoch-a"},
+        {"object_id": 3, "spawn_time_s": 1.0, "required_reject": false, "outcome": null, "score_epoch_id": "epoch-a"},
+        {"object_id": 4, "spawn_time_s": 2.0, "required_reject": false, "outcome": "spilled", "score_epoch_id": "epoch-a"},
+        {"object_id": 5, "spawn_time_s": 3.0, "required_reject": true, "outcome": "reject", "score_epoch_id": "epoch-a"},
+        {"object_id": 6, "spawn_time_s": 4.0, "required_reject": true, "outcome": "accept", "score_epoch_id": "epoch-a"},
+        {"object_id": 7, "spawn_time_s": 60.1, "required_reject": true, "outcome": null, "score_epoch_id": "epoch-a"},
+        {"object_id": 8, "spawn_time_s": 5.0, "required_reject": true, "outcome": "reject", "manual_injection": true, "score_epoch_id": "epoch-a"}
+      ],
       "score_epoch_id": "epoch-a",
       "as_of_sim_time_s": 60.6,
       "versions": {"model": "model-a", "policy": "policy-a", "source_revision": "source-a"},
@@ -28,6 +29,36 @@
       }
     },
     {
+      "rows": [
+        {"object_id": 1, "spawn_time_s": 0.0, "required_reject": true, "outcome": "reject", "score_epoch_id": "epoch-a"},
+        {"object_id": 2, "spawn_time_s": 60.0, "required_reject": false, "outcome": "accept", "score_epoch_id": "epoch-a"},
+        {"object_id": 3, "spawn_time_s": 1.0, "required_reject": false, "outcome": "accept", "score_epoch_id": "epoch-a"},
+        {"object_id": 4, "spawn_time_s": 2.0, "required_reject": false, "outcome": "spilled", "score_epoch_id": "epoch-a"},
+        {"object_id": 5, "spawn_time_s": 3.0, "required_reject": true, "outcome": "reject", "score_epoch_id": "epoch-a"},
+        {"object_id": 6, "spawn_time_s": 4.0, "required_reject": true, "outcome": "accept", "score_epoch_id": "epoch-a"},
+        {"object_id": 7, "spawn_time_s": 60.1, "required_reject": true, "outcome": null, "score_epoch_id": "epoch-a"},
+        {"object_id": 8, "spawn_time_s": 5.0, "required_reject": true, "outcome": "reject", "manual_injection": true, "score_epoch_id": "epoch-a"}
+      ],
+      "score_epoch_id": "epoch-a",
+      "as_of_sim_time_s": 61.0,
+      "versions": {"model": "model-a", "policy": "policy-a", "source_revision": "source-a"},
+      "rolling_scores": {
+        "schema_version": 1, "clock": "simulation", "score_epoch_id": "epoch-a", "as_of_sim_time_s": 61.0,
+        "window_seconds": 60.0, "settling_seconds": 0.6, "window_start_exclusive_s": 0.3999999999999986,
+        "window_end_inclusive_s": 60.4, "available_seconds": 60.0, "warming_up": false,
+        "manual_injections_excluded": true, "settling_objects": 0, "eligible_objects": 6,
+        "sorting_accuracy": {"numerator": 3, "denominator": 6, "value": 0.5},
+        "defect_capture": {"numerator": 1, "denominator": 3, "value": 0.3333333333333333},
+        "good_loss": {"numerator": 1, "denominator": 3, "value": 0.3333333333333333},
+        "unresolved": {"numerator": 1, "denominator": 6, "value": 0.16666666666666666},
+        "versions": {"model": "model-a", "policy": "policy-a", "source_revision": "source-a"}
+      }
+    },
+    {
+      "rows": [
+        {"object_id": 1, "spawn_time_s": 1.0, "required_reject": false, "outcome": "accept", "score_epoch_id": "epoch-b"},
+        {"object_id": 1, "spawn_time_s": 1.0, "required_reject": true, "outcome": "reject", "score_epoch_id": "epoch-a"}
+      ],
       "score_epoch_id": "epoch-b",
       "as_of_sim_time_s": 1.6,
       "versions": {"model": "model-b", "policy": "policy-b", "source_revision": "source-b"},

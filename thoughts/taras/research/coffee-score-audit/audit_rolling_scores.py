@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Calculate continuous coffee scores from exported evaluator rows.
 
-This tool does not import the rolling-score implementation. It accepts a JSON
-capture with a `rows` list and optional `snapshots` list. Every row needs:
+This tool does not import the rolling-score implementation. It accepts either
+one snapshot object or a `snapshots` list. Every snapshot owns the exact row
+state captured at its `as_of_sim_time_s`. Every row needs:
 `object_id`, `spawn_time_s`, `required_reject`, and `score_epoch_id`.
 `outcome` is optional. Set `manual_injection` for manually injected rows.
-Top-level `as_of_sim_time_s`, `window_seconds`, and `settling_seconds` set
-defaults for snapshots. A snapshot may override them.
+Top-level `window_seconds`, `settling_seconds`, and `versions` can set defaults
+for a snapshots list. A snapshot may override them.
 """
 from __future__ import annotations
 
@@ -54,8 +55,6 @@ def read_capture(path: str) -> dict[str, Any]:
             source.close()
     if not isinstance(capture, dict):
         raise InputError("capture root must be an object")
-    if not isinstance(capture.get("rows"), list):
-        raise InputError("capture.rows must be a list")
     return capture
 
 
@@ -66,11 +65,13 @@ def row_epoch(row: dict[str, Any]) -> str:
     return epoch
 
 
-def validate_rows(rows: list[Any]) -> list[dict[str, Any]]:
+def validate_rows(rows: Any, field: str) -> list[dict[str, Any]]:
+    if not isinstance(rows, list):
+        raise InputError(f"{field} must be a list")
     seen: set[tuple[str, int]] = set()
     result: list[dict[str, Any]] = []
     for index, raw in enumerate(rows):
-        label = f"rows[{index}]"
+        label = f"{field}[{index}]"
         if not isinstance(raw, dict):
             raise InputError(f"{label} must be an object")
         epoch = row_epoch(raw)
@@ -147,6 +148,11 @@ def snapshot_context(capture: dict[str, Any]) -> list[dict[str, Any]]:
     snapshots = capture.get("snapshots")
     if snapshots is None:
         snapshots = [capture]
+        row_field = "rows"
+    else:
+        if "rows" in capture:
+            raise InputError("capture.rows cannot be shared across snapshots")
+        row_field = None
     if not isinstance(snapshots, list) or not snapshots:
         raise InputError("capture.snapshots must be a non-empty list when present")
     contexts = []
@@ -155,6 +161,7 @@ def snapshot_context(capture: dict[str, Any]) -> list[dict[str, Any]]:
         if not isinstance(raw, dict):
             raise InputError(f"snapshots[{index}] must be an object")
         merged = {**capture, **raw}
+        rows = validate_rows(raw.get("rows"), row_field or f"snapshots[{index}].rows")
         epoch = merged.get("score_epoch_id")
         if not isinstance(epoch, str) or not epoch:
             raise InputError(f"snapshots[{index}].score_epoch_id is required")
@@ -175,7 +182,7 @@ def snapshot_context(capture: dict[str, Any]) -> list[dict[str, Any]]:
         version_key = (model, policy, source)
         prior_versions = epoch_versions.setdefault(epoch, version_key)
         if prior_versions != version_key:
-            raise InputError(f"score epoch {epoch} spans different model or policy versions")
+            raise InputError(f"score epoch {epoch} spans different score versions")
         engine_scores = validate_engine_scores(raw.get("rolling_scores"), f"snapshots[{index}].rolling_scores")
         contexts.append({
             "snapshot_index": index,
@@ -185,6 +192,7 @@ def snapshot_context(capture: dict[str, Any]) -> list[dict[str, Any]]:
             "settling_seconds": settling,
             "versions": {"model": model, "policy": policy, "source_revision": source},
             "engine_scores": engine_scores,
+            "rows": rows,
         })
     return contexts
 
@@ -269,10 +277,9 @@ def main() -> int:
     args = parser.parse_args()
     try:
         capture = read_capture(args.capture)
-        rows = validate_rows(capture["rows"])
         results = []
         for context in snapshot_context(capture):
-            expected = calculate(rows, context)
+            expected = calculate(context["rows"], context)
             expected["versions"] = context["versions"]
             expected["engine_comparison"] = compare(expected, context["engine_scores"])
             results.append(expected)
