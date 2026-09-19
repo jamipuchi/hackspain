@@ -75,6 +75,25 @@ td.mono{font-family:var(--mono);font-size:.8rem}
    <div class="kv" id="gateKv"></div>
    <div class="row"><button class="sm" onclick="postJSON('/api/line',{action:'dry'}).then(refresh)">force dry run</button><button class="sm stop" onclick="goLive()">switch gate LIVE…</button></div>
   </div>
+  <div class="card" style="grid-column:1/-1"><h2>Door positions · press a button to go there · drag its slider to set the angle (moves the servo and saves)</h2>
+   <div class="grid" style="grid-template-columns:1fr 1fr minmax(260px,360px);align-items:start">
+    <div class="card" id="posClosed" style="background:#0f1317;border-color:var(--ok)">
+     <button class="go" style="font-size:1.6rem;padding:26px" onclick="jogTo(S.cfg.gate.flush_deg)">CLOSED</button>
+     <label>angle <b id="closedV"></b><input id="closedS" type="range" min="0" max="180" oninput="closedV.textContent=this.value+'°'" onchange="setPos('flush',+this.value)"></label>
+     <div class="row"><button class="sm" onclick="nudgePos('flush',-1)">−1°</button><button class="sm" onclick="nudgePos('flush',1)">+1°</button><input class="num" id="closedN" type="number" min="0" max="180" onchange="setPos('flush',+this.value)"></div>
+    </div>
+    <div class="card" id="posOpen" style="background:#0f1317;border-color:var(--warn)">
+     <button class="warn" style="font-size:1.6rem;padding:26px" onclick="jogTo(S.cfg.gate.open_deg)">OPEN</button>
+     <label>angle <b id="openV"></b><input id="openS" type="range" min="0" max="180" oninput="openV.textContent=this.value+'°'" onchange="setPos('open',+this.value)"></label>
+     <div class="row"><button class="sm" onclick="nudgePos('open',-1)">−1°</button><button class="sm" onclick="nudgePos('open',1)">+1°</button><input class="num" id="openN" type="number" min="0" max="180" onchange="setPos('open',+this.value)"></div>
+    </div>
+    <div style="display:grid;gap:8px"><svg id="dial" viewBox="0 0 400 240" style="width:100%"></svg>
+     <button class="sm acc" onclick="swingTest()">swing test: closed → open → closed</button>
+     <div class="hint">White needle = angle the firmware reports. The sorting loop uses these same two angles.</div></div>
+   </div>
+  </div>
+   </div>
+  </div>
   <div class="card"><h2>Arduino · raw</h2><div class="kv" id="ardKv"></div>
    <div class="row"><input id="rawin" type="text" placeholder="S 90 90 75   ·   C -40   ·   ?"><button class="sm" onclick="raw()">send</button></div>
    <div class="hint">Servo sliders (S base shoulder elbow) — base = door channel:</div>
@@ -154,6 +173,19 @@ function snapshot(){window.open('/snapshot.jpg?'+Date.now());}
 function sw(k){swT[k]=performance.now()/1000;const T=S?.cfg?.timing||{};let out=[];if(swT.top&&swT.zone)out.push(`top→zone ${(swT.zone-swT.top).toFixed(2)} s`);if(swT.zone&&swT.door){const dt=swT.door-swT.zone;const cm=T.door_from_top_cm[0]-T.zone_from_top_cm[0];const v=cm/dt;out.push(`zone→door ${dt.toFixed(2)} s = ${v.toFixed(1)} cm/s`);setCfg('timing.bean_speed_cm_s',+v.toFixed(1));swT={};}$('swOut').textContent=out.join(' · ')||`marked ${k}`;}
 document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;if(e.code==='Space'||e.key==='Escape'){e.preventDefault();setBelt(0);gate('flush');}
  else if(e.key==='g')sample('good');else if(e.key==='d')sample('defect');else if(e.key==='f')sample('foreign');});
+// door calibration dial
+function c_pos(S){const rep=S.modules?.arduino?.pos;const chan={base:0,shoulder:1,elbow:2}[S.cfg.gate.channel]??0;return rep?rep[chan]:null;}
+let jogA=90;function jogTo(a){a=Math.max(0,Math.min(180,Math.round(a)));jogA=a;const h=S?.cfg?.gate?.hold_deg||[90,75];postJSON('/api/cmd',{line:`S ${a} ${h[0]} ${h[1]}`}).then(refresh);}
+function setPos(which,a){a=Math.max(0,Math.min(180,Math.round(a)));jogTo(a);setCfg(which==='flush'?'gate.flush_deg':'gate.open_deg',a);}
+function nudgePos(which,d){setPos(which,(which==='flush'?S.cfg.gate.flush_deg:S.cfg.gate.open_deg)+d);}
+async function swingTest(){const g=S.cfg.gate;jogTo(g.flush_deg);await new Promise(r=>setTimeout(r,700));jogTo(g.open_deg);await new Promise(r=>setTimeout(r,Math.max(700,g.default_dwell_s*1000)));jogTo(g.flush_deg);}
+function dialDraw(){const svg=$('dial');if(!svg||!S)return;const cx=200,cy=210,R=170;const P=a=>{const t=Math.PI*(1-a/180);return[cx+R*Math.cos(t),cy-R*Math.sin(t)];};
+ let out=`<path d="M${cx-R},${cy} A${R},${R} 0 0 1 ${cx+R},${cy}" fill="none" stroke="#273039" stroke-width="18"/>`;
+ for(let a=0;a<=180;a+=15){const [x1,y1]=P(a);const t=Math.PI*(1-a/180);const x2=cx+(R-22)*Math.cos(t),y2=cy-(R-22)*Math.sin(t);out+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#8b98a5" stroke-width="${a%45?1:2}"/>`;if(a%45===0){const x3=cx+(R+22)*Math.cos(t),y3=cy-(R+22)*Math.sin(t);out+=`<text x="${x3}" y="${y3+4}" fill="#8b98a5" font-size="12" text-anchor="middle" font-family="Menlo,monospace">${a}°</text>`;}}
+ const mark=(a,col,lab)=>{const [x,y]=P(a);return`<circle cx="${x}" cy="${y}" r="9" fill="${col}"/><text x="${x}" y="${y-14}" fill="${col}" font-size="12" text-anchor="middle" font-family="Menlo,monospace">${lab} ${a}°</text>`;};
+ out+=mark(S.cfg.gate.flush_deg,'#1db954','CLOSED')+mark(S.cfg.gate.open_deg,'#f2a93b','OPEN');
+ const rep=S.modules?.arduino?.pos;const chan={base:0,shoulder:1,elbow:2}[S.cfg.gate.channel]??0;if(rep){const [x,y]=P(rep[chan]);out+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#e8edf2" stroke-width="3"/><text x="${cx}" y="${cy-20}" fill="#e8edf2" font-size="16" text-anchor="middle" font-family="Menlo,monospace">${rep[chan]}°</text>`;}
+ out+=`<circle cx="${cx}" cy="${cy}" r="6" fill="#e8edf2"/>`;svg.innerHTML=out;}
 // ROI editor
 const img=$('stream'),cv=$('roiCanvas');let drag=null;
 function toNat(e){const r=cv.getBoundingClientRect();const nw=S?.modules?.camera?.resolution?.[0]||img.naturalWidth||1280,nh=S?.modules?.camera?.resolution?.[1]||img.naturalHeight||720;return[Math.round((e.clientX-r.left)/r.width*nw),Math.round((e.clientY-r.top)/r.height*nh)];}
@@ -174,7 +206,7 @@ function render(){const m=S.modules,c=S.cfg,l=S.line;
  kv($('camKv'),m.camera);$('zoneTxt').textContent=JSON.stringify(c.camera.zone);setIf('ppm',c.camera.px_per_mm);$('ppmV').textContent=c.camera.px_per_mm;setIf('flow',c.camera.flow_axis);setIf('camBackend',c.camera.backend);drawRoi(null,false);
  $('beltV').textContent=S.belt==0?'stopped':(S.belt>0?'forward ':'reverse ')+Math.abs(S.belt)+'%';
  const dry=l.dry_run;for(const id of['dryBanner','dryBanner2']){$(id).className='banner '+(dry?'dry':'live');$(id).textContent=dry?'DRY RUN: gate commands are logged, the servo does not move':'LIVE: the door servo moves on every suspect verdict and gate button';}
- setIf('gFlush',c.gate.flush_deg);setIf('gOpen',c.gate.open_deg);setIf('gDwell',c.gate.default_dwell_s);kv($('gateKv'),m.gate);kv($('ardKv'),m.arduino);
+ dialDraw();setIf('closedS',c.gate.flush_deg);setIf('closedN',c.gate.flush_deg);$('closedV').textContent=c.gate.flush_deg+'°';setIf('openS',c.gate.open_deg);setIf('openN',c.gate.open_deg);$('openV').textContent=c.gate.open_deg+'°';const rp=c_pos(S);$('posClosed').style.boxShadow=rp===c.gate.flush_deg?'0 0 0 2px var(--ok)':'none';$('posOpen').style.boxShadow=rp===c.gate.open_deg?'0 0 0 2px var(--warn)':'none';setIf('gFlush',c.gate.flush_deg);setIf('gOpen',c.gate.open_deg);setIf('gDwell',c.gate.default_dwell_s);kv($('gateKv'),m.gate);kv($('ardKv'),m.arduino);
  kv($('clfKv'),m.classifier,['rules']);kv($('detKv'),m.detector,['features']);setIf('thr',c.classifier.suspect_threshold);$('thrV').textContent=c.classifier.suspect_threshold;setIf('clfBackend',c.classifier.backend);
  $('dsCounts').textContent=Object.entries(l.datasets||{}).map(([k,v])=>`${k}: ${v}`).join(' · ')||'no samples yet';
  if(document.activeElement?.closest('#rules')==null)$('rules').innerHTML=Object.entries(c.classifier.rules).map(([k,v])=>`<label>${k}<input type="number" step="0.05" value="${v}" onchange="setCfg('classifier.rules',Object.assign({},S.cfg.classifier.rules,{'${k}':+this.value}))"></label>`).join('');

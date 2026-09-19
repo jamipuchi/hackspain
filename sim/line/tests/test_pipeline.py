@@ -19,6 +19,8 @@ def make(cfg, t, u=None, dark=False):
 
 
 def build(cfg):
+    cfg.act_on = "suspect"  # these tests exercise sorting behaviour, not bring-up
+    cfg.timing.mode = "model"
     ard = _stubs.StubArduino()
     gate = _stubs.StubGate(ard, cfg, dry_run=True)
     line = SortingLine(cfg, _stubs.StubCamera(cfg), _stubs.StubDetector(cfg), _stubs.StubClassifier(cfg), gate, ard)

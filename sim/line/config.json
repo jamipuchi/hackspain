@@ -10,7 +10,7 @@
   "gate": {
     "channel": "base",
     "flush_deg": 90,
-    "open_deg": 65,
+    "open_deg": 44,
     "hold_deg": [
       90,
       75
@@ -86,5 +86,5 @@
   "panel_port": 8800,
   "act_on": "all",
   "lost_after_s": 0.4,
-  "dry_run": true
+  "dry_run": false
 }
