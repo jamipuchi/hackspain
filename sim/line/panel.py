@@ -74,6 +74,10 @@ class DoorOnD6:
     def _pulse(self, direction: int, ms: int, what: str) -> str:
         """Continuous servo: spin `direction` at door_d6_speed for `ms`, then C 0 (detach = stop). Blocking for `ms`; always stops."""
         sp = max(5, min(100, int(self.cfg.door_d6_speed))) * (1 if direction > 0 else -1) * (1 if int(self.cfg.door_d6_dir) >= 0 else -1)
+        sp = max(-100, min(100, sp + int(getattr(self.cfg, "door_d6_trim", 0))))
+        if sp == 0:
+            sp = 1 if direction * int(self.cfg.door_d6_dir) > 0 else -1
+        self.n_translated += 1
         t0 = time.monotonic()
         try:
             reply = self.inner.cmd(f"C {sp}")

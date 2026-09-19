@@ -107,6 +107,7 @@ class LineConfig:
     door_d6_speed: int = 60  # spin speed -100..100 used for the pulses
     door_d6_open_ms: int = 180  # how long to spin towards OPEN (into the stop)
     door_d6_close_ms: int = 180  # how long to spin back to CLOSED
+    door_d6_trim: int = 0  # dead-centre correction added to every spin command (−20..20): raise if CLOSE travels less than OPEN at equal ms
     door_d6_dir: int = 1  # +1 or -1: flip if OPEN spins the wrong way
     action_position: str = "closed"  # which saved position the door takes when it acts on a bean: 'closed' | 'open' (rest = the other one)
     act_on: str = "all"  # 'all': the door moves for every bean (bring-up); 'suspect': only for suspect verdicts (sorting)
