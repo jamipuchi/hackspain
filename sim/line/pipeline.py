@@ -200,7 +200,7 @@ class SortingLine:
         self.last_verdict, self.last_blob = verdict, blob
         self.state = "decided"
         frac = flow_fraction(blob, roi, self.cfg.camera.flow_axis)
-        self.event("verdict", label=verdict.label, p=round(verdict.p_defect, 2), suspect=verdict.suspect, gray=round(blob.features.get("mean_gray", 0)), major_mm=round(blob.features.get("major_mm", 0), 1), reason=verdict.reason, ms=round(verdict.ms, 1), frac=round(frac, 2))
+        self.event("verdict", label=verdict.label, p=round(verdict.p_defect, 2), suspect=verdict.suspect, gray=round(blob.features.get("mean_gray", 0)), dark_core=round(blob.features.get("core_dark_frac", blob.features.get("dark_frac", 0)), 3), major_mm=round(blob.features.get("major_mm", 0), 1), reason=verdict.reason, ms=round(verdict.ms, 1), frac=round(frac, 2))
         if verdict.suspect:
             self.counters["suspect"] += 1
         else:

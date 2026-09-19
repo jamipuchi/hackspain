@@ -243,10 +243,12 @@ def build_modules(cfg: LineConfig, all_fake: bool = False) -> tuple[dict, dict]:
     # classifier
     def mk_clf():
         from line import classifier as cl
+        if cfg.classifier.backend == "color":
+            return _stubs.ColorClassifier(cfg)
         if cfg.classifier.backend == "sklearn":
             return cl.SklearnClassifier(str(ROOT / cfg.classifier.model_path))
         return cl.RuleClassifier(cfg)
-    clf = _try(info, "classifier", f"classifier.{'SklearnClassifier' if cfg.classifier.backend == 'sklearn' else 'RuleClassifier'}", mk_clf, lambda: _stubs.StubClassifier(cfg))
+    clf = _try(info, "classifier", f"classifier.{ {'sklearn': 'SklearnClassifier', 'color': 'ColorClassifier(dark fraction)'}.get(cfg.classifier.backend, 'RuleClassifier') }", mk_clf, lambda: _stubs.StubClassifier(cfg))
     return {"arduino": ard, "gate": gate, "camera": cam, "detector": det, "classifier": clf}, info
 
 

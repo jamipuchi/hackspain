@@ -77,6 +77,8 @@ class ClassifierCfg:  # owner: coffee-sim agent
     model_path: str = "models/beans_v1.joblib"
     algo: str = "extratrees"  # learner for train_from_*: 'extratrees' (2 ms/bean) | 'mlp' (0.2 ms) | 'hgb' (accurate, ~100 ms/bean: too slow live)
     suspect_threshold: float = 0.5
+    color_white_max_dark_frac: float = 0.02  # backend 'color': a blob with fewer dark pixels than this fraction is WHITE (suspect → removed)
+    color_dark_gray: int = 60  # pixels darker than this count as "dark core" (motion blur never lifts a black bean above it)
     rules: dict = field(default_factory=lambda: {
         "min_major_mm": 8.0, "max_major_mm": 16.0,  # roasted arabica ~10–13 mm long
         "min_aspect": 1.1, "max_aspect": 2.2,
