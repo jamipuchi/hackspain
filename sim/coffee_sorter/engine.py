@@ -134,6 +134,19 @@ class Engine:
         self.model_version = _file_hash(self.model_path)
         self.policy_version = _json_hash(asdict(self.policy))
         self.preset_version = _json_hash(self.preset)
+        try:
+            self.source_revision = subprocess.check_output(
+                ["git", "-C", str(HERE), "rev-parse", "HEAD"], text=True,
+                stderr=subprocess.DEVNULL).strip()
+        except (OSError, subprocess.CalledProcessError):
+            self.source_revision = None
+        self.packages = {}
+        for name in ("mujoco", "numpy", "opencv-python-headless", "scikit-learn", "joblib", "aiohttp"):
+            try:
+                self.packages[name] = package_version(name)
+            except PackageNotFoundError:
+                self.packages[name] = None
+        self.source_hashes = {name: _file_hash(HERE / name) for name in SOURCE_FILES}
         self.startup_seconds = time.perf_counter() - startup_started
 
     def start(self):
@@ -463,18 +476,7 @@ class Engine:
         measured_ms = sum(timings[name]["total_ms"] for name in ("physics", "inspection_render", "detection", "model_inference", "control", "evaluation", "snapshot"))
         timings["unattributed_wall_ms"] = max(0.0, wall_elapsed * 1000 - measured_ms)
         timings["unattributed_wall_note"] = "Includes serialization, IPC, process scheduling, and loop overhead. See service-profile.json for HTTP timings."
-        try:
-            revision = subprocess.check_output(
-                ["git", "-C", str(HERE), "rev-parse", "HEAD"], text=True,
-                stderr=subprocess.DEVNULL).strip()
-        except (OSError, subprocess.CalledProcessError):
-            revision = None
-        packages = {}
-        for name in ("mujoco", "numpy", "opencv-python-headless", "scikit-learn", "joblib", "aiohttp"):
-            try:
-                packages[name] = package_version(name)
-            except PackageNotFoundError:
-                packages[name] = None
+
         return {
             "protocol_version": 1,
             "session_id": self.session_id,
@@ -483,8 +485,8 @@ class Engine:
                 "preset": self.preset_version,
                 "model": self.model_version,
                 "policy": self.policy_version,
-                "source_revision": revision,
-                "source_sha256": {name: _file_hash(HERE / name) for name in SOURCE_FILES},
+                "source_revision": self.source_revision,
+                "source_sha256": self.source_hashes,
             },
             "runtime": {
                 "simulation_seconds": sim_time,
@@ -498,7 +500,7 @@ class Engine:
                 "platform": platform.platform(),
                 "python": platform.python_version(),
                 "native_threadpools": [{key: pool.get(key) for key in ("internal_api", "prefix", "version", "num_threads")} for pool in threadpool_info()],
-                "packages": packages,
+                "packages": self.packages,
                 "native_thread_limits": {name: os.environ.get(name) for name in
                                          ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
                                           "VECLIB_MAXIMUM_THREADS")},

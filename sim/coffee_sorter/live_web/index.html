@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Coffee sorter | Live engine</title>
+<style>
+:root{color-scheme:light;--ink:#233445;--paper:#f6f8fa;--blue:#205986;--belt:#24548b;--line:#d9e0e7;--muted:#586b7c;--accent:#b86317}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 "Avenir Next",Avenir,"Segoe UI",sans-serif}main{max-width:1360px;margin:auto;padding:32px 38px}header{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:22px}h1{font-size:28px;letter-spacing:-.6px;margin:0}p{margin:5px 0;color:var(--muted)}.status{padding:8px 16px;border:1px solid var(--line);border-radius:30px;background:white;white-space:nowrap}.status::before{content:"";display:inline-block;width:8px;height:8px;background:#8799a8;border-radius:50%;margin-right:9px}.status[data-state=running]::before{background:#307953}.status[data-state=failed]::before{background:#b33632}.workspace{background:white;border:1px solid var(--line);border-radius:12px;overflow:hidden}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 24px;border-bottom:1px solid var(--line)}button{font:inherit;font-weight:600;border:0;border-radius:6px;background:var(--blue);color:white;padding:12px 22px;cursor:pointer}button:hover{background:#174368}button:disabled{opacity:.5;cursor:default}button:focus-visible,a:focus-visible{outline:3px solid #df9b45;outline-offset:4px}.small{font-size:13px}.stage{padding:0 12px;background:#fcfdfe}canvas{display:block;width:100%;height:auto;aspect-ratio:1250/430}.metrics{display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--line);padding:18px 24px;gap:20px}.metric strong{display:block;font-size:24px;font-weight:500;color:var(--ink)}.metric span{display:block;color:var(--muted);font-size:13px}.details{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:24px}h2{font-size:18px;margin:0 0 12px}.object{border-left:3px solid var(--accent);padding-left:20px}dl{display:grid;grid-template-columns:135px 1fr;margin:12px 0;font-size:14px;gap:6px 12px}dt{color:var(--muted)}dd{margin:0;overflow-wrap:anywhere}ol{margin:0;padding-left:21px;font-size:14px}li{padding-bottom:7px;color:var(--muted)}footer{margin-top:24px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}footer a{color:var(--blue)}#notice{max-width:70ch}#error{color:#a42b24}#events{max-height:150px;overflow:auto}#limit-note{font-size:12px;margin-top:8px}#outcome{font-weight:600}.measurement-note{font-size:12px;margin:9px 0 0}
+@media(max-width:760px){main{padding:20px 16px}header{align-items:flex-start}h1{font-size:24px}.toolbar{padding:16px;align-items:flex-start;flex-direction:column}.metrics{grid-template-columns:repeat(2,1fr);padding:16px;gap:12px}.metric strong{font-size:21px}.details{grid-template-columns:1fr;gap:22px}.status{font-size:12px;padding:6px 10px}canvas{min-height:260px;aspect-ratio:auto}.stage{overflow-x:auto}canvas{min-width:670px}footer{overflow-wrap:anywhere}}
+</style>
+</head>
+<body>
+<main>
+<header><div><h1>Coffee sorter</h1><p>One live engine. Camera decisions. Physical outcomes.</p></div><span id="status" class="status">Connecting</span></header>
+<section class="workspace" aria-label="Live simulation">
+<div class="toolbar"><div><strong id="notice">Preparing the engine</strong><p class="small">The first injection starts the conveyor. This is a provisional coffee preset.</p><p id="error" class="small" role="alert"></p></div><button id="inject" disabled>Inject stone</button></div>
+<div class="stage"><canvas id="scene" width="1250" height="430" aria-label="Live top and side views of the simulated conveyor"></canvas></div>
+<div class="metrics">
+<div class="metric"><strong id="sim-time">0.00 s</strong><span>Simulation time</span></div>
+<div class="metric"><strong id="engine-rate">Waiting</strong><span>Engine seconds / wall second</span></div>
+<div class="metric"><strong id="admitted">0 /s</strong><span>Admitted / simulated second</span></div>
+<div class="metric"><strong id="fps">Measuring</strong><span>Browser frames / wall second</span></div>
+<div class="metric"><strong id="active">0</strong><span>Objects in the scene</span></div>
+</div>
+</section>
+<p class="measurement-note" id="measurement-note">Pose updates arrive at up to 10 Hz. Browser FPS does not measure engine speed.</p>
+<section class="details">
+<div class="object"><h2 id="object-title">Follow your stone</h2><p class="small">A ring marks the injected object. The camera must recognize it independently.</p>
+<dl><dt>Request</dt><dd id="command">No injection yet</dd><dt>Acknowledgment</dt><dd id="ack">Waiting</dd><dt>Prediction</dt><dd id="prediction">Not observed</dd><dt>Controller action</dt><dd id="decision">Not decided</dd><dt>Jet contact</dt><dd id="hit">Not recorded</dd><dt>Physical outcome</dt><dd id="outcome">Unresolved</dd><dt>Time to outcome</dt><dd id="outcome-time">Waiting</dd></dl>
+</div>
+<div><h2>Engine events</h2><ol id="events"><li>Waiting for the engine.</li></ol><p id="limit-note">One shared session, four browsers maximum. Restart the service to reset.</p></div>
+</section>
+<footer><div id="versions">Model and policy versions appear when the engine is ready.</div><p>Diagnostic view with primitive shapes. Sorting targets and realistic assets remain unaccepted. <a href="/state" target="_blank">Current engine state</a></p></footer>
+</main>
+<script src="/live.js"></script>
+</body>
+</html>
