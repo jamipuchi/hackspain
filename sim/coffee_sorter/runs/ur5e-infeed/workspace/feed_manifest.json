@@ -1,0 +1,14 @@
+{
+  "config_sha256": "1809f60207e6e3c33d629c2a21623c49938cfbe388729b140030270ad9908556",
+  "items": [
+    {
+      "arrival_s": 0.0,
+      "is_large_debris": true,
+      "item_id": "w-outside",
+      "kind": "debris",
+      "lane_x_m": 0.84,
+      "size_m": 0.058
+    }
+  ],
+  "seed": 0
+}

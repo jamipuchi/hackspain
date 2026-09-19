@@ -139,3 +139,14 @@ Done from the README list: one-slide summary (draft above), roasted profile, uns
 - The sensor sweep's clean base (48.7%) and the demo run (51.5%) come from different bean-stream generators. Both are single runs; I cannot say which is closer to the long-run mean.
 - No wall-clock figure for the roasted training run beyond the log; not needed for the demo.
 - The slide was not regenerated for the sensor result. One text edit in `slide/make_slide.py` does it; the decision on what it should say is yours.
+
+
+## Addendum — UR5e infeed picking (landed after the review was finalised)
+
+The UR5e + mink prototype completed **2/2 idealized removals at 0.10 m/s**.
+A 0.28 m/s burst gave **3/4 removals, one miss and 3.38 s maximum queue wait**.
+A separate off-lane object was excluded by configured workspace policy, not proven unreachable.
+These are tiny deterministic kinematic runs with assisted association/height and ideal attachment/bin placement.
+Fixture collisions are disabled; physical grasp, collision avoidance and hardware throughput remain unverified.
+All 72 project tests pass. See the [report](runs/ur5e-infeed/REPORT.md), [plot](runs/ur5e-infeed/outcomes.png) and [test log](runs/ur5e-infeed/tests.log).
+Watch the [nominal](runs/ur5e-infeed/nominal/overview.mp4) and [burst](runs/ur5e-infeed/burst/overview.mp4) videos; PR #1 remains unmerged.

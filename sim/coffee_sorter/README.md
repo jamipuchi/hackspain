@@ -296,6 +296,24 @@ and a different cohort. The sensor sweep uses 0.06 N. Neither ledger establishes
 a profitable sorter. [NIGHT_LOG.md](NIGHT_LOG.md) records assumptions, failure
 diagnostics and validation; all 65 tests pass.
 
+**19 September — UR5e infeed picking prototype**
+
+The bounded [UR5e pick-cell report](runs/ur5e-infeed/REPORT.md) evaluates
+synthetic red oversize pieces on a slow moving infeed using the Menagerie UR5e
+and mink: **2/2 idealized removals at 0.10 m/s; 3/4 at 0.28 m/s in a burst**,
+plus one object excluded by the configured workspace policy. This is a kinematic prototype with ideal attachment, assisted camera
+association and known object heights; contact grasp, actuator dynamics and
+collision avoidance remain unverified. Its infeed is evaluated separately
+from the 3 m/s optical-sorter discharge loop. The deterministic cases preserve
+all large-object outcomes, including misses, in their denominators.
+
+Use [requirements-picking.txt](requirements-picking.txt) and
+[setup_ur5e_pick.sh](setup_ur5e_pick.sh) for the pinned robot/IK environment.
+The [report reproduction commands](runs/ur5e-infeed/REPORT.md#reproduce) generate
+metrics, timed events, joint trajectories, plots and videos in the existing
+`runs/ur5e-infeed/` convention. These small synthetic cases do not establish
+hardware throughput, general perception accuracy or grasp reliability.
+
 **Next**
 
 - [x] foreground-only `vision.detect` with exact equivalence proof; train the classifier
@@ -310,7 +328,8 @@ diagnostics and validation; all 65 tests pass.
 - [ ] calibrate exposure, sensor noise and belt jitter from real hardware; verify buyer grade premium
 - [x] `roasted` profile without touching the controller; matched quality measured
 - [x] unseen colour/material/size experiment, anomaly and physical threshold tradeoffs
-- [ ] UR5e (Menagerie + mink) picking oversize foreign matter off the infeed — the one thing the air jets cannot do
+- [x] UR5e (Menagerie + mink) infeed prototype with quantified ideal-grasp outcomes ([report](runs/ur5e-infeed/REPORT.md))
+- [ ] validate UR5e perception, contact grasp, collision avoidance and physical bin capture on hardware
 - [ ] one-slide summary
 
 ## Renders so far
@@ -342,4 +361,4 @@ must not be compared as interchangeable accuracy figures.
 - Body pool: 1150 ellipsoid beans ≈ 2000 beans/s × 0.5 s transit. If `pool_starved` grows in `metrics.json`, raise `Layout.n_ellipsoid` (physics cost is roughly linear in active contacts).
 - Physics conventions: x = belt travel, y = across the belt, z = up; belt surface at `Layout.belt_z = 0.60`; belt end at x = 0; camera strip centred at `cam_x = -0.12`; nozzles at `ej_x = 0.10`; splitter blade at `split_x = 0.34`, `split_z_drop = 0.125` below the belt.
 - Do not put beans back on `implicit` integrator hoping for stability: it is 10× slower here; the per-body rotational damping/armature in `sim.spawn` is what keeps `implicitfast` stable.
-- Robot-arm extension idea (not started): an infeed inspection belt at ~0.3 m/s ahead of the sorter with a UR5e from `../mujoco_menagerie/universal_robots_ur5e` and differential IK from `mink` (see `../demos/mink_ur5e_ik.py`) picking stones/sticks/clumps that air jets cannot move. Keep it a separate module; the fast sorter must not depend on it.
+- The robot-arm prototype is in `ur5e_infeed.py` with CLI `run_ur5e_infeed.py`; see [its report](runs/ur5e-infeed/REPORT.md) and [plan](PICKING_PLAN.md). It uses a separate slow infeed with y as travel, x as lane and z as up, plus the existing HUD/artifact conventions. The fast optical sorter does not depend on it. Camera association and height remain assisted; fixture collisions, physical grasp and dynamic bin capture are unvalidated.

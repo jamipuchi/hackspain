@@ -834,3 +834,67 @@ The [historical four-rate ledger](runs/economics/report.md) remains separate: it
 - **65 tests pass.** [Full output](runs/sensor-realism/final-tests.log), [resume validation](runs/sensor-realism/resume-validation.log), and separate [Standards/Spec findings and resolutions](runs/sensor-realism/REVIEW.md) are preserved. Compile and scoped-diff checks pass. The fork has zero GitHub Actions workflows; there is no CI result to claim. PR #1 remains draft and unmerged.
 
 Remaining hardware blockers: measure actual illumination/exposure/noise and encoder jitter; validate air-jet intersection/capture and feeder singulation over longer independent runs; model camera backlog; obtain buyer grade acceptance and prices. No blocking questions were needed. Earlier incomplete development runs were archived outside the published final suite before recomputation.
+
+
+## 19 September 06:07 UTC: UR5e infeed picking
+
+**Result: 2/2 idealized removals at 0.10 m/s; 3/4 at 0.28 m/s in a burst.**
+This is a bounded kinematic prototype, not verified contact grasp or hardware
+performance. It continues branch `coffee-sorter-closed-loop` and draft fork
+PR #1. The implementation plan is [PICKING_PLAN.md](PICKING_PLAN.md).
+
+| Case | Infeed speed | Duration | Oversize inputs | Ideal placements | Misses | Workspace exclusions | Maximum queue wait |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Nominal | 0.10 m/s | 18 s | 2 | 2 | 0 | 0 | 0 s |
+| Burst | 0.28 m/s | 11 s | 4 | 3 | 1 | 0 | 3.38 s |
+| Workspace policy | 0.10 m/s | 5 s | 1 | 0 | 0 | 1 | 0 s |
+
+Queue residence covers all selected objects, including the burst object lost
+before service: it was selected at 2.48 s and missed at 5.86 simulated seconds.
+
+All seven oversize inputs remain accounted for. Neither nominal nor burst
+selected its two non-large controls; four controls cannot establish a false
+selection rate. No timeout occurred. Queue delay and a missed burst object are
+observed together; this experiment does not isolate overload causality. The
+workspace case rejects an object outside the configured x bound and makes no
+claim about the arm's certified physical reach. Each case is one constructed,
+deterministic run, not an independent-seed robustness study.
+
+The pinned Menagerie UR5e runs actual mink/DAQP differential IK. The independent
+infeed uses y for travel and x for lane; the existing optical sorter and its
+3 m/s defaults remain unchanged. Shared `render.hud` labels each video frame.
+Camera capture is class-independent at 12.5 Hz, with a red-foreground mask and
+45 mm measured-footprint selection threshold. True identities assist association
+and known object heights assist targeting. General foreign-matter perception,
+occlusion and real camera calibration are not established by these red pieces.
+
+The joint-position ranges come from the model; configured joint-speed limits
+are 2.094 rad/s for the shoulder joints and 3.142 rad/s for the others. IK runs
+at 20 ms steps; saved joint/end-effector trajectories sample every 100 ms.
+Attachment requires an 18 mm tolerance, followed by lift and a reject pose
+within 12 mm; pick timeout is 3.2 s. Attachment and final bin placement are
+idealized, fixture collisions are disabled, and no gripper contact, actuator
+dynamics, payload slip, collision avoidance or dynamic bin capture is modeled.
+The infeed keeps moving. A credited success is the entire idealized sequence,
+not tool proximity alone. The cheapest next physical check is a guarded
+stationary-object grasp-and-lift trial, followed by measured moving-target
+tracking and collision checks before claiming removal reliability.
+
+The initial development run reported 2/2 nominal and 2/4 mixed stress outcomes.
+Review found an oracle-gated camera trigger and incomplete artifact safeguards;
+that preliminary suite was archived outside the final directory. The corrected
+burst case and separate workspace case above replace it. Reruns now refuse
+nonempty output unless explicitly archived, validate robot/source contents,
+reject nonfinite solver state and write a completion hash inventory last.
+The report exposes the remaining oracle inputs and collision/placement limits.
+
+All **72 project tests pass**, including seven picking tests with the actual
+robot model required. The original environment also retains its 65 passing
+tests, with an explicit optional-module skip when picking dependencies are
+absent. Package versions are pinned; the optional root-free Ubuntu Mesa recipe
+is explicitly unpinned. No GitHub Actions workflows are configured.
+
+- [Report and reproduction](runs/ur5e-infeed/REPORT.md), [all metrics](runs/ur5e-infeed/metrics.json), [outcome plot](runs/ur5e-infeed/outcomes.png), [test output](runs/ur5e-infeed/tests.log), [completion inventory](runs/ur5e-infeed/completion.json).
+- [Nominal video](runs/ur5e-infeed/nominal/overview.mp4), [burst video](runs/ur5e-infeed/burst/overview.mp4), [workspace-policy video](runs/ur5e-infeed/workspace/overview.mp4). Each case also contains its input manifest, events, trajectory and contact sheet.
+- [Separate Standards/Spec review and resolutions](runs/ur5e-infeed/REVIEW.md) and [independent saved-evidence audit](runs/ur5e-infeed/validation.log).
+- The final morning review's original 18,614 bytes are preserved. Only the requested short addendum is appended. PR #1 stays draft and unmerged for human review; no Slack post.
