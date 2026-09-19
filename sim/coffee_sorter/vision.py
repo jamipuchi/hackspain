@@ -83,22 +83,25 @@ class Inspector:
         keep = np.where(stats[1:, cv2.CC_STAT_AREA] >= MIN_AREA_PX)[0] + 1
         if len(keep) == 0:
             return Blobs(t, 0, *[np.zeros(0)] * 4, np.zeros((0, 4), int), np.zeros(0, bool), np.zeros((0, len(FEATURES))))
-        lab = labels.ravel()
+        # all per-blob statistics over FOREGROUND pixels only (a few % of the strip)
+        idx = np.flatnonzero(mask.ravel())
+        lab = labels.ravel()[idx]
         area = np.bincount(lab, minlength=n).astype(np.float64)
         area_safe = np.maximum(area, 1)
-        gray = (0.299 * r + 0.587 * g + 0.114 * b).astype(np.float32).ravel()
-        hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
-        hh, ss, vv = hsv[..., 0].ravel().astype(np.float32), hsv[..., 1].ravel().astype(np.float32), hsv[..., 2].ravel().astype(np.float32)
+        rf, gf, bf = r.ravel()[idx].astype(np.float32), g.ravel()[idx].astype(np.float32), b.ravel()[idx].astype(np.float32)
+        gray = 0.299 * rf + 0.587 * gf + 0.114 * bf
+        hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV).reshape(-1, 3)[idx]
+        hh, ss, vv = hsv[:, 0].astype(np.float32), hsv[:, 1].astype(np.float32), hsv[:, 2].astype(np.float32)
 
         def bmean(w): return np.bincount(lab, weights=w, minlength=n) / area_safe
-        mr, mg, mb = bmean(r.ravel()), bmean(g.ravel()), bmean(b.ravel())
+        mr, mg, mb = bmean(rf), bmean(gf), bmean(bf)
         mgray = bmean(gray); sgray = np.sqrt(np.maximum(bmean(gray * gray) - mgray ** 2, 0))
         mh, ms, mv = bmean(hh), bmean(ss), bmean(vv)
         ssat = np.sqrt(np.maximum(bmean(ss * ss) - ms ** 2, 0))
         dark_frac = bmean((gray < DARK_T).astype(np.float32))
         bright_frac = bmean((gray > BRIGHT_T).astype(np.float32))
         # second moments -> equivalent ellipse
-        ys, xs = np.divmod(np.arange(H * W), W)
+        ys, xs = np.divmod(idx, W)
         xs = xs.astype(np.float64); ys = ys.astype(np.float64)
         mx, my = bmean(xs), bmean(ys)
         cxx = bmean(xs * xs) - mx ** 2; cyy = bmean(ys * ys) - my ** 2; cxy = bmean(xs * ys) - mx * my
@@ -107,8 +110,9 @@ class Inspector:
         l1, l2 = tr / 2 + disc, np.maximum(tr / 2 - disc, 1e-6)
         major, minor = 4 * np.sqrt(l1), 4 * np.sqrt(l2)
         # dark spots (insect holes, mould) inside blobs: one extra components pass on the whole strip
-        spot_mask = (mask.ravel().astype(bool) & (gray < SPOT_T)).reshape(H, W).astype(np.uint8)
-        ns, slab, sstats, scents = cv2.connectedComponentsWithStats(spot_mask, connectivity=8)
+        spot_mask = np.zeros(H * W, np.uint8)
+        spot_mask[idx[gray < SPOT_T]] = 1
+        ns, slab, sstats, scents = cv2.connectedComponentsWithStats(spot_mask.reshape(H, W), connectivity=8)
         n_spots = np.zeros(n); spot_area = np.zeros(n)
         if ns > 1:
             sc = np.clip(np.round(scents[1:]).astype(int), 0, [W - 1, H - 1])
