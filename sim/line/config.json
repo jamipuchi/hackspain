@@ -8,14 +8,14 @@
     "conveyor_default_speed": 60
   },
   "gate": {
-    "channel": "base",
+    "channel": "belt",
     "flush_deg": 90,
     "open_deg": 44,
     "hold_deg": [
       90,
       75
     ],
-    "settle_ms": 400,
+    "settle_ms": 150,
     "default_dwell_s": 0.6,
     "ramp_override": false,
     "door_vmax_deg_s": 400,
@@ -73,13 +73,13 @@
       36.0
     ],
     "bean_speed_cm_s": 35.0,
-    "zone_to_door_s": 0.567,
+    "zone_to_door_s": 0.5656,
     "speed_model": "drag",
     "drag_accel_cm_s2_at_15deg": 64.0,
     "drag_friction_cm_s2": 19.2,
     "drag_k_per_s": 1.6,
     "lead_margin_s": 0.0,
-    "door_lead_s": 0.4,
+    "door_lead_s": 0.15,
     "mode": "fixed",
     "fixed_delay_s": 0.0
   },
