@@ -33,7 +33,14 @@ Open [the local page](http://127.0.0.1:8890). The conveyor starts automatically,
 Select **Inject stone** to add an object. A ring identifies that object in both projections.
 Prediction, jet contact, and physical outcome appear separately.
 The contact counter counts nozzle contact steps. Multiple nozzles can contact an object during one physics step. Approximate object associations carry an explicit label.
-The page draws schematic primitive projections. It does not provide the swarm's realistic assets or a complete 3D viewer.
+The main view is 3D (Three.js, vendored from `web/vendor`): the Blender machine and bean LODs from `visual_assets/browser`
+are posed from the live layout and object stream, with dimension callouts in metres and a title block of machine data.
+Stones and sticks stay primitives; the insect prototype is unused because the true class is not exposed to the page.
+The schematic top and side projections remain as a collapsible inset in the bottom-right corner. Every panel collapses
+toward its screen edge from its dark tab; `H` collapses or expands all panels and `L` hides labels and dimensions.
+Clicking the belt or table also injects a stone; it spawns at the feeder regardless of the clicked point.
+The machine GLB is produced by `visual_assets/export_machine.py` (Blender, `scene_machine.build_machine` on the replay
+payload, studio-floor extension dropped); its manifest sits next to it in `visual_assets/browser/`.
 
 The service prints its evidence directory. Command logs rotate in continuous mode. Shutdown writes the retained report and final state.
 The command above restores the exact evaluated model. Continuous startup validates its manifest and physical compatibility without retraining.
@@ -135,7 +142,7 @@ The short motion diagnostic does not establish smoother overall physics or accep
 The frozen evaluation met the 80% capture lower bound on every seed. Every seed exceeded the 2% good-loss upper bound.
 Pooled good loss was 5.80%. Engine speed remained approximately 0.2 times real time. Lighting robustness remains unsupported.
 The latest-stone card and rolling scores are diagnostic aids. They do not establish acceptable sorting quality.
-The current two-dimensional projections are temporary. A later increment provides a 3D view using the existing render assets.
+The 3D view uses the baked browser LODs, not the hero Blender meshes; machine materials lose their procedural brushed detail in glTF export. Metallic parts need the small environment map the page adds; there is no fog, bloom or tone mapping.
 Language policies and learning controls remain deferred.
 
 See the checkpoint report under `thoughts/taras/research/coffee-core-live/` for the measured configuration, source hashes, and evidence.

@@ -877,7 +877,11 @@ def main():
     app.on_shutdown.append(service.shutdown)
     app.add_routes([web.get('/', page), web.get('/live.js', script), web.get('/health', service.health),
                     web.get('/state', service.state_handler), web.get('/ws', service.websocket),
-                    web.post('/restart', service.restart)])
+                    web.post('/restart', service.restart),
+                    # The 3D view reuses the replay viewer's vendored three.js build (no network requests).
+                    web.static('/vendor', HERE / 'web/vendor', follow_symlinks=False),
+                    # Blender bean/machine GLBs plus the vendored GLTFLoader used by the 3D view.
+                    web.static('/assets', HERE / 'visual_assets/browser', follow_symlinks=False)])
     print(f'Evidence directory: {args.out.resolve()}', flush=True)
     web.run_app(app, host=args.host, port=args.port, access_log=None, shutdown_timeout=3)
 

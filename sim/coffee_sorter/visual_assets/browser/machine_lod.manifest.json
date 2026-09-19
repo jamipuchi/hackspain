@@ -1,0 +1,43 @@
+{
+  "blender": "5.2.2 LTS",
+  "source": "sim/coffee_sorter/web/replay.json",
+  "replay_sha256": "e6ed1292b2350d121ffcc0447b4aea38188818077a8254bc1d4598318b286a9f",
+  "layout": {
+    "belt_len": 1.1,
+    "belt_w": 0.5,
+    "belt_z": 0.6,
+    "belt_speed": 3.0,
+    "feed_x": [
+      -1.05,
+      -0.95
+    ],
+    "feed_vx": 2.6,
+    "feed_drop": 0.006,
+    "cam_x": -0.12,
+    "cam_fov": 0.048,
+    "cam_w": 2080,
+    "cam_h": 192,
+    "ej_x": 0.1,
+    "n_nozzles": 64,
+    "ej_z_offset": 0.045,
+    "split_x": 0.34,
+    "split_z_drop": 0.125,
+    "n_ellipsoid": 1150,
+    "n_half": 48,
+    "n_box": 20,
+    "n_capsule": 20,
+    "timestep": 0.002
+  },
+  "objects_exported": 228,
+  "studio_floor_objects_dropped": 4,
+  "builder_counts": {
+    "recorded_surfaces": 25,
+    "nozzles": 64,
+    "fasteners": 8,
+    "presentation_objects": 64,
+    "total_objects": 232
+  },
+  "bytes": 929820,
+  "sha256": "3c0ebac078d9eea18e20e96d717a0d387d040cfca617649da9fcc3fa4be5329d",
+  "coordinates": "GLB uses Y up; restore Z up with +90 degrees about X on the root node."
+}
