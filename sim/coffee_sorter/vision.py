@@ -75,13 +75,18 @@ class Inspector:
         # the renderer draws the kinematics computed at the start of the last step -> that is the exposure time
         return self.r.render(), sim.data.time - m.opt.timestep
 
+    # -------- segmentation (override for other backgrounds, see vision_paper.py)
+    def segment(self, r, g, b) -> np.ndarray:
+        """Return a foreground mask from uint8 channels, excluding the blue belt."""
+        belt = cv2.bitwise_and(cv2.compare(cv2.subtract(b, r), 35, cv2.CMP_GT),
+                               cv2.compare(cv2.subtract(b, g), 10, cv2.CMP_GT))
+        return cv2.bitwise_not(belt)
+
     # -------- detection + features
     def detect(self, frame, t) -> Blobs:
         H, W, _ = frame.shape
         r, g, b = cv2.split(frame)
-        belt = cv2.bitwise_and(cv2.compare(cv2.subtract(b, r), 35, cv2.CMP_GT),
-                               cv2.compare(cv2.subtract(b, g), 10, cv2.CMP_GT))
-        mask = cv2.bitwise_not(belt)
+        mask = self.segment(r, g, b)
         n, labels, stats, cents = cv2.connectedComponentsWithStatsWithAlgorithm(
             mask, 8, cv2.CV_32S, cv2.CCL_DEFAULT)
         self._last_labels = labels

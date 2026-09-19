@@ -19,6 +19,9 @@
     C <speed>                     conveyor servo, -100..100 (0 = no signal, stops) -> ok
     H                             home pose                             -> ok
     ?                             -> P <b> <s> <e> M <0|1> B <0|1>   (B=1 while still moving)
+    R <ch> <vmax> <accel>         per-channel ramp override, ch 0-2 (base/shoulder/elbow), vmax in deg/s,
+                                  accel in deg/s^2; 0 restores the defaults (200, 700)     -> ok
+                                  (the swing door on D9 uses `R 0 400 8000`: 25 deg in ~0.11 s instead of 0.38 s)
 
   Servo motion follows a trapezoidal profile (ACCEL_DEG_S2, MAX_DEG_PER_S) so the hanging magnet
   with a part on it is never whipped around. Identical to the simulator's firmware model.
@@ -27,8 +30,10 @@
 #include <Servo.h>
 
 const uint8_t PIN_BASE = 9, PIN_SHOULDER = 10, PIN_ELBOW = 11, PIN_MAGNET = 7, PIN_BELT = 6;
-const float MAX_DEG_PER_S = 200.0f;     // cruise speed (well below MG90S/MG946R no-load speed)
-const float ACCEL_DEG_S2 = 700.0f;      // acceleration limit of the profile
+const float MAX_DEG_PER_S = 200.0f;     // default cruise speed (well below MG90S/MG946R no-load speed)
+const float ACCEL_DEG_S2 = 700.0f;      // default acceleration limit of the profile
+float vmax[3] = {MAX_DEG_PER_S, MAX_DEG_PER_S, MAX_DEG_PER_S};  // per-channel, changed by `R`
+float amax[3] = {ACCEL_DEG_S2, ACCEL_DEG_S2, ACCEL_DEG_S2};
 const unsigned long TICK_MS = 20;       // one servo pulse period
 const int HOME_POSE[3] = {150, 125, 75};  // taras_v1: parked up and to the side, out of the camera's view
 
@@ -84,6 +89,13 @@ void handle(char *cmd) {
   } else if (cmd[0] == 'H') {
     for (uint8_t i = 0; i < 3; i++) target[i] = HOME_POSE[i];
     Serial.println(F("ok"));
+  } else if (cmd[0] == 'R') {
+    int ch; long v, a;
+    if (sscanf(cmd + 1, "%d %ld %ld", &ch, &v, &a) == 3 && ch >= 0 && ch <= 2) {
+      vmax[ch] = (v <= 0) ? MAX_DEG_PER_S : (float)constrain(v, 1L, 2000L);
+      amax[ch] = (a <= 0) ? ACCEL_DEG_S2 : (float)constrain(a, 1L, 50000L);
+      Serial.println(F("ok"));
+    } else Serial.println(F("err"));
   } else if (cmd[0] == '?') {
     Serial.print(F("P "));
     for (uint8_t i = 0; i < 3; i++) { Serial.print((int)(current[i] + 0.5f)); Serial.print(' '); }
@@ -122,8 +134,8 @@ void loop() {
     const float dt = TICK_MS / 1000.0f;
     for (uint8_t i = 0; i < 3; i++) {
       float d = target[i] - current[i];
-      float vdes = (fabs(d) > 1e-6f) ? copysignf(fminf(MAX_DEG_PER_S, sqrtf(2 * ACCEL_DEG_S2 * fabs(d))), d) : 0.0f;
-      float dv = constrain(vdes - vel[i], -ACCEL_DEG_S2 * dt, ACCEL_DEG_S2 * dt);
+      float vdes = (fabs(d) > 1e-6f) ? copysignf(fminf(vmax[i], sqrtf(2 * amax[i] * fabs(d))), d) : 0.0f;
+      float dv = constrain(vdes - vel[i], -amax[i] * dt, amax[i] * dt);
       vel[i] += dv;
       float move = vel[i] * dt;
       if (fabs(move) >= fabs(d)) { move = d; vel[i] = 0; }

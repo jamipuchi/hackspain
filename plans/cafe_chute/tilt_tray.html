@@ -1,0 +1,260 @@
+<title>Café Tilt Tray</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+:root{--bg:#f7f4ee;--panel:#fff;--ink:#1d2733;--muted:#66707a;--line:#e0d9cf;--foam:#f3efe6;--foam-edge:#8d8578;--foam-dark:#e2dccf;--coffee:#4b2e1e;--paper:#fdfcf9;
+  --servo:#2f5fb3;--servo-deep:#1f4380;--dim:#b3472b;--zone:#dff0e6;--zone-edge:#2e8b57;--bean:#5a3a26;--pale:#d9b98a;--ok:#1f8a4c;--warn:#c07a12;--cut:#c0392b;--table:#e2d3bc}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#15120f;--panel:#1e1a16;--ink:#efe8df;--muted:#a79e93;--line:#332c26;--foam:#2b2620;--foam-edge:#8d8578;--foam-dark:#3a332b;--coffee:#d9b48f;--paper:#efe9df;
+  --servo:#4a7ad6;--servo-deep:#2a4f97;--dim:#ff8a65;--zone:#1f3a2c;--zone-edge:#4cc98a;--bean:#6b4630;--pale:#e2c39a;--ok:#3fbf75;--warn:#e6a23c;--cut:#ec6b5c;--table:#3a3128}}
+:root[data-theme="dark"]{--bg:#15120f;--panel:#1e1a16;--ink:#efe8df;--muted:#a79e93;--line:#332c26;--foam:#2b2620;--foam-edge:#8d8578;--foam-dark:#3a332b;--coffee:#d9b48f;--paper:#efe9df;
+  --servo:#4a7ad6;--servo-deep:#2a4f97;--dim:#ff8a65;--zone:#1f3a2c;--zone-edge:#4cc98a;--bean:#6b4630;--pale:#e2c39a;--ok:#3fbf75;--warn:#e6a23c;--cut:#ec6b5c;--table:#3a3128}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 "IBM Plex Sans",system-ui,sans-serif;margin:0;padding-block:36px 64px;padding-inline:16px}
+.wrap{max-width:1000px;margin:0 auto;display:grid;gap:30px}
+h1{font:800 34px/1.05 Archivo,system-ui,sans-serif;margin:0 0 8px;letter-spacing:-.015em;text-wrap:balance;color:var(--coffee)}
+h2{font:700 19px/1.25 Archivo,system-ui,sans-serif;margin:0 0 12px;letter-spacing:-.01em}
+h3{font:600 15px/1.3 Archivo,system-ui,sans-serif;margin:14px 0 6px}
+.eyebrow{font:600 11px/1 "IBM Plex Mono",monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.lede{max-width:66ch;margin:0;color:var(--muted)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:22px}
+.figure{padding:14px 14px 10px}
+.figure figcaption{font-size:13px;color:var(--muted);padding:8px 6px 0;max-width:80ch}
+.scroll{overflow-x:auto}
+.scroll svg{display:block;width:100%;height:auto}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:600 11px/1 "IBM Plex Mono",monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+td.num{font:500 14px "IBM Plex Mono",monospace;white-space:nowrap}
+td code,li code,p code,dd code{font:600 13px "IBM Plex Mono",monospace;background:color-mix(in srgb,var(--line) 50%,transparent);padding:1px 6px;border-radius:4px}
+.tag{display:inline-block;font:700 12px/1 "IBM Plex Mono",monospace;padding:4px 7px;border-radius:4px;background:color-mix(in srgb,var(--coffee) 14%,transparent);color:var(--coffee)}
+.svg-dim{font:600 11px "IBM Plex Mono",monospace;fill:var(--dim)}
+.svg-lab{font:600 12px "IBM Plex Sans",system-ui,sans-serif;fill:var(--ink)}
+.svg-mut{font:500 11px "IBM Plex Sans",system-ui,sans-serif;fill:var(--muted)}
+.svg-mono{font:600 10px "IBM Plex Mono",monospace;fill:var(--muted)}
+.svg-id{font:800 13px Archivo,system-ui,sans-serif;fill:var(--coffee)}
+ol,ul{margin:0;padding-left:20px;display:grid;gap:9px}
+li b{font-weight:600}
+.note{border-left:3px solid var(--coffee);padding:2px 0 2px 14px;color:var(--muted);font-size:14px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:14px}
+.kv dt{font:600 12px "IBM Plex Mono",monospace;color:var(--muted);padding-top:2px}
+.kv dd{margin:0}
+.footer{color:var(--muted);font-size:13px;text-align:center}
+.check{color:var(--ok);font-weight:600}
+pre{margin:0;background:color-mix(in srgb,var(--line) 40%,transparent);border-radius:8px;padding:14px 16px;overflow-x:auto;font:13px/1.5 "IBM Plex Mono",monospace}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Café · inspección visual sencilla · design v4 · tilting tray · cartón pluma 2.5 mm</div>
+    <h1>Stop, look, tip</h1>
+    <p class="lede">The simplest robust version. A short feed chute drops each bean onto a 6 × 6 cm tray hanging from the servo horn. The bean stops against the tray's back rim and is photographed standing still. Then the tray tilts 45° to the left (bowl, <em>Sin defecto visible</em>) or to the right (cup, <em>Para revisar</em>) and comes back level. One servo, no door, no hinge, no timing budget, no firmware change. If a bean sticks, the software tilts further. All dimensions in cm; board thickness 0.25 is included.</p>
+  </header>
+
+  <section class="panel">
+    <h2>Why this is simpler and more robust than the swing gate</h2>
+    <div class="two">
+      <ul>
+        <li><b>No timing.</b> The bean is stationary when photographed and when the decision is made. A slow classifier, even a cloud call, cannot cause a misroute; it only slows the cycle.</li>
+        <li><b>No door.</b> No cut-out, no hinge alignment, no toothpick, no soft stop, no fast-ramp firmware. The servo does a slow 45° move at the stock ramp.</li>
+        <li><b>Friction is a number.</b> Stuck bean: send a steeper angle. The chute slope never needs to change; the chute only has to deliver the bean, not time it.</li>
+        <li><b>Sharper photos.</b> No motion blur, so the classifier sees a clean bean every time.</li>
+      </ul>
+      <ul>
+        <li><b>Positive routing.</b> Gravity pulls the bean off the tray on the chosen side; there is no path to the wrong container.</li>
+        <li><b>Fewer failure modes.</b> Left: a sticky bean (retry steeper), a bean bouncing off the tray on arrival (rim + soft paper handle it), two beans on the tray (feed one every 2.5 s).</li>
+        <li><b>Servo protected.</b> Flush-mounted through the tower wall on its own flange, body inside the box. The tray hangs below the axis, so its weight helps rather than fights.</li>
+        <li><b>Cost.</b> Cycle time about 2 s per bean instead of continuous flow. For hand feeding that is the feed rate anyway.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- FIG 1 SIDE VIEW -->
+  <figure class="panel figure">
+    <div class="eyebrow">Fig. 1 · side elevation · 1 cm = 14 px</div>
+    <div class="scroll">
+    <svg viewBox="-20 -40 660 400" style="min-width:640px" role="img" aria-label="Side view: feed chute on its own panels, tray hanging from the servo horn in front of the tower, phone above the tray, containers on either side">
+      <!-- base tray -->
+      <rect x="0" y="300" width="532" height="3.5" fill="var(--foam-dark)" stroke="var(--foam-edge)"/>
+      <rect x="3" y="303.5" width="526" height="28" fill="none" stroke="var(--foam-edge)" stroke-dasharray="4 3"/>
+      <text x="6" y="350" class="svg-mut">base tray K 38 × 28, skirt 2.0 underneath</text>
+      <!-- chute side panel: x 3..17.1 (u), heights 19.8 / 14.6 ; floor 17.6 / 12.5 -->
+      <polygon points="42,300 239.4,300 239.4,95.6 42,22.8" fill="var(--foam)" stroke="var(--cut)" stroke-width="1.5"/>
+      <line x1="42" y1="53.6" x2="239.4" y2="125" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <text x="120" y="70" class="svg-lab" transform="rotate(20 120 70)">feed chute panel P (2×), floor line 17.6 → 12.5</text>
+      <g fill="var(--bean)"><ellipse cx="90" cy="65" rx="8" ry="5.5" transform="rotate(20 90 65)"/><ellipse cx="180" cy="98" rx="8" ry="5.5" transform="rotate(20 180 98)"/></g>
+      <!-- tower: x 24.6..30.6 -> px 344.4..428.4 ; height 13 -> y 118..300 -->
+      <rect x="344.4" y="118" width="84" height="182" fill="var(--foam)" stroke="var(--cut)" stroke-width="1.5"/>
+      <text x="386" y="230" text-anchor="middle" class="svg-id">tower</text><text x="386" y="246" text-anchor="middle" class="svg-mono">6 × 5 × 13</text>
+      <!-- servo through the front wall: body inside, flange outside at x=344.4 ; axis y=12 -> py 300-168=132 -->
+      <rect x="348" y="123" width="31" height="31.5" fill="var(--servo)" stroke="var(--servo-deep)"/>
+      <rect x="341" y="119" width="3.5" height="36" fill="var(--servo-deep)"/>
+      <line x1="341" y1="132" x2="332" y2="132" stroke="var(--servo-deep)" stroke-width="4"/>
+      <circle cx="330" cy="132" r="5" fill="#eef1f4" stroke="var(--servo-deep)"/>
+      <text x="300" y="112" text-anchor="end" class="svg-mono" style="fill:var(--servo-deep)">SG90 flush-mounted, shaft → chute</text>
+      <!-- hanger + tray: hanger at x 23.6..23.85 (px 330.4..333.9), top axis+1 (py 118), bottom axis-1.5 (py 153); tray top at axis-1 (py 146), from x 17.6..23.6 -> px 246.4..330.4 -->
+      <rect x="326.9" y="118" width="3.5" height="35" fill="var(--foam-dark)" stroke="var(--foam-edge)"/>
+      <rect x="246.4" y="146" width="84" height="3.5" fill="var(--paper)" stroke="var(--foam-edge)"/>
+      <rect x="246.4" y="139" width="3.5" height="7" fill="var(--foam-dark)" stroke="var(--foam-edge)"/>
+      <ellipse cx="312" cy="142" rx="8" ry="4.5" fill="var(--pale)"/>
+      <text x="288" y="170" text-anchor="middle" class="svg-mono">tray TR 6 × 6, hangs 1.0 below the axis</text>
+      <!-- phone above tray centre x=20.6 -> px 288.4 ; 20 cm up -> py 146-280 = -134 (clip) -> draw at -30 with break -->
+      <rect x="220" y="-34" width="140" height="12" rx="4" fill="#2a2d31"/><circle cx="288" cy="-20" r="3.5" fill="#5aa7ff"/>
+      <line x1="288" y1="-16" x2="288" y2="140" stroke="var(--dim)" stroke-dasharray="5 3"/>
+      <text x="294" y="60" class="svg-dim">20 cm</text>
+      <text x="288" y="-38" text-anchor="middle" class="svg-lab" style="font-size:11px">phone, lens down (drawn closer than scale)</text>
+      <!-- dims -->
+      <g stroke="var(--dim)" stroke-width="1" fill="none">
+        <line x1="440" y1="132" x2="440" y2="300"/><line x1="435" y1="132" x2="445" y2="132"/><line x1="435" y1="300" x2="445" y2="300"/>
+        <line x1="239.4" y1="125" x2="246.4" y2="146" stroke-dasharray="2 2"/>
+        <line x1="20" y1="53.6" x2="20" y2="300"/><line x1="15" y1="53.6" x2="25" y2="53.6"/><line x1="15" y1="300" x2="25" y2="300"/>
+      </g>
+      <text x="446" y="220" class="svg-dim">axis 12.0</text>
+      <text x="14" y="180" text-anchor="end" class="svg-dim">17.6</text>
+      <text x="236" y="180" text-anchor="end" class="svg-dim">exit 12.5, drop 1.5 onto the tray</text>
+      <text x="140" y="330" text-anchor="middle" class="svg-dim">chute 15.0 along the slant at 20° (14.1 horizontal)</text>
+      <text x="386" y="290" text-anchor="middle" class="svg-mono">cable out of the open bottom</text>
+    </svg>
+    </div>
+    <figcaption>Beans roll 15 cm at 20° and drop 1.5 cm onto the tray. The tray hangs 1.0 below the servo axis on a hanger plate whose top 1.0 forms the back rim. The containers are beside the tray (Fig. 2), not in this view.</figcaption>
+  </figure>
+
+  <div class="two">
+    <!-- FIG 2 FRONT VIEW -->
+    <figure class="panel figure">
+      <div class="eyebrow">Fig. 2 · front view from the chute, tray tilted 45° to the bowl · 1 cm = 14 px</div>
+      <div class="scroll">
+      <svg viewBox="-20 -20 480 300" style="min-width:440px" role="img" aria-label="Front view: tray tilted 45 degrees, bean sliding to the bowl on the left, cup on the right, tower behind">
+        <rect x="0" y="240" width="440" height="3.5" fill="var(--foam-dark)" stroke="var(--foam-edge)"/>
+        <!-- tower behind, z ±2.5 around axis at x=220 -->
+        <rect x="185" y="58" width="70" height="182" fill="var(--foam)" stroke="var(--cut)" opacity=".7"/>
+        <!-- axis at y = 240-168 = 72 -->
+        <circle cx="220" cy="72" r="5" fill="#eef1f4" stroke="var(--servo-deep)"/>
+        <!-- tray level ghost -->
+        <g opacity=".3"><rect x="178" y="86" width="84" height="3.5" fill="var(--paper)" stroke="var(--foam-edge)"/><rect x="218.25" y="58" width="3.5" height="35" fill="var(--foam-dark)"/></g>
+        <!-- tray tilted -45 (left down) -->
+        <g transform="rotate(-45 220 72)">
+          <rect x="218.25" y="58" width="3.5" height="35" fill="var(--foam-dark)" stroke="var(--foam-edge)"/>
+          <rect x="178" y="86" width="84" height="3.5" fill="var(--paper)" stroke="var(--foam-edge)"/>
+          <ellipse cx="192" cy="81" rx="8" ry="5" fill="var(--bean)"/>
+        </g>
+        <path d="M172 118 Q160 150 150 175" stroke="var(--warn)" stroke-width="2" fill="none"/>
+        <!-- bowl left: centre z=-8.5 -> x=220-119=101, r=6 -> 84, height 7 -> 98 -->
+        <path d="M17 142 Q20 240 101 240 Q182 240 185 142 Z" fill="var(--paper)" stroke="var(--foam-edge)" stroke-width="1.5"/>
+        <ellipse cx="101" cy="142" rx="84" ry="10" fill="var(--panel)" stroke="var(--foam-edge)" stroke-width="1.5"/>
+        <text x="101" y="262" text-anchor="middle" class="svg-mut">Sin defecto visible (≤ 8 tall)</text>
+        <!-- cup right: centre z=+7 -> x=318, r=3.6 -> 50, h 4.5 -> 63 -->
+        <path d="M270 177 Q272 240 318 240 Q364 240 366 177 Z" fill="var(--paper)" stroke="var(--foam-edge)" stroke-width="1.5"/>
+        <ellipse cx="318" cy="177" rx="50" ry="6" fill="var(--panel)" stroke="var(--foam-edge)" stroke-width="1.5"/>
+        <text x="318" y="262" text-anchor="middle" class="svg-mut">Para revisar</text>
+        <g stroke="var(--dim)" stroke-width="1" fill="none"><path d="M262 88 A42 42 0 0 0 250 58"/></g>
+        <text x="266" y="70" class="svg-dim">45°</text>
+        <text x="20" y="20" class="svg-lab">S 45 → bowl · S 90 level · S 135 → cup</text>
+        <text x="20" y="38" class="svg-mut">Low tray edge at 45°: 8.9 above the base</text>
+      </svg>
+      </div>
+      <figcaption>The tray edge drops to 8.9 cm when tilted, so any bowl up to 8 cm tall fits under the left edge and any cup under the right one. The bean leaves the edge at about 2 cm from the centre line with a small sideways speed and lands well inside either container.</figcaption>
+    </figure>
+
+    <!-- FIG 3 BASE LAYOUT -->
+    <figure class="panel figure">
+      <div class="eyebrow">Fig. 3 · base plate K, plan · 1 cm = 11 px</div>
+      <div class="scroll">
+      <svg viewBox="-28 -28 480 380" style="min-width:440px" role="img" aria-label="Base plate plan with the chute footprint, tray, tower, bowl and cup positions">
+        <rect x="0" y="0" width="418" height="308" fill="var(--foam)" stroke="var(--cut)" stroke-width="2"/>
+        <!-- axis line z=14 -> y=154 -->
+        <line x1="0" y1="154" x2="418" y2="154" stroke="var(--dim)" stroke-dasharray="3 3"/>
+        <!-- chute footprint x 3..17.1 -> 33..188, width 3.0 -> y 137.5..170.5 -->
+        <rect x="33" y="137.5" width="155" height="33" fill="none" stroke="var(--ink)" stroke-width="2"/>
+        <text x="110" y="128" text-anchor="middle" class="svg-mono">feed chute panels, 3.0 outside</text>
+        <!-- tray 17.6..23.6 -> 193.6..259.6 ; z ±3 -> y 121..187 -->
+        <rect x="193.6" y="121" width="66" height="66" fill="var(--zone)" stroke="var(--zone-edge)" stroke-dasharray="4 3"/>
+        <text x="226.6" y="158" text-anchor="middle" class="svg-mono">tray 6 × 6 = camera ROI</text>
+        <!-- tower 24.6..30.6 -> 270.6..336.6 ; z ±2.5 -> y 126.5..181.5 -->
+        <rect x="270.6" y="126.5" width="66" height="55" fill="var(--foam-dark)" stroke="var(--cut)" stroke-width="1.5"/>
+        <text x="303.6" y="158" text-anchor="middle" class="svg-id">tower</text>
+        <g fill="var(--foam-dark)" stroke="var(--foam-edge)"><polygon points="290,126.5 290,82.5 334,126.5"/><polygon points="290,181.5 290,225.5 334,181.5"/></g>
+        <text x="300" y="100" class="svg-mono">G</text><text x="300" y="215" class="svg-mono">G</text>
+        <!-- bowl centre z=5.5 -> y=60.5, x=tray centre 226.6, r 6 -> 66 -->
+        <circle cx="226.6" cy="60.5" r="66" fill="var(--paper)" stroke="var(--foam-edge)" stroke-width="1.5" opacity=".9"/>
+        <text x="226.6" y="64" text-anchor="middle" class="svg-mut">bowl · Sin defecto</text>
+        <!-- cup centre z=21 -> y 231, r 3.6 -> 39.6 -->
+        <circle cx="226.6" cy="231" r="39.6" fill="var(--paper)" stroke="var(--foam-edge)" stroke-width="1.5"/>
+        <text x="226.6" y="235" text-anchor="middle" class="svg-mut">cup</text>
+        <!-- dims -->
+        <g stroke="var(--dim)" stroke-width="1" fill="none">
+          <line x1="0" y1="-12" x2="418" y2="-12"/><line x1="0" y1="-17" x2="0" y2="-7"/><line x1="418" y1="-17" x2="418" y2="-7"/>
+          <line x1="436" y1="0" x2="436" y2="308"/><line x1="431" y1="0" x2="441" y2="0"/><line x1="431" y1="308" x2="441" y2="308"/>
+          <line x1="-12" y1="0" x2="-12" y2="154"/>
+        </g>
+        <text x="209" y="-18" text-anchor="middle" class="svg-dim">38.0</text><text x="444" y="158" class="svg-dim">28.0</text>
+        <text x="-16" y="80" text-anchor="end" class="svg-dim">14.0</text>
+        <text x="33" y="300" class="svg-dim">3.0</text><text x="188" y="300" class="svg-dim">17.1</text><text x="270" y="300" class="svg-dim">24.6</text><text x="336" y="300" class="svg-dim">30.6</text>
+        <text x="8" y="20" class="svg-mut">TOP END of the chute</text>
+      </svg>
+      </div>
+      <figcaption>Everything sits on the centre line 14.0 from the base's front edge. Chute panels from 3.0 to 17.1, tray from 17.6 to 23.6, tower from 24.6 to 30.6 (its front face carries the servo). Bowl centred 8.5 to the left of the line, cup 7.0 to the right.</figcaption>
+    </figure>
+  </div>
+
+  <section class="panel">
+    <h2>Cut list (one 50 × 100 sheet)</h2>
+    <table>
+      <thead><tr><th>#</th><th>Piece</th><th>Qty</th><th class="num">Size (cm)</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tag">K</span></td><td>Base plate</td><td>1</td><td class="num">38.0 × 28.0</td><td>Fig. 3</td></tr>
+        <tr><td><span class="tag">KS</span></td><td>Base skirt</td><td>2 + 2</td><td class="num">38.0 × 2.0 · 27.5 × 2.0</td><td>edge-on under the plate's perimeter → rigid tray</td></tr>
+        <tr><td><span class="tag">P</span></td><td>Chute side panel (wall + stand)</td><td>2</td><td class="num">14.1 × 19.8 trapezoid</td><td>corners (0,0) (14.1,0) (14.1,14.6) (0,19.8). Floor line 17.6 → 12.5. Slant 15.0. Flip one.</td></tr>
+        <tr><td><span class="tag">F</span></td><td>Chute floor</td><td>1</td><td class="num">14.7 × 2.5</td><td>on rails; paper liner 14.5 × 2.5 on top</td></tr>
+        <tr><td><span class="tag">R</span></td><td>Chute rail</td><td>2</td><td class="num">14.7 × 0.8</td><td>inside faces, top edge 0.26 below the floor line</td></tr>
+        <tr><td><span class="tag">B1</span></td><td>Chute top bulkhead + stop</td><td>1</td><td class="num">2.5 × 19.6</td><td>between the panels at the top end</td></tr>
+        <tr><td><span class="tag">B2</span></td><td>Chute exit bulkhead</td><td>1</td><td class="num">2.5 × 12.2</td><td>under the floor at the exit</td></tr>
+        <tr><td><span class="tag">T1</span></td><td>Tower side wall</td><td>2</td><td class="num">6.0 × 13.0</td><td>along the chute direction</td></tr>
+        <tr><td><span class="tag">T2</span></td><td>Tower front / back wall</td><td>2</td><td class="num">4.5 × 13.0</td><td>the FRONT one gets the servo hole: 1.2 wide × 2.3 tall, centred on the wall, from 10.35 to 12.65 above the base</td></tr>
+        <tr><td><span class="tag">T3</span></td><td>Tower top</td><td>1</td><td class="num">6.0 × 5.0</td><td></td></tr>
+        <tr><td><span class="tag">G</span></td><td>Buttress</td><td>4</td><td class="num">4.0 × 4.0 right triangle</td><td>two per tower side, two for the chute panels</td></tr>
+        <tr><td><span class="tag">H</span></td><td>Hanger + back rim</td><td>1</td><td class="num">6.0 × 2.5</td><td>glued to the horn; top 1.0 above the axis is the rim, tray glued 1.0 below the axis</td></tr>
+        <tr><td><span class="tag">HP</span></td><td>Horn pad</td><td>2 layers</td><td class="num">2.5 × 2.5</td><td>glued on the hanger's back face around the cross horn for glue area</td></tr>
+        <tr><td><span class="tag">TR</span></td><td>Tray plate</td><td>1</td><td class="num">6.0 × 6.0</td><td>white paper on top (double-sided tape)</td></tr>
+        <tr><td><span class="tag">TL</span></td><td>Tray front lip</td><td>1</td><td class="num">6.0 × 0.5</td><td>edge-on on the chute-side edge</td></tr>
+        <tr><td><span class="tag">TS</span></td><td>Tray stiffener</td><td>1</td><td class="num">5.5 × 1.0</td><td>edge-on under the tray along the axis line, glued to the hanger</td></tr>
+      </tbody>
+    </table>
+    <p class="note" style="margin-top:14px">18 pieces, none with a moving joint except the servo horn. Compared with the swing-gate plan: no door, no bracket box, no toothpick, no soft stop, no tilt blocks.</p>
+  </section>
+
+  <div class="two">
+    <section class="panel">
+      <h2>Assembly order</h2>
+      <ol>
+        <li><b>Base tray.</b> Skirt strips KS edge-on under K. Tape square, dry. <span class="check">Sits flat, no rock.</span></li>
+        <li><b>Tower.</b> Cut the servo hole in one T2 (1.2 wide × 2.3 tall, centred, bottom edge 10.35 above the tower's bottom edge). Glue T1 + T2 into a box, T3 on top. Glue it to the base on its footprint (Fig. 3), front wall towards the chute, with the two G buttresses on its sides.</li>
+        <li><b>Servo.</b> Wire it to D9, 5V, GND; send <code>S 90 90 75</code>. Push the body through the hole from outside until the flange sits on the wall; glue the flange and tape across it. Shaft points at the chute. Cable out through the open tower bottom.</li>
+        <li><b>Hanger.</b> Glue HP on the back of H around its centre, then glue the cross horn onto HP with H hanging straight down from the axis (top edge 1.0 above the axis). Let it cure fully before loading it.</li>
+        <li><b>Tray.</b> Glue TS edge-on under TR along its centre line, then glue TR + TS to the front face of H with the tray top exactly 1.0 below the axis. Glue TL on the front edge. Paper on top, and a paper strip over the inside face of the rim and lip so the camera sees only white around the bean. <span class="check">Level at S 90; tilts symmetric at S 45 / S 135.</span></li>
+        <li><b>Chute.</b> Panels P with floor line and rails as before; B1 and B2 between them; F onto the rails; glue the panels to the base from 3.0 to 17.1 on the centre line so the exit is 0.5 before the tray lip and 1.5 above the tray. Two G buttresses.</li>
+        <li><b>Containers and phone.</b> Bowl under the left edge, cup under the right (Fig. 3). Phone 20 cm above the tray, lens down. Ten beans: each should stop on the tray, then leave on the commanded side.</li>
+      </ol>
+    </section>
+    <section class="panel">
+      <h2>Servo, camera, software</h2>
+      <dl class="kv">
+        <dt>LEVEL</dt><dd><code>S 90 90 75</code></dd>
+        <dt>GOOD</dt><dd><code>S 45 90 75</code>, tray tips to the bowl. Hold 0.5 s, back to 90</dd>
+        <dt>SUSPECT</dt><dd><code>S 135 90 75</code>, tray tips to the cup. Hold 0.5 s, back to 90</dd>
+        <dt>STUCK</dt><dd>bean still in the ROI 0.8 s after the tilt → <code>S 30</code> / <code>S 150</code>, then level</dd>
+        <dt>SWING</dt><dd>stock firmware ramp: 45° in about 0.5 s. That is fine here; nothing waits on it</dd>
+        <dt>ROI</dt><dd>the inner 5.5 × 5.5 cm of the tray, phone 20 cm above, px/mm from the tray edges (6.0 cm). The back rim, front lip and hanger are the white face of the foam board; cover any cut edge or glue mark inside the zone with white paper so nothing dark but the bean is in view. The horn sits behind the rim, outside the zone</dd>
+        <dt>TRIGGER</dt><dd>bean present in the ROI and not moving between two frames (0.1 s apart) → classify</dd>
+        <dt>CYCLE</dt><dd>settle 0.4 + classify + tilt 0.5 + hold 0.5 + level 0.5 ≈ 2 s. Feed one bean every 2.5 s</dd>
+      </dl>
+      <pre style="margin-top:14px">while True:
+    blobs = detector.detect(cam.grab(), ROI)
+    if not blobs or moving(blobs): continue
+    v = classifier.classify(frame, blobs[0])
+    gate.tilt('review' if v.suspect else 'good')   # S 135 / S 45
+    time.sleep(0.5); gate.level()                  # S 90
+    if still_present(): gate.tilt(side, steep=True); gate.level()</pre>
+    </section>
+  </div>
+
+  <p class="footer">Cartón pluma 2.5 mm · una hoja · bandeja basculante · sin temporización · Diseño pendiente de pruebas</p>
+</div>

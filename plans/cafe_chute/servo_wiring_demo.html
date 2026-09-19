@@ -1,0 +1,185 @@
+<title>SG90 on the Uno</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#f3f5f4; --ink:#16232a; --muted:#5b6b70; --panel:#ffffff; --line:#d6dedd;
+  --teal:#0d7075; --teal-deep:#085257; --header:#1b1f22; --pin:#9aa3a6;
+  --orange:#e8722a; --red:#d33b2f; --brown:#7a4a22; --black:#111315; --blue:#2c5fb7;
+  --ok:#1f8a4c; --bad:#c0392b; --accent:var(--teal);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101617; --ink:#e6ecec; --muted:#9db0b3; --panel:#182022; --line:#2a3538;
+    --teal:#139aa1; --teal-deep:#0b6d72; --header:#0b0d0e; --pin:#6d777a;
+    --orange:#f08a45; --red:#e4564a; --brown:#a76a38; --black:#050607; --blue:#4d7fd6;
+    --ok:#3fbf75; --bad:#ec6b5c;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101617; --ink:#e6ecec; --muted:#9db0b3; --panel:#182022; --line:#2a3538;
+  --teal:#139aa1; --teal-deep:#0b6d72; --header:#0b0d0e; --pin:#6d777a;
+  --orange:#f08a45; --red:#e4564a; --brown:#a76a38; --black:#050607; --blue:#4d7fd6;
+  --ok:#3fbf75; --bad:#ec6b5c;
+}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 "IBM Plex Sans",system-ui,sans-serif;margin:0;padding-block:32px 56px;padding-inline:16px}
+.wrap{max-width:960px;margin:0 auto;display:grid;gap:28px}
+h1{font:700 30px/1.15 Sora,system-ui,sans-serif;margin:0 0 6px;text-wrap:balance;letter-spacing:-.01em}
+h2{font:600 18px/1.3 Sora,system-ui,sans-serif;margin:0 0 10px}
+.lede{color:var(--muted);max-width:62ch;margin:0}
+.eyebrow{font:600 11px/1 "IBM Plex Mono",monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);margin-bottom:10px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px}
+.diagram{overflow-x:auto}
+.diagram svg{display:block;width:100%;min-width:640px;height:auto}
+.svg-mono{font:600 10px "IBM Plex Mono",monospace}
+.svg-label{font:500 12px "IBM Plex Sans",system-ui,sans-serif}
+.svg-big{font:700 13px Sora,system-ui,sans-serif}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:600 11px/1 "IBM Plex Mono",monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+td code{font:600 13px "IBM Plex Mono",monospace;background:color-mix(in srgb,var(--line) 45%,transparent);padding:1px 6px;border-radius:4px}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:6px;border:1px solid rgba(0,0,0,.15)}
+.bad{color:var(--bad);font-weight:500}.ok{color:var(--ok);font-weight:500}
+ol{margin:0;padding-left:20px;display:grid;gap:8px}
+.note{color:var(--muted);font-size:14px;margin:12px 0 0}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">magnet_sorter · demo wiring</div>
+    <h1>One SG90 servo on the Arduino Uno R3</h1>
+    <p class="lede">Three jumper wires, no external supply. This matches the firmware already flashed on the board, which drives the base servo from pin D9.</p>
+  </header>
+
+  <section class="panel diagram" aria-label="Wiring diagram">
+    <svg viewBox="0 0 900 500" role="img" aria-labelledby="dt">
+      <title id="dt">Uno board with the SG90 servo wired to D9, 5V and GND</title>
+      <!-- board -->
+      <rect x="40" y="60" width="480" height="340" rx="10" fill="var(--teal)" stroke="var(--teal-deep)" stroke-width="2"/>
+      <rect x="22" y="110" width="40" height="52" rx="3" fill="#b9c0c3" stroke="#7d868a"/>
+      <text x="42" y="184" text-anchor="middle" class="svg-mono" fill="#dfe7e8">USB</text>
+      <rect x="22" y="300" width="34" height="42" rx="3" fill="#1f1f1f"/>
+      <text x="39" y="358" text-anchor="middle" class="svg-mono" fill="#dfe7e8">JACK</text>
+      <text x="300" y="250" text-anchor="middle" class="svg-big" fill="#e9f3f3" font-size="22">UNO R3</text>
+      <rect x="290" y="140" width="190" height="42" rx="3" fill="#1c1c1c"/>
+      <text x="385" y="166" text-anchor="middle" class="svg-mono" fill="#9aa3a6">ATMEGA328P</text>
+
+      <!-- digital header (top edge) -->
+      <rect x="58" y="66" width="222" height="26" rx="2" fill="var(--header)"/>
+      <rect x="290" y="66" width="176" height="26" rx="2" fill="var(--header)"/>
+      <g class="svg-mono" fill="#cfd6d8" text-anchor="middle">
+        <g id="dpins" fill="var(--pin)">
+          <rect x="66" y="74" width="9" height="9"/><rect x="88" y="74" width="9" height="9"/><rect x="110" y="74" width="9" height="9"/>
+          <rect x="132" y="74" width="9" height="9"/><rect x="154" y="74" width="9" height="9"/><rect x="176" y="74" width="9" height="9"/>
+          <rect x="198" y="74" width="9" height="9"/><rect x="220" y="74" width="9" height="9"/>
+          <rect x="242" y="74" width="9" height="9" fill="var(--orange)"/>
+          <rect x="264" y="74" width="9" height="9"/>
+          <rect x="298" y="74" width="9" height="9"/><rect x="320" y="74" width="9" height="9"/><rect x="342" y="74" width="9" height="9"/>
+          <rect x="364" y="74" width="9" height="9"/><rect x="386" y="74" width="9" height="9"/><rect x="408" y="74" width="9" height="9"/>
+          <rect x="430" y="74" width="9" height="9"/><rect x="452" y="74" width="9" height="9"/>
+        </g>
+        <text x="70" y="106">SCL</text><text x="92" y="106">SDA</text><text x="114" y="106">AREF</text><text x="136" y="106">GND</text>
+        <text x="158" y="106">13</text><text x="180" y="106">12</text><text x="202" y="106">11</text><text x="224" y="106">10</text>
+        <text x="246" y="106" fill="#ffd9c2" font-size="12">9</text><text x="268" y="106">8</text>
+        <text x="302" y="106">7</text><text x="324" y="106">6</text><text x="346" y="106">5</text><text x="368" y="106">4</text>
+        <text x="390" y="106">3</text><text x="412" y="106">2</text><text x="434" y="106">TX1</text><text x="456" y="106">RX0</text>
+      </g>
+      <text x="270" y="124" text-anchor="middle" class="svg-mono" fill="#bfe3e4">DIGITAL (PWM~)</text>
+
+      <!-- power header (bottom edge) -->
+      <rect x="78" y="368" width="176" height="26" rx="2" fill="var(--header)"/>
+      <rect x="288" y="368" width="132" height="26" rx="2" fill="var(--header)"/>
+      <g fill="var(--pin)">
+        <rect x="86" y="377" width="9" height="9"/><rect x="108" y="377" width="9" height="9"/><rect x="130" y="377" width="9" height="9"/>
+        <rect x="152" y="377" width="9" height="9" fill="var(--orange)"/>
+        <rect x="174" y="377" width="9" height="9" fill="#e6e6e6"/>
+        <rect x="196" y="377" width="9" height="9"/><rect x="218" y="377" width="9" height="9"/>
+        <rect x="296" y="377" width="9" height="9"/><rect x="318" y="377" width="9" height="9"/><rect x="340" y="377" width="9" height="9"/>
+        <rect x="362" y="377" width="9" height="9"/><rect x="384" y="377" width="9" height="9"/><rect x="406" y="377" width="9" height="9"/>
+      </g>
+      <g class="svg-mono" fill="#cfd6d8" text-anchor="middle">
+        <text x="90" y="362">IOREF</text><text x="112" y="362">RST</text><text x="134" y="362">3.3V</text>
+        <text x="156" y="362" fill="#ffd9c2" font-size="12">5V</text><text x="178" y="362" fill="#ffffff" font-size="12">GND</text>
+        <text x="200" y="362">GND</text><text x="222" y="362">Vin</text>
+        <text x="300" y="362">A0</text><text x="322" y="362">A1</text><text x="344" y="362">A2</text><text x="366" y="362">A3</text><text x="388" y="362">A4</text><text x="410" y="362">A5</text>
+      </g>
+      <text x="166" y="344" text-anchor="middle" class="svg-mono" fill="#bfe3e4">POWER</text>
+      <text x="354" y="344" text-anchor="middle" class="svg-mono" fill="#bfe3e4">ANALOG IN</text>
+
+      <!-- jumper wires -->
+      <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="6">
+        <path d="M246.5 74 V34 H600 V206 H622" stroke="var(--orange)"/>
+        <path d="M156.5 386 V428 H590 V231 H622" stroke="var(--orange)"/>
+        <path d="M178.5 386 V448 H606 V256 H622" stroke="var(--black)"/>
+      </g>
+      <!-- wire labels -->
+      <g class="svg-label" fill="var(--ink)">
+        <text x="420" y="26" text-anchor="middle">orange jumper 1 · signal · D9</text>
+        <text x="380" y="444" text-anchor="middle">orange jumper 2 · +5 V</text>
+        <text x="380" y="466" text-anchor="middle">black jumper · GND</text>
+      </g>
+
+      <!-- 3-pin connector -->
+      <rect x="622" y="192" width="30" height="78" rx="3" fill="#1b1b1b"/>
+      <g fill="#c7c7c7"><rect x="628" y="203" width="10" height="6"/><rect x="628" y="228" width="10" height="6"/><rect x="628" y="253" width="10" height="6"/></g>
+      <text x="637" y="290" text-anchor="middle" class="svg-mono" fill="var(--muted)">3-pin adapter</text>
+
+      <!-- servo pigtail -->
+      <g fill="none" stroke-width="5" stroke-linecap="round">
+        <line x1="652" y1="206" x2="700" y2="206" stroke="var(--orange)"/>
+        <line x1="652" y1="231" x2="700" y2="231" stroke="var(--red)"/>
+        <line x1="652" y1="256" x2="700" y2="256" stroke="var(--brown)"/>
+      </g>
+      <g class="svg-mono" fill="var(--muted)" text-anchor="end">
+        <text x="696" y="198">orange</text><text x="696" y="223" fill="var(--red)">red</text><text x="696" y="248" fill="var(--brown)">brown</text>
+      </g>
+
+      <!-- servo -->
+      <rect x="700" y="160" width="120" height="150" rx="8" fill="var(--blue)" stroke="#1f4586" stroke-width="2"/>
+      <rect x="690" y="235" width="140" height="14" rx="3" fill="#254f9a"/>
+      <circle cx="760" cy="150" r="16" fill="#eef1f3" stroke="#a8b0b4"/>
+      <rect x="720" y="146" width="80" height="8" rx="4" fill="#eef1f3" stroke="#a8b0b4"/>
+      <text x="760" y="205" text-anchor="middle" class="svg-big" fill="#eef4ff" font-size="20">SG90</text>
+      <text x="760" y="226" text-anchor="middle" class="svg-mono" fill="#cfe0ff">micro servo</text>
+      <text x="760" y="288" text-anchor="middle" class="svg-mono" fill="#cfe0ff">≈ 5 V · 0.1–0.7 A</text>
+    </svg>
+  </section>
+
+  <div class="grid">
+    <section class="panel">
+      <h2>Pin by pin</h2>
+      <table>
+        <thead><tr><th>Servo wire</th><th>Jumper</th><th>Uno pin</th></tr></thead>
+        <tbody>
+          <tr><td><span class="sw" style="background:var(--orange)"></span>orange (signal)</td><td>orange 1</td><td><code>D9</code></td></tr>
+          <tr><td><span class="sw" style="background:var(--red)"></span>red (+)</td><td>orange 2</td><td><code>5V</code></td></tr>
+          <tr><td><span class="sw" style="background:var(--brown)"></span>brown (−)</td><td>black</td><td><code>GND</code> (next to 5V)</td></tr>
+        </tbody>
+      </table>
+      <p class="note">Find D9 from the USB end of the long top header: GND, 13, 12, 11, 10, then 9. On the bottom header, 5V is the fourth hole from the left, right before the two GNDs.</p>
+    </section>
+
+    <section class="panel">
+      <h2>What to change from your photo</h2>
+      <table>
+        <thead><tr><th>Wire</th><th>Was</th><th>Move to</th></tr></thead>
+        <tbody>
+          <tr><td>orange signal</td><td class="bad">pin 0/1 (RX/TX)</td><td class="ok">D9</td></tr>
+          <tr><td>orange power</td><td class="bad">Vin or GND</td><td class="ok">5V</td></tr>
+          <tr><td>black</td><td>GND / Vin</td><td class="ok">GND</td></tr>
+        </tbody>
+      </table>
+      <p class="note">Pins 0 and 1 are the USB serial link. A servo on them stops the laptop from talking to the board.</p>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>Then run it</h2>
+    <ol>
+      <li>Plug the three jumpers as above, with the board still on USB. The green ON light stays lit.</li>
+      <li>Tell me the wires are moved. I'll send servo commands over the serial port and the horn sweeps.</li>
+      <li>If the horn twitches or the board resets, the servo is drawing too much. Move red to the separate 5 V supply and join that supply's GND to an Uno GND.</li>
+    </ol>
+    <p class="note">Full arm later, same firmware: D9 base, D10 shoulder, D11 elbow, D7 relay for the magnet, D6 conveyor servo. Servos then run from the 5 V 5 A supply, never from the Uno's 5V pin.</p>
+  </section>
+</div>

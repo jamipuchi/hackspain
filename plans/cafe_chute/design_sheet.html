@@ -1,0 +1,399 @@
+<title>Café Inspección Sencilla</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --bg:#f8f5ef; --panel:#ffffff; --ink:#1d2733; --muted:#66707a; --line:#e0d9cf;
+  --kraft:#cfae7c; --kraft-deep:#a98552; --kraft-edge:#7d5f36; --paper:#fdfcf9; --door:#e2c69a;
+  --coffee:#4b2e1e; --bean:#5a3a26; --bean-hi:#8a6142; --pale:#d9b98a;
+  --servo:#2f5fb3; --servo-deep:#1f4380; --horn:#eef1f4;
+  --dim:#b3472b; --zone:#dff0e6; --zone-edge:#2e8b57; --table:#e2d3bc; --block:#6f6a63;
+  --ok:#1f8a4c; --warn:#c07a12; --grid:#ece6dc;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15120f; --panel:#1e1a16; --ink:#efe8df; --muted:#a79e93; --line:#332c26;
+    --kraft:#b8955f; --kraft-deep:#8f6c3c; --kraft-edge:#5b4324; --paper:#efe9df; --door:#d1ad78;
+    --coffee:#d9b48f; --bean:#6b4630; --bean-hi:#9a6d4b; --pale:#e2c39a;
+    --servo:#4a7ad6; --servo-deep:#2a4f97; --horn:#f2f4f6;
+    --dim:#ff8a65; --zone:#1f3a2c; --zone-edge:#4cc98a; --table:#3a3128; --block:#8a847b;
+    --ok:#3fbf75; --warn:#e6a23c; --grid:#2a2420;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15120f; --panel:#1e1a16; --ink:#efe8df; --muted:#a79e93; --line:#332c26;
+  --kraft:#b8955f; --kraft-deep:#8f6c3c; --kraft-edge:#5b4324; --paper:#efe9df; --door:#d1ad78;
+  --coffee:#d9b48f; --bean:#6b4630; --bean-hi:#9a6d4b; --pale:#e2c39a;
+  --servo:#4a7ad6; --servo-deep:#2a4f97; --horn:#f2f4f6;
+  --dim:#ff8a65; --zone:#1f3a2c; --zone-edge:#4cc98a; --table:#3a3128; --block:#8a847b;
+  --ok:#3fbf75; --warn:#e6a23c; --grid:#2a2420;
+}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 "IBM Plex Sans",system-ui,sans-serif;margin:0;padding-block:36px 64px;padding-inline:16px}
+.wrap{max-width:1000px;margin:0 auto;display:grid;gap:30px}
+h1{font:800 34px/1.05 Archivo,system-ui,sans-serif;margin:0 0 8px;letter-spacing:-.015em;text-wrap:balance;color:var(--coffee)}
+h2{font:700 19px/1.25 Archivo,system-ui,sans-serif;margin:0 0 12px;letter-spacing:-.01em}
+h3{font:600 15px/1.3 Archivo,system-ui,sans-serif;margin:16px 0 6px}
+.eyebrow{font:600 11px/1 "IBM Plex Mono",monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.lede{max-width:64ch;margin:0;color:var(--muted)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:22px}
+.figure{padding:14px 14px 10px}
+.figure figcaption{font-size:13px;color:var(--muted);padding:8px 6px 0;max-width:80ch}
+.scroll{overflow-x:auto}
+.scroll svg{display:block;width:100%;height:auto}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:600 11px/1 "IBM Plex Mono",monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+td.num,th.num{text-align:right;font:500 14px "IBM Plex Mono",monospace;white-space:nowrap}
+td code,p code,li code,dd code{font:600 13px "IBM Plex Mono",monospace;background:color-mix(in srgb,var(--line) 50%,transparent);padding:1px 6px;border-radius:4px}
+.tag{display:inline-block;font:600 11px/1 "IBM Plex Mono",monospace;letter-spacing:.06em;padding:4px 7px;border-radius:4px;background:color-mix(in srgb,var(--kraft) 30%,transparent);color:var(--kraft-edge)}
+.svg-dim{font:600 11px "IBM Plex Mono",monospace;fill:var(--dim)}
+.svg-lab{font:500 12px "IBM Plex Sans",system-ui,sans-serif;fill:var(--ink)}
+.svg-mut{font:500 11px "IBM Plex Sans",system-ui,sans-serif;fill:var(--muted)}
+.svg-mono{font:600 10px "IBM Plex Mono",monospace;fill:var(--muted)}
+ol,ul{margin:0;padding-left:20px;display:grid;gap:8px}
+pre{margin:0;background:color-mix(in srgb,var(--line) 40%,transparent);border-radius:8px;padding:14px 16px;overflow-x:auto;font:13px/1.5 "IBM Plex Mono",monospace}
+.assume{border-left:3px solid var(--kraft);padding:2px 0 2px 14px;color:var(--muted);font-size:14px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:14px}
+.kv dt{font:600 12px "IBM Plex Mono",monospace;color:var(--muted);padding-top:2px}
+.kv dd{margin:0}
+.footer{color:var(--muted);font-size:13px;text-align:center}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Café · inspección visual sencilla · design sheet v3 · swing gate · see the cutting plan for the foam-board structure</div>
+    <h1>One chute, one swing gate, two bins</h1>
+    <p class="lede">Beans roll one at a time down a cardboard chute with a paper floor. A fixed phone reads each bean as it passes. Good beans roll straight off the end into <em>Sin defecto visible</em>. For a suspect, a 6 cm section of the right wall swings 25° into the channel and steers it out through its own opening into <em>Para revisar</em>. One servo, nothing stops, nobody touches the beans. All dimensions in centimetres.</p>
+  </header>
+
+  <p class="assume">Materials: 2.5 mm foam board (cartón pluma), one SG90 micro servo, the Arduino Uno R3 already flashed with the magnet_arm firmware, three jumper wires, an iPhone on a small tripod, white printer paper, a toothpick, hot glue or PVA, a bowl and a cup. Roasted arabica beans about 1.0 to 1.3 cm long, 0.7 to 0.9 wide, 0.45 thick. Narrow the channel to 2.2 for green beans.</p>
+
+  <!-- FIG 1 SIDE VIEW -->
+  <figure class="panel figure">
+    <div class="eyebrow">Fig. 1 · side elevation · 1 cm = 12 px</div>
+    <div class="scroll">
+    <svg viewBox="0 -70 820 540" style="min-width:680px" role="img" aria-label="Side view of the inclined chute with the phone over the camera zone at 9 to 15 cm, the swing door at 30 to 36 cm, the review cup beside it and the bowl under the exit">
+      <rect x="20" y="420" width="780" height="14" fill="var(--table)"/>
+      <line x1="20" y1="420" x2="800" y2="420" stroke="var(--kraft-edge)" stroke-width="1.5"/>
+      <text x="26" y="452" class="svg-mut">table</text>
+      <!-- tripod behind -->
+      <line x1="200" y1="-7" x2="200" y2="420" stroke="#2a2d31" stroke-width="5"/>
+      <line x1="200" y1="420" x2="176" y2="440" stroke="#2a2d31" stroke-width="4"/><line x1="200" y1="420" x2="224" y2="440" stroke="#2a2d31" stroke-width="4"/>
+      <line x1="200" y1="-7" x2="226" y2="-7" stroke="#2a2d31" stroke-width="5"/>
+      <!-- full-height side panel (foam board) + base tray, see the cutting plan -->
+      <polygon points="96,420 560,420 560,275 96,151" fill="var(--kraft)" opacity=".45" stroke="var(--kraft-edge)"/>
+      <rect x="72" y="420" width="510" height="3" fill="var(--kraft-deep)"/>
+      <text x="330" y="380" text-anchor="middle" class="svg-lab">side panel P: wall + stand in one piece, glued to the base tray</text>
+      <!-- chute -->
+      <g transform="translate(560 312) rotate(15)">
+        <rect x="-480" y="-39.6" width="480" height="36" fill="var(--kraft)" opacity=".55" stroke="var(--kraft-edge)" stroke-width="1"/>
+        <rect x="-480" y="-3.6" width="480" height="3.6" fill="var(--kraft-deep)" stroke="var(--kraft-edge)" stroke-width="1"/>
+        <line x1="-480" y1="-3.6" x2="0" y2="-3.6" stroke="var(--paper)" stroke-width="2"/>
+        <rect x="-480" y="-39.6" width="3.6" height="39.6" fill="var(--kraft-deep)" stroke="var(--kraft-edge)"/>
+        <!-- camera zone 9–15 from top -->
+        <rect x="-372" y="-39.6" width="72" height="36" fill="var(--zone)" opacity=".85" stroke="var(--zone-edge)" stroke-dasharray="4 3"/>
+        <!-- door section 30–36 from top (near wall) -->
+        <rect x="-120" y="-39.6" width="72" height="36" fill="var(--door)" opacity=".9" stroke="var(--kraft-edge)"/>
+        <line x1="-120" y1="-39.6" x2="-120" y2="-3.6" stroke="var(--kraft-edge)" stroke-dasharray="3 2"/>
+        <!-- servo on top of the wall at the hinge -->
+        <rect x="-62" y="-54" width="27.6" height="14.4" rx="2" fill="var(--servo)" stroke="var(--servo-deep)"/>
+        <line x1="-48" y1="-39.6" x2="-48" y2="-3.6" stroke="var(--servo-deep)" stroke-width="1.5"/>
+        <!-- beans -->
+        <ellipse cx="-420" cy="-9" rx="6.5" ry="4.5" fill="var(--bean)"/>
+        <ellipse cx="-336" cy="-9" rx="6.5" ry="4.5" fill="var(--bean)"/>
+        <ellipse cx="-230" cy="-9" rx="6.5" ry="4.5" fill="var(--bean)"/>
+        <ellipse cx="-96" cy="-9" rx="6.5" ry="4.5" fill="var(--pale)"/>
+        <ellipse cx="-20" cy="-9" rx="6.5" ry="4.5" fill="var(--bean)"/>
+      </g>
+      <!-- review cup on riser, in front, beside the door -->
+      <rect x="452" y="348" width="54" height="72" fill="var(--block)" opacity=".8"/>
+      <path d="M456 300 Q458 348 479 348 Q500 348 502 300 Z" fill="var(--paper)" stroke="var(--kraft-edge)" stroke-width="1.5" opacity=".9"/>
+      <ellipse cx="479" cy="300" rx="23" ry="4" fill="var(--panel)" stroke="var(--kraft-edge)" stroke-width="1.5"/>
+      <ellipse cx="476" cy="330" rx="5" ry="3.5" fill="var(--pale)"/>
+      <text x="479" y="440" text-anchor="middle" class="svg-mut">Para revisar (in front)</text>
+      <!-- exit bean + bowl -->
+      <ellipse cx="596" cy="345" rx="6.5" ry="4.5" fill="var(--bean)" transform="rotate(-30 596 345)"/>
+      <path d="M572 352 Q575 420 632 420 Q689 420 692 352 Z" fill="var(--paper)" stroke="var(--kraft-edge)" stroke-width="1.5"/>
+      <ellipse cx="632" cy="352" rx="60" ry="8" fill="var(--panel)" stroke="var(--kraft-edge)" stroke-width="1.5"/>
+      <g fill="var(--bean)"><ellipse cx="612" cy="392" rx="6" ry="4"/><ellipse cx="632" cy="398" rx="6" ry="4"/><ellipse cx="652" cy="391" rx="6" ry="4"/><ellipse cx="642" cy="405" rx="6" ry="4"/></g>
+      <text x="632" y="440" text-anchor="middle" class="svg-mut">Sin defecto visible</text>
+      <!-- phone -->
+      <g transform="rotate(15 297 -7)">
+        <rect x="222" y="-14" width="150" height="14" rx="4" fill="#2a2d31" stroke="#0e0f10"/>
+        <circle cx="297" cy="2" r="3.5" fill="#5aa7ff" stroke="#0e0f10"/>
+      </g>
+      <text x="297" y="-30" text-anchor="middle" class="svg-lab">phone, lens straight down at the zone</text>
+      <path d="M297 3 L200 235 M297 3 L272 215" stroke="var(--zone-edge)" stroke-width="1" stroke-dasharray="3 3" fill="none"/>
+      <!-- dims -->
+      <g stroke="var(--dim)" stroke-width="1" fill="none">
+        <line x1="297" y1="3" x2="235.5" y2="225" stroke-dasharray="5 3"/>
+        <g transform="translate(560 312) rotate(15)"><line x1="-480" y1="-66" x2="0" y2="-66"/><line x1="-480" y1="-72" x2="-480" y2="-60"/><line x1="0" y1="-72" x2="0" y2="-60"/>
+          <line x1="-372" y1="-46" x2="-300" y2="-46"/><line x1="-372" y1="-50" x2="-372" y2="-42"/><line x1="-300" y1="-50" x2="-300" y2="-42"/>
+          <line x1="-120" y1="-60" x2="-48" y2="-60"/><line x1="-120" y1="-64" x2="-120" y2="-56"/><line x1="-48" y1="-64" x2="-48" y2="-56"/></g>
+        <line x1="86" y1="197" x2="86" y2="420"/><line x1="81" y1="197" x2="91" y2="197"/><line x1="81" y1="420" x2="91" y2="420"/>
+        <line x1="426" y1="279" x2="426" y2="420"/><line x1="421" y1="279" x2="431" y2="279"/><line x1="421" y1="420" x2="431" y2="420"/>
+        <path d="M700 312 A140 140 0 0 1 695 348"/><line x1="560" y1="312" x2="720" y2="312" stroke-dasharray="4 3"/>
+      </g>
+      <text x="282" y="120" class="svg-dim">20 cm</text>
+      <g transform="translate(560 312) rotate(15)">
+        <text x="-240" y="-76" text-anchor="middle" class="svg-dim">40 cm chute</text>
+        <text x="-336" y="-54" text-anchor="middle" class="svg-dim">zone 9–15</text>
+        <text x="-84" y="-68" text-anchor="middle" class="svg-dim">door 30–36</text>
+      </g>
+      <text x="60" y="312" class="svg-dim" text-anchor="end">22.45</text>
+      <text x="418" y="352" class="svg-dim" text-anchor="end">12.1</text>
+      <text x="706" y="338" class="svg-dim">15°</text>
+    </svg>
+    </div>
+    <figcaption>The chute is a box girder on a base tray: its two side panels run down to the base, and the slope is changed with a tilt block under one end of the tray (cutting plan). The phone reads beans 9 to 15 cm from the top, which leaves about half a second before a bean reaches the door section at 30 to 36 cm. Good beans keep rolling off the end into the bowl. The review cup stands on a riser beside the door, on the near side, so its rim sits just under the chute floor.</figcaption>
+  </figure>
+
+  <div class="two">
+    <!-- FIG 2 PLAN -->
+    <figure class="panel figure">
+      <div class="eyebrow">Fig. 2 · plan view · 1 cm = 12 px</div>
+      <div class="scroll">
+      <svg viewBox="0 0 700 260" style="min-width:600px" role="img" aria-label="Top view of the chute with the camera zone, the swing door open in the right wall, the review cup beside it and the bowl past the exit">
+        <rect x="60" y="100" width="480" height="37.2" fill="var(--kraft)" stroke="var(--kraft-edge)"/>
+        <rect x="63.6" y="103.6" width="476.4" height="30" fill="var(--paper)"/>
+        <rect x="60" y="100" width="3.6" height="37.2" fill="var(--kraft-deep)"/>
+        <!-- right (lower) wall with opening 30–36 -->
+        <rect x="420" y="133.6" width="72" height="3.6" fill="var(--paper)"/>
+        <rect x="420" y="133.6" width="72" height="3.6" fill="none" stroke="var(--kraft-edge)" stroke-dasharray="3 2"/>
+        <!-- zone -->
+        <rect x="168" y="103.6" width="72" height="30" fill="var(--zone)" stroke="var(--zone-edge)" stroke-dasharray="4 3"/>
+        <!-- door open, hinge at downstream end -->
+        <g transform="rotate(-25 492 135.4)"><rect x="420" y="133.6" width="72" height="3.6" fill="var(--door)" stroke="var(--kraft-edge)"/></g>
+        <!-- servo over the wall at the hinge -->
+        <rect x="478" y="128" width="28" height="14.4" rx="1.5" fill="var(--servo)" stroke="var(--servo-deep)" opacity=".92"/>
+        <circle cx="492" cy="135.4" r="2.6" fill="var(--horn)" stroke="var(--servo-deep)"/>
+        <!-- beans -->
+        <g fill="var(--bean)">
+          <ellipse cx="120" cy="118" rx="6.5" ry="4.5" transform="rotate(20 120 118)"/>
+          <ellipse cx="204" cy="120" rx="6.5" ry="4.5" transform="rotate(-10 204 120)"/>
+          <ellipse cx="330" cy="117" rx="6.5" ry="4.5" transform="rotate(35 330 117)"/>
+          <ellipse cx="520" cy="119" rx="6.5" ry="4.5"/>
+        </g>
+        <ellipse cx="452" cy="127" rx="6.5" ry="4.5" fill="var(--pale)" transform="rotate(-25 452 127)"/>
+        <path d="M440 112 Q455 128 466 156" stroke="var(--warn)" stroke-width="2" fill="none" marker-end="url(#ah2)"/>
+        <defs><marker id="ah2" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="var(--warn)"/></marker></defs>
+        <!-- cup + riser -->
+        <rect x="420" y="164" width="72" height="72" fill="var(--block)" opacity=".35"/>
+        <circle cx="456" cy="200" r="43" fill="var(--paper)" stroke="var(--kraft-edge)" stroke-width="1.5"/>
+        <ellipse cx="452" cy="196" rx="5" ry="3.5" fill="var(--pale)"/>
+        <text x="456" y="254" text-anchor="middle" class="svg-mut">Para revisar</text>
+        <!-- bowl past the exit -->
+        <circle cx="612" cy="118" r="62" fill="var(--paper)" stroke="var(--kraft-edge)" stroke-width="1.5"/>
+        <g fill="var(--bean)"><ellipse cx="600" cy="110" rx="6" ry="4"/><ellipse cx="620" cy="126" rx="6" ry="4"/><ellipse cx="632" cy="104" rx="6" ry="4"/></g>
+        <text x="612" y="195" text-anchor="middle" class="svg-mut">Sin defecto visible</text>
+        <!-- dims -->
+        <g stroke="var(--dim)" stroke-width="1" fill="none">
+          <line x1="60" y1="84" x2="540" y2="84"/><line x1="60" y1="79" x2="60" y2="89"/><line x1="540" y1="79" x2="540" y2="89"/>
+          <line x1="60" y1="66" x2="168" y2="66"/><line x1="168" y1="61" x2="168" y2="71"/><line x1="168" y1="66" x2="240" y2="66" stroke-dasharray="3 2"/><line x1="240" y1="61" x2="240" y2="71"/>
+          <line x1="60" y1="48" x2="420" y2="48"/><line x1="420" y1="43" x2="420" y2="53"/><line x1="420" y1="48" x2="492" y2="48" stroke-dasharray="3 2"/><line x1="492" y1="43" x2="492" y2="53"/>
+          <line x1="40" y1="100" x2="40" y2="137.2"/><line x1="35" y1="100" x2="45" y2="100"/><line x1="35" y1="137.2" x2="45" y2="137.2"/>
+        </g>
+        <text x="300" y="96" text-anchor="middle" class="svg-dim">40.0</text>
+        <text x="114" y="62" text-anchor="middle" class="svg-dim">9.0</text><text x="204" y="62" text-anchor="middle" class="svg-dim">zone 6.0</text>
+        <text x="240" y="44" text-anchor="middle" class="svg-dim">30.0</text><text x="456" y="44" text-anchor="middle" class="svg-dim">door 6.0</text>
+        <text x="40" y="160" text-anchor="middle" class="svg-dim">3.0</text>
+        <text x="500" y="112" class="svg-dim">25°</text>
+        <text x="70" y="160" class="svg-mut">inner 2.5 · walls 0.25 · beans enter at the top by hand →</text>
+      </svg>
+      </div>
+      <figcaption>The door is the wall itself: the cut-out 6 cm piece, hinged at its downstream end. Flush, the channel is a plain wall. Swung 25° in, its free end touches the far wall and the rolling bean is guided out through the opening it left behind.</figcaption>
+    </figure>
+
+    <!-- FIG 3 HINGE DETAIL -->
+    <figure class="panel figure">
+      <div class="eyebrow">Fig. 3 · door and servo detail, plan · 1 cm = 30 px</div>
+      <div class="scroll">
+      <svg viewBox="0 0 420 300" style="min-width:380px" role="img" aria-label="Close-up plan of the swing door: the servo sits on top of the right wall at the hinge, its horn glued along the door's top edge, a toothpick pivot at the bottom">
+        <rect x="0" y="60" width="420" height="9" fill="var(--kraft)" stroke="var(--kraft-edge)"/>
+        <rect x="0" y="69" width="420" height="75" fill="var(--paper)"/>
+        <rect x="0" y="144" width="60" height="9" fill="var(--kraft)" stroke="var(--kraft-edge)"/>
+        <rect x="240" y="144" width="180" height="9" fill="var(--kraft)" stroke="var(--kraft-edge)"/>
+        <rect x="60" y="144" width="180" height="9" fill="none" stroke="var(--kraft-edge)" stroke-dasharray="4 3"/>
+        <g transform="rotate(-25 240 148.5)"><rect x="60" y="144" width="180" height="9" fill="var(--door)" stroke="var(--kraft-edge)"/>
+          <rect x="192" y="140" width="48" height="4" rx="2" fill="var(--horn)" stroke="var(--servo-deep)"/></g>
+        <rect x="222" y="140" width="69" height="36" rx="3" fill="var(--servo)" stroke="var(--servo-deep)" opacity=".9"/>
+        <circle cx="240" cy="148.5" r="5" fill="var(--horn)" stroke="var(--servo-deep)"/>
+        <circle cx="240" cy="148.5" r="1.6" fill="var(--servo-deep)"/>
+        <text x="256" y="190" class="svg-mono" style="fill:var(--servo-deep)">SG90 on top of the wall, shaft down</text>
+        <ellipse cx="150" cy="110" rx="18" ry="12" fill="var(--bean)" transform="rotate(-25 150 110)"/>
+        <path d="M120 96 Q150 118 190 150" stroke="var(--warn)" stroke-width="2" fill="none"/>
+        <g stroke="var(--dim)" stroke-width="1" fill="none">
+          <line x1="60" y1="40" x2="240" y2="40"/><line x1="60" y1="35" x2="60" y2="45"/><line x1="240" y1="35" x2="240" y2="45"/>
+          <line x1="400" y1="69" x2="400" y2="144"/><line x1="395" y1="69" x2="405" y2="69"/><line x1="395" y1="144" x2="405" y2="144"/>
+          <path d="M160 148 A80 80 0 0 1 168 114"/>
+        </g>
+        <text x="150" y="32" text-anchor="middle" class="svg-dim">6.0 door (the cut-out piece)</text>
+        <text x="392" y="110" text-anchor="end" class="svg-dim">2.5</text>
+        <text x="172" y="126" class="svg-dim">25°</text>
+        <text x="14" y="228" class="svg-mut">Hinge = servo shaft at the downstream corner. A single-arm horn is glued</text>
+        <text x="14" y="243" class="svg-mut">along the door's top edge; a toothpick through the floor at the same corner</text>
+        <text x="14" y="258" class="svg-mut">is the bottom pivot. Leave 0.1 cm between door and wall ends.</text>
+        <text x="14" y="285" class="svg-mut">Far wall at the top of the drawing; beans roll left to right.</text>
+      </svg>
+      </div>
+      <figcaption>The servo is glued on a small cardboard bracket on the outer face of the right wall so its body sits just above the wall top and its shaft points down onto the door's downstream corner. The horn carries the door; the toothpick keeps the bottom corner in place.</figcaption>
+    </figure>
+  </div>
+
+  <!-- FIG 4 TIMING -->
+  <figure class="panel figure">
+    <div class="eyebrow">Fig. 4 · timing budget · bean position along the chute vs time from release at the top</div>
+    <div class="scroll">
+    <svg viewBox="0 0 640 260" style="min-width:560px" role="img" aria-label="Bean position versus time with the camera zone and door bands, the photo, decision and door-open instants">
+      <g stroke="var(--grid)" stroke-width="1"><line x1="60" y1="30" x2="604" y2="30"/><line x1="60" y1="77.5" x2="604" y2="77.5"/><line x1="60" y1="125" x2="604" y2="125"/><line x1="60" y1="172.5" x2="604" y2="172.5"/><line x1="60" y1="220" x2="604" y2="220"/></g>
+      <rect x="60" y="72.75" width="544" height="28.5" fill="var(--zone)" opacity=".8"/>
+      <rect x="60" y="172.5" width="544" height="28.5" fill="var(--door)" opacity=".6"/>
+      <text x="66" y="92" class="svg-mono" style="fill:var(--zone-edge)">camera zone 9–15 cm</text>
+      <text x="66" y="192" class="svg-mono" style="fill:var(--kraft-edge)">door 30–36 cm</text>
+      <polyline fill="none" stroke="var(--coffee)" stroke-width="2.5" points="60,30 94,31.4 128,35.5 162,41.9 196,50 230,59.5 264,70.9 298,83.2 332,96 366,110.3 400,125 434,140.7 468,156.8 502,173 536,190.1 570,207.2 604,220"/>
+      <g stroke="var(--dim)" stroke-width="1.2" fill="none" stroke-dasharray="4 3">
+        <line x1="305" y1="30" x2="305" y2="220"/><line x1="424" y1="30" x2="424" y2="220"/><line x1="458" y1="30" x2="458" y2="220"/><line x1="502" y1="30" x2="502" y2="220"/>
+      </g>
+      <text x="305" y="22" text-anchor="middle" class="svg-dim">photo</text>
+      <text x="424" y="22" text-anchor="middle" class="svg-dim">verdict</text>
+      <text x="458" y="240" text-anchor="middle" class="svg-dim">door open</text>
+      <text x="502" y="22" text-anchor="middle" class="svg-dim">bean at door</text>
+      <g stroke="var(--ok)" stroke-width="1.5" fill="none"><line x1="305" y1="235" x2="458" y2="235"/><line x1="305" y1="230" x2="305" y2="240"/><line x1="458" y1="230" x2="458" y2="240"/></g>
+      <text x="381" y="252" text-anchor="middle" class="svg-mono" style="fill:var(--ok)">0.45 s: capture + classify + serial, then a 0.1 s fast-door swing</text>
+      <text x="480" y="252" class="svg-mono" style="fill:var(--dim)">0.13 s margin</text>
+      <g class="svg-mono"><text x="54" y="34" text-anchor="end">0</text><text x="54" y="129" text-anchor="end">20</text><text x="54" y="224" text-anchor="end">40 cm</text>
+        <text x="60" y="234" text-anchor="middle">0 s</text><text x="230" y="234" text-anchor="middle">0.5</text><text x="400" y="234" text-anchor="middle">1.0</text><text x="570" y="234" text-anchor="middle">1.5</text></g>
+    </svg>
+    </div>
+    <figcaption>A bean released at rest at the top reaches the zone centre after about 0.7 s and the door after about 1.3 s, rolling at 30 to 40 cm/s. The laptop has roughly 0.45 s from photo to door command <em>if</em> the door swings in about 0.1 s, which needs the firmware's fast-door channel (the stock ramp takes about 0.35 s for 25° and leaves only 0.15 s). An OpenCV colour rule takes a few tens of milliseconds; a cloud vision model does not fit. If your loop is slower, lower the slope to 12° or move the zone up to 6 to 12 cm.</figcaption>
+  </figure>
+
+  <div class="two">
+    <section class="panel">
+      <h2>Pieces (see the cutting plan for the foam-board girder version)</h2>
+      <table>
+        <thead><tr><th>#</th><th>Piece</th><th class="num">cm</th><th>Qty</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><span class="tag">A</span></td><td>Floor</td><td class="num">40.0 × 3.1</td><td>1</td><td>corrugation along the length so it doesn't sag</td></tr>
+          <tr><td><span class="tag">B</span></td><td>Side wall</td><td class="num">40.0 × 3.0</td><td>2</td><td>glued standing on the floor's long edges → 2.5 inside</td></tr>
+          <tr><td><span class="tag">C</span></td><td>Top stop</td><td class="num">3.1 × 3.0</td><td>1</td><td>closes the upper end</td></tr>
+          <tr><td><span class="tag">D</span></td><td>Paper floor liner</td><td class="num">40.0 × 2.5</td><td>1</td><td>white printer paper, glued flat, matte side up</td></tr>
+          <tr><td><span class="tag">E</span></td><td>Door</td><td class="num">6.0 × 3.0</td><td>1</td><td>cut out of the right wall between 30.0 and 36.0 from the top, after the wall is glued on. The piece becomes the door; trim 0.1 off its upstream end</td></tr>
+          <tr><td><span class="tag">F</span></td><td>Servo bracket</td><td class="num">2.5 × 1.5 × 0.9</td><td>1</td><td>three layers of cardboard glued to the outer face of the wall at 36.0, top flush with the wall top</td></tr>
+          <tr><td><span class="tag">G</span></td><td>Toothpick pivot</td><td class="num">≈ 2.0</td><td>1</td><td>through the floor at the door's downstream bottom corner, into the door edge</td></tr>
+          <tr><td><span class="tag">H</span></td><td>Cup riser</td><td class="num">≈ 6.5 high</td><td>1</td><td>box beside the right wall at 30 to 36, cup rim 0.5 under the floor</td></tr>
+          <tr><td><span class="tag">I</span></td><td>Upper support</td><td class="num">≈ 19 high</td><td>1</td><td>box or book stack under the top 5 cm</td></tr>
+          <tr><td><span class="tag">J</span></td><td>Lower support</td><td class="num">≈ 9 high</td><td>1</td><td>box under the last 5 cm</td></tr>
+        </tbody>
+      </table>
+      <p class="assume" style="margin-top:14px">Slope is set with the tilt blocks from the cutting plan: 12°, 15°, 18° or 21°. If beans stall, go steeper; if the laptop is late, go shallower.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Parts, wiring and servo angles</h2>
+      <table>
+        <thead><tr><th>Part</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr><td>Arduino Uno R3</td><td>USB to laptop, already running the magnet_arm firmware</td></tr>
+          <tr><td>SG90 micro servo</td><td>door: signal <code>D9</code>, red <code>5V</code>, brown <code>GND</code></td></tr>
+          <tr><td>3 jumper wires</td><td>the same three as the servo demo</td></tr>
+          <tr><td>iPhone + mini tripod</td><td>fixed camera, 20 cm above the zone, lens straight down</td></tr>
+          <tr><td>Laptop</td><td>reads the phone camera, decides, talks to the Uno</td></tr>
+          <tr><td>Bowl + cup</td><td><em>Sin defecto visible</em> under the exit; <em>Para revisar</em> on its riser beside the door</td></tr>
+          <tr><td>5 V wall adapter</td><td>not needed for one SG90 on USB power</td></tr>
+        </tbody>
+      </table>
+      <h3>Door angles</h3>
+      <dl class="kv">
+        <dt>FLUSH</dt><dd>door in line with the wall: <code>S 90 90 75</code> (base channel = door servo on D9)</dd>
+        <dt>OPEN</dt><dd>25° into the channel, free end landing on the soft-stop pad on the far wall: <code>S 65 90 75</code>. Use 115 if it turns the wrong way</dd>
+        <dt>SWING</dt><dd>stock firmware ramp: about 0.35 s for 25°. Ask for the fast-door channel (about 400 °/s) to get 0.1 s; the pad takes the impact</dd>
+        <dt>DWELL</dt><dd>send OPEN as soon as the verdict is "suspect"; send FLUSH 0.5 s after the bean was due at the door</dd>
+      </dl>
+      <p class="assume" style="margin-top:12px">Fit the horn with the servo at 90 so FLUSH is truly flush. Then check that 65 lets the door's free end touch the far wall without jamming against it.</p>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>Camera and run sequence</h2>
+    <div class="two">
+      <div>
+        <dl class="kv">
+          <dt>ZONE</dt><dd>9 to 15 cm from the top. Mark the ends with pencil ticks on the wall tops, outside the image.</dd>
+          <dt>HEIGHT</dt><dd>20 cm lens to paper, lens perpendicular to the paper and aligned with the slope. Use 2× if available.</dd>
+          <dt>MOTION</dt><dd>the bean crosses the zone at about 20 cm/s. Bright, even light keeps the shutter short; a 1/500 s exposure gives under 0.5 mm of blur.</dd>
+          <dt>LIGHT</dt><dd>from the side of the tripod. No lamp behind the phone: its shadow lands on the zone.</dd>
+          <dt>FEED</dt><dd>one bean by hand at the top every 2 s. Never two in the zone at once.</dd>
+        </dl>
+      </div>
+      <div>
+        <h3>Run sequence</h3>
+        <ol>
+          <li>Door FLUSH. Drop one bean at the top.</li>
+          <li>Bean enters the zone about 0.6 s later. The laptop grabs the frame with the bean nearest the zone centre.</li>
+          <li>Crop, find the dark blob on white paper, measure colour and outline.</li>
+          <li>Colour in the normal band and outline intact → <span style="color:var(--ok);font-weight:500">no visible defect</span>: nothing happens, the bean rolls off the end into the bowl.</li>
+          <li>Too pale, black patches, broken outline → <span style="color:var(--warn);font-weight:500">suspect</span>: OPEN now. The bean meets the angled door at 30 cm and slides out through the opening into the cup.</li>
+          <li>FLUSH 0.5 s later. Next bean.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Software loop</h2>
+    <p class="lede" style="margin-bottom:12px">Reuses the serial class and the firmware from the magnet sorter. The phone reaches the laptop as a webcam (Continuity Camera on macOS). Everything runs locally so the verdict lands well inside the 0.45 s budget.</p>
+    <pre>import cv2, time, numpy as np
+from hardware import SerialArduino            # ~/robotics/magnet_sorter
+
+PORT, CAM = "/dev/cu.usbmodem21401", 1        # CAM index of the iPhone
+FLUSH, OPEN = "S 90 90 75", "S 65 90 75"      # door servo on D9 (base channel)
+ZONE = (x0, y0, x1, y1)                       # pixel box of the 9–15 cm zone, set once
+T_ZONE_TO_DOOR = 0.55                         # s, measured with a stopwatch on your slope
+
+door = SerialArduino(PORT); door.write(FLUSH)
+cap = cv2.VideoCapture(CAM); cap.set(cv2.CAP_PROP_FPS, 60)
+
+def inspect(frame):
+    z = frame[ZONE[1]:ZONE[3], ZONE[0]:ZONE[2]]
+    g = cv2.cvtColor(z, cv2.COLOR_BGR2GRAY)
+    mask = g < 150                            # bean = dark on white paper
+    if mask.sum() < 400: return None          # nothing in the zone
+    L = cv2.cvtColor(z, cv2.COLOR_BGR2LAB)[..., 0][mask].mean()
+    black = (g[mask] < 45).mean()
+    return "suspect" if L > 120 or black > 0.35 else "ok"
+
+seen, close_at = False, None
+while True:
+    ok, frame = cap.read()
+    v = inspect(frame)
+    if v and not seen:                        # first frame with a bean in the zone
+        seen = True
+        if v == "suspect":
+            door.write(OPEN); close_at = time.time() + T_ZONE_TO_DOOR + 0.5
+    elif v is None:
+        seen = False                          # zone empty again, ready for the next bean
+    if close_at and time.time() > close_at:
+        door.write(FLUSH); close_at = None</pre>
+  </section>
+
+  <section class="panel">
+    <h2>Why the swing gate, and what it trades away</h2>
+    <p class="lede" style="margin-bottom:14px">Compared for beans fed one at a time down this chute. The swing gate is the chosen design: one servo, no stop, the simplest cardboard work. Its cost is timing: the verdict has to arrive before the bean does.</p>
+    <div class="scroll">
+    <table style="min-width:640px">
+      <thead><tr><th>Mechanism</th><th>How</th><th>Servos</th><th>Timing</th><th>Est. reliability</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Side kicker</strong> at a stop gate</td><td>bean stops at the exit; a second servo sweeps it through a wall gap</td><td>2</td><td>none</td><td>98 %</td><td>Most forgiving. Needs a slot, a gap and a stop.</td></tr>
+        <tr><td><strong>Diverter flap</strong> under the exit</td><td>flap in a Y set before the stop gate opens</td><td>2</td><td>loose</td><td>95 %</td><td>Bounce off the flap edge.</td></tr>
+        <tr><td><strong>Swing gate</strong> in the wall <span style="color:var(--ok);font-weight:500">· chosen</span></td><td>wall section swings in and steers the rolling bean out</td><td>1</td><td>0.45 s budget</td><td>93 %</td><td>Late verdict → bean passes. Bean clipping the door edge → stays in. Fixable by slope and zone position.</td></tr>
+        <tr><td><strong>Trapdoor</strong></td><td>floor section drops under a stopped bean</td><td>2</td><td>none</td><td>90 %</td><td>Cardboard hinge warps, beans stick.</td></tr>
+        <tr><td><strong>Air puff</strong></td><td>valve blows the bean sideways as it falls</td><td>0 + pump</td><td>milliseconds</td><td>80 %</td><td>Needs a pump and a valve.</td></tr>
+        <tr><td><strong>Tweezers</strong></td><td>a person removes the bean</td><td>0</td><td>none</td><td>100 %</td><td>Manual. Reference only.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <p class="footer">Clasificación automática en dos recipientes · una sola compuerta · No certifica calidad · Diseño pendiente de pruebas</p>
+</div>

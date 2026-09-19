@@ -1,0 +1,350 @@
+<title>Café Chute Cutting Plan</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+:root{--bg:#f7f4ee;--panel:#fff;--ink:#1d2733;--muted:#66707a;--line:#e0d9cf;--foam:#f3efe6;--foam-edge:#8d8578;--foam-dark:#e2dccf;--coffee:#4b2e1e;
+  --servo:#2f5fb3;--servo-deep:#1f4380;--dim:#b3472b;--zone:#dff0e6;--zone-edge:#2e8b57;--door:#f0d9a8;--glue:#d98a2b;--tape:#4a90c2;--ok:#1f8a4c;--warn:#c07a12;--cut:#c0392b}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#15120f;--panel:#1e1a16;--ink:#efe8df;--muted:#a79e93;--line:#332c26;--foam:#2b2620;--foam-edge:#8d8578;--foam-dark:#3a332b;--coffee:#d9b48f;
+  --servo:#4a7ad6;--servo-deep:#2a4f97;--dim:#ff8a65;--zone:#1f3a2c;--zone-edge:#4cc98a;--door:#6b5530;--glue:#f0a24a;--tape:#6fb0e0;--ok:#3fbf75;--warn:#e6a23c;--cut:#ec6b5c}}
+:root[data-theme="dark"]{--bg:#15120f;--panel:#1e1a16;--ink:#efe8df;--muted:#a79e93;--line:#332c26;--foam:#2b2620;--foam-edge:#8d8578;--foam-dark:#3a332b;--coffee:#d9b48f;
+  --servo:#4a7ad6;--servo-deep:#2a4f97;--dim:#ff8a65;--zone:#1f3a2c;--zone-edge:#4cc98a;--door:#6b5530;--glue:#f0a24a;--tape:#6fb0e0;--ok:#3fbf75;--warn:#e6a23c;--cut:#ec6b5c}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 "IBM Plex Sans",system-ui,sans-serif;margin:0;padding-block:36px 64px;padding-inline:16px}
+.wrap{max-width:1000px;margin:0 auto;display:grid;gap:30px}
+h1{font:800 34px/1.05 Archivo,system-ui,sans-serif;margin:0 0 8px;letter-spacing:-.015em;text-wrap:balance;color:var(--coffee)}
+h2{font:700 19px/1.25 Archivo,system-ui,sans-serif;margin:0 0 12px;letter-spacing:-.01em}
+h3{font:600 15px/1.3 Archivo,system-ui,sans-serif;margin:14px 0 6px}
+.eyebrow{font:600 11px/1 "IBM Plex Mono",monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.lede{max-width:66ch;margin:0;color:var(--muted)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:22px}
+.figure{padding:14px 14px 10px}
+.figure figcaption{font-size:13px;color:var(--muted);padding:8px 6px 0;max-width:80ch}
+.scroll{overflow-x:auto}
+.scroll svg{display:block;width:100%;height:auto}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:600 11px/1 "IBM Plex Mono",monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+td.num{font:500 14px "IBM Plex Mono",monospace;white-space:nowrap}
+td code,li code,p code,dd code{font:600 13px "IBM Plex Mono",monospace;background:color-mix(in srgb,var(--line) 50%,transparent);padding:1px 6px;border-radius:4px}
+.tag{display:inline-block;font:700 12px/1 "IBM Plex Mono",monospace;padding:4px 7px;border-radius:4px;background:color-mix(in srgb,var(--coffee) 14%,transparent);color:var(--coffee)}
+.svg-dim{font:600 11px "IBM Plex Mono",monospace;fill:var(--dim)}
+.svg-lab{font:600 12px "IBM Plex Sans",system-ui,sans-serif;fill:var(--ink)}
+.svg-mut{font:500 11px "IBM Plex Sans",system-ui,sans-serif;fill:var(--muted)}
+.svg-mono{font:600 10px "IBM Plex Mono",monospace;fill:var(--muted)}
+.svg-id{font:800 13px Archivo,system-ui,sans-serif;fill:var(--coffee)}
+ol,ul{margin:0;padding-left:20px;display:grid;gap:9px}
+li b{font-weight:600}
+.note{border-left:3px solid var(--coffee);padding:2px 0 2px 14px;color:var(--muted);font-size:14px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:14px}
+.kv dt{font:600 12px "IBM Plex Mono",monospace;color:var(--muted);padding-top:2px}
+.kv dd{margin:0}
+.footer{color:var(--muted);font-size:13px;text-align:center}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:14px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:5px}
+.check{color:var(--ok);font-weight:600}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Café · inspección visual sencilla · cutting and assembly plan v2 · cartón pluma 2.5 mm</div>
+    <h1>Cut list, sheet layout and assembly</h1>
+    <p class="lede">Material: 2.5 mm foam board, two sheets of 50 × 100 cm; sheet 1 carries the structure, sheet 2 the base skirt and the tilt blocks. The two side walls of the chute run all the way down to a base tray, so the finished piece is one closed box girder. The slope is changed with a tilt block under one end of the tray, so friction can be tuned without touching the structure. All dimensions in cm; board thickness <code>T = 0.25</code> is already included in every number.</p>
+  </header>
+
+  <section class="panel">
+    <h2>Fixed geometry</h2>
+    <div class="kv">
+      <dt>SLOPE</dt><dd>15° built in. 12°, 18° or 21° with a tilt block under one end of the tray (table below). Every length "along the chute" is measured on the slanted top edge from the top end.</dd>
+      <dt>CHUTE</dt><dd>40.0 along the slant = 38.6 horizontal. Inner width 2.5, outer 3.0. Walls 3.0 above the paper, measured square to the floor.</dd>
+      <dt>HEIGHTS</dt><dd>Floor top at the exit end 9.0 above the base plate, 19.35 at the top end. Wall top 12.1 and 22.45.</dd>
+      <dt>ZONE</dt><dd>camera zone 9.0 to 15.0 along the chute.</dd>
+      <dt>DOOR</dt><dd>right wall, 30.0 to 36.0 along the chute, full wall height 3.0. Hinge at 36.0. Swings about 25° into the channel.</dd>
+      <dt>RIGHT</dt><dd>your right when you stand at the top end looking down the chute towards the exit.</dd>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Cut list</h2>
+    <h3>Sheet 1 · structure</h3>
+    <table>
+      <thead><tr><th>#</th><th>Piece</th><th>Qty</th><th class="num">Size (cm)</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tag">P</span></td><td>Side panel (wall + stand)</td><td>2</td><td class="num">38.6 × 22.45 trapezoid</td><td>corners (0,0) (38.6,0) (38.6,12.1) (0,22.45). Identical; flip one for the right side. Fig. 2.</td></tr>
+        <tr><td><span class="tag">F</span></td><td>Floor</td><td>1</td><td class="num">39.7 × 2.5</td><td>39.7 because bulkhead B1 takes 0.25 at the top end, plus play</td></tr>
+        <tr><td><span class="tag">R</span></td><td>Floor rail</td><td>2</td><td class="num">39.7 × 0.8</td><td>glued flat on each panel's inside face, top edge on the floor-bottom line</td></tr>
+        <tr><td><span class="tag">B1</span></td><td>Top bulkhead + top stop</td><td>1</td><td class="num">2.5 × 22.2</td><td>between the panels at the top end, base to wall top</td></tr>
+        <tr><td><span class="tag">B2</span></td><td>Exit bulkhead</td><td>1</td><td class="num">2.5 × 8.7</td><td>between the panels at the exit end, under the floor</td></tr>
+        <tr><td><span class="tag">K</span></td><td>Base plate</td><td>1</td><td class="num">42.0 × 18.0</td><td>Fig. 3</td></tr>
+        <tr><td><span class="tag">G</span></td><td>Buttress</td><td>4</td><td class="num">5.0 × 5.0 right triangle</td><td>two 5 × 5 squares cut on the diagonal</td></tr>
+        <tr><td><span class="tag">D</span></td><td>Door</td><td>—</td><td class="num">6.0 × 3.0</td><td>the cut-out from the right panel; trim 0.1 off its upstream edge</td></tr>
+        <tr><td><span class="tag">S1</span></td><td>Bracket wall</td><td>2</td><td class="num">2.0 × 3.5</td><td>one glued flat to the panel, one outside, 2.0 apart. Fig. 4</td></tr>
+        <tr><td><span class="tag">S2</span></td><td>Bracket end</td><td>1</td><td class="num">2.0 × 3.5</td><td>closes the downstream end of the bracket box</td></tr>
+        <tr><td><span class="tag">S3</span></td><td>Bracket platform</td><td>1</td><td class="num">3.0 × 3.6, hole 2.3 × 1.2</td><td>hole 0.45 from the upstream edge, 0.6 from the inner edge</td></tr>
+        <tr><td><span class="tag">S4</span></td><td>Servo keeper</td><td>2</td><td class="num">2.5 × 0.6</td><td>glued on the platform underside on both sides of the servo ears</td></tr>
+        <tr><td><span class="tag">S5</span></td><td>Horn tab</td><td>4 layers</td><td class="num">1.5 × 0.6</td><td>stack of four glued = 1.0 tall, on the door's top edge at the hinge end</td></tr>
+        <tr><td><span class="tag">S6</span></td><td>Tab cheek</td><td>2</td><td class="num">1.5 × 1.2</td><td>one on each face of the door, lapping door and tab</td></tr>
+        <tr><td><span class="tag">SP</span></td><td>Soft stop pad</td><td>1</td><td class="num">3.0 × 1.0</td><td>glued flat on the LEFT wall inner face, 29.8 to 30.8 from the top, bottom edge on the paper: the door's free end lands on it</td></tr>
+        <tr><td><span class="tag">C</span></td><td>Cup riser wall</td><td>4</td><td class="num">6.0 × H</td><td>H = 10.3 − your cup's height (riser table)</td></tr>
+        <tr><td><span class="tag">C5</span></td><td>Cup riser top</td><td>1</td><td class="num">6.0 × 6.0</td><td></td></tr>
+        <tr><td><span class="tag">L</span></td><td>Paper floor liner</td><td>1</td><td class="num">39.5 × 2.5 (paper)</td><td>printer paper, double-sided tape, matte side up</td></tr>
+      </tbody>
+    </table>
+    <h3>Sheet 2 · tray skirt and tilt blocks</h3>
+    <table>
+      <thead><tr><th>#</th><th>Piece</th><th>Qty</th><th class="num">Size (cm)</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tag">KS</span></td><td>Tray skirt, long</td><td>2</td><td class="num">42.0 × 2.0</td><td>glued edge-on under the base plate along its long edges</td></tr>
+        <tr><td><span class="tag">KE</span></td><td>Tray skirt, short</td><td>2</td><td class="num">17.5 × 2.0</td><td>between the long skirts at both ends</td></tr>
+        <tr><td><span class="tag">W1</span></td><td>Tilt block 2.2 (±3°)</td><td>1 box</td><td class="num">18.0 × 4.0 × 2.2</td><td>sides 18 × 1.95 ×2, ends 3.5 × 1.95 ×2, top 18 × 4</td></tr>
+        <tr><td><span class="tag">W2</span></td><td>Tilt block 4.4 (+6°)</td><td>1 box</td><td class="num">18.0 × 4.0 × 4.4</td><td>sides 18 × 4.15 ×2, ends 3.5 × 4.15 ×2, top 18 × 4</td></tr>
+      </tbody>
+    </table>
+    <p class="note" style="margin-top:14px">Cut with a fresh blade in two or three light passes against a steel ruler. Cut the two panels first, from the same edge of the sheet, so their slanted edges are identical. Foam board crushes if you press the ruler hard: hold it, do not lean on it.</p>
+  </section>
+
+  <!-- FIG 1 SHEET LAYOUT -->
+  <figure class="panel figure">
+    <div class="eyebrow">Fig. 1 · sheet 1 layout · 50 × 100 cm · 1 cm = 8 px</div>
+    <div class="scroll">
+    <svg viewBox="0 0 860 460" style="min-width:720px" role="img" aria-label="Layout of the structural pieces on the first 50 by 100 cm sheet">
+      <rect x="20" y="20" width="800" height="400" fill="var(--foam)" stroke="var(--foam-edge)" stroke-width="2"/>
+      <polygon points="28,208 336.8,208 336.8,111.2 28,28.4" fill="var(--foam-dark)" stroke="var(--cut)" stroke-width="1.5"/>
+      <text x="150" y="130" class="svg-id">P (left)</text><text x="150" y="146" class="svg-mono">38.6 × 22.45</text>
+      <polygon points="344.8,28.4 653.6,28.4 653.6,208 344.8,125.2" fill="var(--foam-dark)" stroke="var(--cut)" stroke-width="1.5"/>
+      <text x="470" y="105" class="svg-id">P (right, flipped)</text><text x="470" y="121" class="svg-mono">door cut after the rail is glued</text>
+      <rect x="28" y="216" width="336" height="144" fill="var(--foam-dark)" stroke="var(--cut)" stroke-width="1.5"/>
+      <text x="150" y="290" class="svg-id">K base 42 × 18</text>
+      <rect x="372" y="216" width="317.6" height="20" fill="var(--foam-dark)" stroke="var(--cut)" stroke-width="1.5"/><text x="380" y="230" class="svg-mono">F floor 39.7 × 2.5</text>
+      <rect x="372" y="240" width="317.6" height="6.4" fill="var(--foam-dark)" stroke="var(--cut)"/><text x="696" y="246" class="svg-mono">R 39.7 × 0.8</text>
+      <rect x="372" y="250" width="317.6" height="6.4" fill="var(--foam-dark)" stroke="var(--cut)"/><text x="696" y="256" class="svg-mono">R 39.7 × 0.8</text>
+      <rect x="372" y="264" width="177.6" height="20" fill="var(--foam-dark)" stroke="var(--cut)"/><text x="380" y="278" class="svg-mono">B1 22.2 × 2.5</text>
+      <rect x="556" y="264" width="69.6" height="20" fill="var(--foam-dark)" stroke="var(--cut)"/><text x="560" y="278" class="svg-mono">B2 8.7 × 2.5</text>
+      <rect x="372" y="292" width="40" height="40" fill="var(--foam-dark)" stroke="var(--cut)"/><line x1="372" y1="292" x2="412" y2="332" stroke="var(--cut)"/>
+      <rect x="418" y="292" width="40" height="40" fill="var(--foam-dark)" stroke="var(--cut)"/><line x1="418" y1="292" x2="458" y2="332" stroke="var(--cut)"/>
+      <text x="372" y="346" class="svg-mono">G 5 × 5 on the diagonal → 4</text>
+      <rect x="480" y="292" width="16" height="28" fill="var(--foam-dark)" stroke="var(--cut)"/><rect x="500" y="292" width="16" height="28" fill="var(--foam-dark)" stroke="var(--cut)"/><rect x="520" y="292" width="16" height="28" fill="var(--foam-dark)" stroke="var(--cut)"/>
+      <rect x="544" y="292" width="24" height="28.8" fill="var(--foam-dark)" stroke="var(--cut)"/><rect x="547.6" y="296.8" width="18.4" height="9.6" fill="var(--foam)" stroke="var(--cut)"/>
+      <rect x="576" y="292" width="20" height="4.8" fill="var(--foam-dark)" stroke="var(--cut)"/><rect x="576" y="299" width="20" height="4.8" fill="var(--foam-dark)" stroke="var(--cut)"/>
+      <rect x="604" y="292" width="12" height="4.8" fill="var(--foam-dark)" stroke="var(--cut)"/><rect x="604" y="299" width="12" height="4.8" fill="var(--foam-dark)" stroke="var(--cut)"/><rect x="604" y="306" width="12" height="4.8" fill="var(--foam-dark)" stroke="var(--cut)"/><rect x="604" y="313" width="12" height="4.8" fill="var(--foam-dark)" stroke="var(--cut)"/>
+      <rect x="624" y="292" width="12" height="9.6" fill="var(--foam-dark)" stroke="var(--cut)"/><rect x="624" y="305" width="12" height="9.6" fill="var(--foam-dark)" stroke="var(--cut)"/>
+      <text x="480" y="346" class="svg-mono">S1 S1 S2 · S3 · S4 ×2 · S5 ×4 · S6 ×2</text>
+      <rect x="372" y="360" width="48" height="52" fill="var(--foam-dark)" stroke="var(--cut)"/><rect x="424" y="360" width="48" height="52" fill="var(--foam-dark)" stroke="var(--cut)"/><rect x="476" y="360" width="48" height="52" fill="var(--foam-dark)" stroke="var(--cut)"/><rect x="528" y="360" width="48" height="52" fill="var(--foam-dark)" stroke="var(--cut)"/><rect x="580" y="360" width="48" height="48" fill="var(--foam-dark)" stroke="var(--cut)"/>
+      <text x="372" y="424" class="svg-mono">C ×4 riser walls 6 × H (drawn 6.5) · C5 top 6 × 6</text>
+      <text x="700" y="300" class="svg-mut">spare</text>
+      <g stroke="var(--dim)" stroke-width="1" fill="none"><line x1="20" y1="440" x2="820" y2="440"/><line x1="20" y1="435" x2="20" y2="445"/><line x1="820" y1="435" x2="820" y2="445"/><line x1="840" y1="20" x2="840" y2="420"/><line x1="835" y1="20" x2="845" y2="20"/><line x1="835" y1="420" x2="845" y2="420"/></g>
+      <text x="420" y="456" text-anchor="middle" class="svg-dim">100</text><text x="852" y="224" class="svg-dim">50</text>
+    </svg>
+    </div>
+    <figcaption>Sheet 1 with 1 cm between pieces for the blade. Sheet 2 only needs a 42 × 20 strip along one edge for the skirt and the two tilt blocks; the rest stays spare for mistakes.</figcaption>
+  </figure>
+
+  <!-- FIG 2 PANEL TEMPLATE -->
+  <figure class="panel figure">
+    <div class="eyebrow">Fig. 2 · side panel template, right panel seen from outside · 1 cm = 18 px</div>
+    <div class="scroll">
+    <svg viewBox="-40 -30 820 500" style="min-width:760px" role="img" aria-label="Right side panel with corner coordinates, floor line, rail, zone ticks, door cut-out and bracket position">
+      <defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="var(--foam-edge)" stroke-width="1" opacity=".5"/></pattern></defs>
+      <polygon points="0,404 694.8,404 694.8,186.2 0,0" fill="var(--foam)" stroke="var(--cut)" stroke-width="2"/>
+      <line x1="0" y1="55.7" x2="694.8" y2="242" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <polygon points="0,60.4 694.8,246.7 694.8,261.6 0,75.3" fill="url(#hatch)" stroke="var(--foam-edge)"/>
+      <text x="300" y="150" class="svg-lab" transform="rotate(15 300 150)">floor top line: 19.35 at the top end, 9.0 at the exit end</text>
+      <text x="300" y="168" class="svg-mut" transform="rotate(15 300 168)">rail R glued 0.26 below the line, on the INSIDE face</text>
+      <g stroke="var(--zone-edge)" stroke-width="2"><line x1="156.5" y1="42" x2="156.5" y2="62"/><line x1="260.8" y1="70" x2="260.8" y2="90"/></g>
+      <text x="208" y="36" text-anchor="middle" class="svg-mono" style="fill:var(--zone-edge)">zone ticks at 9.0 and 15.0 along the top edge</text>
+      <g transform="translate(521.6 139.9) rotate(15)">
+        <rect x="0" y="0" width="108" height="54" fill="var(--door)" stroke="var(--cut)" stroke-width="2"/>
+        <text x="54" y="24" text-anchor="middle" class="svg-id">D</text><text x="54" y="42" text-anchor="middle" class="svg-mono">door 6.0 × 3.0</text>
+        <line x1="108" y1="-6" x2="108" y2="60" stroke="var(--servo-deep)" stroke-width="2.5"/>
+        <rect x="110" y="-27" width="36" height="63" fill="none" stroke="var(--servo)" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <text x="128" y="-10" text-anchor="middle" class="svg-mono" style="fill:var(--servo-deep)">S1</text>
+        <line x1="106" y1="54" x2="106" y2="78" stroke="var(--warn)" stroke-width="2.5"/>
+      </g>
+      <text x="470" y="290" class="svg-mut">door cuts are square to the slanted edge, at 30.0 and 36.0</text>
+      <text x="470" y="305" class="svg-mut">measured along that edge from the top end.</text>
+      <text x="470" y="320" class="svg-mut">Toothpick pivot pushed into the panel below the floor line at 36.0.</text>
+      <text x="-6" y="418" text-anchor="end" class="svg-dim">(0, 0)</text>
+      <text x="700" y="418" class="svg-dim">(38.6, 0)</text>
+      <text x="700" y="182" class="svg-dim">(38.6, 12.1)</text>
+      <text x="-6" y="-8" text-anchor="end" class="svg-dim">(0, 22.45)</text>
+      <text x="-6" y="60" text-anchor="end" class="svg-dim">19.35</text>
+      <text x="700" y="246" class="svg-dim">9.0</text>
+      <g stroke="var(--dim)" stroke-width="1" fill="none">
+        <line x1="0" y1="430" x2="694.8" y2="430"/><line x1="0" y1="425" x2="0" y2="435"/><line x1="694.8" y1="425" x2="694.8" y2="435"/>
+        <line x1="720" y1="404" x2="720" y2="186.2"/><line x1="715" y1="404" x2="725" y2="404"/><line x1="715" y1="186.2" x2="725" y2="186.2"/>
+        <line x1="-24" y1="404" x2="-24" y2="0"/><line x1="-29" y1="404" x2="-19" y2="404"/><line x1="-29" y1="0" x2="-19" y2="0"/>
+      </g>
+      <text x="347" y="450" text-anchor="middle" class="svg-dim">38.6</text>
+      <text x="730" y="300" class="svg-dim">12.1</text>
+      <text x="-30" y="210" text-anchor="end" class="svg-dim" transform="rotate(-90 -30 210)">22.45</text>
+      <text x="347" y="-14" text-anchor="middle" class="svg-dim">slanted top edge = 40.0 (check it)</text>
+      <text x="20" y="390" class="svg-mut">TOP END</text><text x="640" y="390" class="svg-mut">EXIT END</text>
+    </svg>
+    </div>
+    <figcaption>Mark the four corners (horizontal, vertical from the bottom edge), join them and cut. The slanted edge must measure 40.0. On the inside face of both panels draw the floor line (19.35 at the top end, 9.0 at the exit end) and a second line 0.26 below it for the rail. Only the right panel gets the door cut, and only after its rail is glued on so the panel is stiff while you cut.</figcaption>
+  </figure>
+
+  <div class="two">
+    <figure class="panel figure">
+      <div class="eyebrow">Fig. 3 · base plate K, plan · 1 cm = 12 px</div>
+      <div class="scroll">
+      <svg viewBox="-30 -30 580 300" style="min-width:520px" role="img" aria-label="Base plate with the footprint of the panels, bulkheads, buttresses, cup riser and the skirt underneath">
+        <rect x="0" y="0" width="504" height="216" fill="var(--foam)" stroke="var(--cut)" stroke-width="2"/>
+        <rect x="3" y="3" width="498" height="210" fill="none" stroke="var(--foam-edge)" stroke-dasharray="4 3"/>
+        <rect x="24" y="60" width="463.2" height="3" fill="var(--ink)"/><rect x="24" y="93" width="463.2" height="3" fill="var(--ink)"/>
+        <rect x="24" y="63" width="3" height="30" fill="var(--ink)"/><rect x="484.2" y="63" width="3" height="30" fill="var(--ink)"/>
+        <text x="255" y="82" text-anchor="middle" class="svg-mono">chute footprint 38.6 × 3.0 · B1 at the top end · B2 at the exit end</text>
+        <g fill="var(--foam-dark)" stroke="var(--foam-edge)">
+          <polygon points="84,60 84,0 144,60"/><polygon points="420,60 420,0 480,60"/>
+          <polygon points="84,96 84,156 144,96"/><polygon points="288,96 288,156 348,96"/>
+        </g>
+        <text x="100" y="40" class="svg-mono">G</text><text x="436" y="40" class="svg-mono">G</text><text x="100" y="130" class="svg-mono">G</text><text x="304" y="130" class="svg-mono">G</text>
+        <rect x="348" y="102" width="72" height="72" fill="var(--foam-dark)" stroke="var(--foam-edge)"/>
+        <text x="384" y="142" text-anchor="middle" class="svg-mono">riser C 6 × 6</text>
+        <circle cx="384" cy="138" r="40" fill="none" stroke="var(--foam-edge)" stroke-dasharray="3 3"/>
+        <g stroke="var(--dim)" stroke-width="1" fill="none">
+          <line x1="0" y1="-14" x2="504" y2="-14"/><line x1="0" y1="-19" x2="0" y2="-9"/><line x1="504" y1="-19" x2="504" y2="-9"/>
+          <line x1="524" y1="0" x2="524" y2="216"/><line x1="519" y1="0" x2="529" y2="0"/><line x1="519" y1="216" x2="529" y2="216"/>
+          <line x1="-14" y1="0" x2="-14" y2="60"/><line x1="-14" y1="96" x2="-14" y2="216"/>
+          <line x1="24" y1="236" x2="0" y2="236"/>
+        </g>
+        <text x="252" y="-20" text-anchor="middle" class="svg-dim">42.0</text><text x="532" y="112" class="svg-dim">18.0</text>
+        <text x="-18" y="34" text-anchor="end" class="svg-dim">5.0</text><text x="-18" y="160" text-anchor="end" class="svg-dim">10.0</text>
+        <text x="12" y="252" text-anchor="middle" class="svg-dim">2.0</text>
+        <text x="384" y="204" text-anchor="middle" class="svg-dim">riser at 29.0–35.0 against the right panel</text>
+        <text x="20" y="196" class="svg-mut">TOP END</text><text x="440" y="196" class="svg-mut">EXIT END</text>
+        <text x="200" y="210" class="svg-mut">right side (door, cup) ↓ · dashed: skirt underneath</text>
+      </svg>
+      </div>
+      <figcaption>Draw the chute footprint first: a 38.6 × 3.0 rectangle starting 2.0 from the top-end edge, its left long side 5.0 from the base's left edge. Panels are glued standing on these lines. Buttresses sit in the corners; the cup riser is glued to both base and right panel and works as a fifth buttress. The skirt under the plate turns it into a rigid tray.</figcaption>
+    </figure>
+
+    <figure class="panel figure">
+      <div class="eyebrow">Fig. 4 · servo bracket, section across the wall at the hinge · 1 cm = 40 px</div>
+      <div class="scroll">
+      <svg viewBox="0 0 460 360" style="min-width:420px" role="img" aria-label="Section through the right wall at the door hinge: bracket box, servo hanging shaft-down through the platform, keepers, horn on the tab with cheeks, toothpick pivot">
+        <rect x="200" y="120" width="10" height="240" fill="var(--foam)" stroke="var(--foam-edge)"/>
+        <rect x="40" y="240" width="160" height="10" fill="var(--foam)" stroke="var(--foam-edge)"/>
+        <rect x="168" y="250" width="32" height="32" fill="url(#hatch)" stroke="var(--foam-edge)"/>
+        <text x="60" y="236" class="svg-mono">floor F, paper on top</text>
+        <text x="120" y="268" class="svg-mono">rail R</text>
+        <rect x="200" y="120" width="10" height="120" fill="var(--door)" stroke="var(--cut)"/>
+        <text x="180" y="180" text-anchor="end" class="svg-mono" style="fill:var(--cut)">door D (3.0 tall)</text>
+        <line x1="205" y1="240" x2="205" y2="290" stroke="var(--warn)" stroke-width="3"/>
+        <text x="215" y="292" class="svg-mono" style="fill:var(--warn)">toothpick pivot, 1.0 in the door, 1.0 in the panel</text>
+        <!-- tab + cheeks -->
+        <rect x="196" y="80" width="18" height="40" fill="var(--foam-dark)" stroke="var(--foam-edge)"/>
+        <rect x="186" y="84" width="10" height="48" fill="var(--foam-dark)" stroke="var(--foam-edge)"/><rect x="214" y="84" width="10" height="48" fill="var(--foam-dark)" stroke="var(--foam-edge)"/>
+        <text x="180" y="100" text-anchor="end" class="svg-mono">tab S5 + cheeks S6</text>
+        <rect x="190" y="70" width="30" height="10" rx="2" fill="#eef1f4" stroke="var(--servo-deep)"/>
+        <rect x="200" y="52" width="10" height="18" fill="#eef1f4" stroke="var(--servo-deep)"/>
+        <rect x="148" y="50" width="142" height="10" fill="var(--foam)" stroke="var(--foam-edge)"/>
+        <text x="296" y="58" class="svg-mono">platform S3, hole 1.2 across</text>
+        <rect x="181" y="8" width="48" height="52" fill="var(--servo)" stroke="var(--servo-deep)"/>
+        <rect x="175" y="58" width="60" height="6" fill="var(--servo-deep)"/>
+        <rect x="151" y="60" width="24" height="10" fill="var(--foam-dark)" stroke="var(--foam-edge)"/><rect x="235" y="60" width="24" height="10" fill="var(--foam-dark)" stroke="var(--foam-edge)"/>
+        <text x="205" y="38" text-anchor="middle" class="svg-mono" style="fill:#fff">SG90</text>
+        <text x="262" y="78" class="svg-mono">ears between keepers S4</text>
+        <rect x="210" y="50" width="10" height="140" fill="var(--foam-dark)" stroke="var(--foam-edge)"/>
+        <rect x="280" y="50" width="10" height="140" fill="var(--foam-dark)" stroke="var(--foam-edge)"/>
+        <text x="300" y="130" class="svg-mono">S1 outer</text>
+        <text x="228" y="150" class="svg-mono">S1 inner glued</text><text x="228" y="164" class="svg-mono">to the panel</text>
+        <g fill="var(--glue)"><circle cx="215" cy="122" r="3"/><circle cx="215" cy="170" r="3"/><circle cx="285" cy="55" r="3"/><circle cx="215" cy="55" r="3"/><circle cx="199" cy="252" r="3"/><circle cx="168" cy="245" r="3"/></g>
+        <g stroke="var(--dim)" stroke-width="1" fill="none">
+          <line x1="130" y1="60" x2="130" y2="120"/><line x1="125" y1="60" x2="135" y2="60"/><line x1="125" y1="120" x2="135" y2="120"/>
+          <line x1="330" y1="50" x2="330" y2="190"/><line x1="325" y1="50" x2="335" y2="50"/><line x1="325" y1="190" x2="335" y2="190"/>
+          <line x1="210" y1="300" x2="290" y2="300"/><line x1="210" y1="295" x2="210" y2="305"/><line x1="290" y1="295" x2="290" y2="305"/>
+          <line x1="148" y1="40" x2="200" y2="40"/><line x1="148" y1="35" x2="148" y2="45"/><line x1="200" y1="35" x2="200" y2="45"/>
+        </g>
+        <text x="124" y="94" text-anchor="end" class="svg-dim">1.5 gap</text>
+        <text x="338" y="124" class="svg-dim">3.5</text>
+        <text x="250" y="318" text-anchor="middle" class="svg-dim">2.0 outside the wall</text>
+        <text x="174" y="32" text-anchor="middle" class="svg-dim">1.3 inside</text>
+        <text x="20" y="30" class="svg-lab">inside the channel ←</text>
+        <text x="380" y="30" class="svg-lab">→ outside</text>
+        <text x="20" y="340" class="svg-mut">Wall top at 3.0 above the paper; bracket walls</text>
+        <text x="20" y="354" class="svg-mut">reach 2.0 below the wall top and 1.5 above it.</text>
+      </svg>
+      </div>
+      <figcaption>The bracket is a small box glued to the outside of the right panel just downstream of the hinge: S1 inner flat against the panel, S1 outer 2.0 out, S2 closing the downstream end, S3 on top. The platform overhangs 1.0 upstream over the door and 1.3 into the channel, so the servo shaft sits exactly on the hinge line over the wall centre. The servo hangs shaft-down through the hole, ears trapped between the two keepers S4 and the platform, taped. The horn is glued to the tab; the two cheeks make the tab a T that cannot peel off the 0.25 door edge.</figcaption>
+    </figure>
+  </div>
+
+  <section class="panel">
+    <h2>Slope and the tilt blocks</h2>
+    <div class="two">
+      <div>
+        <table>
+          <thead><tr><th>Slope</th><th>Block</th><th>Where</th><th class="num">Zone → door time</th></tr></thead>
+          <tbody>
+            <tr><td>12°</td><td>W1 (2.2)</td><td>under the exit end of the tray</td><td class="num">≈ 0.70 s</td></tr>
+            <tr><td>15°</td><td>none</td><td>tray flat on the table</td><td class="num">≈ 0.55 s</td></tr>
+            <tr><td>18°</td><td>W1 (2.2)</td><td>under the top end</td><td class="num">≈ 0.47 s</td></tr>
+            <tr><td>21°</td><td>W2 (4.4)</td><td>under the top end</td><td class="num">≈ 0.42 s</td></tr>
+          </tbody>
+        </table>
+        <p class="note" style="margin-top:12px">Times are from the model in the 3D simulation (zone centre at 12 cm to the door at 30 cm) and are approximate. Subtract the door swing to get the laptop's budget from photo to command: about 0.1 s once the firmware's fast-door channel is in, about 0.35 s with the stock ramp. With the stock ramp only 12° and 15° leave a usable budget.</p>
+      </div>
+      <div>
+        <ul>
+          <li><b>Start at 15°.</b> Drop ten beans. If any stops on the paper, go to 18°. If they skip or bounce at the door, go to 12°.</li>
+          <li><b>The whole tray tilts</b>, so the door, riser and cup keep their geometry. Only the bowl under the exit is on the table; at 12° the exit rises 2.2, so it still clears an 8 cm bowl.</li>
+          <li><b>Block placement</b>: push the block under the skirt until the skirt sits on the block's top plate along its full 18 cm. The other end of the skirt rests on the table.</li>
+          <li><b>Phone</b>: re-aim it after a change; the zone moves about 1 cm at the top end.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Assembly order</h2>
+    <div class="legend"><span><i style="background:var(--glue)"></i>PVA or hot glue: every structural joint</span><span><i style="background:var(--tape)"></i>double-sided tape: paper liner, servo ears</span><span><i style="background:var(--foam-edge)"></i>single-sided tape: clamp while glue dries, cover fillets</span></div>
+    <ol style="margin-top:14px">
+      <li><b>Cut both panels P</b> from the same edge of sheet 1 (Fig. 2). Lay them face to face and check the slanted edges match within 0.1. <span class="check">Check: slant = 40.0.</span></li>
+      <li><b>Base tray.</b> Glue the two long skirts KS edge-on under the base plate K along its long edges, then the two short skirts KE between them. Tape square, let dry. <span class="check">Check: the tray sits flat with no rock.</span></li>
+      <li><b>Floor lines and rails.</b> On the inside face of each panel draw the floor line (19.35 at the top end, 9.0 at the exit end) and the rail line 0.26 below it. Glue rail R with its top edge on the rail line. Weight flat until dry.</li>
+      <li><b>Door.</b> On the right panel measure 30.0 and 36.0 along the slanted edge, draw both cuts square to that edge down to the floor line, cut the floor-line side too. Keep the piece and trim 0.1 off its upstream edge.</li>
+      <li><b>Bottom pivot.</b> Push the toothpick square to the floor into the panel's cut edge below the floor line, exactly on the 36.0 line, leaving 1.0 out. Press the door's bottom corner onto it and test the swing, then take the door off.</li>
+      <li><b>Girder.</b> Stand both panels on the footprint lines on the tray (Fig. 3), 3.0 apart outside to outside. Glue B1 between them at the top end (base to wall top) and B2 at the exit end under the floor line. Tape the outsides square and let the glue set. Then run a continuous bead along both panel bottoms onto the base. <span class="check">Check: 2.5 between the inside faces at both ends and in the middle.</span></li>
+      <li><b>Floor.</b> Slide F in from the exit end onto the rails, butt it against B1, glue along both rails and B1. Run a fillet of glue along both inside corners and cover each with a strip of single-sided tape. Let it dry 30 min.</li>
+      <li><b>Buttresses.</b> Glue the four G triangles in the corners of Fig. 3 (base and panel outer face). Hold each for a minute.</li>
+      <li><b>Paper liner.</b> Two strips of double-sided tape along the floor, then the paper from the top end down, matte side up. No wrinkles.</li>
+      <li><b>Bracket.</b> Glue S1 inner flat to the right panel's outer face with its upstream edge on the hinge line, top 1.5 above the wall top. Glue S2 on its downstream end and S1 outer parallel 2.0 out. Glue S3 on top, overhanging 1.0 upstream and 1.3 inward. Glue the two keepers S4 on the platform underside 1.3 apart, centred on the hole. <span class="check">Check: hole centre over the wall centre line on the hinge line.</span></li>
+      <li><b>Servo.</b> Wire it to D9, 5V, GND and send <code>S 90 90 75</code>. Push it up through the hole from below, shaft down, ears between the keepers. Double-sided tape on the ears, one wrap of single-sided tape around the bracket box.</li>
+      <li><b>Door on.</b> Glue the four-layer tab S5 on the door's top edge at the hinge end, then the two cheeks S6 on both faces lapping door and tab. Seat the door on the toothpick, flush with the wall, and glue the horn arm onto the tab while the servo holds 90. Cure fully.</li>
+      <li><b>Soft stop.</b> Glue pad SP on the left wall's inside face from 29.8 to 30.8 along the chute, standing on the paper. The door's free end must land on the pad, never on the bare wall edge.</li>
+      <li><b>Swing test.</b> <code>S 65 90 75</code>: the free end should just touch the pad. Adjust the angle by 1 or 2 degrees until it does. Wrong direction: use 115. Back at 90 the door must be flush, no step a bean could catch on. <span class="check">Check: 20 cycles, no rub, no creep.</span></li>
+      <li><b>Cup riser.</b> Glue the four C walls into a tube, C5 on top, then glue the riser to the base and to the right panel under the door (Fig. 3). Place the cup. <span class="check">Check: rim 0.5 below the floor at the door.</span></li>
+      <li><b>Zone marks, camera, bowl.</b> Tick the wall tops at 9.0 and 15.0. Phone 20 cm above the middle of the zone, lens square to the paper. Bowl under the exit. Ten beans at 15°, then adjust the slope.</li>
+    </ol>
+    <p class="note" style="margin-top:14px">Dry time matters more than clamping force. PVA on foam board needs 30 minutes before you load a joint; hot glue is ready in a minute but leaves ridges, so keep it off the paper side and the door edges.</p>
+  </section>
+
+  <div class="two">
+    <section class="panel">
+      <h2>Cup riser height</h2>
+      <p class="lede" style="margin-bottom:10px">Floor top at the door is 10.8 above the base. The rim should be 0.5 below that: 10.3.</p>
+      <table>
+        <thead><tr><th>Your cup height</th><th class="num">Riser wall H</th></tr></thead>
+        <tbody>
+          <tr><td>3.5</td><td class="num">6.8</td></tr><tr><td>4.0</td><td class="num">6.3</td></tr><tr><td>4.5</td><td class="num">5.8</td></tr><tr><td>5.0</td><td class="num">5.3</td></tr><tr><td>6.0</td><td class="num">4.3</td></tr>
+          <tr><td>any</td><td class="num">H = 10.3 − cup height</td></tr>
+        </tbody>
+      </table>
+      <p class="note" style="margin-top:12px">Bowl under the exit: up to 8.5 tall (exit floor 9.0 above the base, base 0.25 thick, table below).</p>
+    </section>
+    <section class="panel">
+      <h2>Why this holds</h2>
+      <ul>
+        <li><b>Closed box girder.</b> Two full-height panels, a floor glued on rails, two bulkheads and a base plate form a closed section. Foam board flexes as a flat sheet but is very stiff as the face of a box.</li>
+        <li><b>Rigid tray.</b> The base is a skirted tray, so it can rest on a tilt block at one end without bending.</li>
+        <li><b>Nothing rests on anything.</b> No books, no loose boxes. The tilt block is captured under the skirt along 18 cm.</li>
+        <li><b>Rails, not butt joints.</b> The floor is glued along two 39.7 cm faces, not a 0.25 cm edge.</li>
+        <li><b>Buttresses and riser</b> triangulate the tall, narrow girder against tipping.</li>
+        <li><b>Servo in a glued box</b>, not on a 0.25 wall top: the ears are trapped between two keepers and the platform, and the box is glued to the panel over 2.0 × 2.0 plus its end plate.</li>
+        <li><b>Door on two bearings</b>: servo shaft above, toothpick below, horn on a T-tab that cannot peel.</li>
+        <li><b>Soft stop.</b> The door lands on a foam pad, so a fast swing (the firmware's door channel is capped around 400 °/s) does not hammer the wall edge.</li>
+      </ul>
+    </section>
+  </div>
+
+  <p class="footer">Cartón pluma 2.5 mm · dos hojas 50 × 100 · compuerta basculante · ángulo ajustable 12–21° · Diseño pendiente de pruebas</p>
+</div>

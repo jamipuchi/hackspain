@@ -1,0 +1,90 @@
+{
+  "arduino": {
+    "backend": "http",
+    "http_url": "http://127.0.0.1:8765",
+    "port_glob": "/dev/cu.usbmodem*",
+    "baud": 115200,
+    "boot_wait_s": 2.5,
+    "conveyor_default_speed": 60
+  },
+  "gate": {
+    "channel": "base",
+    "flush_deg": 90,
+    "open_deg": 65,
+    "hold_deg": [
+      90,
+      75
+    ],
+    "settle_ms": 400,
+    "default_dwell_s": 0.6,
+    "ramp_override": false,
+    "door_vmax_deg_s": 400,
+    "door_accel_deg_s2": 8000
+  },
+  "camera": {
+    "backend": "real",
+    "match": "iphone",
+    "width": 1280,
+    "height": 720,
+    "fps": 60,
+    "file_paths": [],
+    "zone": [
+      110,
+      300,
+      470,
+      500
+    ],
+    "px_per_mm": 6.0,
+    "flow_axis": "-x",
+    "trigger_frac": 0.5
+  },
+  "vision": {
+    "paper_gray_min": 150,
+    "bean_gray_max": 120,
+    "min_area_px": 400,
+    "max_area_px": 40000,
+    "dark_spot_gray": 45,
+    "max_fg_frac": 0.5
+  },
+  "classifier": {
+    "backend": "rule",
+    "model_path": "models/beans_v1.joblib",
+    "algo": "extratrees",
+    "suspect_threshold": 0.5,
+    "rules": {
+      "min_major_mm": 8.0,
+      "max_major_mm": 16.0,
+      "min_aspect": 1.1,
+      "max_aspect": 2.2,
+      "max_dark_frac": 0.35,
+      "min_mean_gray": 40,
+      "max_mean_gray": 150,
+      "max_n_dark_spots": 2
+    }
+  },
+  "timing": {
+    "slope_deg": 15.0,
+    "zone_from_top_cm": [
+      9.0,
+      15.0
+    ],
+    "door_from_top_cm": [
+      30.0,
+      36.0
+    ],
+    "bean_speed_cm_s": 35.0,
+    "zone_to_door_s": 0.567,
+    "speed_model": "drag",
+    "drag_accel_cm_s2_at_15deg": 64.0,
+    "drag_friction_cm_s2": 19.2,
+    "drag_k_per_s": 1.6,
+    "lead_margin_s": 0.0,
+    "door_lead_s": 0.4,
+    "mode": "fixed",
+    "fixed_delay_s": 0.0
+  },
+  "panel_port": 8800,
+  "act_on": "all",
+  "lost_after_s": 0.4,
+  "dry_run": true
+}

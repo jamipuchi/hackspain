@@ -1,0 +1,188 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Line Control Panel</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--bg:#0f1317;--card:#171d24;--line:#273039;--ink:#e8edf2;--mut:#8b98a5;--ok:#1db954;--bad:#e53935;--warn:#f2a93b;--acc:#7aa7ff;--mono:ui-monospace,Menlo,monospace}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 -apple-system,system-ui,sans-serif}
+header{display:flex;gap:14px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5;flex-wrap:wrap}
+header h1{font-size:1.05rem;margin:0;font-weight:600}
+.pill{font-family:var(--mono);font-size:.8rem;padding:3px 9px;border-radius:999px;border:1px solid var(--line);color:var(--mut)}
+.pill.ok{border-color:var(--ok);color:var(--ok)}.pill.bad{border-color:var(--bad);color:var(--bad)}.pill.warn{border-color:var(--warn);color:var(--warn)}
+nav{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}nav button{background:transparent;color:var(--mut);border:1px solid transparent;border-radius:8px;padding:6px 12px;font:inherit;cursor:pointer}
+nav button.on{color:var(--ink);border-color:var(--line);background:var(--card)}
+main{padding:16px 18px 60px;max-width:1400px;margin:0 auto;display:grid;gap:16px}
+.tab{display:none;gap:16px}.tab.on{display:grid}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:10px;align-content:start}
+.card h2{margin:0;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-family:var(--mono);font-size:.85rem}.kv span:nth-child(odd){color:var(--mut)}
+button{font:inherit;font-weight:600;color:#fff;border:0;border-radius:10px;padding:10px 14px;cursor:pointer;background:#2a333d}
+button:active{transform:scale(.97)}button.go{background:var(--ok);color:#032}button.stop{background:var(--bad)}button.warn{background:var(--warn);color:#221}button.acc{background:var(--acc);color:#012}button.sm{padding:6px 10px;font-size:.85rem}
+button:disabled{opacity:.4;cursor:not-allowed}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+label{display:grid;gap:4px;font-size:.85rem;color:var(--mut)}label b{color:var(--ink);font-family:var(--mono);font-weight:500}
+input[type=range]{width:100%;accent-color:var(--acc)}
+input[type=number],input[type=text],select{font:inherit;font-family:var(--mono);background:#0f1317;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 9px;width:100%}
+.num{width:90px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--mut);margin-right:6px}.dot.ok{background:var(--ok)}.dot.bad{background:var(--bad)}.dot.stub{background:var(--warn)}
+.viewer{position:relative;background:#000;border-radius:10px;overflow:hidden;line-height:0}.viewer img{width:100%;display:block}.viewer canvas{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair}
+.log{font-family:var(--mono);font-size:.78rem;color:var(--mut);max-height:320px;overflow:auto;white-space:pre-wrap;background:#0b0e12;border-radius:8px;padding:10px}
+table{width:100%;border-collapse:collapse;font-size:.85rem}td,th{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--mut);font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.06em}
+td.mono{font-family:var(--mono);font-size:.8rem}
+.big{font-size:2rem;font-family:var(--mono);font-weight:600}.hint{font-size:.82rem;color:var(--mut)}
+.ev{display:grid;grid-template-columns:70px 90px 1fr;gap:8px;font-family:var(--mono);font-size:.8rem;padding:3px 0;border-bottom:1px solid var(--line)}.ev .k{color:var(--acc)}.ev.suspect .k{color:var(--bad)}.ev.gate_open .k{color:var(--warn)}.ev.error .k{color:var(--bad)}
+.banner{padding:10px 14px;border-radius:10px;font-weight:600}.banner.dry{background:#1f2a1f;color:var(--ok)}.banner.live{background:#3a1616;color:#ffb4b0}
+.toggle{display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--ink)}
+</style></head><body>
+<header><h1>Sorting line · control panel</h1>
+ <span id="pServer" class="pill">connecting…</span><span id="pLine" class="pill">line</span><span id="pDry" class="pill">dry run</span><span id="pFps" class="pill">fps</span>
+ <nav id="nav"></nav></header>
+<main>
+
+<section class="tab" data-tab="Overview">
+ <div class="grid" id="modCards"></div>
+ <div class="card"><h2>Self-tests <span><button class="sm acc" onclick="selftest()">run all</button></span></h2>
+  <div class="hint" id="checksMeta">not run yet</div>
+  <table><thead><tr><th>check</th><th>impl</th><th>result</th><th>ms</th></tr></thead><tbody id="checks"></tbody></table></div>
+</section>
+
+<section class="tab" data-tab="Cameras">
+ <div class="grid" style="grid-template-columns:2fr 1fr">
+  <div class="card"><h2>Live view · drag to set the inspection zone (ROI)</h2>
+   <div class="viewer"><img id="stream" src="/stream.mjpg" alt="camera stream"><canvas id="roiCanvas"></canvas></div>
+   <div class="row"><span class="hint">zone px:</span><b id="zoneTxt" class="hint"></b><button class="sm" onclick="snapshot()">snapshot ↗</button><button class="sm" onclick="postJSON('/api/selftest',{module:'camera'}).then(refresh)">camera self-test</button></div>
+  </div>
+  <div class="card"><h2>Camera</h2><div class="kv" id="camKv"></div>
+   <label>px per mm <b id="ppmV"></b><input id="ppm" type="number" step="0.1" class="num" onchange="setCfg('camera.px_per_mm',+this.value)"></label>
+   <label>flow axis (direction beans travel in the image)<select id="flow" onchange="setCfg('camera.flow_axis',this.value)"><option>x</option><option>-x</option><option>y</option><option>-y</option></select></label>
+   <label>backend (restart to apply)<select id="camBackend" onchange="setCfg('camera.backend',this.value)"><option>real</option><option>file</option><option>synthetic</option></select></label>
+   <div class="card" style="background:#0f1317"><h2>Bean speed stopwatch</h2><p class="hint">Drop a bean and press each button as it passes: top → zone start → door start. Speed is written to timing.bean_speed_cm_s.</p>
+    <div class="row"><button class="sm" onclick="sw('top')">released at top</button><button class="sm" onclick="sw('zone')">at zone start</button><button class="sm" onclick="sw('door')">at door</button></div><div class="hint" id="swOut">—</div></div>
+  </div>
+ </div>
+</section>
+
+<section class="tab" data-tab="Motors">
+ <div class="grid">
+  <div class="card"><h2>Conveyor · D6 (continuous servo)</h2>
+   <div class="row"><button class="acc" onclick="setBelt(-speed())">◀ reverse</button><button class="stop" onclick="setBelt(0)">■ stop</button><button class="go" onclick="setBelt(speed())">forward ▶</button></div>
+   <label>speed <b id="spV">60 %</b><input id="sp" type="range" min="5" max="100" value="60" oninput="spV.textContent=this.value+' %'"></label>
+   <div class="row"><input class="num" id="secs" type="number" step="0.1" value="2"><span class="hint">s</span><button class="sm" onclick="timed(1)">▶ timed</button><button class="sm" onclick="timed(-1)">◀ timed</button><span class="hint">belt now: <b id="beltV">stopped</b></span></div>
+  </div>
+  <div class="card"><h2>Door · D9 (SG90 swing gate)</h2>
+   <div id="dryBanner" class="banner dry">DRY RUN: gate commands are logged, nothing moves</div>
+   <div class="row"><button onclick="gate('flush')">⟵ flush (wall in line)</button><button class="warn" onclick="gate('open')">open ⟶ 25°</button><button class="acc" onclick="gate('pulse')">pulse (open + dwell + flush)</button></div>
+   <div class="row"><label>flush ° <input class="num" id="gFlush" type="number" min="0" max="180" onchange="setCfg('gate.flush_deg',+this.value)"></label><label>open ° <input class="num" id="gOpen" type="number" min="0" max="180" onchange="setCfg('gate.open_deg',+this.value)"></label><label>dwell s <input class="num" id="gDwell" type="number" step="0.05" onchange="setCfg('gate.default_dwell_s',+this.value)"></label></div>
+   <div class="kv" id="gateKv"></div>
+   <div class="row"><button class="sm" onclick="postJSON('/api/line',{action:'dry'}).then(refresh)">force dry run</button><button class="sm stop" onclick="goLive()">switch gate LIVE…</button></div>
+  </div>
+  <div class="card"><h2>Arduino · raw</h2><div class="kv" id="ardKv"></div>
+   <div class="row"><input id="rawin" type="text" placeholder="S 90 90 75   ·   C -40   ·   ?"><button class="sm" onclick="raw()">send</button></div>
+   <div class="hint">Servo sliders (S base shoulder elbow) — base = door channel:</div>
+   <div class="row"><label>base <b id="j0v"></b><input id="j0" type="range" min="0" max="180" value="90" oninput="j0v.textContent=this.value" onchange="sendS()"></label><label>shoulder <b id="j1v"></b><input id="j1" type="range" min="0" max="180" value="90" oninput="j1v.textContent=this.value" onchange="sendS()"></label><label>elbow <b id="j2v"></b><input id="j2" type="range" min="0" max="180" value="75" oninput="j2v.textContent=this.value" onchange="sendS()"></label></div>
+   <div class="row"><button class="sm" onclick="postJSON('/api/cmd',{line:'H'}).then(refresh)">home (H)</button><button class="sm" onclick="postJSON('/api/cmd',{line:'M 0'}).then(refresh)">magnet off</button><button class="sm" onclick="postJSON('/api/selftest',{module:'arduino'}).then(refresh)">arduino self-test</button></div>
+  </div>
+ </div>
+</section>
+
+<section class="tab" data-tab="Classifier">
+ <div class="grid" style="grid-template-columns:1fr 1fr">
+  <div class="card"><h2>Classify what is in the zone now <span><button class="sm acc" onclick="classifyNow()">classify now</button></span></h2>
+   <div id="clfNow" class="hint">—</div>
+   <h2>Label the bean in the zone → datasets/beans/</h2>
+   <div class="row"><button class="go" onclick="sample('good')">good (g)</button><button class="stop" onclick="sample('defect')">defect (d)</button><button class="warn" onclick="sample('foreign')">foreign (f)</button><span class="hint" id="dsCounts"></span></div>
+   <div class="kv" id="clfKv"></div>
+  </div>
+  <div class="card"><h2>Rules (live, saved to config.json)</h2><div id="rules" class="grid" style="grid-template-columns:1fr 1fr"></div>
+   <label>suspect threshold <b id="thrV"></b><input id="thr" type="range" min="0" max="1" step="0.05" oninput="thrV.textContent=this.value" onchange="setCfg('classifier.suspect_threshold',+this.value)"></label>
+   <label>backend (restart to apply)<select id="clfBackend" onchange="setCfg('classifier.backend',this.value)"><option>rule</option><option>sklearn</option></select></label>
+   <div class="kv" id="detKv"></div></div>
+ </div>
+</section>
+
+<section class="tab" data-tab="Line">
+ <div class="grid">
+  <div class="card"><h2>Closed loop</h2>
+   <div class="row"><button class="go" id="btnStart" onclick="lineAct('start')">▶ start sorting</button><button class="stop" onclick="lineAct('stop')">■ stop</button><button class="sm" onclick="lineAct('reset')">reset counters</button></div>
+   <div id="dryBanner2" class="banner dry"></div>
+   <div class="grid" style="grid-template-columns:repeat(3,1fr)">
+    <div><div class="hint">beans</div><div class="big" id="cBeans">0</div></div><div><div class="hint">good</div><div class="big" id="cGood" style="color:var(--ok)">0</div></div><div><div class="hint">suspect</div><div class="big" id="cSus" style="color:var(--bad)">0</div></div>
+    <div><div class="hint">gate pulses</div><div class="big" id="cGate">0</div></div><div><div class="hint">lost</div><div class="big" id="cLost">0</div></div><div><div class="hint">errors</div><div class="big" id="cErr">0</div></div></div>
+   <div class="kv" id="lineKv"></div>
+  </div>
+  <div class="card"><h2>Tuning (live, saved to config.json)</h2>
+   <label>door moves for<select id="actOn" onchange="setCfg('act_on',this.value)"><option value="all">every bean (bring-up)</option><option value="suspect">suspect beans only (sorting)</option></select></label>
+   <label>trigger point: judge the bean once it has crossed this fraction of the zone <b id="trigV"></b><input id="trig" type="range" min="0" max="0.95" step="0.05" oninput="trigV.textContent=this.value" onchange="setCfg('camera.trigger_frac',+this.value)"></label>
+   <label>door timing<select id="tMode" onchange="setCfg('timing.mode',this.value)"><option value="fixed">fixed delay after the verdict</option><option value="model">chute kinematics model (timing.py)</option></select></label>
+   <div class="row"><label>fixed delay s <input class="num" id="tFixed" type="number" step="0.05" min="0" onchange="setCfg('timing.fixed_delay_s',+this.value)"></label>
+    <label>dwell s (door stays open) <input class="num" id="tDwell" type="number" step="0.05" min="0.05" onchange="setCfg('gate.default_dwell_s',+this.value)"></label>
+    <label>lost after s <input class="num" id="tLost" type="number" step="0.1" min="0.1" onchange="setCfg('lost_after_s',+this.value)"></label></div>
+   <div class="row"><label>bean speed cm/s (model) <input class="num" id="tSpeed" type="number" step="1" onchange="setCfg('timing.bean_speed_cm_s',+this.value)"></label>
+    <label>door lead s (model) <input class="num" id="tLead" type="number" step="0.02" onchange="setCfg('timing.door_lead_s',+this.value)"></label></div>
+   <h2>Detection thresholds</h2>
+   <div class="row"><label>bean darker than (gray) <input class="num" id="vGray" type="number" min="10" max="250" onchange="setCfg('vision.bean_gray_max',+this.value)"></label>
+    <label>min area px <input class="num" id="vMin" type="number" min="10" step="10" onchange="setCfg('vision.min_area_px',+this.value)"></label>
+    <label>max area px <input class="num" id="vMax" type="number" min="100" step="100" onchange="setCfg('vision.max_area_px',+this.value)"></label></div>
+   <p class="hint">Zone: drag on the Cameras tab. Door angles: Motors tab. Space/Esc = belt stop + door flush.</p>
+  </div>
+  <div class="card"><h2>Timeline</h2><div id="events" style="max-height:520px;overflow:auto"></div></div>
+ </div>
+</section>
+
+<section class="tab" data-tab="Log"><div class="card"><h2>Server log</h2><div class="log" id="log"></div></div></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const TABS=['Overview','Cameras','Motors','Classifier','Line','Log'];let tab=localStorage.getItem('tab')||'Overview';let S=null;let beltSp=0,timer=null,swT={};
+function showTab(t){tab=t;localStorage.setItem('tab',t);document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.dataset.tab===t));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.textContent===t));}
+$('nav').innerHTML=TABS.map(t=>`<button onclick="showTab('${t}')">${t}</button>`).join('');showTab(tab);
+async function postJSON(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});const j=await r.json();if(!j.ok)toast('error: '+j.error);return j;}
+function toast(m){$('pServer').textContent=m;$('pServer').className='pill bad';setTimeout(refresh,1500);}
+const setCfg=(p,v)=>postJSON('/api/config',{path:p,value:v}).then(refresh);
+const speed=()=>+$('sp').value;
+function setBelt(sp){beltSp=sp;if(timer){clearTimeout(timer);timer=null;}postJSON('/api/conveyor',{speed:sp}).then(refresh);}
+function timed(dir){setBelt(dir*speed());timer=setTimeout(()=>setBelt(0),Math.max(100,+$('secs').value*1000));}
+function gate(a){postJSON('/api/gate',{action:a}).then(refresh);}
+function raw(){const v=$('rawin').value.trim();if(v){postJSON('/api/cmd',{line:v}).then(refresh);$('rawin').value='';}}
+$('rawin').onkeydown=e=>{if(e.key==='Enter')raw();};
+function sendS(){postJSON('/api/cmd',{line:`S ${$('j0').value} ${$('j1').value} ${$('j2').value}`}).then(refresh);}
+function lineAct(a){postJSON('/api/line',{action:a}).then(refresh);}
+function goLive(){if(prompt('The door servo will really move on every suspect verdict and on the gate buttons.\nType LIVE to confirm.')==='LIVE')postJSON('/api/line',{action:'live',confirm:'LIVE'}).then(refresh);}
+async function selftest(){$('checksMeta').textContent='running…';await postJSON('/api/selftest',{});refresh();}
+async function classifyNow(){const j=await postJSON('/api/classify_now',{});if(!j.ok)return;$('clfNow').innerHTML=j.results.length?j.results.map(r=>`<div class="ev ${r.verdict.suspect?'suspect':''}"><span>(${r.blob.u},${r.blob.v})</span><span class="k">${r.verdict.label} p=${r.verdict.p_defect.toFixed(2)}</span><span>${r.verdict.reason} · ${r.verdict.ms.toFixed(1)} ms${r.blob.partial?' · partial':''}<br><span class="hint">${Object.entries(r.blob.features).map(([k,v])=>k+'='+(+v).toFixed(2)).join('  ')}</span></span></div>`).join(''):'<span class="hint">no bean in the zone</span>';}
+async function sample(l){const j=await postJSON('/api/sample',{label:l});if(j.ok){$('clfNow').textContent='saved '+j.path;refresh();}}
+function snapshot(){window.open('/snapshot.jpg?'+Date.now());}
+function sw(k){swT[k]=performance.now()/1000;const T=S?.cfg?.timing||{};let out=[];if(swT.top&&swT.zone)out.push(`top→zone ${(swT.zone-swT.top).toFixed(2)} s`);if(swT.zone&&swT.door){const dt=swT.door-swT.zone;const cm=T.door_from_top_cm[0]-T.zone_from_top_cm[0];const v=cm/dt;out.push(`zone→door ${dt.toFixed(2)} s = ${v.toFixed(1)} cm/s`);setCfg('timing.bean_speed_cm_s',+v.toFixed(1));swT={};}$('swOut').textContent=out.join(' · ')||`marked ${k}`;}
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;if(e.code==='Space'||e.key==='Escape'){e.preventDefault();setBelt(0);gate('flush');}
+ else if(e.key==='g')sample('good');else if(e.key==='d')sample('defect');else if(e.key==='f')sample('foreign');});
+// ROI editor
+const img=$('stream'),cv=$('roiCanvas');let drag=null;
+function toNat(e){const r=cv.getBoundingClientRect();const nw=S?.modules?.camera?.resolution?.[0]||img.naturalWidth||1280,nh=S?.modules?.camera?.resolution?.[1]||img.naturalHeight||720;return[Math.round((e.clientX-r.left)/r.width*nw),Math.round((e.clientY-r.top)/r.height*nh)];}
+cv.onmousedown=e=>{drag=toNat(e);};cv.onmousemove=e=>{if(!drag)return;const p=toNat(e);drawRoi([Math.min(drag[0],p[0]),Math.min(drag[1],p[1]),Math.max(drag[0],p[0]),Math.max(drag[1],p[1])],true);};
+cv.onmouseup=e=>{if(!drag)return;const p=toNat(e);const z=[Math.min(drag[0],p[0]),Math.min(drag[1],p[1]),Math.max(drag[0],p[0]),Math.max(drag[1],p[1])];drag=null;if(z[2]-z[0]>20&&z[3]-z[1]>20)setCfg('camera.zone',z);};
+function drawRoi(z,temp){const nw=S?.modules?.camera?.resolution?.[0]||1280,nh=S?.modules?.camera?.resolution?.[1]||720;cv.width=nw;cv.height=nh;const c=cv.getContext('2d');c.clearRect(0,0,nw,nh);if(!temp){const Z=S?.cfg?.camera?.zone,f=S?.cfg?.camera?.trigger_frac||0,ax=S?.cfg?.camera?.flow_axis||'x';if(Z&&f>0){c.strokeStyle='#f2a93b';c.lineWidth=3;c.setLineDash([6,6]);c.beginPath();if(ax.endsWith('x')){const x=ax.startsWith('-')?Z[2]-f*(Z[2]-Z[0]):Z[0]+f*(Z[2]-Z[0]);c.moveTo(x,Z[1]);c.lineTo(x,Z[3]);}else{const y=ax.startsWith('-')?Z[3]-f*(Z[3]-Z[1]):Z[1]+f*(Z[3]-Z[1]);c.moveTo(Z[0],y);c.lineTo(Z[2],y);}c.stroke();}return;}c.strokeStyle='#7aa7ff';c.lineWidth=3;c.setLineDash([8,6]);c.strokeRect(z[0],z[1],z[2]-z[0],z[3]-z[1]);}
+// render
+function kv(el,obj,skip=[]){el.innerHTML=Object.entries(obj||{}).filter(([k])=>!skip.includes(k)).map(([k,v])=>`<span>${k}</span><span>${typeof v==='object'?JSON.stringify(v):v}</span>`).join('');}
+function setIf(id,v){const e=$(id);if(e&&document.activeElement!==e&&e.value!=String(v))e.value=v;}
+function render(){const m=S.modules,c=S.cfg,l=S.line;
+ $('pServer').textContent='connected';$('pServer').className='pill ok';
+ $('pLine').textContent=`line: ${l.state} · ${l.enabled?'SORTING':'preview'}`;$('pLine').className='pill '+(l.enabled?'ok':'');
+ $('pDry').textContent=l.dry_run?'gate: DRY RUN':'gate: LIVE';$('pDry').className='pill '+(l.dry_run?'warn':'bad');
+ $('pFps').textContent=`${l.fps} fps · ${l.loop_ms} ms`;
+ $('modCards').innerHTML=Object.entries(m).map(([k,v])=>{const stub=(S.impl[k]||'').startsWith('stub');return`<div class="card"><h2><span><span class="dot ${v.ok===false?'bad':stub?'stub':'ok'}"></span>${k}</span><button class="sm" onclick="postJSON('/api/selftest',{module:'${k}'}).then(refresh)">test</button></h2><div class="hint">${S.impl[k]}</div><div class="kv">${Object.entries(v).filter(([kk])=>!['rules','features','log','detail'].includes(kk)).map(([kk,vv])=>`<span>${kk}</span><span>${typeof vv==='object'?JSON.stringify(vv):vv}</span>`).join('')}</div></div>`}).join('');
+ $('checksMeta').textContent=S.checks.length?`${S.checks.filter(x=>x.ok).length}/${S.checks.length} passed · ${new Date(S.checks_t*1000).toLocaleTimeString()}`:'not run yet';
+ $('checks').innerHTML=S.checks.map(x=>`<tr><td class="mono">${x.name}</td><td class="mono">${x.impl}</td><td><span class="dot ${x.ok?'ok':'bad'}"></span>${x.detail}</td><td class="mono">${x.ms}</td></tr>`).join('');
+ kv($('camKv'),m.camera);$('zoneTxt').textContent=JSON.stringify(c.camera.zone);setIf('ppm',c.camera.px_per_mm);$('ppmV').textContent=c.camera.px_per_mm;setIf('flow',c.camera.flow_axis);setIf('camBackend',c.camera.backend);drawRoi(null,false);
+ $('beltV').textContent=S.belt==0?'stopped':(S.belt>0?'forward ':'reverse ')+Math.abs(S.belt)+'%';
+ const dry=l.dry_run;for(const id of['dryBanner','dryBanner2']){$(id).className='banner '+(dry?'dry':'live');$(id).textContent=dry?'DRY RUN: gate commands are logged, the servo does not move':'LIVE: the door servo moves on every suspect verdict and gate button';}
+ setIf('gFlush',c.gate.flush_deg);setIf('gOpen',c.gate.open_deg);setIf('gDwell',c.gate.default_dwell_s);kv($('gateKv'),m.gate);kv($('ardKv'),m.arduino);
+ kv($('clfKv'),m.classifier,['rules']);kv($('detKv'),m.detector,['features']);setIf('thr',c.classifier.suspect_threshold);$('thrV').textContent=c.classifier.suspect_threshold;setIf('clfBackend',c.classifier.backend);
+ $('dsCounts').textContent=Object.entries(l.datasets||{}).map(([k,v])=>`${k}: ${v}`).join(' · ')||'no samples yet';
+ if(document.activeElement?.closest('#rules')==null)$('rules').innerHTML=Object.entries(c.classifier.rules).map(([k,v])=>`<label>${k}<input type="number" step="0.05" value="${v}" onchange="setCfg('classifier.rules',Object.assign({},S.cfg.classifier.rules,{'${k}':+this.value}))"></label>`).join('');
+ $('cBeans').textContent=l.counters.beans;$('cGood').textContent=l.counters.good;$('cSus').textContent=l.counters.suspect;$('cGate').textContent=l.counters.gate_pulses;$('cLost').textContent=l.counters.lost;$('cErr').textContent=l.counters.errors;
+ kv($('lineKv'),{state:l.state,enabled:l.enabled,zone:JSON.stringify(l.zone),last:l.last_verdict?`${l.last_verdict.label} p=${l.last_verdict.p_defect.toFixed(2)} — ${l.last_verdict.reason}`:'—',zone_to_door_s:c.timing.zone_to_door_s,gate_state:m.gate.state});
+ setIf('tSpeed',c.timing.bean_speed_cm_s);setIf('tLead',c.timing.door_lead_s);setIf('actOn',c.act_on);setIf('trig',c.camera.trigger_frac);$('trigV').textContent=c.camera.trigger_frac;setIf('tMode',c.timing.mode);setIf('tFixed',c.timing.fixed_delay_s);setIf('tDwell',c.gate.default_dwell_s);setIf('tLost',c.lost_after_s);setIf('vGray',c.vision.bean_gray_max);setIf('vMin',c.vision.min_area_px);setIf('vMax',c.vision.max_area_px);
+ const t0=S.events.length?S.events[0].t:0;$('events').innerHTML=S.events.slice().reverse().map(e=>`<div class="ev ${e.kind} ${e.suspect?'suspect':''}"><span>+${(e.t-t0).toFixed(2)}s</span><span class="k">${e.kind}</span><span>${Object.entries(e).filter(([k])=>!['t','kind'].includes(k)).map(([k,v])=>`${k}=${v}`).join(' ')}</span></div>`).join('');
+ $('log').textContent=S.log.slice().reverse().join('\n');}
+async function refresh(){try{const r=await fetch('/api/state');S=await r.json();render();}catch(e){$('pServer').textContent='panel unreachable';$('pServer').className='pill bad';}}
+refresh();setInterval(refresh,700);
+</script></body></html>

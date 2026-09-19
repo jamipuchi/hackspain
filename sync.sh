@@ -25,6 +25,8 @@ for d in "$SRC"/coffee_sorter/runs/*/; do
   cp -f "$d"/*.json "$d"/*.png "$d"/*.csv "sim/coffee_sorter/runs/$n"/ 2>/dev/null || true
   for v in "$d"/overview.mp4; do [ -f "$v" ] && [ $(stat -f %z "$v") -lt 40000000 ] && cp -f "$v" "sim/coffee_sorter/runs/$n"/ || true; done
 done
+# physical sorting line: control panel, contracts, per-subsystem modules and tests (no models/datasets)
+rsync -a --delete --exclude '__pycache__' --exclude '.pytest_cache' --exclude 'models/' --exclude 'datasets/' "$SRC/line/" sim/line/
 cp "$SRC/README.md" sim/README-toolchain.md
 
 # selected run artifacts: GPT-6 photos/plans and preview videos (small), never Cycles frame dumps
