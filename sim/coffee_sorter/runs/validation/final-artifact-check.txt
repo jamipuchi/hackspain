@@ -1,0 +1,14 @@
+PASS: 13 final runs reached 4.0 s; metrics, decisions, evidence JSON and six PNGs each.
+sim/coffee_sorter/runs/tuning-sweep/force-0.06
+sim/coffee_sorter/runs/tuning-sweep/force-0.12
+sim/coffee_sorter/runs/tuning-sweep/physics-base
+sim/coffee_sorter/runs/tuning-sweep/pool-3000-base
+sim/coffee_sorter/runs/tuning-sweep/pool-3000-enlarged
+sim/coffee_sorter/runs/tuning-sweep/pulse-2ms
+sim/coffee_sorter/runs/tuning-sweep/pulse-5ms
+sim/coffee_sorter/runs/tuning-sweep/split-0.10
+sim/coffee_sorter/runs/tuning-sweep/split-0.15
+sim/coffee_sorter/runs/tuning-sweep/target-nozzles-1
+sim/coffee_sorter/runs/tuning-sweep/target-nozzles-3
+sim/coffee_sorter/runs/confirmation-seed1/force-0.06
+sim/coffee_sorter/runs/confirmation-seed1/physics-base

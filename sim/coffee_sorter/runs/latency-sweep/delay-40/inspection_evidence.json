@@ -1,0 +1,2402 @@
+[
+  {
+    "image": "inspection_0.png",
+    "frame_time_s": 1.0000000000000007,
+    "blobs": [
+      {
+        "blob": 0,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      },
+      {
+        "blob": 1,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      },
+      {
+        "blob": 2,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      },
+      {
+        "blob": 3,
+        "track": 710,
+        "predicted": "stick",
+        "confidence": 0.9999905066859489,
+        "decision_class": "stick",
+        "valve": "FIRED",
+        "nozzles": [
+          24,
+          25
+        ],
+        "pulse_windows_s": [
+          [
+            1.0845599719999452,
+            1.0879599719999453
+          ],
+          [
+            1.0845599719999452,
+            1.0879599719999453
+          ]
+        ],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      },
+      {
+        "blob": 4,
+        "track": 711,
+        "predicted": "insect",
+        "confidence": 0.9855726005550849,
+        "decision_class": "insect",
+        "valve": "LATE: NO FIRE",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          708
+        ],
+        "truth": [
+          "insect"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 5,
+        "track": 705,
+        "predicted": "good",
+        "confidence": 0.9954751451864833,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          707
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 6,
+        "track": 706,
+        "predicted": "good",
+        "confidence": 0.9999880601997645,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          686
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 7,
+        "track": 707,
+        "predicted": "good",
+        "confidence": 0.968586659035083,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          700
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 8,
+        "track": 709,
+        "predicted": "faded",
+        "confidence": 0.9999614559085233,
+        "decision_class": "faded",
+        "valve": "FIRED",
+        "nozzles": [
+          13,
+          14
+        ],
+        "pulse_windows_s": [
+          [
+            1.0781232050965046,
+            1.0823160100050027
+          ],
+          [
+            1.0781232050965046,
+            1.0823160100050027
+          ]
+        ],
+        "bean_uids": [
+          696
+        ],
+        "truth": [
+          "faded"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 9,
+        "track": 708,
+        "predicted": "good",
+        "confidence": 0.9998740306000411,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          718
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 10,
+        "track": 702,
+        "predicted": "good",
+        "confidence": 0.993639988752317,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          699
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 11,
+        "track": 704,
+        "predicted": "good",
+        "confidence": 0.9961620281735132,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          710
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 12,
+        "track": 703,
+        "predicted": "good",
+        "confidence": 0.9999952851069595,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          711
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 13,
+        "track": 696,
+        "predicted": "sour",
+        "confidence": 0.9999997865121028,
+        "decision_class": "sour",
+        "valve": "LATE: NO FIRE",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          678
+        ],
+        "truth": [
+          "sour"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 14,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          694
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 15,
+        "track": 697,
+        "predicted": "good",
+        "confidence": 0.9769232565419069,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          698
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 16,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          697
+        ],
+        "truth": [
+          "black"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 17,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          692
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 18,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          688
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      }
+    ]
+  },
+  {
+    "image": "inspection_1.png",
+    "frame_time_s": 1.440000000000001,
+    "blobs": [
+      {
+        "blob": 0,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      },
+      {
+        "blob": 1,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1150
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 2,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1149
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 3,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1156
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 4,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      },
+      {
+        "blob": 5,
+        "track": 1156,
+        "predicted": "good",
+        "confidence": 0.8764500406307069,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1155
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 6,
+        "track": 1157,
+        "predicted": "good",
+        "confidence": 0.9998549405146394,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1164
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 7,
+        "track": 1158,
+        "predicted": "good",
+        "confidence": 0.9998941795338235,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1132
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 8,
+        "track": 1159,
+        "predicted": "good",
+        "confidence": 0.999846157354184,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1142
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 9,
+        "track": 1151,
+        "predicted": "good",
+        "confidence": 0.9999687377259671,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1146
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 10,
+        "track": 1152,
+        "predicted": "good",
+        "confidence": 0.9998882834298031,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1152
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 11,
+        "track": 1153,
+        "predicted": "good",
+        "confidence": 0.6278945928323177,
+        "decision_class": "faded",
+        "valve": "LATE: NO FIRE",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1134
+        ],
+        "truth": [
+          "faded"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 12,
+        "track": 1154,
+        "predicted": "good",
+        "confidence": 0.9989656099517957,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1144
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 13,
+        "track": 1155,
+        "predicted": "good",
+        "confidence": 0.9999625873961558,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1154
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 14,
+        "track": 1144,
+        "predicted": "good",
+        "confidence": 0.9112306926330042,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1130
+        ],
+        "truth": [
+          "faded"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 15,
+        "track": 1145,
+        "predicted": "good",
+        "confidence": 0.9999413230736693,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1129
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 16,
+        "track": 1146,
+        "predicted": "good",
+        "confidence": 0.9966467751331987,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1136
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 17,
+        "track": 1147,
+        "predicted": "faded",
+        "confidence": 0.99994293502692,
+        "decision_class": "faded",
+        "valve": "LATE: NO FIRE",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1147
+        ],
+        "truth": [
+          "faded"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 18,
+        "track": 1148,
+        "predicted": "good",
+        "confidence": 0.9981635700866048,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1145
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 19,
+        "track": 1149,
+        "predicted": "good",
+        "confidence": 0.9998548526350889,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1141
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 20,
+        "track": 1150,
+        "predicted": "good",
+        "confidence": 0.9982452001068457,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1137
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 21,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      }
+    ]
+  },
+  {
+    "image": "inspection_2.png",
+    "frame_time_s": 1.8800000000000014,
+    "blobs": [
+      {
+        "blob": 0,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      },
+      {
+        "blob": 1,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1589
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 2,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      },
+      {
+        "blob": 3,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      },
+      {
+        "blob": 4,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1550
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 5,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      },
+      {
+        "blob": 6,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      },
+      {
+        "blob": 7,
+        "track": 1590,
+        "predicted": "good",
+        "confidence": 0.9988489508985036,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1576
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 8,
+        "track": 1597,
+        "predicted": "good",
+        "confidence": 0.9980929429688711,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1612
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 9,
+        "track": 1592,
+        "predicted": "good",
+        "confidence": 0.9998833381324211,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1556
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "reject"
+        ]
+      },
+      {
+        "blob": 10,
+        "track": 1591,
+        "predicted": "good",
+        "confidence": 0.9998514485515989,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1594
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "reject"
+        ]
+      },
+      {
+        "blob": 11,
+        "track": 1593,
+        "predicted": "good",
+        "confidence": 0.9997836533188963,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1572
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 12,
+        "track": 1594,
+        "predicted": "good",
+        "confidence": 0.9998035237833137,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1585
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 13,
+        "track": 1587,
+        "predicted": "good",
+        "confidence": 0.7682273066773385,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1579
+        ],
+        "truth": [
+          "broken"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 14,
+        "track": 1595,
+        "predicted": "good",
+        "confidence": 0.9996536995959169,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1569
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 15,
+        "track": 1596,
+        "predicted": "insect",
+        "confidence": 0.9999962129974906,
+        "decision_class": "insect",
+        "valve": "LATE: NO FIRE",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1597
+        ],
+        "truth": [
+          "insect"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 16,
+        "track": 1588,
+        "predicted": "good",
+        "confidence": 0.9998000178028383,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1573
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 17,
+        "track": 1589,
+        "predicted": "good",
+        "confidence": 0.9999761761636153,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1582
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 18,
+        "track": 1580,
+        "predicted": "black",
+        "confidence": 0.9999986163162434,
+        "decision_class": "black",
+        "valve": "LATE: NO FIRE",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1580
+        ],
+        "truth": [
+          "black"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 19,
+        "track": 1581,
+        "predicted": "good",
+        "confidence": 0.9920358591196421,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1567
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 20,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          1587
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 21,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      },
+      {
+        "blob": 22,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      }
+    ]
+  },
+  {
+    "image": "inspection_3.png",
+    "frame_time_s": 2.339999999999964,
+    "blobs": [
+      {
+        "blob": 0,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      },
+      {
+        "blob": 1,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      },
+      {
+        "blob": 2,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      },
+      {
+        "blob": 3,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2065
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 4,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2032
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 5,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      },
+      {
+        "blob": 6,
+        "track": 2064,
+        "predicted": "good",
+        "confidence": 0.9973201926491168,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2049
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 7,
+        "track": 2058,
+        "predicted": "good",
+        "confidence": 0.9999580355811732,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2051
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 8,
+        "track": 2059,
+        "predicted": "good",
+        "confidence": 0.9997098013255853,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2059
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 9,
+        "track": 2060,
+        "predicted": "good",
+        "confidence": 0.7354413427709448,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2047,
+          2045
+        ],
+        "truth": [
+          "good",
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept",
+          "accept"
+        ]
+      },
+      {
+        "blob": 10,
+        "track": 2061,
+        "predicted": "good",
+        "confidence": 0.9921584865188006,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2050
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 11,
+        "track": 2062,
+        "predicted": "good",
+        "confidence": 0.9997246416380126,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2034
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 12,
+        "track": 2063,
+        "predicted": "sour",
+        "confidence": 0.9999978692585013,
+        "decision_class": "sour",
+        "valve": "LATE: NO FIRE",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2048
+        ],
+        "truth": [
+          "sour"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 13,
+        "track": 2055,
+        "predicted": "good",
+        "confidence": 0.999954524137564,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2056
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 14,
+        "track": 2057,
+        "predicted": "broken",
+        "confidence": 0.9999588815271806,
+        "decision_class": "broken",
+        "valve": "LATE: NO FIRE",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2030
+        ],
+        "truth": [
+          "broken"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 15,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2039,
+          2053
+        ],
+        "truth": [
+          "good",
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept",
+          "accept"
+        ]
+      },
+      {
+        "blob": 16,
+        "track": 2048,
+        "predicted": "broken",
+        "confidence": 0.9986493970191833,
+        "decision_class": "broken",
+        "valve": "LATE: NO FIRE",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2028
+        ],
+        "truth": [
+          "broken"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 17,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2025
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 18,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2058
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 19,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      },
+      {
+        "blob": 20,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      },
+      {
+        "blob": 21,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      }
+    ]
+  },
+  {
+    "image": "inspection_4.png",
+    "frame_time_s": 2.7799999999999154,
+    "blobs": [
+      {
+        "blob": 0,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      },
+      {
+        "blob": 1,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2496
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 2,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      },
+      {
+        "blob": 3,
+        "track": 2520,
+        "predicted": "good",
+        "confidence": 0.999841842827733,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2502
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 4,
+        "track": 2521,
+        "predicted": "good",
+        "confidence": 0.9982017922157798,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2485
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 5,
+        "track": 2515,
+        "predicted": "good",
+        "confidence": 0.9998317593849443,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2468
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 6,
+        "track": 2517,
+        "predicted": "black",
+        "confidence": 0.9999990365021738,
+        "decision_class": "black",
+        "valve": "LATE: NO FIRE",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2500
+        ],
+        "truth": [
+          "black"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 7,
+        "track": 2516,
+        "predicted": "good",
+        "confidence": 0.9999228799109455,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2465
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 8,
+        "track": 2518,
+        "predicted": "good",
+        "confidence": 0.9979178426963838,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2471
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 9,
+        "track": 2519,
+        "predicted": "good",
+        "confidence": 0.9997846147114855,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2478
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 10,
+        "track": 2513,
+        "predicted": "good",
+        "confidence": 0.9999280011447857,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2443
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 11,
+        "track": 2514,
+        "predicted": "good",
+        "confidence": 0.9976280247101819,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2494
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 12,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2466
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 13,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2470
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 14,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2469
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      }
+    ]
+  },
+  {
+    "image": "inspection_5.png",
+    "frame_time_s": 3.219999999999867,
+    "blobs": [
+      {
+        "blob": 0,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      },
+      {
+        "blob": 1,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      },
+      {
+        "blob": 2,
+        "track": 2969,
+        "predicted": "good",
+        "confidence": 0.999957787207079,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2927
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 3,
+        "track": 2970,
+        "predicted": "faded",
+        "confidence": 0.49879382416250445,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2925
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 4,
+        "track": 2971,
+        "predicted": "good",
+        "confidence": 0.9999175604465497,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2894
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 5,
+        "track": 2972,
+        "predicted": "good",
+        "confidence": 0.9998839147252158,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2919
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 6,
+        "track": 2973,
+        "predicted": "good",
+        "confidence": 0.9928424721712688,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2911
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 7,
+        "track": 2974,
+        "predicted": "good",
+        "confidence": 0.9918101931718771,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2920
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 8,
+        "track": 2975,
+        "predicted": "good",
+        "confidence": 0.9998855135955002,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2924
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 9,
+        "track": 2966,
+        "predicted": "good",
+        "confidence": 0.6718065437009504,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2935
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 10,
+        "track": 2965,
+        "predicted": "good",
+        "confidence": 0.999773329981231,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2951
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 11,
+        "track": 2967,
+        "predicted": "good",
+        "confidence": 0.9999793378324535,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2938
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 12,
+        "track": 2968,
+        "predicted": "good",
+        "confidence": 0.9995939591617118,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2934
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 13,
+        "track": 2962,
+        "predicted": "broken",
+        "confidence": 0.8343703112532228,
+        "decision_class": "broken",
+        "valve": "FIRED",
+        "nozzles": [
+          6,
+          5
+        ],
+        "pulse_windows_s": [
+          [
+            3.290506357999873,
+            3.293906357999873
+          ],
+          [
+            3.290506357999873,
+            3.293906357999873
+          ]
+        ],
+        "bean_uids": [
+          2929
+        ],
+        "truth": [
+          "broken"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 14,
+        "track": 2963,
+        "predicted": "good",
+        "confidence": 0.9999667007887766,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2933
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 15,
+        "track": 2964,
+        "predicted": "good",
+        "confidence": 0.9999885236266368,
+        "decision_class": "good",
+        "valve": "KEEP",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [
+          2928
+        ],
+        "truth": [
+          "good"
+        ],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": [
+          "accept"
+        ]
+      },
+      {
+        "blob": 16,
+        "track": -1,
+        "predicted": "partial",
+        "confidence": null,
+        "decision_class": null,
+        "valve": "UNDECIDED",
+        "nozzles": [],
+        "pulse_windows_s": [],
+        "bean_uids": [],
+        "truth": [],
+        "any_jet_hit": false,
+        "own_pulse_hit_uids": [],
+        "outcomes": []
+      }
+    ]
+  }
+]

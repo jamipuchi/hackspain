@@ -1,0 +1,27 @@
+test_deadline_is_checked_at_scheduling_point (test_controller.ControllerTest.test_deadline_is_checked_at_scheduling_point) ... ok
+test_decided_track_consumes_remaining_observations_through_pruning (test_controller.ControllerTest.test_decided_track_consumes_remaining_observations_through_pruning) ... ok
+test_fixed_latency_is_a_minimum_and_never_hides_slower_compute (test_controller.ControllerTest.test_fixed_latency_is_a_minimum_and_never_hides_slower_compute) ... ok
+test_induced_delay_changes_availability_and_prevents_late_pulse (test_controller.ControllerTest.test_induced_delay_changes_availability_and_prevents_late_pulse) ... ok
+test_latency_adds_capture_delay_and_includes_finalize (test_controller.ControllerTest.test_latency_adds_capture_delay_and_includes_finalize) ... ok
+test_explicit_activation_flag_overrides_window_inference (test_evidence.ValveEvidenceTest.test_explicit_activation_flag_overrides_window_inference) ... ok
+test_keep_and_unclassified_have_no_fire (test_evidence.ValveEvidenceTest.test_keep_and_unclassified_have_no_fire) ... ok
+test_late_reject_is_not_claimed_as_fired (test_evidence.ValveEvidenceTest.test_late_reject_is_not_claimed_as_fired) ... ok
+test_queued_pulse_needs_a_physics_step (test_evidence.ValveEvidenceTest.test_queued_pulse_needs_a_physics_step) ... ok
+test_saved_evidence_distinguishes_prediction_action_and_collateral_hit (test_evidence.ValveEvidenceTest.test_saved_evidence_distinguishes_prediction_action_and_collateral_hit) ... ok
+test_accept_purity_handles_mutable_bean_records (test_metrics.MetricsTest.test_accept_purity_handles_mutable_bean_records) ... ok
+test_camera_bean_cohorts_are_mutually_exclusive (test_metrics.MetricsTest.test_camera_bean_cohorts_are_mutually_exclusive) ... ok
+test_eligible_unresolved_beans_are_counted_in_denominator (test_metrics.MetricsTest.test_eligible_unresolved_beans_are_counted_in_denominator) ... ok
+test_empty_eligible_window_returns_zero_rates (test_metrics.MetricsTest.test_empty_eligible_window_returns_zero_rates) ... ok
+test_funnel_requires_activation_and_hit_from_the_decisions_own_pulse (test_metrics.MetricsTest.test_funnel_requires_activation_and_hit_from_the_decisions_own_pulse) ... ok
+test_physical_actuation_counts_target_and_jet_intersections (test_metrics.MetricsTest.test_physical_actuation_counts_target_and_jet_intersections) ... ok
+test_physical_binary_metrics_have_explicit_denominators_and_count_spills_as_errors (test_metrics.MetricsTest.test_physical_binary_metrics_have_explicit_denominators_and_count_spills_as_errors) ... ok
+test_policy_changes_which_severities_count_as_defects (test_metrics.MetricsTest.test_policy_changes_which_severities_count_as_defects) ... ok
+test_hud_scales_long_lines_inside_the_frame (test_render.HudTest.test_hud_scales_long_lines_inside_the_frame) ... ok
+test_hud_uses_a_dark_panel_and_separates_rows (test_render.HudTest.test_hud_uses_a_dark_panel_and_separates_rows) ... ok
+test_inspector_keeps_off_strip_skins_culled (test_render.RenderGroupsTest.test_inspector_keeps_off_strip_skins_culled) ... ok
+test_overview_shows_inspection_culled_skins (test_render.RenderGroupsTest.test_overview_shows_inspection_culled_skins) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 0.110s
+
+OK

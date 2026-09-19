@@ -54,6 +54,64 @@ cd ~/robotics/coffee_sorter
 
 Environment: the `../.venv` from the parent folder (MuJoCo 3.13, numpy, OpenCV, scikit-learn, matplotlib).
 
+For a fresh checkout, create a separate environment with the tested package versions:
+
+```bash
+uv venv --python 3.12 .venv
+uv pip install --python .venv/bin/python -r requirements.txt
+export MUJOCO_GL=osmesa  # headless CPU rendering; requires libOSMesa6
+export LP_NUM_THREADS=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+.venv/bin/python check_detect.py --iterations 100
+.venv/bin/python -m unittest discover -p 'test_*.py' -v
+.venv/bin/python run.py train --profile green_arabica --seconds 24 --rate 900 --boost 5
+.venv/bin/python run.py run --rate 2000 --seconds 8 --video
+```
+
+Run these commands from `sim/coffee_sorter/`. If Mesa is installed in a custom
+location, add its library directory to `LD_LIBRARY_PATH`. EGL is another option
+when the host provides a working EGL driver. The detector check compares every
+feature and blob coordinate exactly against `cad5f9b`, then reports timing on a
+camera frame when available. The timing target is hardware dependent.
+
+Reproduce the overnight experiments in the same environment:
+
+```bash
+.venv/bin/python run.py bench --rates 500,1000,2000,3000 --seconds 4 --name rate-sweep
+.venv/bin/python run_characterization.py latency
+.venv/bin/python run_characterization.py tuning
+.venv/bin/python plot_characterization.py rate --group-dir runs/rate-sweep --output runs/rate-sweep/rate_summary.png
+.venv/bin/python plot_characterization.py latency --group-dir runs/latency-sweep --output runs/latency-sweep/latency_summary.png
+```
+
+The batch runner resumes only after validating a complete run's metrics,
+decisions, evidence and six images. It reruns incomplete experiment directories.
+Use a process supervisor with automatic restart disabled for long batches.
+`--controller-delay-ms` adds simulated availability delay; the
+`--fixed-controller-latency-ms` option imposes a minimum total latency and never
+hides slower measured CPU work. `--target-nozzles` fixes valves per target;
+`--nozzles` changes the physical bank size. They are different experiments.
+
+Sensor-realism and economics commands use the same environment above:
+
+```bash
+# Validate/resume the saved cases; uses the tracked frozen green classifier.
+.venv/bin/python run_sensor_realism.py all
+# Actually recompute all cases, archiving existing case directories first.
+.venv/bin/python run_sensor_realism.py all --rerun
+# Recompute one case, or regenerate only the summary plots.
+.venv/bin/python run_sensor_realism.py run --scenario exposure-nominal-100us-1000 --rerun
+.venv/bin/python run_sensor_realism.py summarize
+.venv/bin/python economics.py --config configs/economics.json --output runs/economics
+.venv/bin/python economics.py --metrics 'runs/sensor-realism/*/metrics.json' --config configs/economics.json --output runs/sensor-economics
+```
+
+[Sensor settings](configs/sensor_realism_scenarios.json) label exposure, noise,
+jitter and feeder geometry as assumptions. Source/config/model identity and
+saved artifact integrity are checked before a completed case can be reused.
+A source or configuration change requires recomputing the affected suite.
+The economics settings in [configs/economics.json](configs/economics.json) are
+hypothetical price and duty assumptions, with zero salvage and costs excluded.
+
 ## What the system handles (variability)
 
 - 10 classes in the feed, with continuous variation in size (screen 14–18), colour, texture, orientation (random yaw + tilt), and position on a 0.5 m wide belt.
@@ -76,13 +134,202 @@ Environment: the `../.venv` from the parent folder (MuJoCo 3.13, numpy, OpenCV, 
 - The renderer draws the kinematics of the *previous* step: frames are timestamped `t - dt` and training labels use the rendered poses. Calibration error after that: 0.02 mm median.
 - Status: physics stable for 5+ simulated seconds at 2000 beans/s (≈1.5–3 s wall per simulated second, no viewer), camera strip segments beans against the blue belt, 23/23 blobs matched to ground truth in the check frame.
 
+**19 September — foreground detector and first trained classifier**
+
+- Detector statistics now use foreground pixels and cached coordinate grids.
+  Exact feature/coordinate equality against `cad5f9b` passes synthetic and real
+  frames, all edges, alternate sizes and non-contiguous inputs. On this CPU with
+  OpenCV using 32 threads, a 192×2080 frame with 9.237% foreground improved from
+  79.038 ms to 5.443 ms median (new p95 5.635 ms), about 14.5× faster. The requested
+  <5 ms target is **not met**; `check_detect.py --iterations 100 --max-p50-ms 5`
+  correctly fails that threshold. No feature tolerance was relaxed.
+- The requested 24 s, 900 beans/s, defect-boost 5 training run collected 61,929
+  labelled blobs. The 46,446 / 15,483 train/test split gave 97.91% accuracy,
+  96.99% defect recall and 1.02% good-bean false rejection.
+- These are simulated, blob-level holdout scores. Repeated views of a bean can
+  occur in both splits; they are not an independent-bean or real-camera accuracy
+  claim. Closed-loop physical outcomes are reported separately.
+- Fixed two runtime blockers: purity metrics tried to hash mutable `Bean`
+  records, and overview rendering hid beans culled from the inspection strip.
+  Regression tests cover those paths and controller scheduling.
+
+The first 8 s, 2000 beans/s video run evaluated 13,070 beans at an effective
+1976.4 beans/s. It removed 35.80% of defects, rejected 8.05% of good beans, and
+spilled 5.03%; one decision was late and the pool starved on 170 attempts.
+Classifier accuracy alone did not translate into good physical sorting.
+The complete baseline is preserved in the task's `first-run.tar.gz` attachment.
+
+The final run (`20260919_015039_green_arabica_2000`) evaluated 13,134 beans at
+1983.1 simulated beans/s: **38.89% defect removal, 7.96% good-bean loss, 4.72%
+spills, zero late decisions**, and 122 pool-starved attempts. Camera-centre
+decisions now retain already-decided tracks for association until they disappear,
+preventing repeat valve pulses. Nine regression tests pass. An intermediate run
+(`20260919_014250_green_arabica_2000`) had duplicate actuation and is diagnostic
+only; do not use it as final validation.
+
+Latency now adds the modeled 4 ms exposure/transfer delay to measured CPU work,
+including finalization. Final p50/p99/max were 40.87/45.69/81.73 ms against the
+nominal 73.33 ms camera-centre-to-jet budget. Zero observed late reject decisions
+is not a worst-case timing guarantee: maximum frame latency exceeded that budget.
+Synthetic rendering time is excluded from hardware-camera latency. The video run
+took 284.22 wall seconds for 8 simulated seconds, so this is not real-time execution.
+
+The jets do physically reject beans: 146 of 155 jet-hit black beans were rejected,
+but 281 black beans were targeted. Shell/husk spills and missed jet intersections
+remain substantial. `per_class` now includes `jet_hit`, `targeted_rejected`, and
+`jet_hit_rejected` to distinguish selection, physical actuation, and capture.
+`JET_FORCE`, pulse lengths, and splitter geometry remain unchanged: increasing
+force is not justified by these timing/coverage and light-fragment losses alone.
+The model, reports, final metrics/decisions/video, tests and review evidence are in
+the task's `final-validation.tar.gz` attachment.
+
+**19 September — attributable visual baseline**
+
+The overnight characterization baseline is now committed with a full 8 s HUD
+video and six post-run annotated inspection sheets. It records 81.79% physical
+accuracy, 45.45% rejection precision, 38.85% defect recall, 7.95% good false ejects,
+4.72% spills and zero late reject decisions. All eligible beans, including 14
+unresolved beans, remain in the denominator. Ever-merged defect recall is 26.23%
+versus 47.04% for single-only beans. Twenty-two regression tests pass.
+See [NIGHT_LOG.md](NIGHT_LOG.md) for the numbers, limits and phone video links.
+
+The 4 s rate sweep is complete. From 500 to 2000 requested beans/s, physical
+recall falls from 61.62% to 42.55% while good false ejects rise from 2.87% to
+8.06%. At 3000 requested beans/s, the original pool admits only 2214 beans/s
+and starves on 2867 attempts. That point measures a throttled plant, not a
+3000-bean/s controller. [Nine-panel rate plot](runs/rate-sweep/rate_summary.png)
+and [overlap cohorts](runs/rate-sweep/cohort_summary.png) show the tradeoffs.
+
+The [latency sweep](runs/latency-sweep/latency_summary.png) adds 0/20/30/40/60 ms
+at 1000 beans/s. Late reject decisions are 0/0/6.89/79.02/99.42%; physical recall
+falls to 16.53% and 5.75% at the last two points. A positive median headroom does
+not guarantee all tracks meet their deadlines. The plot shows actual track
+headroom and the controller's 2 ms tolerance beyond predicted jet arrival.
+Camera backlog is not modeled; this tests simulated availability and transport.
+
+The physical screen compares jet force, pulse length, splitter height, valve
+coverage and pool capacity. At 1000 beans/s, reducing force from 0.09 to 0.06 N
+improved seed-0 recall 44.44% → 51.45% and reduced good false ejects
+5.74% → 4.08%. Fresh seed 1 repeated the direction: recall 48.50% → 51.53%,
+false ejects 6.27% → 4.26%. Use `--jet-force 0.06` as an explicit demo setting;
+defaults remain unchanged pending longer paired runs. The enlarged pool admits
+3000 beans/s without starvation, but good false ejects reach 10.10%.
+[Tuning plot](runs/tuning-sweep/tuning_1000_summary.png),
+[confirmation](runs/confirmation-seed1/confirmation_summary.png), and
+[readable HUD demo](runs/confirmation-seed1/force-0.06/overview_h264.mp4)
+are committed with metrics and annotated frames. Twenty-six tests pass.
+
+**19 September — product transfer after retraining**
+
+The stock roasted training command works with no shared controller, vision or
+simulation edits. Matched seed-1 runs at 1,000 beans/s give green/roasted physical
+recall 51.53%/39.51% and good false ejects 4.26%/3.82%, each over 2,600 eligible
+beans. Roasted blob holdout accuracy is 98.62%; repeated bean views can cross
+that split. Product configuration transfers; equivalent physical quality does not.
+[Confusion matrices](runs/generalization/comparison/confusion_matrices.png),
+[labelled camera contact sheet](runs/generalization/comparison/camera_strip_contact_sheet.png),
+[full metrics](runs/generalization/comparison/metrics.json) and
+[methodology](runs/generalization/comparison/methodology.json) preserve the evidence.
+Reproduce with `python run_generalization.py all` in the environment above;
+the committed staged models preserve the measured run when resuming.
+
+**19 September — unseen objects and threshold cost**
+
+The unchanged green model flags new colours but misses oversized green objects:
+at its trained anomaly threshold, only 1/201 selected oversized objects is
+flagged. The conditional camera curve flags 319/519 unknown objects overall;
+coverage and raw repeated views are reported separately. Independent seed-42
+physics captures 81/216 unknowns (37.50%) with 9/444 good false ejects (2.03%).
+Lowering the threshold to 8.27 captures only four more unknowns while ejecting
+ten more good beans. Keep the trained threshold. Some plastic chips fall into
+reject without any jet hit; capture alone does not prove anomaly-driven ejection.
+
+[Camera threshold curve](runs/generalization/openset/threshold_sweep.png),
+[actual physical tradeoff](runs/generalization/physical-thresholds/physical_tradeoff.png)
+and [8× slow unknown-object demo](runs/generalization/openset/demo/unknown_8x_slow.mp4)
+are accompanied by counts, hashes, raw observations and limitations in
+[NIGHT_LOG.md](NIGHT_LOG.md). These are synthetic experiments, not hardware validation.
+For a fresh checkout, copy `runs/generalization/green_arabica/model/green_arabica.joblib`
+to `models/green_arabica.joblib` to use the exact tested model.
+Reproduce with `python openset.py sweep`, `python openset.py physics --output runs/generalization/openset/demo`, and
+`bash runs/generalization/physical-thresholds/run.sh` (set `COFFEE_PYTHON` for
+another virtual environment); `plot.py` in that directory regenerates the
+physical chart. `bash runs/generalization/publish.sh` uploads and byte-verifies
+the six visual outputs using an authenticated agent-fs CLI.
+
+**19 September — sensor realism and economics**
+
+Twelve synthetic cases measure physical accuracy, defect recall, good false
+ejection, merged beans and camera/actuation diagnostics. The nine 1,000/s cases
+use the same 2,600 eligible products. **Illumination hurts most among the tested
+single factors:** −30% brightness lowers physical accuracy 88.65% → 69.81%,
+recall 48.67% → 34.84%, and raises good false ejection 4.14% → 22.80%.
+Singleton camera accuracy falls 97.83% → 67.56%, identifying a substantial
+vision failure. Stabilize illumination before relying on this classifier.
+
+Assumed 100/500 µs shutter exposures produce 1.2/6 px centered motion blur at
+3 m/s. Good false ejection rises to 5.98%/15.78%. Actual shutter exposure is
+unknown; the existing 4 ms pipeline floor is not a shutter measurement.
+Crowded feed admits only 1,193/s of the requested 3,000/s, with 38.46% of
+eligible beans ever seen merged. Its cohort differs from the high-feed
+reference. One seed, four simulated seconds per case, synthetic camera noise,
+and omitted camera backlog prevent hardware or real-time claims.
+The combined assumed stress case admits 1,201/s and gives 68.59% physical
+accuracy, 31.36% defect recall and 24.40% good false ejection.
+[All twelve cases](runs/sensor-realism/REPORT.md),
+[four-panel plot](runs/sensor-realism/summary.png),
+[camera contact sheet](runs/sensor-realism/camera_contact_sheet.png), and
+[diagnostics and cohort checks](runs/sensor-realism/summary.json) preserve the evidence.
+
+The [current sensor-run mass/value ledger](runs/sensor-economics/report.md)
+gives **576 kg/h input and EUR −187.20/h before costs** for the clean 1,000/s
+reference: equal 0.20 g/object, 80% duty, EUR 6/kg unsorted feed, hypothetical
+EUR 0.50/kg accepted-stream premium, and zero salvage. It accepts 502.9 kg/h,
+rejects 40.5 kg/h of defects, falsely rejects 20.4 kg/h of good beans and spills
+another 2.2 kg/h of good beans. Accepted output still contains 6.52% policy
+defects by count; grade eligibility is unverified. Break-even requires
+EUR 0.872/kg premium before operating, labor or capital costs.
+
+The [historical rate-sweep ledger](runs/economics/report.md) retains all four
+rates and its EUR −221.76/h 1,000/s result; it uses the earlier 0.09 N setting
+and a different cohort. The sensor sweep uses 0.06 N. Neither ledger establishes
+a profitable sorter. [NIGHT_LOG.md](NIGHT_LOG.md) records assumptions, failure
+diagnostics and validation; all 65 tests pass.
+
+**19 September — UR5e infeed picking prototype**
+
+The bounded [UR5e pick-cell report](runs/ur5e-infeed/REPORT.md) evaluates
+synthetic red oversize pieces on a slow moving infeed using the Menagerie UR5e
+and mink: **2/2 idealized removals at 0.10 m/s; 3/4 at 0.28 m/s in a burst**,
+plus one object excluded by the configured workspace policy. This is a kinematic prototype with ideal attachment, assisted camera
+association and known object heights; contact grasp, actuator dynamics and
+collision avoidance remain unverified. Its infeed is evaluated separately
+from the 3 m/s optical-sorter discharge loop. The deterministic cases preserve
+all large-object outcomes, including misses, in their denominators.
+
+Use [requirements-picking.txt](requirements-picking.txt) and
+[setup_ur5e_pick.sh](setup_ur5e_pick.sh) for the pinned robot/IK environment.
+The [report reproduction commands](runs/ur5e-infeed/REPORT.md#reproduce) generate
+metrics, timed events, joint trajectories, plots and videos in the existing
+`runs/ur5e-infeed/` convention. These small synthetic cases do not establish
+hardware throughput, general perception accuracy or grasp reliability.
+
 **Next**
 
-- [ ] speed up `vision.detect` (statistics over foreground pixels only) and train the classifier
-- [ ] first closed-loop run with metrics + video
-- [ ] rate sweep 500 → 3000 beans/s, latency vs the 73 ms camera-to-jet budget
-- [ ] `roasted` profile without touching the controller (generalisation)
-- [ ] UR5e (Menagerie + mink) picking oversize foreign matter off the infeed — the one thing the air jets cannot do
+- [x] foreground-only `vision.detect` with exact equivalence proof; train the classifier
+- [x] first closed-loop run with metrics + video
+- [ ] meet the <5 ms detector target and improve physical rejection/yield/spills
+- [x] rate sweep 500 → 3000 beans/s, latency vs the 73 ms camera-to-jet budget
+- [x] physical tuning screen, separate merged-bean metrics, fresh-seed demo and phone evidence
+- [ ] longer paired seeds for 0.06 N; improve merged-target jet intersection and capture
+- [ ] model camera backlog before claiming hardware timing margin
+- [x] sensor degradation sweep and throughput/value ledger with stated assumptions
+- [ ] stabilize illumination and validate photometric robustness before hardware accuracy claims
+- [ ] calibrate exposure, sensor noise and belt jitter from real hardware; verify buyer grade premium
+- [x] `roasted` profile without touching the controller; matched quality measured
+- [x] unseen colour/material/size experiment, anomaly and physical threshold tradeoffs
+- [x] UR5e (Menagerie + mink) infeed prototype with quantified ideal-grasp outcomes ([report](runs/ur5e-infeed/REPORT.md))
+- [ ] validate UR5e perception, contact grasp, collision avoidance and physical bin capture on hardware
 - [ ] one-slide summary
 
 ## Renders so far
@@ -90,13 +337,28 @@ Environment: the `../.venv` from the parent folder (MuJoCo 3.13, numpy, OpenCV, 
 `runs/preview/overview.png`, `runs/preview/discharge.png`, `runs/preview/topdown.png`, and the camera strip
 `runs/preview/inspection_labeled.png` (boxes = detected blobs, text = ground-truth class where matched).
 
+New closed-loop runs also save annotated inspection sheets and
+`inspection_evidence.json`. Each sheet links a numbered camera blob to its
+predicted class/confidence, fused track decision, valve indices and final
+outcome. `FIRED` means that a queued pulse actually reached its activation time;
+it does not imply a physical hit. `own hits` identifies constituents touched by
+that track's pulse. These are post-run annotations using simulator ground truth,
+not information available to the controller.
+
+Merged-blob measurements count every projected bean centre inside a connected
+component. Their binary action truth is whether any constituent should be
+rejected under the current policy. Single-blob multiclass accuracy, merged-blob
+action correctness and physical bean outcomes have different denominators and
+must not be compared as interchangeable accuracy figures.
+
 ## Handoff notes (for whoever continues)
 
-- Python env: `~/robotics/.venv` (created with `uv`; add packages with `uv pip install --python ../.venv/bin/python <pkg>`). Run everything from this folder with `../.venv/bin/python run.py ...`. Assets regenerate automatically (`assets.build()` is called by the CLI).
-- **Known bottleneck**: `vision.Inspector.detect` builds `xs, ys = np.divmod(np.arange(H*W), W)` and runs ~20 `np.bincount` calls over all 400k pixels per frame (~40–50 ms). Restrict everything to `idx = np.flatnonzero(mask)` (foreground ≈ 5 % of pixels) and precompute the coordinate grids once in `__init__`. Target: < 5 ms per frame, so 250 fps of simulated camera costs ~1 s wall per simulated second. `run.py train` was started once and killed for being slow because of this; no model exists in `models/` yet.
-- Training then is: `../.venv/bin/python run.py train --profile green_arabica --seconds 24 --rate 900 --boost 5` → `models/green_arabica.joblib` + `runs/train_green_arabica/{report.json,confusion.png}`. `--boost` multiplies defect priors so classes are balanced.
-- The closed loop is `run.py run` (untested end to end until a model exists). Things to verify on the first run: (1) valves actually deflect beans below the splitter (`per_class[...]['rejected']` vs `['targeted']` in `metrics.json`; tune `JET_FORCE`, `Policy.base_pulse`, or `Layout.split_z_drop`), (2) `late_decisions` is 0 (latency budget is `(ej_x - cam_x)/belt_speed` = 73 ms), (3) `spilled_rate` stays low (beans lost off the belt sides or bouncing; `Bean.last_pos` says where).
+- See [NIGHT_LOG.md](NIGHT_LOG.md) for the overnight experiment record and phone-accessible evidence. [NIGHT_PLAN.md](NIGHT_PLAN.md) tracks characterization; [the generalization plan](runs/generalization/PLAN.md) tracks product transfer and unseen objects.
+- Use the fresh-checkout environment instructions above. The previous workstation used `~/robotics/.venv`; environment paths are local and are not shipped. Assets regenerate automatically (`assets.build()` is called by the CLI).
+- Foreground-only detection and cached coordinate grids are implemented. The measured detector median is 5.44 ms; the <5 ms target remains open. Use `check_detect.py` to measure the current host and verify exact feature equivalence.
+- The first model was trained with `run.py train --profile green_arabica --seconds 24 --rate 900 --boost 5`. The model and training report are in the prior task's archive, linked in the night log. They are ignored by Git; train or restore them for a fresh checkout. `--boost` multiplies defect priors.
+- The closed loop runs end to end. Compare targeted, jet-hit and rejected counts separately in `metrics.json`; classification does not guarantee physical capture. The nominal camera-centre budget is `(ej_x - cam_x)/belt_speed` = 73.33 ms. Spills and missed jet intersections remain the primary physical issues.
 - Body pool: 1150 ellipsoid beans ≈ 2000 beans/s × 0.5 s transit. If `pool_starved` grows in `metrics.json`, raise `Layout.n_ellipsoid` (physics cost is roughly linear in active contacts).
 - Physics conventions: x = belt travel, y = across the belt, z = up; belt surface at `Layout.belt_z = 0.60`; belt end at x = 0; camera strip centred at `cam_x = -0.12`; nozzles at `ej_x = 0.10`; splitter blade at `split_x = 0.34`, `split_z_drop = 0.125` below the belt.
 - Do not put beans back on `implicit` integrator hoping for stability: it is 10× slower here; the per-body rotational damping/armature in `sim.spawn` is what keeps `implicitfast` stable.
-- Robot-arm extension idea (not started): an infeed inspection belt at ~0.3 m/s ahead of the sorter with a UR5e from `../mujoco_menagerie/universal_robots_ur5e` and differential IK from `mink` (see `../demos/mink_ur5e_ik.py`) picking stones/sticks/clumps that air jets cannot move. Keep it a separate module; the fast sorter must not depend on it.
+- The robot-arm prototype is in `ur5e_infeed.py` with CLI `run_ur5e_infeed.py`; see [its report](runs/ur5e-infeed/REPORT.md) and [plan](PICKING_PLAN.md). It uses a separate slow infeed with y as travel, x as lane and z as up, plus the existing HUD/artifact conventions. The fast optical sorter does not depend on it. Camera association and height remain assisted; fixture collisions, physical grasp and dynamic bin capture are unvalidated.

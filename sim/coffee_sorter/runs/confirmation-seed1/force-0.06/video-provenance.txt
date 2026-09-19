@@ -1,0 +1,18 @@
+transcode_command=/usr/local/bin/ffmpeg -y -i overview.mp4 -c:v libx264 -preset medium -crf 23 -pix_fmt yuv420p -movflags +faststart -an overview_h264.mp4
+{
+  "codec_fourcc": "h264",
+  "width": 1280,
+  "height": 720,
+  "fps": 50.0,
+  "frames": 200,
+  "duration_s": 4.0,
+  "size_bytes": 1340051
+}
+3e0e41dc53abbe43a76c6a64e3342125f39d19589bdf21599ee26e1784a6be9b  runs/confirmation-seed1/force-0.06/overview.mp4
+82315f845cba70ab416d1a1a364370cd09e3300216f634cab11a0cf511c2d746  runs/confirmation-seed1/force-0.06/overview_h264.mp4
+4c102e4076477c9f2a86d18e6fce43e6d37b7ab3ea49bf84f29a908a550aaa0f  runs/confirmation-seed1/force-0.06/hud_frame100.png
+715391c132c95354d62941c193bf65c2305ab9e2cade7c2d8d3d55cbc35b2be5  runs/confirmation-seed1/force-0.06/final_frame.png
+raw_source_moved_to=/tmp/coffee-confirm-overview-raw.mp4
+simulation_end_s=3.999999999999781
+classifier_sha256=0b9e164cbf4df18f904f30fde38e0b7ed352877653849cc55da25e6f143051c8
+run_command=/workspace/personal/venvs/coffee-sorter/bin/python -u run.py run --rate 1000 --seconds 4 --seed 1 --fixed-controller-latency-ms 60 --jet-force 0.06 --video --name confirmation-seed1/force-0.06

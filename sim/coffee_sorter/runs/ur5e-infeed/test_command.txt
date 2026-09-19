@@ -1,0 +1,5 @@
+From sim/coffee_sorter/:
+
+env LD_LIBRARY_PATH=/home/worker/.cache/coffee-sorter/mesa/root/usr/lib/x86_64-linux-gnu MUJOCO_GL=osmesa PYOPENGL_PLATFORM=osmesa MUJOCO_MENAGERIE_DIR=/tmp/mujoco_menagerie REQUIRE_UR5E_MODEL=1 /tmp/coffee-pick-venv/bin/python -m unittest discover -p 'test_*.py' -v
+
+REPORT.md gives portable setup and reproduction commands.

@@ -1,0 +1,1635 @@
+{
+  "method": "1000/s one-factor comparisons assert identical realized product cohorts from item-keyed feed manifests; 3000/s crowded cases report effective admission and do not claim causal pairing if eligibility differs.",
+  "assumptions": {
+    "exposure": "Hardware exposure is unknown. Nominal 100 us and stress 500 us are ASSUMED. Blur pixels = 3 m/s * exposure seconds * 4000 px/m; image formation uses a centered fractional box integration over pixel cells, so timestamps represent exposure midpoints.",
+    "latency": "Exposure changes image formation only. It is distinct from the existing 4 ms pipeline latency floor; every scenario keeps a 60 ms minimum total controller latency.",
+    "noise_nominal": "ASSUMED well-lit sensor: Gaussian shot-noise approximation at 16 photoelectrons/DN plus 1 DN RMS read noise.",
+    "noise_stress": "ASSUMED lower-light sensor: Gaussian shot-noise approximation at 4 photoelectrons/DN plus 3 DN RMS read noise.",
+    "jitter": "ASSUMED sinusoidal 8 Hz physical belt-speed variation of +/-5%; controller layout remains at nominal 3 m/s.",
+    "touching": "ASSUMED crowded feed uses a +/-60 mm lane and 0.2 mm minimum spawn surface gap; physics may bring beans into contact but spawning forbids penetration.",
+    "runtime": "Synthetic sensor-transform wall cost is reported separately and excluded from measured detector/controller CPU. Runs make no real-time claim."
+  },
+  "rows": [
+    {
+      "slug": "base-1000",
+      "label": "matched synthetic baseline",
+      "comparison": "base-1000",
+      "requested_rate_beans_per_s": 1000.0,
+      "effective_rate_beans_per_s": 1000.0000000000686,
+      "eligible_beans": 2600,
+      "resolved_beans": 2600,
+      "defects_to_remove": 376,
+      "keep_beans": 2224,
+      "rejected_beans": 275,
+      "physical_accuracy": 0.8865384615384615,
+      "physical_defect_recall": 0.4867021276595745,
+      "physical_good_false_eject_rate": 0.04136690647482014,
+      "physical_intervals_95": {
+        "defect_removal": [
+          0.4365708045456536,
+          0.5371024318771078
+        ],
+        "physical_reject_recall": [
+          0.4365708045456536,
+          0.5371024318771078
+        ],
+        "physical_reject_precision": [
+          0.6077467720320194,
+          0.7186033851898584
+        ],
+        "good_yield_loss": [
+          0.033850763673710545,
+          0.050464746010640445
+        ],
+        "good_false_eject_rate": [
+          0.033850763673710545,
+          0.050464746010640445
+        ],
+        "physical_reject_accuracy": [
+          0.8737727444908409,
+          0.8981636129281357
+        ]
+      },
+      "feed": {
+        "eligible_product_identity_sha256": "29dc915302b63d5726ad87e221ff190d51da3646a7a35a1dce2f85249583e333",
+        "eligible_product_cohort": {
+          "good": 2224,
+          "faded": 74,
+          "broken": 45,
+          "sour": 65,
+          "shell": 27,
+          "stick": 10,
+          "insect": 44,
+          "black": 73,
+          "husk": 26,
+          "stone": 12
+        },
+        "eligible_product_count": 2600
+      },
+      "vision": {
+        "single_top1_correct": 10690,
+        "single_top1_denominator": 10927,
+        "single_top1_accuracy": 0.9783106067539123,
+        "defect_action_true_positive": 1475,
+        "defect_action_false_negative": 145,
+        "defect_action_recall_denominator": 1620,
+        "defect_action_recall": 0.9104938271604939,
+        "good_action_false_positive": 143,
+        "good_action_true_negative": 9579,
+        "good_false_eject_denominator": 9722,
+        "good_false_eject_rate": 0.01470890763217445,
+        "note": "Observation-level diagnostics; merged truth means any constituent is rejectable."
+      },
+      "camera_decision_coverage": {
+        "eligible_beans": 2600,
+        "beans_seen_in_full_blob": 2530,
+        "bean_coverage": 0.9730769230769231,
+        "full_blob_observations": 11342,
+        "tracks_created": 3719,
+        "finalized_decisions": 3712,
+        "track_decision_coverage": 0.9981177735950524,
+        "frames": 1000
+      },
+      "late_miss_own_hit_funnel": {
+        "reject_decisions": 566,
+        "late_no_fire_decisions": 0,
+        "scheduled_reject_decisions": 566,
+        "scheduled_not_activated": 10,
+        "activated_reject_decisions": 556,
+        "reject_decisions_with_ground_truth_association": 538,
+        "associated_activated_own_pulse_miss": 185,
+        "own_pulse_hit_decisions": 343,
+        "own_pulse_hit_and_rejected": 290,
+        "note": "Diagnostic funnel only; final outcomes alone do not isolate vision or timing causality."
+      },
+      "merged_cohorts": {
+        "single_only_beans": 2282,
+        "ever_merged_beans": 248,
+        "never_observed_beans": 70,
+        "eligible_beans": 2600,
+        "ever_merged_occupancy": 0.09538461538461539,
+        "merged_blob_observations": 415,
+        "full_blob_observations": 11342,
+        "merged_observation_fraction": 0.036589666725445245
+      },
+      "runtime": {
+        "camera_interval_ms": 4.0,
+        "detector_controller_cpu_overruns": 996,
+        "detector_controller_frames": 1000,
+        "detector_controller_overrun_fraction": 0.996,
+        "sensor_transform_ms": {
+          "p50": 0.08862500089890091,
+          "p99": 0.13577530025941087,
+          "max": 0.16572200001974124
+        },
+        "sensor_transform_excluded_from_detector_controller_cpu": true,
+        "effective_camera_fps_sim_time": 250.00000000001367,
+        "no_real_time_claim": true
+      },
+      "physical": {
+        "actual_belt_speed_m_per_s": {
+          "minimum": 3.0,
+          "mean": 3.0,
+          "maximum": 3.0
+        },
+        "controller_nominal_belt_speed_m_per_s": 3.0,
+        "crowded_spawn_failures": 0,
+        "minimum_admitted_spawn_surface_gap_m": null,
+        "desired_feed_events": 4000,
+        "admission_limited_events": 0,
+        "pending_planned_feed_item": null,
+        "crowded_bean_contact_steps": 0,
+        "crowded_bean_contact_pairs": 0
+      }
+    },
+    {
+      "slug": "brightness-minus30-1000",
+      "label": "one factor: brightness -30%",
+      "comparison": "base-1000",
+      "requested_rate_beans_per_s": 1000.0,
+      "effective_rate_beans_per_s": 1000.0000000000686,
+      "eligible_beans": 2600,
+      "resolved_beans": 2599,
+      "defects_to_remove": 376,
+      "keep_beans": 2224,
+      "rejected_beans": 638,
+      "physical_accuracy": 0.698076923076923,
+      "physical_defect_recall": 0.3484042553191489,
+      "physical_good_false_eject_rate": 0.22796762589928057,
+      "physical_intervals_95": {
+        "defect_removal": [
+          0.301996362666586,
+          0.39787853255289496
+        ],
+        "physical_reject_recall": [
+          0.301996362666586,
+          0.39787853255289496
+        ],
+        "physical_reject_precision": [
+          0.17579231534733253,
+          0.23839336535644234
+        ],
+        "good_yield_loss": [
+          0.21100958663720598,
+          0.24586382842066884
+        ],
+        "good_false_eject_rate": [
+          0.21100958663720598,
+          0.24586382842066884
+        ],
+        "physical_reject_accuracy": [
+          0.6801483586420946,
+          0.7154210185427542
+        ]
+      },
+      "feed": {
+        "eligible_product_identity_sha256": "29dc915302b63d5726ad87e221ff190d51da3646a7a35a1dce2f85249583e333",
+        "eligible_product_cohort": {
+          "good": 2224,
+          "faded": 74,
+          "broken": 45,
+          "sour": 65,
+          "shell": 27,
+          "stick": 10,
+          "insect": 44,
+          "black": 73,
+          "husk": 26,
+          "stone": 12
+        },
+        "eligible_product_count": 2600
+      },
+      "vision": {
+        "single_top1_correct": 7209,
+        "single_top1_denominator": 10671,
+        "single_top1_accuracy": 0.6755692999718864,
+        "defect_action_true_positive": 1175,
+        "defect_action_false_negative": 412,
+        "defect_action_recall_denominator": 1587,
+        "defect_action_recall": 0.7403906742281033,
+        "good_action_false_positive": 3068,
+        "good_action_true_negative": 6503,
+        "good_false_eject_denominator": 9571,
+        "good_false_eject_rate": 0.32055166649252953,
+        "note": "Observation-level diagnostics; merged truth means any constituent is rejectable."
+      },
+      "camera_decision_coverage": {
+        "eligible_beans": 2600,
+        "beans_seen_in_full_blob": 2506,
+        "bean_coverage": 0.9638461538461538,
+        "full_blob_observations": 11158,
+        "tracks_created": 3836,
+        "finalized_decisions": 3834,
+        "track_decision_coverage": 0.9994786235662148,
+        "frames": 1000
+      },
+      "late_miss_own_hit_funnel": {
+        "reject_decisions": 1473,
+        "late_no_fire_decisions": 0,
+        "scheduled_reject_decisions": 1473,
+        "scheduled_not_activated": 27,
+        "activated_reject_decisions": 1446,
+        "reject_decisions_with_ground_truth_association": 1380,
+        "associated_activated_own_pulse_miss": 527,
+        "own_pulse_hit_decisions": 827,
+        "own_pulse_hit_and_rejected": 696,
+        "note": "Diagnostic funnel only; final outcomes alone do not isolate vision or timing causality."
+      },
+      "merged_cohorts": {
+        "single_only_beans": 2201,
+        "ever_merged_beans": 305,
+        "never_observed_beans": 94,
+        "eligible_beans": 2600,
+        "ever_merged_occupancy": 0.11730769230769231,
+        "merged_blob_observations": 487,
+        "full_blob_observations": 11158,
+        "merged_observation_fraction": 0.04364581466212583
+      },
+      "runtime": {
+        "camera_interval_ms": 4.0,
+        "detector_controller_cpu_overruns": 995,
+        "detector_controller_frames": 1000,
+        "detector_controller_overrun_fraction": 0.995,
+        "sensor_transform_ms": {
+          "p50": 1.4185774998622946,
+          "p99": 2.7926532005403706,
+          "max": 8.601912999438355
+        },
+        "sensor_transform_excluded_from_detector_controller_cpu": true,
+        "effective_camera_fps_sim_time": 250.00000000001367,
+        "no_real_time_claim": true
+      },
+      "physical": {
+        "actual_belt_speed_m_per_s": {
+          "minimum": 3.0,
+          "mean": 3.0,
+          "maximum": 3.0
+        },
+        "controller_nominal_belt_speed_m_per_s": 3.0,
+        "crowded_spawn_failures": 0,
+        "minimum_admitted_spawn_surface_gap_m": null,
+        "desired_feed_events": 4000,
+        "admission_limited_events": 0,
+        "pending_planned_feed_item": null,
+        "crowded_bean_contact_steps": 0,
+        "crowded_bean_contact_pairs": 0
+      }
+    },
+    {
+      "slug": "brightness-plus30-1000",
+      "label": "one factor: brightness +30%",
+      "comparison": "base-1000",
+      "requested_rate_beans_per_s": 1000.0,
+      "effective_rate_beans_per_s": 1000.0000000000686,
+      "eligible_beans": 2600,
+      "resolved_beans": 2600,
+      "defects_to_remove": 376,
+      "keep_beans": 2224,
+      "rejected_beans": 567,
+      "physical_accuracy": 0.7642307692307693,
+      "physical_defect_recall": 0.47606382978723405,
+      "physical_good_false_eject_rate": 0.17446043165467626,
+      "physical_intervals_95": {
+        "defect_removal": [
+          0.4260795607488921,
+          0.5265322648120786
+        ],
+        "physical_reject_recall": [
+          0.4260795607488921,
+          0.5265322648120786
+        ],
+        "physical_reject_precision": [
+          0.27878759956052884,
+          0.3550863157252527
+        ],
+        "good_yield_loss": [
+          0.15925268712276763,
+          0.19079087073161477
+        ],
+        "good_false_eject_rate": [
+          0.15925268712276763,
+          0.19079087073161477
+        ],
+        "physical_reject_accuracy": [
+          0.7475318821271653,
+          0.7801499860786427
+        ]
+      },
+      "feed": {
+        "eligible_product_identity_sha256": "29dc915302b63d5726ad87e221ff190d51da3646a7a35a1dce2f85249583e333",
+        "eligible_product_cohort": {
+          "good": 2224,
+          "faded": 74,
+          "broken": 45,
+          "sour": 65,
+          "shell": 27,
+          "stick": 10,
+          "insect": 44,
+          "black": 73,
+          "husk": 26,
+          "stone": 12
+        },
+        "eligible_product_count": 2600
+      },
+      "vision": {
+        "single_top1_correct": 8027,
+        "single_top1_denominator": 10745,
+        "single_top1_accuracy": 0.7470451372731503,
+        "defect_action_true_positive": 1424,
+        "defect_action_false_negative": 135,
+        "defect_action_recall_denominator": 1559,
+        "defect_action_recall": 0.9134060295060936,
+        "good_action_false_positive": 2596,
+        "good_action_true_negative": 7049,
+        "good_false_eject_denominator": 9645,
+        "good_false_eject_rate": 0.2691550025920166,
+        "note": "Observation-level diagnostics; merged truth means any constituent is rejectable."
+      },
+      "camera_decision_coverage": {
+        "eligible_beans": 2600,
+        "beans_seen_in_full_blob": 2509,
+        "bean_coverage": 0.965,
+        "full_blob_observations": 11204,
+        "tracks_created": 3745,
+        "finalized_decisions": 3740,
+        "track_decision_coverage": 0.9986648865153538,
+        "frames": 1000
+      },
+      "late_miss_own_hit_funnel": {
+        "reject_decisions": 1333,
+        "late_no_fire_decisions": 0,
+        "scheduled_reject_decisions": 1333,
+        "scheduled_not_activated": 25,
+        "activated_reject_decisions": 1308,
+        "reject_decisions_with_ground_truth_association": 1279,
+        "associated_activated_own_pulse_miss": 424,
+        "own_pulse_hit_decisions": 830,
+        "own_pulse_hit_and_rejected": 691,
+        "note": "Diagnostic funnel only; final outcomes alone do not isolate vision or timing causality."
+      },
+      "merged_cohorts": {
+        "single_only_beans": 2193,
+        "ever_merged_beans": 316,
+        "never_observed_beans": 91,
+        "eligible_beans": 2600,
+        "ever_merged_occupancy": 0.12153846153846154,
+        "merged_blob_observations": 459,
+        "full_blob_observations": 11204,
+        "merged_observation_fraction": 0.04096751160299893
+      },
+      "runtime": {
+        "camera_interval_ms": 4.0,
+        "detector_controller_cpu_overruns": 998,
+        "detector_controller_frames": 1000,
+        "detector_controller_overrun_fraction": 0.998,
+        "sensor_transform_ms": {
+          "p50": 1.3927170002716593,
+          "p99": 1.7226670894706329,
+          "max": 5.2299270009825705
+        },
+        "sensor_transform_excluded_from_detector_controller_cpu": true,
+        "effective_camera_fps_sim_time": 250.00000000001367,
+        "no_real_time_claim": true
+      },
+      "physical": {
+        "actual_belt_speed_m_per_s": {
+          "minimum": 3.0,
+          "mean": 3.0,
+          "maximum": 3.0
+        },
+        "controller_nominal_belt_speed_m_per_s": 3.0,
+        "crowded_spawn_failures": 0,
+        "minimum_admitted_spawn_surface_gap_m": null,
+        "desired_feed_events": 4000,
+        "admission_limited_events": 0,
+        "pending_planned_feed_item": null,
+        "crowded_bean_contact_steps": 0,
+        "crowded_bean_contact_pairs": 0
+      }
+    },
+    {
+      "slug": "gradient-30-1000",
+      "label": "one factor: horizontal illumination gradient -30% to +30% across 2080 px",
+      "comparison": "base-1000",
+      "requested_rate_beans_per_s": 1000.0,
+      "effective_rate_beans_per_s": 1000.0000000000686,
+      "eligible_beans": 2600,
+      "resolved_beans": 2600,
+      "defects_to_remove": 376,
+      "keep_beans": 2224,
+      "rejected_beans": 361,
+      "physical_accuracy": 0.8315384615384616,
+      "physical_defect_recall": 0.42819148936170215,
+      "physical_good_false_eject_rate": 0.08992805755395683,
+      "physical_intervals_95": {
+        "defect_removal": [
+          0.3791502896028491,
+          0.47868518708006297
+        ],
+        "physical_reject_recall": [
+          0.3791502896028491,
+          0.47868518708006297
+        ],
+        "physical_reject_precision": [
+          0.39554258155659744,
+          0.49756171356764284
+        ],
+        "good_yield_loss": [
+          0.07873460928777248,
+          0.10253572878294134
+        ],
+        "good_false_eject_rate": [
+          0.07873460928777248,
+          0.10253572878294134
+        ],
+        "physical_reject_accuracy": [
+          0.8166649290775002,
+          0.8454337177833534
+        ]
+      },
+      "feed": {
+        "eligible_product_identity_sha256": "29dc915302b63d5726ad87e221ff190d51da3646a7a35a1dce2f85249583e333",
+        "eligible_product_cohort": {
+          "good": 2224,
+          "faded": 74,
+          "broken": 45,
+          "sour": 65,
+          "shell": 27,
+          "stick": 10,
+          "insect": 44,
+          "black": 73,
+          "husk": 26,
+          "stone": 12
+        },
+        "eligible_product_count": 2600
+      },
+      "vision": {
+        "single_top1_correct": 9908,
+        "single_top1_denominator": 10858,
+        "single_top1_accuracy": 0.9125069073494197,
+        "defect_action_true_positive": 1421,
+        "defect_action_false_negative": 184,
+        "defect_action_recall_denominator": 1605,
+        "defect_action_recall": 0.8853582554517134,
+        "good_action_false_positive": 805,
+        "good_action_true_negative": 8885,
+        "good_false_eject_denominator": 9690,
+        "good_false_eject_rate": 0.08307533539731682,
+        "note": "Observation-level diagnostics; merged truth means any constituent is rejectable."
+      },
+      "camera_decision_coverage": {
+        "eligible_beans": 2600,
+        "beans_seen_in_full_blob": 2510,
+        "bean_coverage": 0.9653846153846154,
+        "full_blob_observations": 11295,
+        "tracks_created": 3738,
+        "finalized_decisions": 3731,
+        "track_decision_coverage": 0.99812734082397,
+        "frames": 1000
+      },
+      "late_miss_own_hit_funnel": {
+        "reject_decisions": 745,
+        "late_no_fire_decisions": 0,
+        "scheduled_reject_decisions": 745,
+        "scheduled_not_activated": 15,
+        "activated_reject_decisions": 730,
+        "reject_decisions_with_ground_truth_association": 702,
+        "associated_activated_own_pulse_miss": 238,
+        "own_pulse_hit_decisions": 449,
+        "own_pulse_hit_and_rejected": 389,
+        "note": "Diagnostic funnel only; final outcomes alone do not isolate vision or timing causality."
+      },
+      "merged_cohorts": {
+        "single_only_beans": 2240,
+        "ever_merged_beans": 270,
+        "never_observed_beans": 90,
+        "eligible_beans": 2600,
+        "ever_merged_occupancy": 0.10384615384615385,
+        "merged_blob_observations": 437,
+        "full_blob_observations": 11295,
+        "merged_observation_fraction": 0.038689685701637895
+      },
+      "runtime": {
+        "camera_interval_ms": 4.0,
+        "detector_controller_cpu_overruns": 999,
+        "detector_controller_frames": 1000,
+        "detector_controller_overrun_fraction": 0.999,
+        "sensor_transform_ms": {
+          "p50": 4.127410999899439,
+          "p99": 5.558091998391319,
+          "max": 7.033146001049317
+        },
+        "sensor_transform_excluded_from_detector_controller_cpu": true,
+        "effective_camera_fps_sim_time": 250.00000000001367,
+        "no_real_time_claim": true
+      },
+      "physical": {
+        "actual_belt_speed_m_per_s": {
+          "minimum": 3.0,
+          "mean": 3.0,
+          "maximum": 3.0
+        },
+        "controller_nominal_belt_speed_m_per_s": 3.0,
+        "crowded_spawn_failures": 0,
+        "minimum_admitted_spawn_surface_gap_m": null,
+        "desired_feed_events": 4000,
+        "admission_limited_events": 0,
+        "pending_planned_feed_item": null,
+        "crowded_bean_contact_steps": 0,
+        "crowded_bean_contact_pairs": 0
+      }
+    },
+    {
+      "slug": "exposure-nominal-100us-1000",
+      "label": "one factor: ASSUMED nominal 100 us exposure",
+      "comparison": "base-1000",
+      "requested_rate_beans_per_s": 1000.0,
+      "effective_rate_beans_per_s": 1000.0000000000686,
+      "eligible_beans": 2600,
+      "resolved_beans": 2598,
+      "defects_to_remove": 376,
+      "keep_beans": 2224,
+      "rejected_beans": 317,
+      "physical_accuracy": 0.8696153846153846,
+      "physical_defect_recall": 0.48936170212765956,
+      "physical_good_false_eject_rate": 0.0598021582733813,
+      "physical_intervals_95": {
+        "defect_removal": [
+          0.4391971417442002,
+          0.539741447394009
+        ],
+        "physical_reject_recall": [
+          0.4391971417442002,
+          0.539741447394009
+        ],
+        "physical_reject_precision": [
+          0.525470821823316,
+          0.6334861214159648
+        ],
+        "good_yield_loss": [
+          0.050685501382697486,
+          0.07043693389277274
+        ],
+        "good_false_eject_rate": [
+          0.050685501382697486,
+          0.07043693389277274
+        ],
+        "physical_reject_accuracy": [
+          0.8561247955985655,
+          0.8820153431871426
+        ]
+      },
+      "feed": {
+        "eligible_product_identity_sha256": "29dc915302b63d5726ad87e221ff190d51da3646a7a35a1dce2f85249583e333",
+        "eligible_product_cohort": {
+          "good": 2224,
+          "faded": 74,
+          "broken": 45,
+          "sour": 65,
+          "shell": 27,
+          "stick": 10,
+          "insect": 44,
+          "black": 73,
+          "husk": 26,
+          "stone": 12
+        },
+        "eligible_product_count": 2600
+      },
+      "vision": {
+        "single_top1_correct": 10416,
+        "single_top1_denominator": 10852,
+        "single_top1_accuracy": 0.9598230740877257,
+        "defect_action_true_positive": 1498,
+        "defect_action_false_negative": 105,
+        "defect_action_recall_denominator": 1603,
+        "defect_action_recall": 0.9344978165938864,
+        "good_action_false_positive": 379,
+        "good_action_true_negative": 9312,
+        "good_false_eject_denominator": 9691,
+        "good_false_eject_rate": 0.03910845114023321,
+        "note": "Observation-level diagnostics; merged truth means any constituent is rejectable."
+      },
+      "camera_decision_coverage": {
+        "eligible_beans": 2600,
+        "beans_seen_in_full_blob": 2531,
+        "bean_coverage": 0.9734615384615385,
+        "full_blob_observations": 11294,
+        "tracks_created": 3756,
+        "finalized_decisions": 3751,
+        "track_decision_coverage": 0.9986687965921193,
+        "frames": 1000
+      },
+      "late_miss_own_hit_funnel": {
+        "reject_decisions": 649,
+        "late_no_fire_decisions": 0,
+        "scheduled_reject_decisions": 649,
+        "scheduled_not_activated": 13,
+        "activated_reject_decisions": 636,
+        "reject_decisions_with_ground_truth_association": 614,
+        "associated_activated_own_pulse_miss": 228,
+        "own_pulse_hit_decisions": 374,
+        "own_pulse_hit_and_rejected": 323,
+        "note": "Diagnostic funnel only; final outcomes alone do not isolate vision or timing causality."
+      },
+      "merged_cohorts": {
+        "single_only_beans": 2225,
+        "ever_merged_beans": 306,
+        "never_observed_beans": 69,
+        "eligible_beans": 2600,
+        "ever_merged_occupancy": 0.1176923076923077,
+        "merged_blob_observations": 442,
+        "full_blob_observations": 11294,
+        "merged_observation_fraction": 0.039135824331503456
+      },
+      "runtime": {
+        "camera_interval_ms": 4.0,
+        "detector_controller_cpu_overruns": 987,
+        "detector_controller_frames": 1000,
+        "detector_controller_overrun_fraction": 0.987,
+        "sensor_transform_ms": {
+          "p50": 2.2992319991317345,
+          "p99": 2.6209564990313083,
+          "max": 4.95468500048446
+        },
+        "sensor_transform_excluded_from_detector_controller_cpu": true,
+        "effective_camera_fps_sim_time": 250.00000000001367,
+        "no_real_time_claim": true
+      },
+      "physical": {
+        "actual_belt_speed_m_per_s": {
+          "minimum": 3.0,
+          "mean": 3.0,
+          "maximum": 3.0
+        },
+        "controller_nominal_belt_speed_m_per_s": 3.0,
+        "crowded_spawn_failures": 0,
+        "minimum_admitted_spawn_surface_gap_m": null,
+        "desired_feed_events": 4000,
+        "admission_limited_events": 0,
+        "pending_planned_feed_item": null,
+        "crowded_bean_contact_steps": 0,
+        "crowded_bean_contact_pairs": 0
+      }
+    },
+    {
+      "slug": "exposure-stress-500us-1000",
+      "label": "one factor: ASSUMED stress 500 us exposure",
+      "comparison": "base-1000",
+      "requested_rate_beans_per_s": 1000.0,
+      "effective_rate_beans_per_s": 1000.0000000000686,
+      "eligible_beans": 2600,
+      "resolved_beans": 2600,
+      "defects_to_remove": 376,
+      "keep_beans": 2224,
+      "rejected_beans": 519,
+      "physical_accuracy": 0.7773076923076923,
+      "physical_defect_recall": 0.44680851063829785,
+      "physical_good_false_eject_rate": 0.15782374100719423,
+      "physical_intervals_95": {
+        "defect_removal": [
+          0.3973455051921687,
+          0.49734744049887725
+        ],
+        "physical_reject_recall": [
+          0.3973455051921687,
+          0.49734744049887725
+        ],
+        "physical_reject_precision": [
+          0.2848676532272629,
+          0.36512194209185483
+        ],
+        "good_yield_loss": [
+          0.1432631291451155,
+          0.173564422688013
+        ],
+        "good_false_eject_rate": [
+          0.1432631291451155,
+          0.173564422688013
+        ],
+        "physical_reject_accuracy": [
+          0.7609125511473507,
+          0.7928845769114374
+        ]
+      },
+      "feed": {
+        "eligible_product_identity_sha256": "29dc915302b63d5726ad87e221ff190d51da3646a7a35a1dce2f85249583e333",
+        "eligible_product_cohort": {
+          "good": 2224,
+          "faded": 74,
+          "broken": 45,
+          "sour": 65,
+          "shell": 27,
+          "stick": 10,
+          "insect": 44,
+          "black": 73,
+          "husk": 26,
+          "stone": 12
+        },
+        "eligible_product_count": 2600
+      },
+      "vision": {
+        "single_top1_correct": 7733,
+        "single_top1_denominator": 10651,
+        "single_top1_accuracy": 0.7260351140737958,
+        "defect_action_true_positive": 1348,
+        "defect_action_false_negative": 209,
+        "defect_action_recall_denominator": 1557,
+        "defect_action_recall": 0.8657675016056519,
+        "good_action_false_positive": 2766,
+        "good_action_true_negative": 6826,
+        "good_false_eject_denominator": 9592,
+        "good_false_eject_rate": 0.2883653044203503,
+        "note": "Observation-level diagnostics; merged truth means any constituent is rejectable."
+      },
+      "camera_decision_coverage": {
+        "eligible_beans": 2600,
+        "beans_seen_in_full_blob": 2521,
+        "bean_coverage": 0.9696153846153847,
+        "full_blob_observations": 11149,
+        "tracks_created": 3716,
+        "finalized_decisions": 3709,
+        "track_decision_coverage": 0.9981162540365985,
+        "frames": 1000
+      },
+      "late_miss_own_hit_funnel": {
+        "reject_decisions": 1375,
+        "late_no_fire_decisions": 0,
+        "scheduled_reject_decisions": 1375,
+        "scheduled_not_activated": 29,
+        "activated_reject_decisions": 1346,
+        "reject_decisions_with_ground_truth_association": 1305,
+        "associated_activated_own_pulse_miss": 461,
+        "own_pulse_hit_decisions": 816,
+        "own_pulse_hit_and_rejected": 643,
+        "note": "Diagnostic funnel only; final outcomes alone do not isolate vision or timing causality."
+      },
+      "merged_cohorts": {
+        "single_only_beans": 2208,
+        "ever_merged_beans": 313,
+        "never_observed_beans": 79,
+        "eligible_beans": 2600,
+        "ever_merged_occupancy": 0.12038461538461538,
+        "merged_blob_observations": 498,
+        "full_blob_observations": 11149,
+        "merged_observation_fraction": 0.04466768320028702
+      },
+      "runtime": {
+        "camera_interval_ms": 4.0,
+        "detector_controller_cpu_overruns": 999,
+        "detector_controller_frames": 1000,
+        "detector_controller_overrun_fraction": 0.999,
+        "sensor_transform_ms": {
+          "p50": 2.6942630001940415,
+          "p99": 2.9458319000332267,
+          "max": 3.3230169992748415
+        },
+        "sensor_transform_excluded_from_detector_controller_cpu": true,
+        "effective_camera_fps_sim_time": 250.00000000001367,
+        "no_real_time_claim": true
+      },
+      "physical": {
+        "actual_belt_speed_m_per_s": {
+          "minimum": 3.0,
+          "mean": 3.0,
+          "maximum": 3.0
+        },
+        "controller_nominal_belt_speed_m_per_s": 3.0,
+        "crowded_spawn_failures": 0,
+        "minimum_admitted_spawn_surface_gap_m": null,
+        "desired_feed_events": 4000,
+        "admission_limited_events": 0,
+        "pending_planned_feed_item": null,
+        "crowded_bean_contact_steps": 0,
+        "crowded_bean_contact_pairs": 0
+      }
+    },
+    {
+      "slug": "noise-nominal-1000",
+      "label": "one factor: ASSUMED well-lit shot plus read noise",
+      "comparison": "base-1000",
+      "requested_rate_beans_per_s": 1000.0,
+      "effective_rate_beans_per_s": 1000.0000000000686,
+      "eligible_beans": 2600,
+      "resolved_beans": 2600,
+      "defects_to_remove": 376,
+      "keep_beans": 2224,
+      "rejected_beans": 342,
+      "physical_accuracy": 0.8742307692307693,
+      "physical_defect_recall": 0.5292553191489362,
+      "physical_good_false_eject_rate": 0.06429856115107914,
+      "physical_intervals_95": {
+        "defect_removal": [
+          0.47876129377763,
+          0.5791575860922948
+        ],
+        "physical_reject_recall": [
+          0.47876129377763,
+          0.5791575860922948
+        ],
+        "physical_reject_precision": [
+          0.5289680255413324,
+          0.6329558147369915
+        ],
+        "good_yield_loss": [
+          0.054836676021776415,
+          0.07526305817835702
+        ],
+        "good_false_eject_rate": [
+          0.054836676021776415,
+          0.07526305817835702
+        ],
+        "physical_reject_accuracy": [
+          0.8609302141802143,
+          0.8864270751418398
+        ]
+      },
+      "feed": {
+        "eligible_product_identity_sha256": "29dc915302b63d5726ad87e221ff190d51da3646a7a35a1dce2f85249583e333",
+        "eligible_product_cohort": {
+          "good": 2224,
+          "faded": 74,
+          "broken": 45,
+          "sour": 65,
+          "shell": 27,
+          "stick": 10,
+          "insect": 44,
+          "black": 73,
+          "husk": 26,
+          "stone": 12
+        },
+        "eligible_product_count": 2600
+      },
+      "vision": {
+        "single_top1_correct": 10411,
+        "single_top1_denominator": 10911,
+        "single_top1_accuracy": 0.9541746860965997,
+        "defect_action_true_positive": 1502,
+        "defect_action_false_negative": 90,
+        "defect_action_recall_denominator": 1592,
+        "defect_action_recall": 0.9434673366834171,
+        "good_action_false_positive": 464,
+        "good_action_true_negative": 9283,
+        "good_false_eject_denominator": 9747,
+        "good_false_eject_rate": 0.0476043910946958,
+        "note": "Observation-level diagnostics; merged truth means any constituent is rejectable."
+      },
+      "camera_decision_coverage": {
+        "eligible_beans": 2600,
+        "beans_seen_in_full_blob": 2538,
+        "bean_coverage": 0.9761538461538461,
+        "full_blob_observations": 11339,
+        "tracks_created": 3681,
+        "finalized_decisions": 3673,
+        "track_decision_coverage": 0.997826677533279,
+        "frames": 1000
+      },
+      "late_miss_own_hit_funnel": {
+        "reject_decisions": 647,
+        "late_no_fire_decisions": 0,
+        "scheduled_reject_decisions": 647,
+        "scheduled_not_activated": 10,
+        "activated_reject_decisions": 637,
+        "reject_decisions_with_ground_truth_association": 618,
+        "associated_activated_own_pulse_miss": 164,
+        "own_pulse_hit_decisions": 444,
+        "own_pulse_hit_and_rejected": 375,
+        "note": "Diagnostic funnel only; final outcomes alone do not isolate vision or timing causality."
+      },
+      "merged_cohorts": {
+        "single_only_beans": 2273,
+        "ever_merged_beans": 265,
+        "never_observed_beans": 62,
+        "eligible_beans": 2600,
+        "ever_merged_occupancy": 0.10192307692307692,
+        "merged_blob_observations": 428,
+        "full_blob_observations": 11339,
+        "merged_observation_fraction": 0.03774583296587001
+      },
+      "runtime": {
+        "camera_interval_ms": 4.0,
+        "detector_controller_cpu_overruns": 947,
+        "detector_controller_frames": 1000,
+        "detector_controller_overrun_fraction": 0.947,
+        "sensor_transform_ms": {
+          "p50": 25.070677499570593,
+          "p99": 28.3303972000067,
+          "max": 29.304959000000963
+        },
+        "sensor_transform_excluded_from_detector_controller_cpu": true,
+        "effective_camera_fps_sim_time": 250.00000000001367,
+        "no_real_time_claim": true
+      },
+      "physical": {
+        "actual_belt_speed_m_per_s": {
+          "minimum": 3.0,
+          "mean": 3.0,
+          "maximum": 3.0
+        },
+        "controller_nominal_belt_speed_m_per_s": 3.0,
+        "crowded_spawn_failures": 0,
+        "minimum_admitted_spawn_surface_gap_m": null,
+        "desired_feed_events": 4000,
+        "admission_limited_events": 0,
+        "pending_planned_feed_item": null,
+        "crowded_bean_contact_steps": 0,
+        "crowded_bean_contact_pairs": 0
+      }
+    },
+    {
+      "slug": "noise-stress-1000",
+      "label": "one factor: ASSUMED lower-light shot plus read noise",
+      "comparison": "base-1000",
+      "requested_rate_beans_per_s": 1000.0,
+      "effective_rate_beans_per_s": 1000.0000000000686,
+      "eligible_beans": 2600,
+      "resolved_beans": 2600,
+      "defects_to_remove": 376,
+      "keep_beans": 2224,
+      "rejected_beans": 410,
+      "physical_accuracy": 0.8396153846153847,
+      "physical_defect_recall": 0.5106382978723404,
+      "physical_good_false_eject_rate": 0.09802158273381295,
+      "physical_intervals_95": {
+        "defect_removal": [
+          0.4602585526059911,
+          0.5608028582557998
+        ],
+        "physical_reject_recall": [
+          0.4602585526059911,
+          0.5608028582557998
+        ],
+        "physical_reject_precision": [
+          0.42050948552416273,
+          0.5166645443462031
+        ],
+        "good_yield_loss": [
+          0.08634797314287555,
+          0.11108150299223209
+        ],
+        "good_false_eject_rate": [
+          0.08634797314287555,
+          0.11108150299223209
+        ],
+        "physical_reject_accuracy": [
+          0.8250102565842559,
+          0.8532184037152033
+        ]
+      },
+      "feed": {
+        "eligible_product_identity_sha256": "29dc915302b63d5726ad87e221ff190d51da3646a7a35a1dce2f85249583e333",
+        "eligible_product_cohort": {
+          "good": 2224,
+          "faded": 74,
+          "broken": 45,
+          "sour": 65,
+          "shell": 27,
+          "stick": 10,
+          "insect": 44,
+          "black": 73,
+          "husk": 26,
+          "stone": 12
+        },
+        "eligible_product_count": 2600
+      },
+      "vision": {
+        "single_top1_correct": 9616,
+        "single_top1_denominator": 10828,
+        "single_top1_accuracy": 0.8880679719246398,
+        "defect_action_true_positive": 1514,
+        "defect_action_false_negative": 73,
+        "defect_action_recall_denominator": 1587,
+        "defect_action_recall": 0.9540012602394455,
+        "good_action_false_positive": 1199,
+        "good_action_true_negative": 8499,
+        "good_false_eject_denominator": 9698,
+        "good_false_eject_rate": 0.12363373891524025,
+        "note": "Observation-level diagnostics; merged truth means any constituent is rejectable."
+      },
+      "camera_decision_coverage": {
+        "eligible_beans": 2600,
+        "beans_seen_in_full_blob": 2535,
+        "bean_coverage": 0.975,
+        "full_blob_observations": 11285,
+        "tracks_created": 3752,
+        "finalized_decisions": 3745,
+        "track_decision_coverage": 0.9981343283582089,
+        "frames": 1000
+      },
+      "late_miss_own_hit_funnel": {
+        "reject_decisions": 901,
+        "late_no_fire_decisions": 0,
+        "scheduled_reject_decisions": 901,
+        "scheduled_not_activated": 24,
+        "activated_reject_decisions": 877,
+        "reject_decisions_with_ground_truth_association": 856,
+        "associated_activated_own_pulse_miss": 272,
+        "own_pulse_hit_decisions": 561,
+        "own_pulse_hit_and_rejected": 477,
+        "note": "Diagnostic funnel only; final outcomes alone do not isolate vision or timing causality."
+      },
+      "merged_cohorts": {
+        "single_only_beans": 2264,
+        "ever_merged_beans": 271,
+        "never_observed_beans": 65,
+        "eligible_beans": 2600,
+        "ever_merged_occupancy": 0.10423076923076922,
+        "merged_blob_observations": 457,
+        "full_blob_observations": 11285,
+        "merged_observation_fraction": 0.04049623393885689
+      },
+      "runtime": {
+        "camera_interval_ms": 4.0,
+        "detector_controller_cpu_overruns": 933,
+        "detector_controller_frames": 1000,
+        "detector_controller_overrun_fraction": 0.933,
+        "sensor_transform_ms": {
+          "p50": 25.0339520007401,
+          "p99": 28.217051961073594,
+          "max": 29.366553999352618
+        },
+        "sensor_transform_excluded_from_detector_controller_cpu": true,
+        "effective_camera_fps_sim_time": 250.00000000001367,
+        "no_real_time_claim": true
+      },
+      "physical": {
+        "actual_belt_speed_m_per_s": {
+          "minimum": 3.0,
+          "mean": 3.0,
+          "maximum": 3.0
+        },
+        "controller_nominal_belt_speed_m_per_s": 3.0,
+        "crowded_spawn_failures": 0,
+        "minimum_admitted_spawn_surface_gap_m": null,
+        "desired_feed_events": 4000,
+        "admission_limited_events": 0,
+        "pending_planned_feed_item": null,
+        "crowded_bean_contact_steps": 0,
+        "crowded_bean_contact_pairs": 0
+      }
+    },
+    {
+      "slug": "belt-jitter-5pct-1000",
+      "label": "one factor: ASSUMED physical belt jitter +/-5%",
+      "comparison": "base-1000",
+      "requested_rate_beans_per_s": 1000.0,
+      "effective_rate_beans_per_s": 1000.0000000000686,
+      "eligible_beans": 2600,
+      "resolved_beans": 2599,
+      "defects_to_remove": 376,
+      "keep_beans": 2224,
+      "rejected_beans": 234,
+      "physical_accuracy": 0.8984615384615384,
+      "physical_defect_recall": 0.46808510638297873,
+      "physical_good_false_eject_rate": 0.026079136690647483,
+      "physical_intervals_95": {
+        "defect_removal": [
+          0.41822596310645443,
+          0.5185898043081731
+        ],
+        "physical_reject_recall": [
+          0.41822596310645443,
+          0.5185898043081731
+        ],
+        "physical_reject_precision": [
+          0.6930393424580665,
+          0.8030891733272292
+        ],
+        "good_yield_loss": [
+          0.02022814845215446,
+          0.03356454488834156
+        ],
+        "good_false_eject_rate": [
+          0.02022814845215446,
+          0.03356454488834156
+        ],
+        "physical_reject_accuracy": [
+          0.8862572884477754,
+          0.9094900411900949
+        ]
+      },
+      "feed": {
+        "eligible_product_identity_sha256": "29dc915302b63d5726ad87e221ff190d51da3646a7a35a1dce2f85249583e333",
+        "eligible_product_cohort": {
+          "good": 2224,
+          "faded": 74,
+          "broken": 45,
+          "sour": 65,
+          "shell": 27,
+          "stick": 10,
+          "insect": 44,
+          "black": 73,
+          "husk": 26,
+          "stone": 12
+        },
+        "eligible_product_count": 2600
+      },
+      "vision": {
+        "single_top1_correct": 11051,
+        "single_top1_denominator": 11261,
+        "single_top1_accuracy": 0.9813515673563626,
+        "defect_action_true_positive": 1517,
+        "defect_action_false_negative": 129,
+        "defect_action_recall_denominator": 1646,
+        "defect_action_recall": 0.9216281895504252,
+        "good_action_false_positive": 137,
+        "good_action_true_negative": 9823,
+        "good_false_eject_denominator": 9960,
+        "good_false_eject_rate": 0.013755020080321286,
+        "note": "Observation-level diagnostics; merged truth means any constituent is rejectable."
+      },
+      "camera_decision_coverage": {
+        "eligible_beans": 2600,
+        "beans_seen_in_full_blob": 2556,
+        "bean_coverage": 0.9830769230769231,
+        "full_blob_observations": 11606,
+        "tracks_created": 3626,
+        "finalized_decisions": 3618,
+        "track_decision_coverage": 0.9977937120794264,
+        "frames": 1000
+      },
+      "late_miss_own_hit_funnel": {
+        "reject_decisions": 544,
+        "late_no_fire_decisions": 0,
+        "scheduled_reject_decisions": 544,
+        "scheduled_not_activated": 12,
+        "activated_reject_decisions": 532,
+        "reject_decisions_with_ground_truth_association": 529,
+        "associated_activated_own_pulse_miss": 164,
+        "own_pulse_hit_decisions": 354,
+        "own_pulse_hit_and_rejected": 250,
+        "note": "Diagnostic funnel only; final outcomes alone do not isolate vision or timing causality."
+      },
+      "merged_cohorts": {
+        "single_only_beans": 2366,
+        "ever_merged_beans": 190,
+        "never_observed_beans": 44,
+        "eligible_beans": 2600,
+        "ever_merged_occupancy": 0.07307692307692308,
+        "merged_blob_observations": 345,
+        "full_blob_observations": 11606,
+        "merged_observation_fraction": 0.029726003791142513
+      },
+      "runtime": {
+        "camera_interval_ms": 4.0,
+        "detector_controller_cpu_overruns": 998,
+        "detector_controller_frames": 1000,
+        "detector_controller_overrun_fraction": 0.998,
+        "sensor_transform_ms": {
+          "p50": 0.09118549951381283,
+          "p99": 0.12961240914592054,
+          "max": 0.18631000057212077
+        },
+        "sensor_transform_excluded_from_detector_controller_cpu": true,
+        "effective_camera_fps_sim_time": 250.00000000001367,
+        "no_real_time_claim": true
+      },
+      "physical": {
+        "actual_belt_speed_m_per_s": {
+          "minimum": 2.850047371607465,
+          "mean": 2.999999999999992,
+          "maximum": 3.1500000000000004
+        },
+        "controller_nominal_belt_speed_m_per_s": 3.0,
+        "crowded_spawn_failures": 0,
+        "minimum_admitted_spawn_surface_gap_m": null,
+        "desired_feed_events": 4000,
+        "admission_limited_events": 0,
+        "pending_planned_feed_item": null,
+        "crowded_bean_contact_steps": 0,
+        "crowded_bean_contact_pairs": 0
+      }
+    },
+    {
+      "slug": "high-feed-reference-3000",
+      "label": "matched high-feed reference",
+      "comparison": "high-feed-reference-3000",
+      "requested_rate_beans_per_s": 3000.0,
+      "effective_rate_beans_per_s": 3000.0000000002055,
+      "eligible_beans": 7800,
+      "resolved_beans": 7787,
+      "defects_to_remove": 1206,
+      "keep_beans": 6594,
+      "rejected_beans": 1032,
+      "physical_accuracy": 0.8074358974358974,
+      "physical_defect_recall": 0.3880597014925373,
+      "physical_good_false_eject_rate": 0.08553230209281165,
+      "physical_intervals_95": {
+        "defect_removal": [
+          0.360953155230556,
+          0.4158771339577146
+        ],
+        "physical_reject_recall": [
+          0.360953155230556,
+          0.4158771339577146
+        ],
+        "physical_reject_precision": [
+          0.42334296221354073,
+          0.4839787750096022
+        ],
+        "good_yield_loss": [
+          0.07902085725415045,
+          0.09252639541102417
+        ],
+        "good_false_eject_rate": [
+          0.07902085725415045,
+          0.09252639541102417
+        ],
+        "physical_reject_accuracy": [
+          0.7985345466209597,
+          0.8160345650842291
+        ]
+      },
+      "feed": {
+        "eligible_product_identity_sha256": "4cfc1330b3f1b3e0278a50236e978dcaa3db81f35f020092f0d9104189747535",
+        "eligible_product_cohort": {
+          "good": 6594,
+          "faded": 252,
+          "sour": 185,
+          "broken": 152,
+          "husk": 82,
+          "shell": 93,
+          "black": 201,
+          "stone": 36,
+          "insect": 163,
+          "stick": 42
+        },
+        "eligible_product_count": 7800
+      },
+      "vision": {
+        "single_top1_correct": 24448,
+        "single_top1_denominator": 25040,
+        "single_top1_accuracy": 0.9763578274760384,
+        "defect_action_true_positive": 3682,
+        "defect_action_false_negative": 751,
+        "defect_action_recall_denominator": 4433,
+        "defect_action_recall": 0.830588766072637,
+        "good_action_false_positive": 461,
+        "good_action_true_negative": 23831,
+        "good_false_eject_denominator": 24292,
+        "good_false_eject_rate": 0.018977441132883254,
+        "note": "Observation-level diagnostics; merged truth means any constituent is rejectable."
+      },
+      "camera_decision_coverage": {
+        "eligible_beans": 7800,
+        "beans_seen_in_full_blob": 7313,
+        "bean_coverage": 0.9375641025641026,
+        "full_blob_observations": 28725,
+        "tracks_created": 10554,
+        "finalized_decisions": 10543,
+        "track_decision_coverage": 0.9989577411407997,
+        "frames": 1000
+      },
+      "late_miss_own_hit_funnel": {
+        "reject_decisions": 1597,
+        "late_no_fire_decisions": 0,
+        "scheduled_reject_decisions": 1597,
+        "scheduled_not_activated": 24,
+        "activated_reject_decisions": 1573,
+        "reject_decisions_with_ground_truth_association": 1469,
+        "associated_activated_own_pulse_miss": 675,
+        "own_pulse_hit_decisions": 774,
+        "own_pulse_hit_and_rejected": 631,
+        "note": "Diagnostic funnel only; final outcomes alone do not isolate vision or timing causality."
+      },
+      "merged_cohorts": {
+        "single_only_beans": 4839,
+        "ever_merged_beans": 2474,
+        "never_observed_beans": 487,
+        "eligible_beans": 7800,
+        "ever_merged_occupancy": 0.3171794871794872,
+        "merged_blob_observations": 3685,
+        "full_blob_observations": 28725,
+        "merged_observation_fraction": 0.12828546562228024
+      },
+      "runtime": {
+        "camera_interval_ms": 4.0,
+        "detector_controller_cpu_overruns": 998,
+        "detector_controller_frames": 1000,
+        "detector_controller_overrun_fraction": 0.998,
+        "sensor_transform_ms": {
+          "p50": 0.09597000007488532,
+          "p99": 0.1391309989412548,
+          "max": 0.1547800002299482
+        },
+        "sensor_transform_excluded_from_detector_controller_cpu": true,
+        "effective_camera_fps_sim_time": 250.00000000001367,
+        "no_real_time_claim": true
+      },
+      "physical": {
+        "actual_belt_speed_m_per_s": {
+          "minimum": 3.0,
+          "mean": 3.0,
+          "maximum": 3.0
+        },
+        "controller_nominal_belt_speed_m_per_s": 3.0,
+        "crowded_spawn_failures": 0,
+        "minimum_admitted_spawn_surface_gap_m": null,
+        "desired_feed_events": 12000,
+        "admission_limited_events": 0,
+        "pending_planned_feed_item": null,
+        "crowded_bean_contact_steps": 0,
+        "crowded_bean_contact_pairs": 0
+      }
+    },
+    {
+      "slug": "touching-3000",
+      "label": "one factor: crowded non-penetrating feed",
+      "comparison": "high-feed-reference-3000",
+      "requested_rate_beans_per_s": 3000.0,
+      "effective_rate_beans_per_s": 1192.8125000000816,
+      "eligible_beans": 3107,
+      "resolved_beans": 3105,
+      "defects_to_remove": 454,
+      "keep_beans": 2653,
+      "rejected_beans": 434,
+      "physical_accuracy": 0.8245896363051175,
+      "physical_defect_recall": 0.394273127753304,
+      "physical_good_false_eject_rate": 0.09611760271390878,
+      "physical_intervals_95": {
+        "defect_removal": [
+          0.3503867811748409,
+          0.43993371394836334
+        ],
+        "physical_reject_recall": [
+          0.3503867811748409,
+          0.43993371394836334
+        ],
+        "physical_reject_precision": [
+          0.3670932343454667,
+          0.45932801023248104
+        ],
+        "good_yield_loss": [
+          0.08547831794393977,
+          0.1079248567127654
+        ],
+        "good_false_eject_rate": [
+          0.08547831794393977,
+          0.1079248567127654
+        ],
+        "physical_reject_accuracy": [
+          0.8108179511755503,
+          0.8375596454208177
+        ]
+      },
+      "feed": {
+        "eligible_product_identity_sha256": "435832dfbc690e89b92754b91aa3c107bd1c939c8fdb5e0717914bc2f74134ad",
+        "eligible_product_cohort": {
+          "good": 2653,
+          "sour": 72,
+          "insect": 56,
+          "black": 85,
+          "broken": 53,
+          "faded": 94,
+          "husk": 30,
+          "stone": 16,
+          "shell": 36,
+          "stick": 12
+        },
+        "eligible_product_count": 3107
+      },
+      "vision": {
+        "single_top1_correct": 9155,
+        "single_top1_denominator": 9423,
+        "single_top1_accuracy": 0.971558951501645,
+        "defect_action_true_positive": 1497,
+        "defect_action_false_negative": 336,
+        "defect_action_recall_denominator": 1833,
+        "defect_action_recall": 0.8166939443535188,
+        "good_action_false_positive": 263,
+        "good_action_true_negative": 9142,
+        "good_false_eject_denominator": 9405,
+        "good_false_eject_rate": 0.027963849016480597,
+        "note": "Observation-level diagnostics; merged truth means any constituent is rejectable."
+      },
+      "camera_decision_coverage": {
+        "eligible_beans": 3107,
+        "beans_seen_in_full_blob": 3035,
+        "bean_coverage": 0.9768265207595751,
+        "full_blob_observations": 11238,
+        "tracks_created": 4075,
+        "finalized_decisions": 4068,
+        "track_decision_coverage": 0.9982822085889571,
+        "frames": 1000
+      },
+      "late_miss_own_hit_funnel": {
+        "reject_decisions": 694,
+        "late_no_fire_decisions": 0,
+        "scheduled_reject_decisions": 694,
+        "scheduled_not_activated": 20,
+        "activated_reject_decisions": 674,
+        "reject_decisions_with_ground_truth_association": 650,
+        "associated_activated_own_pulse_miss": 284,
+        "own_pulse_hit_decisions": 349,
+        "own_pulse_hit_and_rejected": 287,
+        "note": "Diagnostic funnel only; final outcomes alone do not isolate vision or timing causality."
+      },
+      "merged_cohorts": {
+        "single_only_beans": 1840,
+        "ever_merged_beans": 1195,
+        "never_observed_beans": 72,
+        "eligible_beans": 3107,
+        "ever_merged_occupancy": 0.38461538461538464,
+        "merged_blob_observations": 1815,
+        "full_blob_observations": 11238,
+        "merged_observation_fraction": 0.1615056059797117
+      },
+      "runtime": {
+        "camera_interval_ms": 4.0,
+        "detector_controller_cpu_overruns": 997,
+        "detector_controller_frames": 1000,
+        "detector_controller_overrun_fraction": 0.997,
+        "sensor_transform_ms": {
+          "p50": 0.09638049959903583,
+          "p99": 0.15217799927995654,
+          "max": 0.19693200010806322
+        },
+        "sensor_transform_excluded_from_detector_controller_cpu": true,
+        "effective_camera_fps_sim_time": 250.00000000001367,
+        "no_real_time_claim": true
+      },
+      "physical": {
+        "actual_belt_speed_m_per_s": {
+          "minimum": 3.0,
+          "mean": 3.0,
+          "maximum": 3.0
+        },
+        "controller_nominal_belt_speed_m_per_s": 3.0,
+        "crowded_spawn_failures": 1882,
+        "minimum_admitted_spawn_surface_gap_m": 0.0002002983259891981,
+        "desired_feed_events": 12000,
+        "admission_limited_events": 5313,
+        "pending_planned_feed_item": 4805,
+        "crowded_bean_contact_steps": 1979,
+        "crowded_bean_contact_pairs": 2723
+      }
+    },
+    {
+      "slug": "combined-assumed-worst-3000",
+      "label": "ASSUMED realistic-worst combined sensor, jitter, and crowded feed",
+      "comparison": "high-feed-reference-3000",
+      "requested_rate_beans_per_s": 3000.0,
+      "effective_rate_beans_per_s": 1201.2500000000823,
+      "eligible_beans": 3136,
+      "resolved_beans": 3134,
+      "defects_to_remove": 456,
+      "keep_beans": 2680,
+      "rejected_beans": 797,
+      "physical_accuracy": 0.685905612244898,
+      "physical_defect_recall": 0.31359649122807015,
+      "physical_good_false_eject_rate": 0.24402985074626865,
+      "physical_intervals_95": {
+        "defect_removal": [
+          0.2727191587089243,
+          0.35758832108411737
+        ],
+        "physical_reject_recall": [
+          0.2727191587089243,
+          0.35758832108411737
+        ],
+        "physical_reject_precision": [
+          0.1543406812549196,
+          0.20758057758078527
+        ],
+        "good_yield_loss": [
+          0.22814218388599924,
+          0.26065029924713345
+        ],
+        "good_false_eject_rate": [
+          0.22814218388599924,
+          0.26065029924713345
+        ],
+        "physical_reject_accuracy": [
+          0.6694411081277483,
+          0.7019152048786148
+        ]
+      },
+      "feed": {
+        "eligible_product_identity_sha256": "750b3ee7ff9ba4ed60ebd4de128bdb6bcaf436e6529361e81a70485d2a16114e",
+        "eligible_product_cohort": {
+          "insect": 57,
+          "good": 2680,
+          "sour": 72,
+          "black": 86,
+          "broken": 53,
+          "faded": 94,
+          "husk": 30,
+          "stone": 16,
+          "shell": 36,
+          "stick": 12
+        },
+        "eligible_product_count": 3136
+      },
+      "vision": {
+        "single_top1_correct": 6543,
+        "single_top1_denominator": 9797,
+        "single_top1_accuracy": 0.6678575074002245,
+        "defect_action_true_positive": 1118,
+        "defect_action_false_negative": 698,
+        "defect_action_recall_denominator": 1816,
+        "defect_action_recall": 0.6156387665198237,
+        "good_action_false_positive": 2903,
+        "good_action_true_negative": 6787,
+        "good_false_eject_denominator": 9690,
+        "good_false_eject_rate": 0.2995872033023736,
+        "note": "Observation-level diagnostics; merged truth means any constituent is rejectable."
+      },
+      "camera_decision_coverage": {
+        "eligible_beans": 3136,
+        "beans_seen_in_full_blob": 3079,
+        "bean_coverage": 0.9818239795918368,
+        "full_blob_observations": 11506,
+        "tracks_created": 4068,
+        "finalized_decisions": 4062,
+        "track_decision_coverage": 0.9985250737463127,
+        "frames": 1000
+      },
+      "late_miss_own_hit_funnel": {
+        "reject_decisions": 1457,
+        "late_no_fire_decisions": 0,
+        "scheduled_reject_decisions": 1457,
+        "scheduled_not_activated": 32,
+        "activated_reject_decisions": 1425,
+        "reject_decisions_with_ground_truth_association": 1348,
+        "associated_activated_own_pulse_miss": 598,
+        "own_pulse_hit_decisions": 722,
+        "own_pulse_hit_and_rejected": 520,
+        "note": "Diagnostic funnel only; final outcomes alone do not isolate vision or timing causality."
+      },
+      "merged_cohorts": {
+        "single_only_beans": 1957,
+        "ever_merged_beans": 1122,
+        "never_observed_beans": 57,
+        "eligible_beans": 3136,
+        "ever_merged_occupancy": 0.35778061224489793,
+        "merged_blob_observations": 1709,
+        "full_blob_observations": 11506,
+        "merged_observation_fraction": 0.14853120111246307
+      },
+      "runtime": {
+        "camera_interval_ms": 4.0,
+        "detector_controller_cpu_overruns": 996,
+        "detector_controller_frames": 1000,
+        "detector_controller_overrun_fraction": 0.996,
+        "sensor_transform_ms": {
+          "p50": 27.019065000786213,
+          "p99": 31.56284739061448,
+          "max": 35.01874599896837
+        },
+        "sensor_transform_excluded_from_detector_controller_cpu": true,
+        "effective_camera_fps_sim_time": 250.00000000001367,
+        "no_real_time_claim": true
+      },
+      "physical": {
+        "actual_belt_speed_m_per_s": {
+          "minimum": 2.850047371607465,
+          "mean": 2.999999999999992,
+          "maximum": 3.1500000000000004
+        },
+        "controller_nominal_belt_speed_m_per_s": 3.0,
+        "crowded_spawn_failures": 1863,
+        "minimum_admitted_spawn_surface_gap_m": 0.00020179469022556414,
+        "desired_feed_events": 12000,
+        "admission_limited_events": 5311,
+        "pending_planned_feed_item": 4826,
+        "crowded_bean_contact_steps": 1964,
+        "crowded_bean_contact_pairs": 2677
+      }
+    }
+  ],
+  "cohort_checks": {
+    "high-feed-reference-3000": {
+      "status": "not-causally-paired: crowded/high-feed admission changed eligible cohort",
+      "identities": [
+        "435832dfbc690e89b92754b91aa3c107bd1c939c8fdb5e0717914bc2f74134ad",
+        "4cfc1330b3f1b3e0278a50236e978dcaa3db81f35f020092f0d9104189747535",
+        "750b3ee7ff9ba4ed60ebd4de128bdb6bcaf436e6529361e81a70485d2a16114e"
+      ]
+    },
+    "base-1000": {
+      "status": "asserted-matched-realized-product-cohort",
+      "identity": "29dc915302b63d5726ad87e221ff190d51da3646a7a35a1dce2f85249583e333"
+    }
+  },
+  "config_sha256": "c17fccac4f9f6da7b1cdcf4682b6892ae4b0d82297a26d78f6e4fff317e9cc1f",
+  "classifier_sha256": "0b9e164cbf4df18f904f30fde38e0b7ed352877653849cc55da25e6f143051c8",
+  "source_sha256": {
+    "sensor_realism.py": "95ab3737a143480cc1be65b4fcab58c1e5fbc524953531b7ace178353aca8666",
+    "run_sensor_realism.py": "7064b7162b977c4e95924a6125af63a3b044f2b677e063b9df02856276ca14c3",
+    "run.py": "6200c17d588ff73d80a175c52ab17d243d2c180769bc6da86a528113134dae9e",
+    "controller.py": "88bc0337ae5d90192b928581c6e33574b29a1b3631e2d2eacd30bf73ee089b32",
+    "sim.py": "25c01335c9d037d96a27e4a2d19c612a22919b052d2eee004a63fa6c8cb21d1b",
+    "vision.py": "04aa92dba238e4b342244a37bc91f7edfc09f8bd30416beb20b7528a103f54cf",
+    "evidence.py": "d4066440233a90294d57e1841b5c4e18ac1cae0325989e3d26ea83892e509c59",
+    "scene.py": "5fff8ea2b049fcf58556599c05e5d4585dd445dc4aa6615d9e1021b813982a27",
+    "profiles.py": "e47a848e1331d902bb1bd1eb7d29306529339100edfb8175f9918e1ab09d6948",
+    "classifier.py": "d6257f348db6a82aa152f57de1ee0976228685f226000dfc62f3e82bf933325d",
+    "assets.py": "c727b35d60c009e8d067a68521d296e475105067fa16bdc17dfba42d824dd247",
+    "render.py": "33a2b3047c7143b78861cfcb64d8538fedeb636f66258b356de7a63da8e65ac6",
+    "run_characterization.py": "6ebd9f963f76254a5fed09d5505a87c3741374524f7c2b4e8920ece2e1031883"
+  },
+  "limits": [
+    "One physical run per scenario; intervals are binomial sampling intervals, not between-run uncertainty.",
+    "Synthetic transform runtime is not camera hardware time and is excluded from detector/controller CPU.",
+    "Effective admitted rate is reported because crowded spawning may not sustain the requested feed.",
+    "Final outcomes cannot by themselves identify whether vision, tracking, timing, contacts, or jets caused an error."
+  ]
+}

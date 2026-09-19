@@ -1,0 +1,14 @@
+{
+ "uid": 88,
+ "class": "odd_colour",
+ "anomaly_score": 194.5818387991279,
+ "anomaly_threshold": 18.48719999197408,
+ "classifier_reject_probability": 0.9575902053217503,
+ "combined_command": true,
+ "scheduled": true,
+ "activated": true,
+ "own_pulse_hit": true,
+ "any_jet_hit": true,
+ "physical_outcome": "reject",
+ "selection": "HUD-tracked odd-colour unknown with own controller-pulse hit and physical reject"
+}

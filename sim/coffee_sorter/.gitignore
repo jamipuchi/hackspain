@@ -2,8 +2,12 @@ __pycache__/
 *.pyc
 runs/*/
 !runs/preview/
+!runs/ur5e-infeed/
+!runs/ur5e-infeed/**
 runs/*.png
 *.mp4
+!runs/ur5e-infeed/**/*.mp4
 models/*.joblib
 .DS_Store
 MUJOCO_LOG.TXT
+.venv-picking/
