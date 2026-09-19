@@ -208,6 +208,7 @@ def worker(preset, states, acknowledgments, commands, stop, out):
                             object_id = engine.inject(command['class_name'])
                             ack.update(ok=True, object_id=object_id,
                                        spawn_position=engine.injection_position(object_id),
+                                       **engine.injection_expectation(object_id),
                                        sim_time_s=float(engine.sim.data.time))
                             if not running:
                                 running, started = True, time.monotonic()

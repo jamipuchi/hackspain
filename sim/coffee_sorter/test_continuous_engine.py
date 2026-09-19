@@ -301,6 +301,7 @@ class ContinuousRetentionTest(unittest.TestCase):
         )
         engine.policy = SimpleNamespace(reject_severities=("major",))
         engine.reject_classes = ("black",)
+        engine.policy_version = "policy"
         engine.sim = SimpleNamespace(
             body_geom={1: 0},
             model=SimpleNamespace(geom_rgba=np.ones((1, 4))),
@@ -319,6 +320,63 @@ class ContinuousRetentionTest(unittest.TestCase):
 
         self.assertEqual(len(engine._score_ledger), 0)
         self.assertEqual(engine._active_injections, {1})
+
+    def test_manual_injection_expectation_survives_later_policy_changes(self):
+        def register(reject_classes, policy_version, uid):
+            engine = Engine.__new__(Engine)
+            engine.continuous = True
+            engine.session_id = "session"
+            engine.policy_version = policy_version
+            engine.reject_classes = reject_classes
+            engine.profile = SimpleNamespace(
+                by_name=lambda name: SimpleNamespace(
+                    name=name, defect=True, severity="foreign", shape="box",
+                )
+            )
+            engine.sim = SimpleNamespace(
+                body_geom={uid: 0},
+                model=SimpleNamespace(geom_rgba=np.ones((1, 4))),
+                data=SimpleNamespace(time=1.0),
+            )
+            engine._object_records = {}
+            engine._injected_ids = set()
+            engine._active_injections = set()
+            engine._score_ledger = RollingScoreLedger(60.0)
+            engine._event = lambda *args, **kwargs: None
+            bean = SimpleNamespace(
+                uid=uid, cls="stone", body=uid, defect=True, spawn_t=0.5,
+                axes=np.ones(3), outcome=None, resolved_t=None, jet_hits=0,
+            )
+            engine._register_bean(bean, injected=True)
+            return engine
+
+        keep = register((), "keep-stone-policy", 11)
+        reject = register(("stone",), "reject-stone-policy", 12)
+        keep.reject_classes = ("stone",)
+        keep.policy_version = "later-reject-policy"
+        reject.reject_classes = ()
+        reject.policy_version = "later-keep-policy"
+
+        self.assertEqual(keep.injection_expectation(11), {
+            "expected_outcome": "accept",
+            "expectation_policy_version": "keep-stone-policy",
+        })
+        self.assertEqual(reject.injection_expectation(12), {
+            "expected_outcome": "reject",
+            "expectation_policy_version": "reject-stone-policy",
+        })
+        keep._decision_by_uid = {}
+        reject._decision_by_uid = {}
+        self.assertEqual(keep._snapshot_object(11, active=True)["expected_outcome"], "accept")
+        self.assertEqual(
+            keep._snapshot_object(11, active=True)["expectation_policy_version"],
+            "keep-stone-policy",
+        )
+        self.assertEqual(reject._snapshot_object(12, active=False)["expected_outcome"], "reject")
+        self.assertEqual(
+            reject._snapshot_object(12, active=False)["expectation_policy_version"],
+            "reject-stone-policy",
+        )
 
     def test_prunes_stale_full_records_and_track_evidence(self):
         engine = Engine.__new__(Engine)

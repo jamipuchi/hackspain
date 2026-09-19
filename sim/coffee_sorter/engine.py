@@ -309,6 +309,11 @@ class Engine:
             "truth_class": bean.cls,
             "physical_defect": bool(spec.defect),
             "required_reject": spec.name in self.reject_classes,
+            "expected_outcome": (
+                "reject" if injected and spec.name in self.reject_classes
+                else "accept" if injected else None
+            ),
+            "expectation_policy_version": self.policy_version if injected else None,
             "injected": injected,
             "spawn_time_s": float(bean.spawn_t),
             "spawn_wall": time.perf_counter() if injected else None,
@@ -585,6 +590,15 @@ class Engine:
             raise ValueError("the injected object is unavailable")
         return list(record["pos"])
 
+    def injection_expectation(self, object_id):
+        record = self._object_records.get(object_id)
+        if record is None or not record["injected"]:
+            raise ValueError("the injected object is unavailable")
+        return {
+            "expected_outcome": record["expected_outcome"],
+            "expectation_policy_version": record["expectation_policy_version"],
+        }
+
     def _snapshot_object(self, uid: int, active: bool) -> dict:
         record = self._object_records[uid]
         decision = self._decision_by_uid.get(uid)
@@ -621,6 +635,10 @@ class Engine:
             result["overdue"] = bool(
                 record["outcome"] is None and
                 float(self.sim.data.time) - record["spawn_time_s"] > SETTLING_SECONDS
+            )
+            result.update(
+                expected_outcome=record["expected_outcome"],
+                expectation_policy_version=record["expectation_policy_version"],
             )
         return result
 
@@ -722,7 +740,7 @@ class Engine:
                 missed_category = "targeted_not_hit"
             else:
                 missed_category = "hit_not_captured"
-        return {
+        result = {
             "object_id": bean.uid,
             "truth_class": bean.cls,
             "physical_defect": record["physical_defect"],
@@ -746,6 +764,12 @@ class Engine:
             "missed_category": missed_category,
             "captured_without_own_pulse_hit": bool(bean.outcome == "reject" and not own_hits),
         }
+        if record["injected"]:
+            result.update(
+                expected_outcome=record["expected_outcome"],
+                expectation_policy_version=record["expectation_policy_version"],
+            )
+        return result
 
     def report(self) -> dict:
         """Return post-control evaluation truth, attribution, and timing evidence."""

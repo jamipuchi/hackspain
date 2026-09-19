@@ -301,6 +301,75 @@ class ContinuousWorkerTest(unittest.TestCase):
         )
         self.assertEqual(applied_state['rolling_scores']['score_epoch_id'], 'epoch-2')
 
+    def test_injection_ack_includes_spawn_policy_expectation(self):
+        stop = FakeStop()
+
+        class FakeEngine:
+            def __init__(self, preset):
+                self.continuous = True
+                self.preset = {'limits': {'max_sim_seconds': None, 'max_wall_seconds': None}}
+                self.session_id = 'session'
+                self.sim = types.SimpleNamespace(data=types.SimpleNamespace(time=2.0))
+                self.source_revision = 'test'
+                self.source_hashes = {}
+                self.steps = 0
+
+            def snapshot(self):
+                return {'session_id': self.session_id, 'sim_time_s': self.sim.data.time}
+
+            def rolling_scores(self):
+                return {'score_epoch_id': 'epoch'}
+
+            def inject(self, class_name):
+                self.injected_class = class_name
+                return 41
+
+            def injection_position(self, object_id):
+                return [-1.0, 0.1, 0.6]
+
+            def injection_expectation(self, object_id):
+                return {
+                    'expected_outcome': 'reject',
+                    'expectation_policy_version': 'spawn-policy',
+                }
+
+            def step(self):
+                self.steps += 1
+                stop.set()
+
+            def report(self):
+                return {}
+
+            def close(self):
+                pass
+
+        class OneCommandQueue(WorkerQueue):
+            def __init__(self, item):
+                super().__init__()
+                self.item = item
+
+            def get_nowait(self):
+                if self.item is None:
+                    raise __import__('queue').Empty
+                item, self.item = self.item, None
+                return item
+
+        payload = {
+            'type': 'inject', 'command_id': str(uuid.uuid4()),
+            'session_id': 'session', 'command_epoch': 'epoch', 'class_name': 'stone',
+        }
+        states = WorkerQueue()
+        acknowledgments = WorkerQueue()
+        commands = OneCommandQueue(payload)
+        module = types.SimpleNamespace(Engine=FakeEngine)
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.dict(sys.modules, {'engine': module}), patch('live.signal.signal'):
+                worker('unused.json', states, acknowledgments, commands, stop, directory)
+
+        ack = acknowledgments.items[0]
+        self.assertEqual(ack['expected_outcome'], 'reject')
+        self.assertEqual(ack['expectation_policy_version'], 'spawn-policy')
+
 
 class ContinuousCommandTest(unittest.IsolatedAsyncioTestCase):
     async def test_policy_apply_is_idempotent_and_exact_retry_returns_ack(self):
@@ -351,7 +420,8 @@ class ContinuousCommandTest(unittest.IsolatedAsyncioTestCase):
         await value._handle_command(payload, ws)
         self.assertEqual(ws.packets[-1]['type'], 'pending')
         ack = {'type': 'ack', 'command_id': payload['command_id'], 'command_epoch': value.command_epoch,
-               'session_id': value.state['session_id'], 'ok': True, 'object_id': 42}
+               'session_id': value.state['session_id'], 'ok': True, 'object_id': 42,
+               'expected_outcome': 'reject', 'expectation_policy_version': 'spawn-policy'}
         value.requests[payload['command_id']]['ack'] = ack
         await value._handle_command(payload, ws)
         self.assertEqual(ws.packets[-1], ack)
