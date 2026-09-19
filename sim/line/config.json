@@ -38,10 +38,10 @@
     "fps": 60,
     "file_paths": [],
     "zone": [
-      480,
-      470,
-      1190,
-      650
+      555,
+      455,
+      1256,
+      687
     ],
     "px_per_mm": 4.3,
     "flow_axis": "-x",
@@ -100,8 +100,8 @@
   "door_on_d6": true,
   "door_d6_mode": "continuous",
   "door_d6_speed": 71,
-  "door_d6_open_ms": 130,
-  "door_d6_close_ms": 130,
+  "door_d6_open_ms": 140,
+  "door_d6_close_ms": 140,
   "door_d6_dir": -1,
   "act_on": "suspect",
   "lost_after_s": 0.4,
