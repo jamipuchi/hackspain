@@ -908,7 +908,7 @@ const clickTargets = [];
 const presets = {
   overview: {position: [1.82, -2.62, 1.98], target: [-.22, 0, .47]},
   sorting: {position: [.20, 1.75, .58], target: [.12, 0, .48]},
-  inspection: {position: [-1.55, 0, 1.55], target: [-.55, 0, .52]},
+  inspection: {position: [1.65, 0, 2.25], target: [-.50, 0, .56]},
 };
 const INK = '#25342d', EDGE = '#34463d', EDGE_SOFT = '#829188', PAPER = '#eef0ea';
 const REJECT_COLOR = new THREE.Color('#d26045'), SPILL_COLOR = new THREE.Color('#d49a27'), SELECT_COLOR = new THREE.Color('#d8781c');
@@ -1187,7 +1187,7 @@ async function loadBlenderAssets(L) {
   scene.add(machine.scene);
   scene.remove(three.machineGroup);
   disposeOwnedFallbackMachine(three.machineGroup);
-  three.inspectionHousing = meshes.filter(mesh => mesh.name === 'Camera shroud');
+  three.inspectionHousing = meshes.filter(mesh => /^(Camera shroud|Camera gantry bridge|Inspection light)/.test(mesh.name));
   updateMachineVisibility();
   clickTargets.length = 0; clickTargets.push(...meshes.filter(m => m.visible));
   loaded.push(`machine ${meshes.length} parts`);
@@ -1324,16 +1324,27 @@ function drawInset() {
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = '#f8f8f4'; ctx.fillRect(0, 0, width, height);
   const left = Math.max(42, width * .04), usable = width - left * 2;
-  const expandedPanelBottom = ['panel-left', 'panel-right']
+  const expandedPanels = ['panel-left', 'panel-right']
     .map(id => $(id))
-    .filter(panel => panel && !panel.classList.contains('collapsed'))
+    .filter(panel => panel && !panel.classList.contains('collapsed'));
+  const mobile = width <= 760;
+  const topBlockBottom = expandedPanels
+    .filter(panel => !mobile || panel.id === 'panel-left')
     .reduce((bottom, panel) => Math.max(bottom, panel.getBoundingClientRect().bottom), 0);
-  const contentTop = Math.max(52, expandedPanelBottom + 18);
-  const availableHeight = Math.max(220, height - contentTop - 22);
+  const bottomBlockTop = expandedPanels
+    .filter(panel => mobile && panel.id === 'panel-right')
+    .reduce((top, panel) => Math.min(top, panel.getBoundingClientRect().top), height);
+  let contentTop = Math.max(52, topBlockBottom + 18);
+  let contentBottom = Math.min(height - 22, bottomBlockTop - 18);
+  if (contentBottom - contentTop < 220) {
+    contentTop = 52;
+    contentBottom = height - 22;
+  }
+  const availableHeight = contentBottom - contentTop;
   const topCenter = contentTop + availableHeight * .20;
   const topHalfHeight = availableHeight * .12;
   const sideTop = contentTop + availableHeight * .48;
-  const sideBottom = height - 26;
+  const sideBottom = contentBottom - 4;
   const X = x => left + (x + 1.1) / 1.6 * usable;
   const Y = y => topCenter + y / .25 * topHalfHeight;
   const Z = z => sideBottom - (z - .30) / .65 * (sideBottom - sideTop);
