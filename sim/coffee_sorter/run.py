@@ -78,9 +78,13 @@ def metrics(sim, ctrl, warmup, t_end):
         rej = sum(b.outcome == "reject" for b in bs)
         spill = sum(b.outcome == "spilled" for b in bs)
         tgt = sum(b.targeted for b in bs)
+        hit = sum(b.jet_hits > 0 for b in bs)
         per[c.name] = dict(n=n, rejected=rej, spilled=spill, targeted=tgt, defect=c.defect, severity=c.severity,
+                           jet_hit=hit, targeted_rejected=sum(b.targeted and b.outcome == "reject" for b in bs),
+                           jet_hit_rejected=sum(b.jet_hits > 0 and b.outcome == "reject" for b in bs),
                            reject_rate=rej / n if n else None, target_rate=tgt / n if n else None)
     defects = [b for b in beans if b.defect and P.by_name(b.cls).severity in ctrl.pol.reject_severities]
+    defect_uids = {b.uid for b in defects}
     keep = [b for b in beans if not (b.defect and P.by_name(b.cls).severity in ctrl.pol.reject_severities)]
     accepted = [b for b in beans if b.outcome == "accept"]
     lat = np.array(ctrl.latency_ms) if ctrl.latency_ms else np.zeros(1)
@@ -92,7 +96,7 @@ def metrics(sim, ctrl, warmup, t_end):
         feed_kg_per_h=sum(b.mass for b in sim.beans if warmup <= b.spawn_t <= t_end) / sim_span * 3600,
         defect_removal=sum(b.outcome == "reject" for b in defects) / max(len(defects), 1),
         good_yield_loss=sum(b.outcome == "reject" for b in keep) / max(len(keep), 1),
-        accept_purity_defects_per_1000=1000 * sum(1 for b in accepted if b in set(defects)) / max(len(accepted), 1),
+        accept_purity_defects_per_1000=1000 * sum(b.uid in defect_uids for b in accepted) / max(len(accepted), 1),
         accept_purity_defects_per_1000_incoming=1000 * len(defects) / max(len(beans), 1),
         spilled_rate=sum(b.outcome == "spilled" for b in beans) / max(len(beans), 1),
         decisions=len(dec), fired_valves=sim.n_fired, late_decisions=sum(d.late for d in dec),
@@ -191,9 +195,10 @@ def print_metrics(r):
           f"accept stream {r['accept_purity_defects_per_1000']:.1f} defects/1000 (incoming {r['accept_purity_defects_per_1000_incoming']:.0f}/1000)   spilled {100 * r['spilled_rate']:.2f}%")
     print(f"decisions {r['decisions']}  valves {r['fired_valves']}  late {r['late_decisions']}  obs/track {r['obs_per_track_mean']:.2f}  "
           f"latency p50 {r['latency_ms']['p50']:.1f} ms p99 {r['latency_ms']['p99']:.1f} ms (budget {r['latency_budget_ms']:.0f} ms)  starved {r['pool_starved']}")
-    print(f"{'class':8s} {'n':>6s} {'rejected':>9s} {'targeted':>9s} {'spilled':>8s}")
+    print(f"{'class':8s} {'n':>6s} {'rejected':>9s} {'targeted':>9s} {'jet hit':>8s} {'hit/rej':>8s} {'spilled':>8s}")
     for c, v in r["per_class"].items():
-        print(f"{c:8s} {v['n']:6d} {v['rejected']:9d} {v['targeted']:9d} {v['spilled']:8d}   {'DEFECT' if v['defect'] else 'keep'} {v['severity']}")
+        print(f"{c:8s} {v['n']:6d} {v['rejected']:9d} {v['targeted']:9d} {v['jet_hit']:8d} "
+              f"{v['jet_hit_rejected']:8d} {v['spilled']:8d}   {'DEFECT' if v['defect'] else 'keep'} {v['severity']}")
 
 
 # ------------------------------------------------------------------------------------ bench

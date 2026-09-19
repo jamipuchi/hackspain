@@ -11,6 +11,7 @@ class Overview:
         self.sim = sim
         self.r = mujoco.Renderer(sim.model, height, width)
         self.r._scene_option.geomgroup[3] = 0
+        self.r._scene_option.geomgroup[4] = 1
         self.camera = camera
 
     def frame(self, camera=None):

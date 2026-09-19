@@ -54,6 +54,25 @@ cd ~/robotics/coffee_sorter
 
 Environment: the `../.venv` from the parent folder (MuJoCo 3.13, numpy, OpenCV, scikit-learn, matplotlib).
 
+For a fresh checkout, create a separate environment with the tested package versions:
+
+```bash
+uv venv --python 3.12 .venv
+uv pip install --python .venv/bin/python -r requirements.txt
+export MUJOCO_GL=osmesa  # headless CPU rendering; requires libOSMesa6
+export LP_NUM_THREADS=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+.venv/bin/python check_detect.py --iterations 100
+.venv/bin/python -m unittest discover -p 'test_*.py' -v
+.venv/bin/python run.py train --profile green_arabica --seconds 24 --rate 900 --boost 5
+.venv/bin/python run.py run --rate 2000 --seconds 8 --video
+```
+
+Run these commands from `sim/coffee_sorter/`. If Mesa is installed in a custom
+location, add its library directory to `LD_LIBRARY_PATH`. EGL is another option
+when the host provides a working EGL driver. The detector check compares every
+feature and blob coordinate exactly against `cad5f9b`, then reports timing on a
+camera frame when available. The timing target is hardware dependent.
+
 ## What the system handles (variability)
 
 - 10 classes in the feed, with continuous variation in size (screen 14–18), colour, texture, orientation (random yaw + tilt), and position on a 0.5 m wide belt.
@@ -76,10 +95,60 @@ Environment: the `../.venv` from the parent folder (MuJoCo 3.13, numpy, OpenCV, 
 - The renderer draws the kinematics of the *previous* step: frames are timestamped `t - dt` and training labels use the rendered poses. Calibration error after that: 0.02 mm median.
 - Status: physics stable for 5+ simulated seconds at 2000 beans/s (≈1.5–3 s wall per simulated second, no viewer), camera strip segments beans against the blue belt, 23/23 blobs matched to ground truth in the check frame.
 
+**19 September — foreground detector and first trained classifier**
+
+- Detector statistics now use foreground pixels and cached coordinate grids.
+  Exact feature/coordinate equality against `cad5f9b` passes synthetic and real
+  frames, all edges, alternate sizes and non-contiguous inputs. On this CPU with
+  OpenCV using 32 threads, a 192×2080 frame with 9.237% foreground improved from
+  79.038 ms to 5.443 ms median (new p95 5.635 ms), about 14.5× faster. The requested
+  <5 ms target is **not met**; `check_detect.py --iterations 100 --max-p50-ms 5`
+  correctly fails that threshold. No feature tolerance was relaxed.
+- The requested 24 s, 900 beans/s, defect-boost 5 training run collected 61,929
+  labelled blobs. The 46,446 / 15,483 train/test split gave 97.91% accuracy,
+  96.99% defect recall and 1.02% good-bean false rejection.
+- These are simulated, blob-level holdout scores. Repeated views of a bean can
+  occur in both splits; they are not an independent-bean or real-camera accuracy
+  claim. Closed-loop physical outcomes are reported separately.
+- Fixed two runtime blockers: purity metrics tried to hash mutable `Bean`
+  records, and overview rendering hid beans culled from the inspection strip.
+  Regression tests cover those paths and controller scheduling.
+
+The first 8 s, 2000 beans/s video run evaluated 13,070 beans at an effective
+1976.4 beans/s. It removed 35.80% of defects, rejected 8.05% of good beans, and
+spilled 5.03%; one decision was late and the pool starved on 170 attempts.
+Classifier accuracy alone did not translate into good physical sorting.
+The complete baseline is preserved in the task's `first-run.tar.gz` attachment.
+
+The final run (`20260919_015039_green_arabica_2000`) evaluated 13,134 beans at
+1983.1 simulated beans/s: **38.89% defect removal, 7.96% good-bean loss, 4.72%
+spills, zero late decisions**, and 122 pool-starved attempts. Camera-centre
+decisions now retain already-decided tracks for association until they disappear,
+preventing repeat valve pulses. Nine regression tests pass. An intermediate run
+(`20260919_014250_green_arabica_2000`) had duplicate actuation and is diagnostic
+only; do not use it as final validation.
+
+Latency now adds the modeled 4 ms exposure/transfer delay to measured CPU work,
+including finalization. Final p50/p99/max were 40.87/45.69/81.73 ms against the
+nominal 73.33 ms camera-centre-to-jet budget. Zero observed late reject decisions
+is not a worst-case timing guarantee: maximum frame latency exceeded that budget.
+Synthetic rendering time is excluded from hardware-camera latency. The video run
+took 284.22 wall seconds for 8 simulated seconds, so this is not real-time execution.
+
+The jets do physically reject beans: 146 of 155 jet-hit black beans were rejected,
+but 281 black beans were targeted. Shell/husk spills and missed jet intersections
+remain substantial. `per_class` now includes `jet_hit`, `targeted_rejected`, and
+`jet_hit_rejected` to distinguish selection, physical actuation, and capture.
+`JET_FORCE`, pulse lengths, and splitter geometry remain unchanged: increasing
+force is not justified by these timing/coverage and light-fragment losses alone.
+The model, reports, final metrics/decisions/video, tests and review evidence are in
+the task's `final-validation.tar.gz` attachment.
+
 **Next**
 
-- [ ] speed up `vision.detect` (statistics over foreground pixels only) and train the classifier
-- [ ] first closed-loop run with metrics + video
+- [x] foreground-only `vision.detect` with exact equivalence proof; train the classifier
+- [x] first closed-loop run with metrics + video
+- [ ] meet the <5 ms detector target and improve physical rejection/yield/spills
 - [ ] rate sweep 500 → 3000 beans/s, latency vs the 73 ms camera-to-jet budget
 - [ ] `roasted` profile without touching the controller (generalisation)
 - [ ] UR5e (Menagerie + mink) picking oversize foreign matter off the infeed — the one thing the air jets cannot do

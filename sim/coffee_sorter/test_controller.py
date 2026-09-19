@@ -1,0 +1,102 @@
+import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
+
+import numpy as np
+
+from controller import Controller, Policy, Track
+from profiles import GREEN_ARABICA
+from vision import Blobs, FEATURES
+
+
+class FakeInspector:
+    def __init__(self, blobs):
+        self.blobs = iter(blobs)
+
+    def detect(self, frame, t):
+        return next(self.blobs)
+
+
+class FakeModel:
+    classes = ["black"]
+    anomaly_thresh = 10.0
+
+    def predict(self, X):
+        return np.ones((len(X), 1)), np.zeros(len(X))
+
+
+class FakeSim:
+    def __init__(self):
+        pitch = 0.5 / 64
+        self.L = SimpleNamespace(
+            belt_speed=3.0,
+            cam_x=-0.12,
+            belt_w=0.5,
+            nozzle_pitch=pitch,
+            nozzle_y=lambda j: -0.25 + pitch * (j + 0.5),
+            ej_x=0.1,
+        )
+        self.P = GREEN_ARABICA
+        self.fires = []
+
+    def fire(self, *args, **kwargs):
+        self.fires.append((args, kwargs))
+
+
+def blob(x):
+    return Blobs(
+        0.0,
+        1,
+        np.array([x]),
+        np.array([0.0]),
+        np.zeros(1),
+        np.zeros(1),
+        np.zeros((1, 4), int),
+        np.zeros(1, bool),
+        np.ones((1, len(FEATURES))),
+    )
+
+
+class ControllerTest(unittest.TestCase):
+    def controller(self, blobs):
+        sim = FakeSim()
+        ctrl = Controller(sim, FakeInspector(blobs), FakeModel(), Policy(latency_floor=0.004))
+        return sim, ctrl
+
+    def test_decided_track_consumes_remaining_observations_through_pruning(self):
+        sim, ctrl = self.controller([blob(-0.130), blob(-0.118), blob(-0.106)])
+        with patch("controller.time.perf_counter", side_effect=[0.0, 0.001, 1.0, 1.001, 1.002]):
+            ctrl.on_frame(None, 0.000)
+            ctrl.on_frame(None, 0.004)
+        decided = ctrl.tracks[0]
+        ctrl.tracks.extend(Track(i + 1, 0, 0, 0, misses=2, done=True) for i in range(4000))
+        with patch("controller.time.perf_counter", side_effect=[2.0, 2.001]):
+            ctrl.on_frame(None, 0.008)
+
+        self.assertEqual(len(ctrl.decisions), 1)
+        self.assertEqual(len(sim.fires), 2)
+        self.assertEqual(decided.n, 2)
+        self.assertIn(decided, ctrl.tracks)
+        self.assertEqual(len(ctrl.tracks), 1)
+
+    def test_latency_adds_capture_delay_and_includes_finalize(self):
+        _, ctrl = self.controller([blob(-0.118)])
+        with patch("controller.time.perf_counter", side_effect=[10.0, 10.003, 10.005]):
+            ctrl.on_frame(None, 1.0)
+
+        self.assertAlmostEqual(ctrl.decisions[0].t_available, 1.007)
+        self.assertAlmostEqual(ctrl.latency_ms[0], 9.0)
+        self.assertFalse(ctrl.decisions[0].late)
+
+    def test_deadline_is_checked_at_scheduling_point(self):
+        sim, ctrl = self.controller([blob(0.09)])
+        with patch("controller.time.perf_counter", side_effect=[20.0, 20.003, 20.005]):
+            ctrl.on_frame(None, 1.0)
+
+        self.assertAlmostEqual(ctrl.decisions[0].t_available, 1.007)
+        self.assertTrue(ctrl.decisions[0].late)
+        self.assertEqual(sim.fires, [])
+
+
+if __name__ == "__main__":
+    unittest.main()

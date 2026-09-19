@@ -81,25 +81,23 @@ class Controller:
         self.next_tid = 0
         self.latency_ms: list[float] = []
         self.frames = 0
-        self.fov_exit_x = self.L.cam_x + self.L.cam_fov / 2
 
     # -------------------------------------------------------------- per frame
     def on_frame(self, frame, t):
-        t_wall = time.perf_counter()
+        frame_started_wall = time.perf_counter()
         blobs = self.insp.detect(frame, t)
         full = ~blobs.partial
         P, A = self.model.predict(blobs.X[full])
         self._associate(blobs, full, P, A, t)
-        lat = time.perf_counter() - t_wall
-        self.latency_ms.append(lat * 1e3)
         self.frames += 1
-        t_avail = t + max(lat, self.pol.latency_floor)
-        self._finalize(t, t_avail)
+        self._finalize(t, frame_started_wall)
+        latency = self.pol.latency_floor + time.perf_counter() - frame_started_wall
+        self.latency_ms.append(latency * 1e3)
         return blobs, P, A, full
 
     def _associate(self, blobs: Blobs, full, P, A, t):
         v_belt = self.L.belt_speed
-        live = [tr for tr in self.tracks if not tr.done]
+        live = [tr for tr in self.tracks if not tr.done or tr.misses < 2]
         if live:
             px = np.array([tr.x + v_belt * (t - tr.t) for tr in live])
             py = np.array([tr.y for tr in live])
@@ -119,6 +117,9 @@ class Controller:
                 tr.prob_sum = np.zeros(len(self.classes))
                 self.tracks.append(tr)
             tr.x, tr.y, tr.t = bx, 0.7 * tr.y + 0.3 * by if tr.n else by, t
+            tr.misses = 0
+            if tr.done:
+                continue
             tr.obs_t.append(t); tr.obs_x.append(bx)
             tr.prob_sum += P[k]; tr.n += 1
             tr.anomaly = max(tr.anomaly, A[k]); tr.area = blobs.X[i, 0]
@@ -126,14 +127,14 @@ class Controller:
             if not used[j]:
                 tr.misses += 1
 
-    def _finalize(self, t, t_avail):
+    def _finalize(self, t, frame_started_wall):
         L, pol = self.L, self.pol
         for tr in self.tracks:
             if tr.done or tr.n == 0:
                 continue
             x_pred = tr.x + L.belt_speed * (t - tr.t)
-            # the bean cannot be fully seen again once its centre is < 6 mm from the strip exit
-            if x_pred + L.belt_speed * 0.004 < self.fov_exit_x - 0.006 and tr.misses < 2:
+            # Decide by the camera centre so measured compute spikes still fit the 73 ms jet budget.
+            if x_pred < L.cam_x and tr.misses < 2:
                 continue
             tr.done = True
             probs = tr.prob_sum / tr.n
@@ -150,6 +151,7 @@ class Controller:
             t_fire = t_leave + L.ej_x / v
             nozzles, pulse = [], 0.0
             late = False
+            t_available = t + pol.latency_floor + time.perf_counter() - frame_started_wall
             if reject:
                 mass = float(probs @ self.class_mass)
                 if anomalous and p_reject < pol.threshold:
@@ -163,13 +165,13 @@ class Controller:
                 if mass > 0.0005:
                     nozzles.append(j - (1 if off > 0 else -1))
                 t_on = t_fire - pol.lead
-                if t_avail > t_fire + 0.002:
+                if t_available > t_fire + 0.002:
                     late = True                                   # bean already past the jets
                 else:
-                    t_on = max(t_on, t_avail)
+                    t_on = max(t_on, t_available)
                     for nz in nozzles:
                         self.sim.fire(nz, t_on, pulse + (t_fire - pol.lead - t_on) * 0 + 0.001, JET_FORCE, uid=tr.tid)
-            self.decisions.append(Decision(tr.tid, t, t_avail, tr.x, tr.y, v, probs, tr.anomaly, reject, nozzles, t_fire, pulse, late, tr.n, cls))
+            self.decisions.append(Decision(tr.tid, t, t_available, tr.x, tr.y, v, probs, tr.anomaly, reject, nozzles, t_fire, pulse, late, tr.n, cls))
         # prune
         if len(self.tracks) > 4000:
-            self.tracks = [tr for tr in self.tracks if not tr.done]
+            self.tracks = [tr for tr in self.tracks if not tr.done or tr.misses < 2]

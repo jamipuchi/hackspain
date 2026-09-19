@@ -48,6 +48,9 @@ class Inspector:
         self.cull_margin = cull_margin
         self.ppm = L.px_per_m
         self.bg = np.array(sim.P.belt_rgb) * 255
+        self._grid_shape = (L.cam_h, L.cam_w)
+        self._xs = np.tile(np.arange(L.cam_w, dtype=np.float64), L.cam_h)
+        self._ys = np.repeat(np.arange(L.cam_h, dtype=np.float64), L.cam_w)
 
     # -------- geometry: image rows run along +x (belt travel), columns along +y
     def pixel_to_world(self, u, v):
@@ -73,42 +76,52 @@ class Inspector:
     # -------- detection + features
     def detect(self, frame, t) -> Blobs:
         H, W, _ = frame.shape
-        f = frame.astype(np.int16)
-        r, g, b = f[..., 0], f[..., 1], f[..., 2]
-        belt = (b > r + 35) & (b > g + 10)
-        mask = (~belt).astype(np.uint8)
-        n, labels, stats, cents = cv2.connectedComponentsWithStats(mask, connectivity=8)
+        r, g, b = cv2.split(frame)
+        belt = cv2.bitwise_and(cv2.compare(cv2.subtract(b, r), 35, cv2.CMP_GT),
+                               cv2.compare(cv2.subtract(b, g), 10, cv2.CMP_GT))
+        mask = cv2.bitwise_not(belt)
+        n, labels, stats, cents = cv2.connectedComponentsWithStatsWithAlgorithm(
+            mask, 8, cv2.CV_32S, cv2.CCL_DEFAULT)
         if n <= 1:
             return Blobs(t, 0, *[np.zeros(0)] * 4, np.zeros((0, 4), int), np.zeros(0, bool), np.zeros((0, len(FEATURES))))
         keep = np.where(stats[1:, cv2.CC_STAT_AREA] >= MIN_AREA_PX)[0] + 1
         if len(keep) == 0:
             return Blobs(t, 0, *[np.zeros(0)] * 4, np.zeros((0, 4), int), np.zeros(0, bool), np.zeros((0, len(FEATURES))))
-        lab = labels.ravel()
-        area = np.bincount(lab, minlength=n).astype(np.float64)
+        if self._grid_shape != (H, W):
+            self._grid_shape = (H, W)
+            self._xs = np.tile(np.arange(W, dtype=np.float64), H)
+            self._ys = np.repeat(np.arange(H, dtype=np.float64), W)
+        idx = np.flatnonzero(mask)
+        lab = labels.ravel()[idx]
+        area = stats[:, cv2.CC_STAT_AREA].astype(np.float64)
         area_safe = np.maximum(area, 1)
-        gray = (0.299 * r + 0.587 * g + 0.114 * b).astype(np.float32).ravel()
-        hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
-        hh, ss, vv = hsv[..., 0].ravel().astype(np.float32), hsv[..., 1].ravel().astype(np.float32), hsv[..., 2].ravel().astype(np.float32)
+        pixels = frame.reshape(-1, 3)[idx]
+        rgb = pixels.astype(np.int16)
+        gray = (0.299 * rgb[:, 0] + 0.587 * rgb[:, 1] + 0.114 * rgb[:, 2]).astype(np.float32)
+        hsv = cv2.cvtColor(pixels.reshape(-1, 1, 3), cv2.COLOR_RGB2HSV).reshape(-1, 3)
+        hh, ss, vv = hsv[:, 0], hsv[:, 1].astype(np.float32), hsv[:, 2]
 
         def bmean(w): return np.bincount(lab, weights=w, minlength=n) / area_safe
-        mr, mg, mb = bmean(r.ravel()), bmean(g.ravel()), bmean(b.ravel())
+        mr, mg, mb = bmean(rgb[:, 0]), bmean(rgb[:, 1]), bmean(rgb[:, 2])
         mgray = bmean(gray); sgray = np.sqrt(np.maximum(bmean(gray * gray) - mgray ** 2, 0))
         mh, ms, mv = bmean(hh), bmean(ss), bmean(vv)
         ssat = np.sqrt(np.maximum(bmean(ss * ss) - ms ** 2, 0))
-        dark_frac = bmean((gray < DARK_T).astype(np.float32))
-        bright_frac = bmean((gray > BRIGHT_T).astype(np.float32))
+        dark_frac = bmean(gray < DARK_T)
+        bright_frac = bmean(gray > BRIGHT_T)
         # second moments -> equivalent ellipse
-        ys, xs = np.divmod(np.arange(H * W), W)
-        xs = xs.astype(np.float64); ys = ys.astype(np.float64)
-        mx, my = bmean(xs), bmean(ys)
+        xs, ys = self._xs[idx], self._ys[idx]
+        mx, my = cents[:, 0], cents[:, 1]
         cxx = bmean(xs * xs) - mx ** 2; cyy = bmean(ys * ys) - my ** 2; cxy = bmean(xs * ys) - mx * my
         tr, det = cxx + cyy, cxx * cyy - cxy ** 2
         disc = np.sqrt(np.maximum(tr * tr / 4 - det, 0))
         l1, l2 = tr / 2 + disc, np.maximum(tr / 2 - disc, 1e-6)
         major, minor = 4 * np.sqrt(l1), 4 * np.sqrt(l2)
         # dark spots (insect holes, mould) inside blobs: one extra components pass on the whole strip
-        spot_mask = (mask.ravel().astype(bool) & (gray < SPOT_T)).reshape(H, W).astype(np.uint8)
-        ns, slab, sstats, scents = cv2.connectedComponentsWithStats(spot_mask, connectivity=8)
+        spot_mask = np.zeros(H * W, np.uint8)
+        spot_mask[idx] = gray < SPOT_T
+        spot_mask = spot_mask.reshape(H, W)
+        ns, slab, sstats, scents = cv2.connectedComponentsWithStatsWithAlgorithm(
+            spot_mask, 8, cv2.CV_32S, cv2.CCL_DEFAULT)
         n_spots = np.zeros(n); spot_area = np.zeros(n)
         if ns > 1:
             sc = np.clip(np.round(scents[1:]).astype(int), 0, [W - 1, H - 1])
