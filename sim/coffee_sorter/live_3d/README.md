@@ -18,6 +18,7 @@ Open `http://127.0.0.1:8895/`.
 
 The server accepts a different explicit backend URL through `--backend`.
 The browser always connects to the preview on the same origin.
+The WebSocket rejects missing, cross-origin, and non-loopback browser origins.
 The proxy selects `ws:` or `wss:` from the configured backend scheme.
 It preserves the live server's Host and Origin checks.
 
@@ -29,7 +30,8 @@ Ellipsoids use the generic coffee-bean LOD and server color.
 Half shapes use the broken-bean LOD.
 Boxes and capsules use labeled primitive fallbacks.
 
-The Assets view displays four runtime bean LODs and one multipart generated earring.
+The Assets view displays four required bean LODs and one optional multipart generated earring.
+The preview still starts and reports a fallback when that optional GLB is unavailable.
 The generated object is a visual compatibility specimen only.
 It has no live injection, physics, classifier, or training support.
 

@@ -30,9 +30,10 @@ GENERATED_EARRING = (
     / "object.glb"
 )
 
-STATIC_FILES = {
+REQUIRED_STATIC_FILES = {
     "/": HERE / "index.html",
     "/app.js": HERE / "app.js",
+    "/geometry.mjs": HERE / "geometry.mjs",
     "/three/three.module.js": WEB_VENDOR / "three.module.js",
     "/three/three.core.js": WEB_VENDOR / "three.core.js",
     "/three/OrbitControls.js": WEB_VENDOR / "OrbitControls.js",
@@ -43,13 +44,25 @@ STATIC_FILES = {
     "/assets/bean_black_lod.glb": BROWSER_ASSETS / "bean_black_lod.glb",
     "/assets/bean_insect_lod.glb": BROWSER_ASSETS / "bean_insect_lod.glb",
     "/assets/bean_broken_lod.glb": BROWSER_ASSETS / "bean_broken_lod.glb",
+}
+OPTIONAL_STATIC_FILES = {
     "/assets/generated_earring.glb": GENERATED_EARRING,
 }
 
 
-def asset_manifest() -> dict:
+def available_static_files() -> dict[str, Path]:
+    missing = [str(path) for path in REQUIRED_STATIC_FILES.values() if not path.is_file()]
+    if missing:
+        raise FileNotFoundError("Missing preview assets: " + ", ".join(missing))
+    return {
+        **REQUIRED_STATIC_FILES,
+        **{route: path for route, path in OPTIONAL_STATIC_FILES.items() if path.is_file()},
+    }
+
+
+def asset_manifest(static_files: dict[str, Path]) -> dict:
     assets = {}
-    for route, path in STATIC_FILES.items():
+    for route, path in static_files.items():
         if path.suffix != ".glb":
             continue
         content = path.read_bytes()
@@ -58,6 +71,18 @@ def asset_manifest() -> dict:
             "sha256": hashlib.sha256(content).hexdigest(),
         }
     return {"assets": assets, "total_bytes": sum(item["bytes"] for item in assets.values())}
+
+
+def trusted_browser_origin(origin: str | None, scheme: str, host: str) -> bool:
+    if not origin:
+        return False
+    supplied = urlparse(origin)
+    requested = urlparse(f"{scheme}://{host}")
+    return (
+        requested.hostname in {"127.0.0.1", "localhost", "::1"}
+        and supplied.scheme == requested.scheme
+        and supplied.netloc.lower() == requested.netloc.lower()
+    )
 
 
 class PreviewService:
@@ -90,6 +115,8 @@ class PreviewService:
             )
 
     async def websocket(self, request):
+        if not trusted_browser_origin(request.headers.get("Origin"), request.scheme, request.host):
+            raise web.HTTPForbidden(text="WebSocket Origin must match this loopback preview.")
         browser = web.WebSocketResponse(heartbeat=20, max_msg_size=2048)
         await browser.prepare(request)
         try:
@@ -129,22 +156,20 @@ class PreviewService:
 
 
 def build_app(backend: str) -> web.Application:
-    missing = [str(path) for path in STATIC_FILES.values() if not path.is_file()]
-    if missing:
-        raise FileNotFoundError("Missing preview assets: " + ", ".join(missing))
+    static_files = available_static_files()
     service = PreviewService(backend)
-    manifest = asset_manifest()
+    manifest = asset_manifest(static_files)
     app = web.Application(client_max_size=2048)
     app.cleanup_ctx.append(service.lifecycle)
 
     async def static_file(request):
-        return web.FileResponse(STATIC_FILES[request.path])
+        return web.FileResponse(static_files[request.path])
 
     async def manifest_handler(request):
         return web.json_response(manifest)
 
     app.add_routes(
-        [web.get(path, static_file) for path in STATIC_FILES]
+        [web.get(path, static_file) for path in static_files]
         + [
             web.get("/asset-manifest.json", manifest_handler),
             web.get("/health", service.health),

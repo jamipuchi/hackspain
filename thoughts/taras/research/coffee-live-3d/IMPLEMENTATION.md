@@ -91,6 +91,22 @@ No new injection occurred during this verification.
 The four latest-object outcome labels were checked in code.
 Taras must still verify those labels against a new physical injection.
 
+## Independent review corrections
+
+The preview now rejects missing, cross-origin, and non-loopback WebSocket origins before backend connection.
+An attacker-origin handshake returned HTTP 403.
+The same-origin browser remained compatible.
+
+Capsule prototypes now use simulator-local Z before the authoritative body quaternion is applied.
+Their scale uses simulator half-length `axes[0]` and radius `axes[1]`.
+
+The multipart earring is optional at startup.
+The Assets view reports when it is unavailable.
+Required runtime bean LODs still fail startup when missing.
+
+Capacity overflow now appears in browser telemetry instead of silently omitting objects.
+The machine geometry rebuilds when the backend session or physical layout changes.
+
 ## Unchanged engine priorities
 
 Rendering does not solve these engine priorities:

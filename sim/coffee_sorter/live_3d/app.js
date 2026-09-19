@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {OrbitControls} from '/three/OrbitControls.js';
 import {RoomEnvironment} from '/three/RoomEnvironment.js';
 import {GLTFLoader} from '/three/loaders/GLTFLoader.js';
+import {liveInstanceScale, machineLayoutSignature, reserveInstance} from '/geometry.mjs';
 
 const $ = id => document.getElementById(id);
 const stage = $('stage');
@@ -67,10 +68,10 @@ const materials = {
   reject: pbr('#9b5247', .05, .58),
   chute: pbr('#b2c0bb', .25, .25, {transparent: true, opacity: .22, depthWrite: false, side: THREE.DoubleSide}),
   fallback: pbr('#9a988f', .08, .75),
+  scanner: pbr('#fff6cf', 0, .4, {emissive: '#fff4c7', emissiveIntensity: 1.2}),
 };
 
-const machineMeshes = [];
-let machineBuilt = false;
+let currentMachineLayout = null;
 function addBox(size, position, material, rotationY = 0) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
   mesh.position.set(...position);
@@ -78,13 +79,17 @@ function addBox(size, position, material, rotationY = 0) {
   mesh.castShadow = material !== materials.chute;
   mesh.receiveShadow = true;
   machineGroup.add(mesh);
-  machineMeshes.push(mesh);
   return mesh;
 }
 
-function buildMachine(layout) {
-  if (machineBuilt) return;
-  machineBuilt = true;
+function buildMachine(layout, force = false) {
+  const signature = machineLayoutSignature(layout);
+  if (!force && signature === currentMachineLayout) return;
+  for (const child of [...machineGroup.children]) {
+    child.geometry?.dispose();
+    machineGroup.remove(child);
+  }
+  currentMachineLayout = signature;
   const L = layout;
   const beltCentre = -L.belt_len / 2;
   addBox([4, 3, .025], [0, 0, -.018], materials.floor);
@@ -96,8 +101,8 @@ function buildMachine(layout) {
     addBox([.04, .04, L.belt_z - .09], [x, side * (L.belt_w / 2 + .05), (L.belt_z - .09) / 2], materials.frame);
   }
   addBox([.1, L.belt_w + .12, .06], [L.cam_x, 0, L.belt_z + .42], materials.frame);
-  addBox([.012, L.belt_w + .04, .012], [L.cam_x - .05, 0, L.belt_z + .25], pbr('#fff6cf', 0, .4, {emissive: '#fff4c7', emissiveIntensity: 1.2}));
-  addBox([.012, L.belt_w + .04, .012], [L.cam_x + .05, 0, L.belt_z + .25], pbr('#fff6cf', 0, .4, {emissive: '#fff4c7', emissiveIntensity: 1.2}));
+  addBox([.012, L.belt_w + .04, .012], [L.cam_x - .05, 0, L.belt_z + .25], materials.scanner);
+  addBox([.012, L.belt_w + .04, .012], [L.cam_x + .05, 0, L.belt_z + .25], materials.scanner);
   addBox([.024, L.belt_w + .04, .024], [L.ej_x, 0, L.belt_z + L.ej_z_offset + .018], materials.steel);
   const nozzleGeometry = new THREE.CylinderGeometry(.002, .0015, .016, 10);
   nozzleGeometry.rotateX(Math.PI / 2);
@@ -163,7 +168,7 @@ async function loadAssets() {
     prototypes.set(prototype.name, prototype);
   }
   prototypes.set('box', {name: 'box', geometry: new THREE.BoxGeometry(2, 2, 2), material: materials.fallback.clone(), fallback: true});
-  prototypes.set('capsule', {name: 'capsule', geometry: normalizeGeometry(new THREE.CapsuleGeometry(1, 2, 4, 10).rotateZ(Math.PI / 2)), material: pbr('#88725b', .02, .82), fallback: true});
+  prototypes.set('capsule', {name: 'capsule', geometry: normalizeGeometry(new THREE.CapsuleGeometry(1, 2, 4, 10).rotateX(Math.PI / 2)), material: pbr('#88725b', .02, .82), fallback: true});
   for (const [name, prototype] of prototypes) {
     const mesh = new THREE.InstancedMesh(prototype.geometry, prototype.material, MAX_INSTANCES);
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -175,6 +180,7 @@ async function loadAssets() {
   await buildAssetPreview();
 }
 
+let generatedAssetReady = false;
 async function buildAssetPreview() {
   const names = ['good', 'black', 'insect', 'broken'];
   names.forEach((name, index) => {
@@ -199,6 +205,7 @@ async function buildAssetPreview() {
     specimen.scale.setScalar(.11 / Math.max(size.x, size.y, size.z));
     specimen.position.set(.46, 0, .13);
     assetGroup.add(specimen);
+    generatedAssetReady = true;
   } catch (error) {
     fallbackAssets.add('generated-earring');
     console.warn('Generated multipart GLB unavailable', error);
@@ -228,25 +235,28 @@ let sessionId = null;
 let latestInjectedId = null;
 let lastEventId = -1;
 let visibleObjects = 0;
+let omittedObjects = 0;
 function updateLiveObjects(packet) {
   const counts = new Map([...liveMeshes.keys()].map(key => [key, 0]));
   let selectedObject = null;
+  omittedObjects = 0;
   for (const object of packet.objects || []) {
     if (object.object_id === latestInjectedId) selectedObject = object;
     if (!object.active || !object.pos || !object.quat) continue;
     const key = liveAssetKey(object);
     const mesh = liveMeshes.get(key) || liveMeshes.get('box');
-    const index = counts.get(key) || 0;
-    if (index >= MAX_INSTANCES) continue;
+    const index = reserveInstance(counts, key, MAX_INSTANCES);
+    if (index < 0) {
+      omittedObjects++;
+      continue;
+    }
     dummy.position.fromArray(object.pos);
     dummy.quaternion.set(object.quat[1], object.quat[2], object.quat[3], object.quat[0]).normalize();
     const axes = object.axes || [.004, .003, .002];
-    if (object.shape === 'capsule') dummy.scale.set(axes[0] + axes[1], axes[1], axes[1]);
-    else dummy.scale.set(axes[0], axes[1], axes[2]);
+    dummy.scale.fromArray(liveInstanceScale(object.shape, axes));
     dummy.updateMatrix();
     mesh.setMatrixAt(index, dummy.matrix);
     mesh.setColorAt(index, new THREE.Color().setRGB(...(object.rgb || [.55, .55, .5])));
-    counts.set(key, index + 1);
   }
   visibleObjects = [...counts.values()].reduce((total, value) => total + value, 0);
   for (const [key, mesh] of liveMeshes) {
@@ -296,7 +306,8 @@ function updateEvidence(object) {
 
 function ingest(packet) {
   if (packet.type !== 'state') return;
-  if (sessionId && packet.session_id !== sessionId) {
+  const sessionChanged = Boolean(sessionId && packet.session_id !== sessionId);
+  if (sessionChanged) {
     latestInjectedId = null;
     lastEventId = -1;
   }
@@ -307,7 +318,7 @@ function ingest(packet) {
     if (event.type === 'injected') latestInjectedId = event.object_id;
   }
   state = packet;
-  buildMachine(packet.layout);
+  buildMachine(packet.layout, sessionChanged);
   updateLiveObjects(packet);
   updateScores(packet.rolling_scores);
   $('connection').className = `connection ${packet.status === 'running' ? 'online' : ''}`;
@@ -369,9 +380,13 @@ function setView(name) {
   liveGroup.visible = !assetMode;
   assetGroup.visible = assetMode;
   document.querySelector('.latest').classList.toggle('hidden', assetMode);
-  $('asset-note').innerHTML = assetMode
-    ? '<strong>Asset compatibility mode</strong>Four bean LODs and one multipart generated earring. No live physics, injection, or training support.'
-    : '<strong>Live visual contract</strong>Server shape and RGB select appearance. Boxes and capsules use generic fallbacks. Prediction never changes the model.';
+  let assetNote = '<strong>Live visual contract</strong>Server shape and RGB select appearance. Boxes and capsules use generic fallbacks. Prediction never changes the model.';
+  if (assetMode) {
+    assetNote = generatedAssetReady
+      ? '<strong>Asset compatibility mode</strong>Four bean LODs and one multipart generated earring. No live physics, injection, or training support.'
+      : '<strong>Asset compatibility mode</strong>Four bean LODs loaded. The optional generated earring is unavailable. No live physics, injection, or training support.';
+  }
+  $('asset-note').innerHTML = assetNote;
   document.querySelectorAll('[data-camera]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.camera === name)));
 }
 document.querySelectorAll('[data-camera]').forEach(button => button.onclick = () => setView(button.dataset.camera));
@@ -421,6 +436,7 @@ function render(now) {
     drawCalls: renderer.info.render.calls,
     triangles: renderer.info.render.triangles,
     visibleObjects,
+    omittedObjects,
     assetBytes,
     fallbackAssets: [...fallbackAssets, 'box', 'capsule'],
     renderer: gpu,
@@ -429,7 +445,9 @@ function render(now) {
     simTime: state?.sim_time_s ?? null,
   };
   window.live3dTelemetry = telemetry;
-  $('telemetry').textContent = `${fps.toFixed(0)} fps · ${median.toFixed(1)} ms median · ${p95.toFixed(1)} ms p95\n${telemetry.drawCalls} draws · ${visibleObjects} live objects · ${(assetBytes / 1024).toFixed(0)} KiB GLB`;
+  $('telemetry').classList.toggle('over-capacity', omittedObjects > 0);
+  const capacity = omittedObjects ? ` · ${omittedObjects} omitted over cap` : '';
+  $('telemetry').textContent = `${fps.toFixed(0)} fps · ${median.toFixed(1)} ms median · ${p95.toFixed(1)} ms p95\n${telemetry.drawCalls} draws · ${visibleObjects} live objects${capacity} · ${(assetBytes / 1024).toFixed(0)} KiB GLB`;
   requestAnimationFrame(render);
 }
 
