@@ -19,6 +19,9 @@ def make(cfg, t, u=None, dark=False):
 
 
 def build(cfg):
+    cfg.act_on = "suspect"  # these tests exercise sorting behaviour, not bring-up
+    cfg.door_policy = "pulse"
+    cfg.timing.mode = "model"
     ard = _stubs.StubArduino()
     gate = _stubs.StubGate(ard, cfg, dry_run=True)
     line = SortingLine(cfg, _stubs.StubCamera(cfg), _stubs.StubDetector(cfg), _stubs.StubClassifier(cfg), gate, ard)
@@ -112,3 +115,45 @@ def test_back_to_back_beans_each_get_a_verdict():
         t += 0.02
     assert [v.suspect for v in verdicts] == [False, True], [v.reason for v in verdicts]
     assert line.counters["beans"] == 2
+
+
+def test_state_policy_moves_only_on_change():
+    cfg = config.LineConfig()
+    cfg.door_policy = "state"
+    line, gate = build(cfg)
+    cfg.door_policy = "state"
+    roll(line, cfg, dark=True)   # bad → door to the bad side
+    roll(line, cfg, dark=True)   # bad again → nothing moves
+    roll(line, cfg, dark=False)  # good → door to the good side
+    kinds = [e.kind for e in line.events if e.kind in ("door_set", "door_kept")]
+    assert kinds == ["door_set", "door_kept", "door_set"], kinds
+    assert line.counters["gate_pulses"] == 2
+    time.sleep(0.3)
+    acts = [e.split()[0] for _, e in gate.events]
+    assert acts == ["open", "flush"], gate.events  # no automatic return between beans
+
+
+def test_static_object_is_ignored_and_real_bean_still_triggers():
+    cfg = config.LineConfig()
+    cfg.trigger_on = "seen"
+    line, gate = build(cfg)
+    cfg.act_on = "all"
+    x0, y0, x1, y1 = cfg.camera.zone
+    ppm = cfg.camera.px_per_mm
+    t = now()
+    # a dark smudge sits still inside the zone for 2 s
+    for k in range(60):
+        img = np.full((cfg.camera.height, cfg.camera.width, 3), 235, np.uint8)
+        cv2.ellipse(img, (x0 + 60, y0 + 40), (int(5 * ppm), int(3 * ppm)), 0, 0, 360, (40, 40, 40), -1)
+        line.step(Frame(img, t, k, "t"))
+        t += 0.04
+    assert any(e.kind == "static_object" for e in line.events)
+    assert line.state == "armed" and line.counters["gate_pulses"] == 0
+    # now a bean rolls through while the smudge is still there
+    for k in range(40):
+        img = np.full((cfg.camera.height, cfg.camera.width, 3), 235, np.uint8)
+        cv2.ellipse(img, (x0 + 60, y0 + 40), (int(5 * ppm), int(3 * ppm)), 0, 0, 360, (40, 40, 40), -1)
+        cv2.ellipse(img, (x1 + 40 - k * 12, (y0 + y1) // 2 + 60), (int(6 * ppm), int(4 * ppm)), 0, 0, 360, (70, 95, 140), -1)
+        line.step(Frame(img, t, 100 + k, "t"))
+        t += 0.03
+    assert line.counters["gate_pulses"] == 1, line.counters

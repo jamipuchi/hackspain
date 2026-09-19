@@ -90,6 +90,11 @@ class PaperBeanDetector:
         n, labels, stats, cents = cv2.connectedComponentsWithStats(mask, connectivity=8)
         if n <= 1:
             return []
+        if v.shadow_split and n > 1:
+            mask = self._split_shadows(mask, gray, labels, n, stats)
+            n, labels, stats, cents = cv2.connectedComponentsWithStats(mask, connectivity=8)
+            if n <= 1:
+                return []
         areas = stats[1:, cv2.CC_STAT_AREA]
         keep = np.where((areas >= v.min_area_px) & (areas <= v.max_area_px))[0] + 1
         if len(keep) == 0:
@@ -165,13 +170,36 @@ class PaperBeanDetector:
                             area_px=float(a), partial=bool(partial), features={f: float(feats[f]) for f in FEATURES}))
         return out
 
+    def _split_shadows(self, mask: np.ndarray, gray: np.ndarray, labels: np.ndarray, n: int, stats: np.ndarray) -> np.ndarray:
+        """On a shadowed floor a bean's own shadow passes the threshold and merges into the blob (minor_mm doubles,
+        aspect explodes). For every blob whose gray histogram is bimodal (Otsu split with the two modes >=
+        shadow_split_min_gap apart) keep only the pixels darker than the split: the bean core. Unimodal blobs
+        (a uniformly lit bean, a light roast with a dark crease) are left alone."""
+        v = self.cfg.vision
+        out = mask.copy()
+        for k in range(1, n):
+            if stats[k, cv2.CC_STAT_AREA] < v.min_area_px:
+                continue
+            x, y, w, h = (int(stats[k, i]) for i in (cv2.CC_STAT_LEFT, cv2.CC_STAT_TOP, cv2.CC_STAT_WIDTH, cv2.CC_STAT_HEIGHT))
+            sub_lab = labels[y:y + h, x:x + w] == k
+            vals = gray[y:y + h, x:x + w][sub_lab]
+            if vals.size < 20:
+                continue
+            thr, _ = cv2.threshold(vals.reshape(-1, 1), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            lo, hi = vals[vals <= thr], vals[vals > thr]
+            if lo.size < v.min_area_px // 2 or hi.size < 10 or float(hi.mean()) - float(lo.mean()) < v.shadow_split_min_gap:
+                continue
+            drop = sub_lab & (gray[y:y + h, x:x + w] > thr)
+            out[y:y + h, x:x + w][drop] = 0
+        return cv2.morphologyEx(out, cv2.MORPH_OPEN, self._kernel)
+
     # -- Module
     def status(self) -> dict:
         ts = list(self._times)
         return {"name": self.name, "features": len(FEATURES), "n_frames": self.n_frames, "n_blobs_last": self.n_blobs_last,
                 "last_ms": round(ts[-1], 2) if ts else 0.0, "mean_ms": round(float(np.mean(ts)), 2) if ts else 0.0,
                 "paper_gray_median": round(self.paper_median, 1), "paper_ok": self.paper_ok, "fg_frac": round(self.fg_frac, 3), "threshold_used": self.threshold_used,
-                "px_per_mm": self.cfg.camera.px_per_mm, "zone": list(self.cfg.camera.zone)}
+                "px_per_mm": self.cfg.camera.px_per_mm, "zone": list(self.cfg.camera.zone), "shadow_split": self.cfg.vision.shadow_split}
 
     def selftest(self) -> list[Check]:
         from line.camera_source import SyntheticCamera

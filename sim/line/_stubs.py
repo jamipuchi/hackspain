@@ -327,3 +327,57 @@ class StubClassifier:
 
     def close(self) -> None:
         return None
+
+
+class ColorClassifier:
+    """White vs dark beans by DARK-PIXEL FRACTION, robust to motion blur (owner: integrator).
+
+    Mean grey fails on a moving bean: blur mixes the white board into the blob, so a black bean at speed reads 100–130 like a
+    white one. The fraction of pixels darker than `color_dark_gray` stays near zero for a white bean and clearly positive for
+    a black one even when blurred. `dark_frac` from the detector uses its own threshold, so when the frame is available the
+    fraction is recomputed here from the blob's bounding box.
+    """
+
+    name = "color-dark-fraction"
+
+    def __init__(self, cfg: LineConfig):
+        self.cfg = cfg
+        self.n = 0
+        self.last: dict = {}
+
+    def dark_fraction(self, frame: Frame, blob: Blob) -> float:
+        x, y, w, h = blob.bbox
+        crop = frame.bgr[max(0, y) : y + h, max(0, x) : x + w]
+        if crop.size == 0:
+            return float(blob.features.get("dark_frac", 0.0))
+        gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+        obj = gray < self.cfg.vision.bean_gray_max  # pixels that belong to the object, not the board
+        if obj.sum() < 10:
+            return float(blob.features.get("dark_frac", 0.0))
+        return float((gray[obj] < self.cfg.classifier.color_dark_gray).mean())
+
+    def classify(self, frame: Frame, blob: Blob) -> Verdict:
+        t0 = now()
+        df = self.dark_fraction(frame, blob)
+        thr = float(self.cfg.classifier.color_white_max_dark_frac)
+        white = df <= thr
+        self.n += 1
+        self.last = {"dark_frac": round(df, 3), "white": white}
+        blob.features["core_dark_frac"] = df
+        return Verdict(label="white" if white else "dark", p_defect=1.0 if white else 0.0, suspect=white, reason=f"dark core {df:.3f} {'<=' if white else '>'} {thr:.3f}: {'white' if white else 'dark'}", ms=(now() - t0) * 1000, classifier=self.name)
+
+    def status(self) -> dict:
+        return {"name": self.name, "classes": ["white", "dark"], "white_max_dark_frac": self.cfg.classifier.color_white_max_dark_frac, "dark_gray": self.cfg.classifier.color_dark_gray, "n_classified": self.n, "last": self.last, "ok": True}
+
+    def selftest(self) -> list[Check]:
+        img = np.full((60, 80, 3), 235, np.uint8)
+        cv2.ellipse(img, (40, 30), (20, 12), 0, 0, 360, (30, 30, 30), -1)
+        b = Blob(40, 30, (20, 18, 40, 24), 700, False, {})
+        v_dark = self.classify(Frame(img, now(), 0, "t"), b)
+        img2 = np.full((60, 80, 3), 235, np.uint8)
+        cv2.ellipse(img2, (40, 30), (20, 12), 0, 0, 360, (150, 150, 150), -1)
+        v_white = self.classify(Frame(img2, now(), 0, "t"), b)
+        return [Check("color.dark_bean", not v_dark.suspect, v_dark.reason), Check("color.white_bean", v_white.suspect, v_white.reason)]
+
+    def close(self) -> None:
+        return None

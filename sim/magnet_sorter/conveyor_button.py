@@ -12,7 +12,7 @@ Panel: conveyor forward / reverse / stop with speed, timed runs, angle sliders f
 (pins 9 / 10 / 11), Home, magnet on/off, live status from `?`, and a raw command box.
 Keyboard: Space or Esc = stop belt, ← → = reverse / forward at the slider speed, H = home.
 """
-import argparse, glob, json, sys, threading, time, webbrowser
+import argparse, glob, json, os, sys, threading, time, webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -121,51 +121,106 @@ async function poll(){
 poll(); setInterval(poll,1000);
 </script></body></html>"""
 
-ALLOWED = set("SMCH?")   # firmware commands the raw box may send
+ALLOWED = set("SMCH?TDNLR")   # firmware commands the raw box / HTTP API may send (T D N L R added 19 Sep, firmware >= 17:20)
 
 class Uno:
+    """Holds the serial port. Tolerates the Uno being unplugged: commands fail fast with a clear error, a background
+    thread re-opens the port as soon as the device is back (the Uno resets on open, so the belt/door are detached then)."""
+
     def __init__(self, port):
         self.lock = threading.Lock()
-        self.port = port
+        self.port = port or ""
         self.ser = None
-        self._open()
-        print("uno:", self.cmd("C 0").strip() or "(no reply)")
+        self.connected = False
+        self.last_error = ""
+        self.n_reconnects = 0
+        try:
+            self._open()
+            print("uno:", self.cmd("C 0").strip() or "(no reply)")
+        except (NoPort, OSError) as e:
+            self.last_error = str(e)
+            print("uno: not connected:", e, "- will retry every 2 s")
+        threading.Thread(target=self._healer, daemon=True, name="uno-reconnect").start()
+
+    def _healer(self):
+        while True:
+            time.sleep(2.0)
+            if self.connected:
+                continue
+            with self.lock:
+                if self.connected:
+                    continue
+                try:
+                    self._open()
+                    self.n_reconnects += 1
+                    print("uno: reconnected after unplug:", self.port)
+                except (NoPort, OSError) as e:
+                    self.last_error = str(e)
 
     def _open(self):
         if self.ser:
             try: self.ser.close()
             except Exception: pass
-        self.port = self.port if glob.glob(self.port) else find_port()
+            try:  # macOS: a dead CDC device can leave the fd half-open and the re-open fails with ENXIO until it is really closed
+                fd = getattr(self.ser, "fd", None)
+                if fd is not None: os.close(fd)
+            except Exception: pass
+            self.ser = None
+        self.port = self.port if (self.port and glob.glob(self.port)) else find_port()
         self.ser = serial.Serial(self.port, 115200, timeout=0.5)
         time.sleep(2.5)                      # opening the port resets the Uno; wait for boot
         self.ser.reset_input_buffer()
+        self.connected = True
+        self.last_error = ""
         print("connected:", self.port)
 
     def cmd(self, line):
         with self.lock:
+            if self.ser is None or not self.connected:
+                try:
+                    self._open()                       # the device may be back
+                except (NoPort, OSError) as e:
+                    self.last_error = str(e)
+                    raise RuntimeError(f"Uno not connected: {e}") from e
             for attempt in (1, 2):
                 try:
                     self.ser.reset_input_buffer()
                     self.ser.write((line + "\n").encode())
-                    return self.ser.readline().decode(errors="replace")
+                    reply = self.ser.readline().decode(errors="replace")
+                    if reply == "":
+                        raise OSError("no reply from Uno (timeout)")
+                    return reply
                 except (serial.SerialException, OSError) as e:
-                    # "Device not configured" = the Uno was re-plugged; reopen the port and retry once
-                    print("serial error:", e, "-> reconnecting")
-                    if attempt == 2: raise
-                    self._open()
+                    # "Device not configured" = the Uno was unplugged/re-plugged; reopen the port and retry once
+                    self.connected = False
+                    self.last_error = str(e)
+                    print("serial error:", e, "-> reconnecting", flush=True)
+                    if attempt == 2:
+                        raise RuntimeError(f"Uno link lost: {e}") from e
+                    try:
+                        self._open()
+                    except (NoPort, OSError) as e2:
+                        self.last_error = str(e2)
+                        raise RuntimeError(f"Uno not connected: {e2}") from e2
 
     def status(self):
         """Parse `P b s e M m B moving` into a dict."""
+        if not self.connected:
+            raise RuntimeError(f"Uno not connected: {self.last_error or 'no device'}")
         r = self.cmd("?").split()
         try:
             return {"pos": [int(r[1]), int(r[2]), int(r[3])], "magnet": r[5] == "1", "moving": r[7] == "1"}
         except (IndexError, ValueError):
             return {"pos": None, "raw": " ".join(r)}
 
+class NoPort(RuntimeError):
+    pass
+
+
 def find_port():
     ports = [p for p in glob.glob("/dev/cu.usbmodem*") + glob.glob("/dev/cu.usbserial*")]
     if not ports:
-        sys.exit("no Arduino serial port found (looked for /dev/cu.usbmodem* and /dev/cu.usbserial*)")
+        raise NoPort("no Arduino on USB (no /dev/cu.usbmodem* or /dev/cu.usbserial*)")
     return ports[0]
 
 def main():
@@ -174,7 +229,7 @@ def main():
     ap.add_argument("--http", type=int, default=8765)
     ap.add_argument("--no-browser", action="store_true")
     a = ap.parse_args()
-    uno = Uno(a.port or find_port())
+    uno = Uno(a.port or "")
 
     class H(BaseHTTPRequestHandler):
         def log_message(self, *_): pass
@@ -184,8 +239,8 @@ def main():
             self.end_headers(); self.wfile.write(b)
         def do_GET(self):
             if self.path.startswith("/status"):
-                try: return self._json({"ok": True, "port": uno.port, **uno.status()})
-                except Exception as e: return self._json({"ok": False, "port": uno.port, "error": str(e)}, 500)
+                try: return self._json({"ok": True, "port": uno.port, "connected": True, "reconnects": uno.n_reconnects, **uno.status()})
+                except Exception as e: return self._json({"ok": False, "port": uno.port, "connected": uno.connected, "reconnects": uno.n_reconnects, "error": str(e)}, 500)
             b = PAGE.encode(); self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8"); self.send_header("Content-Length", len(b))
             self.end_headers(); self.wfile.write(b)
@@ -197,7 +252,7 @@ def main():
                 elif u.path == "/cmd":
                     line = q.get("line", [""])[0].strip()
                     if not line or line[0] not in ALLOWED or "\n" in line:
-                        return self._json({"ok": False, "error": "command must start with S, M, C, H or ?"}, 400)
+                        return self._json({"ok": False, "error": "command must start with S, M, C, H, ?, T, D, N, L or R"}, 400)
                 else:
                     return self._json({"ok": False, "error": "unknown endpoint"}, 404)
                 reply = uno.cmd(line); print(f"{line} -> {reply.strip()}")
@@ -214,7 +269,12 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
-        print("\nstopping belt…", uno.cmd("C 0").strip()); uno.ser.close()
+        try:
+            print("\nstopping belt…", uno.cmd("C 0").strip())
+        except Exception as e:
+            print("\n(no Uno to stop:", e, ")")
+        if uno.ser is not None:
+            uno.ser.close()
 
 if __name__ == "__main__":
     main()

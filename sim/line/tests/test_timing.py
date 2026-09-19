@@ -14,6 +14,8 @@ def cfg():
     c.gate.settle_ms = 400          # stock firmware ramp; the arduino agent flips this to 120 with ramp_override
     c.timing.lead_margin_s = 0.0
     c.timing.speed_model = "drag"
+    if hasattr(c.timing, "mode"):
+        c.timing.mode = "model"
     return c
 
 
@@ -172,3 +174,28 @@ def test_summary_is_json_friendly(cfg):
     assert s["speed_model"] == "drag"
     assert all(isinstance(v, (int, float, str)) for v in s.values())
     assert all(math.isfinite(v) for v in s.values() if isinstance(v, float))
+
+
+# ------------------------------------------------------------------ pipeline call style + fixed mode
+def test_gate_schedule_pipeline_style_matches_pixel_style(cfg):
+    for frac, px in ((0.0, 400), (0.5, 640), (1.0, 880)):
+        assert timing.gate_schedule(frac, cfg) == pytest.approx(timing.gate_schedule(0.0, px, cfg))
+    assert timing.gate_schedule_frac(0.5, cfg) == pytest.approx(timing.gate_schedule(0.5, cfg))
+    assert timing.gate_schedule(-1.0, cfg) == pytest.approx(timing.gate_schedule(0.0, cfg))   # clamped
+
+
+def test_gate_schedule_bad_arity(cfg):
+    with pytest.raises(TypeError):
+        timing.gate_schedule(0.5)
+
+
+def test_fixed_mode_bypasses_kinematics(cfg):
+    if not hasattr(cfg.timing, "mode"):
+        pytest.skip("timing.mode not in this config")
+    cfg.timing.mode = "fixed"
+    cfg.timing.fixed_delay_s = 0.25
+    assert timing.gate_schedule(0.5, cfg) == (0.25, cfg.gate.default_dwell_s)
+    assert timing.gate_schedule(10.0, 640, cfg, now_t=10.1) == pytest.approx((0.15, cfg.gate.default_dwell_s))
+    assert timing.gate_schedule(10.0, 640, cfg, now_t=11.0) == (0.0, cfg.gate.default_dwell_s)
+    cfg.timing.mode = "model"
+    assert timing.gate_schedule(0.5, cfg)[0] != 0.25
