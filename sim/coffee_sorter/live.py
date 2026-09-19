@@ -1,11 +1,14 @@
-"""Serve one bounded coffee engine session on loopback."""
+"""Serve bounded or continuous coffee engine sessions on loopback."""
 from __future__ import annotations
 
 import argparse
 import asyncio
 import contextlib
 from collections import deque
+import hashlib
 import json
+import logging
+from logging.handlers import RotatingFileHandler
 import multiprocessing as mp
 import os
 import signal
@@ -20,6 +23,108 @@ from aiohttp import WSMsgType, web
 HERE = Path(__file__).resolve().parent
 MAX_COMMANDS = 64
 MAX_CLIENTS = 4
+MAX_PENDING_COMMANDS = 16
+COMMAND_EPOCH_SECONDS = 60
+
+
+def _file_hash(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def load_preset(preset_path):
+    """Load a preset and validate continuous model compatibility without training."""
+    preset_path = Path(preset_path).resolve()
+    preset = json.loads(preset_path.read_text())
+    if preset.get('mode') != 'continuous':
+        return preset
+
+    limits = preset.get('limits', {})
+    if limits.get('max_sim_seconds') is not None or limits.get('max_wall_seconds') is not None:
+        raise ValueError('Continuous presets must disable simulation and wall-time limits.')
+    if preset.get('score_window_seconds') != 60.0:
+        raise ValueError('Continuous presets must use a 60 simulation-second score window.')
+
+    model_path = Path(preset.get('model_path', ''))
+    model_path = model_path if model_path.is_absolute() else HERE / model_path
+    manifest_path = model_path.with_suffix('.manifest.json')
+    if not model_path.is_file() or not manifest_path.is_file():
+        raise FileNotFoundError('The selected model and its adjacent manifest are required.')
+    manifest = json.loads(manifest_path.read_text())
+    if manifest.get('artifact_sha256') != _file_hash(model_path):
+        raise ValueError('The selected model bytes do not match the adjacent manifest.')
+
+    from classifier import Model
+    from profiles import PROFILES
+    from vision import FEATURES
+
+    profile = PROFILES.get(preset.get('profile'))
+    if profile is None:
+        raise ValueError('The continuous preset uses an unsupported profile.')
+    model = Model.load(model_path)
+    provenance = manifest.get('provenance')
+    config = provenance.get('config', {}) if isinstance(provenance, dict) else {}
+    physical = config.get('physical_preset', {})
+    capture_every = preset.get('camera_every_steps')
+    timestep = preset.get('layout', {}).get('timestep')
+    expected_capture_hz = None
+    if isinstance(capture_every, int) and not isinstance(capture_every, bool) and capture_every > 0 and timestep:
+        expected_capture_hz = 1.0 / (float(timestep) * capture_every)
+    mismatches = []
+    if config.get('profile') != preset.get('profile') or model.meta.get('profile') != preset.get('profile'):
+        mismatches.append('profile')
+    if list(model.classes) != profile.names or model.meta.get('classes') != profile.names:
+        mismatches.append('classes')
+    if manifest.get('features') != FEATURES or model.meta.get('features') != FEATURES:
+        mismatches.append('features')
+    if model.meta.get('provenance') != provenance:
+        mismatches.append('model provenance')
+    if physical.get('layout') != preset.get('layout'):
+        mismatches.append('physical layout')
+    if physical.get('requested_rate') != preset.get('requested_rate') or config.get('rate') != preset.get('requested_rate'):
+        mismatches.append('feed rate')
+    if physical.get('camera_every_steps') != capture_every or config.get('capture_every') != capture_every:
+        mismatches.append('camera cadence')
+    if expected_capture_hz is None or physical.get('capture_hz') != expected_capture_hz:
+        mismatches.append('camera frequency')
+    if mismatches:
+        raise ValueError(f"The selected model is physically incompatible: {', '.join(mismatches)}.")
+    return preset
+
+
+class CommandLog:
+    def __init__(self, path, rotating):
+        self.stream = None
+        self.logger = None
+        self.handler = None
+        if rotating:
+            self.handler = RotatingFileHandler(path, maxBytes=1024 * 1024, backupCount=2)
+            self.logger = logging.getLogger(f'coffee.commands.{uuid.uuid4()}')
+            self.logger.propagate = False
+            self.logger.setLevel(logging.INFO)
+            self.logger.addHandler(self.handler)
+        else:
+            self.stream = path.open('a')
+
+    def write(self, row):
+        encoded = json.dumps(row)
+        if self.logger is not None:
+            self.logger.info(encoded)
+        else:
+            self.stream.write(encoded + '\n')
+            self.stream.flush()
+
+    def close(self):
+        if self.handler is not None:
+            self.logger.removeHandler(self.handler)
+            self.handler.close()
+        if self.stream is not None:
+            self.stream.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback_value):
+        self.close()
 
 
 def worker(preset, states, acknowledgments, commands, stop, out):
@@ -28,12 +133,22 @@ def worker(preset, states, acknowledgments, commands, stop, out):
         os.environ[name] = '1'
     engine = None
     command_results = {}
-    sim_limit, wall_limit = 0, 0
+    continuous = False
+    rolling_scores = None
+    last_score_publish = 0.0
+    sim_limit, wall_limit = 0.0, 0.0
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
 
     def publish(status, error=None):
+        nonlocal rolling_scores, last_score_publish
         state = engine.snapshot() if engine else {}
+        now = time.monotonic()
+        if continuous and (rolling_scores is None or now - last_score_publish >= 1.0):
+            rolling_scores = engine.rolling_scores()
+            last_score_publish = now
+        if continuous:
+            state['rolling_scores'] = rolling_scores
         state.update(status=status, error=error, limits={
             'sim_seconds': sim_limit, 'wall_seconds': wall_limit,
             'clients': MAX_CLIENTS, 'commands': MAX_COMMANDS,
@@ -41,7 +156,8 @@ def worker(preset, states, acknowledgments, commands, stop, out):
         if engine:
             state.update(source_revision=engine.source_revision, source_hashes=engine.source_hashes)
         if status in ('completed', 'failed'):
-            state['command_results'] = list(command_results.values())
+            state['command_results'] = (list(command_results) if continuous
+                                        else list(command_results.values()))
         # A stale pose packet can be discarded. Acknowledgments have a separate queue.
         while not stop.is_set():
             try:
@@ -54,16 +170,21 @@ def worker(preset, states, acknowledgments, commands, stop, out):
     try:
         from engine import Engine
         engine = Engine(Path(preset))
-        sim_limit = float(engine.preset['limits']['max_sim_seconds'])
-        wall_limit = float(engine.preset['limits']['max_wall_seconds'])
-        if not (0.6 < sim_limit <= 10 and 0 < wall_limit <= 300):
-            raise ValueError('Session limits must allow 0.6 to 10 simulation seconds and at most 300 wall seconds.')
-        publish('ready')
-        running = False
-        started = None
+        continuous = engine.continuous
+        if continuous:
+            command_results = deque(maxlen=MAX_COMMANDS * 2)
+            sim_limit = wall_limit = None
+        else:
+            sim_limit = float(engine.preset['limits']['max_sim_seconds'])
+            wall_limit = float(engine.preset['limits']['max_wall_seconds'])
+            if not (0.6 < sim_limit <= 10 and 0 < wall_limit <= 300):
+                raise ValueError('Session limits must allow 0.6 to 10 simulation seconds and at most 300 wall seconds.')
+        running = continuous
+        started = time.monotonic() if continuous else None
+        publish('running' if continuous else 'ready')
         last_publish = time.monotonic()
         reason = 'stopped'
-        with (out / 'commands.jsonl').open('a') as log:
+        with CommandLog(out / 'commands.jsonl', rotating=continuous) as log:
             while not stop.is_set():
                 try:
                     command = commands.get(timeout=0.05) if not running else commands.get_nowait()
@@ -71,10 +192,12 @@ def worker(preset, states, acknowledgments, commands, stop, out):
                     command = None
                 if command:
                     ack = dict(type='ack', command_id=command['command_id'], session_id=engine.session_id)
+                    if continuous:
+                        ack['command_epoch'] = command['command_epoch']
                     try:
                         if command['session_id'] != engine.session_id:
                             raise ValueError('The session changed. Reload the page.')
-                        if running and engine.sim.data.time >= sim_limit - 0.6:
+                        if not continuous and running and engine.sim.data.time >= sim_limit - 0.6:
                             raise ValueError('The session is ending. Restart the session before another injection.')
                         object_id = engine.inject(command['class_name'])
                         ack.update(ok=True, object_id=object_id, sim_time_s=float(engine.sim.data.time))
@@ -82,10 +205,12 @@ def worker(preset, states, acknowledgments, commands, stop, out):
                             running, started = True, time.monotonic()
                     except ValueError as exc:
                         ack.update(ok=False, error=str(exc))
-                    command_results[ack['command_id']] = ack
+                    if continuous:
+                        command_results.append(ack)
+                    else:
+                        command_results[ack['command_id']] = ack
                     acknowledgments.put(ack, timeout=1)
-                    log.write(json.dumps({**command, **ack}) + '\n')
-                    log.flush()
+                    log.write({**command, **ack})
                     publish('running' if running else 'ready')
                 if not running:
                     continue
@@ -94,7 +219,7 @@ def worker(preset, states, acknowledgments, commands, stop, out):
                 if now - last_publish >= 0.1:
                     publish('running')
                     last_publish = now
-                if engine.sim.data.time >= sim_limit or now - started >= wall_limit:
+                if not continuous and (engine.sim.data.time >= sim_limit or now - started >= wall_limit):
                     reason = 'simulation limit' if engine.sim.data.time >= sim_limit else 'wall-time limit'
                     break
         report = engine.report()
@@ -119,6 +244,8 @@ class LiveService:
     def __init__(self, preset, out):
         self.ctx = mp.get_context('spawn')
         self.preset = Path(preset)
+        self.preset_config = load_preset(self.preset)
+        self.continuous = self.preset_config.get('mode') == 'continuous'
         self.out = Path(out)
         self.session_out = self.out
         self.restart_count = 0
@@ -127,12 +254,55 @@ class LiveService:
         self.state = {'status': 'starting'}
         self.clients = set()
         self.requests = {}
+        self.command_epoch_seconds = COMMAND_EPOCH_SECONDS
+        self.command_epoch = str(uuid.uuid4()) if self.continuous else None
+        self.previous_command_epoch = None
+        self.command_epoch_started = time.monotonic()
+        self.epoch_admissions = ({self.command_epoch: 0} if self.continuous else {})
+        self.heartbeat_seq = 0
+        self.last_state_broadcast = time.monotonic()
         self.task = None
         self.state_ready = asyncio.Event()
         self.service_timings = {'snapshot_reads': 0, 'broadcasts': 0, 'json_encode_ms': 0.0, 'send_wait_ms': 0.0}
         self.service_samples = {key: deque(maxlen=4096) for key in ('json_encode_ms', 'send_wait_ms')}
         self.profile_written = False
         self._create_worker(self.session_out)
+
+    def _advance_command_epoch(self, now=None):
+        if not self.continuous:
+            return False
+        now = time.monotonic() if now is None else now
+        changed = False
+        while now - self.command_epoch_started >= self.command_epoch_seconds:
+            self.previous_command_epoch = self.command_epoch
+            self.command_epoch = str(uuid.uuid4())
+            self.command_epoch_started += self.command_epoch_seconds
+            self.epoch_admissions = {
+                self.previous_command_epoch: self.epoch_admissions.get(self.previous_command_epoch, 0),
+                self.command_epoch: 0,
+            }
+            changed = True
+        if changed:
+            self._prune_completed_requests()
+        return changed
+
+    def _prune_completed_requests(self):
+        if not self.continuous:
+            return
+        retained_epochs = {self.command_epoch, self.previous_command_epoch}
+        expired = [command_id for command_id, entry in self.requests.items()
+                   if entry.get('ack') and entry['payload'].get('command_epoch') not in retained_epochs]
+        for command_id in expired:
+            del self.requests[command_id]
+
+    def _state_packet(self, state=None):
+        packet = {'type': 'state', **(self.state if state is None else state),
+                  'restart_supported': not self.continuous,
+                  'heartbeat_seq': self.heartbeat_seq}
+        if self.continuous:
+            packet.update(command_epoch=self.command_epoch,
+                          command_epoch_seconds=self.command_epoch_seconds)
+        return packet
 
     def _create_worker(self, out):
         if getattr(self, 'process', None) is not None:
@@ -283,7 +453,10 @@ class LiveService:
 
     async def broadcast(self, packet):
         if packet.get('type') == 'state':
-            packet = {**packet, 'restart_supported': True}
+            self.heartbeat_seq += 1
+            packet = self._state_packet(packet)
+            packet['heartbeat_seq'] = self.heartbeat_seq
+            self.last_state_broadcast = time.monotonic()
         started = time.perf_counter()
         encoded = json.dumps(packet, allow_nan=False)
         elapsed = (time.perf_counter() - started) * 1000
@@ -331,6 +504,7 @@ class LiveService:
                 await self.broadcast(ack)
                 if entry:
                     entry['ack_sent'] = True
+                self._prune_completed_requests()
             if not self.process.is_alive() and self.state['status'] not in ('completed', 'failed'):
                 # Allow the multiprocessing feeder to deliver its terminal state.
                 await asyncio.sleep(0.05)
@@ -353,9 +527,12 @@ class LiveService:
                                         'error': 'The engine stopped before this injection completed.'}
                     await self.broadcast(entry['ack'])
                     entry['ack_sent'] = True
-            if changed:
-                await self.broadcast({'type': 'state', **self.state})
-                if self.state['status'] in ('ready', 'failed'):
+            now = time.monotonic()
+            epoch_changed = self._advance_command_epoch(now)
+            heartbeat_due = self.continuous and now - self.last_state_broadcast >= 1.0
+            if changed or epoch_changed or heartbeat_due:
+                await self.broadcast(self._state_packet())
+                if self.state['status'] in ('ready', 'running', 'failed'):
                     self.state_ready.set()
                 if self.state['status'] in ('completed', 'failed'):
                     self._write_service_profile()
@@ -405,6 +582,13 @@ class LiveService:
             await self.broadcast({'type': 'state', **self.state})
 
     async def restart(self, request):
+        if self.continuous:
+            return web.json_response({
+                'status': 'unsupported',
+                'error_code': 'restart_unsupported',
+                'error': 'Continuous visitor restart is disabled. Restart the local process instead.',
+                'session_id': self.state.get('session_id'),
+            }, status=409)
         try:
             body = json.loads(await request.text())
             if not isinstance(body, dict):
@@ -469,7 +653,110 @@ class LiveService:
                                   'error': self.state.get('error')}, status=503 if status == 'failed' else 200)
 
     async def state_handler(self, request):
-        return web.json_response({**self.state, 'restart_supported': True})
+        self._advance_command_epoch()
+        return web.json_response(self._state_packet())
+
+    async def _command_error(self, ws, command_id, error, error_code=None, command_epoch=None):
+        packet = {'type': 'ack', 'command_id': command_id, 'ok': False, 'error': error}
+        if error_code is not None:
+            packet['error_code'] = error_code
+        if command_epoch is not None:
+            packet['command_epoch'] = command_epoch
+        await ws.send_json(packet)
+
+    async def _handle_command(self, command, ws):
+        command_id = None
+        try:
+            if not isinstance(command, dict):
+                raise ValueError('Send a JSON object.')
+            command_id = str(uuid.UUID(command.get('command_id', '')))
+            if self.continuous:
+                original_payload = dict(command)
+                previous = self.requests.get(command_id)
+                if previous:
+                    command_epoch = command.get('command_epoch')
+                    if previous['payload'] != original_payload:
+                        await self._command_error(
+                            ws, command_id, 'This command ID already belongs to another request.',
+                            'command_conflict', command_epoch if isinstance(command_epoch, str) else None)
+                        return
+                    await ws.send_json(previous.get('ack') or {
+                        'type': 'pending', 'command_id': command_id,
+                        'command_epoch': command_epoch,
+                    })
+                    return
+            if command.get('type') != 'inject':
+                raise ValueError('Only injection commands are supported.')
+            if self.restarting:
+                raise ValueError('The session is restarting. Retry after it starts.')
+            if command.get('session_id') != self.state.get('session_id'):
+                raise ValueError('The session changed. Reload the page.')
+            if not isinstance(command.get('class_name'), str) or len(command['class_name']) > 32:
+                raise ValueError('Select a supported class.')
+
+            if self.continuous:
+                self._advance_command_epoch()
+                command_epoch = command.get('command_epoch')
+                if not isinstance(command_epoch, str):
+                    raise ValueError('Send the server-issued command epoch.')
+                if command_epoch != self.command_epoch:
+                    await self._command_error(
+                        ws, command_id, 'The command epoch expired. Do not replace it during recovery.',
+                        'command_epoch_expired', command_epoch)
+                    return
+                if self.state['status'] not in ('ready', 'running'):
+                    raise ValueError('The continuous engine is unavailable.')
+                pending = sum(not entry.get('ack') for entry in self.requests.values())
+                if pending >= MAX_PENDING_COMMANDS:
+                    await self._command_error(
+                        ws, command_id, 'The command queue is full. Retry shortly.',
+                        'command_queue_full', command_epoch)
+                    return
+                if self.epoch_admissions[self.command_epoch] >= MAX_COMMANDS:
+                    await self._command_error(
+                        ws, command_id, 'This command epoch reached its admission limit.',
+                        'command_epoch_full', command_epoch)
+                    return
+                payload = {
+                    'command_id': command_id,
+                    'session_id': command['session_id'],
+                    'class_name': command['class_name'],
+                    'command_epoch': command_epoch,
+                }
+                self.requests[command_id] = {'payload': original_payload}
+                try:
+                    self.commands.put_nowait(payload)
+                except Full:
+                    del self.requests[command_id]
+                    await self._command_error(
+                        ws, command_id, 'The command queue is full. Retry shortly.',
+                        'command_queue_full', command_epoch)
+                    return
+                self.epoch_admissions[self.command_epoch] += 1
+                return
+
+            payload = {'command_id': command_id, 'session_id': command['session_id'],
+                       'class_name': command['class_name']}
+            previous = self.requests.get(command_id)
+            if previous:
+                if previous['payload'] != payload:
+                    raise ValueError('This command ID already belongs to another request.')
+                await ws.send_json(previous.get('ack') or {'type': 'pending', 'command_id': command_id})
+                return
+            if self.state['status'] not in ('ready', 'running'):
+                raise ValueError('The session is unavailable. Restart the session.')
+            if len(self.requests) >= MAX_COMMANDS:
+                raise ValueError('This session reached its command limit. Restart the session.')
+            # Store first so a fast worker acknowledgment cannot outrun retention.
+            self.requests[command_id] = {'payload': payload}
+            try:
+                self.commands.put_nowait(payload)
+            except Full:
+                del self.requests[command_id]
+                raise
+        except (ValueError, TypeError, AttributeError, Full) as exc:
+            error = 'The command queue is full. Retry shortly.' if isinstance(exc, Full) else str(exc)
+            await self._command_error(ws, command_id, error)
 
     async def websocket(self, request):
         if len(self.clients) >= MAX_CLIENTS:
@@ -477,7 +764,8 @@ class LiveService:
         ws = web.WebSocketResponse(heartbeat=20, max_msg_size=2048)
         await ws.prepare(request)
         self.clients.add(ws)
-        await ws.send_json({'type': 'state', **self.state, 'restart_supported': True})
+        self._advance_command_epoch()
+        await ws.send_json(self._state_packet())
         # Retain acknowledgments across reconnects for this bounded session.
         for entry in self.requests.values():
             if entry.get('ack'):
@@ -486,37 +774,12 @@ class LiveService:
             async for message in ws:
                 if message.type != WSMsgType.TEXT:
                     continue
-                command_id = None
                 try:
                     command = json.loads(message.data)
-                    if not isinstance(command, dict):
-                        raise ValueError('Send a JSON object.')
-                    command_id = str(uuid.UUID(command.get('command_id', '')))
-                    if command.get('type') != 'inject':
-                        raise ValueError('Only injection commands are supported.')
-                    if self.restarting:
-                        raise ValueError('The session is restarting. Retry after it starts.')
-                    if command.get('session_id') != self.state.get('session_id'):
-                        raise ValueError('The session changed. Reload the page.')
-                    if not isinstance(command.get('class_name'), str) or len(command['class_name']) > 32:
-                        raise ValueError('Select a supported class.')
-                    payload = {'command_id': command_id, 'session_id': command['session_id'],
-                               'class_name': command['class_name']}
-                    previous = self.requests.get(command_id)
-                    if previous:
-                        if previous['payload'] != payload:
-                            raise ValueError('This command ID already belongs to another request.')
-                        await ws.send_json(previous.get('ack') or {'type': 'pending', 'command_id': command_id})
-                        continue
-                    if self.state['status'] not in ('ready', 'running'):
-                        raise ValueError('The session is unavailable. Restart the session.')
-                    if len(self.requests) >= MAX_COMMANDS:
-                        raise ValueError('This session reached its command limit. Restart the session.')
-                    self.commands.put_nowait(payload)
-                    self.requests[command_id] = {'payload': payload}
-                except (ValueError, TypeError, AttributeError, Full) as exc:
-                    error = 'The command queue is full. Retry shortly.' if isinstance(exc, Full) else str(exc)
-                    await ws.send_json({'type': 'ack', 'command_id': command_id, 'ok': False, 'error': error})
+                except json.JSONDecodeError:
+                    await self._command_error(ws, None, 'Send a JSON object.')
+                    continue
+                await self._handle_command(command, ws)
         finally:
             self.clients.discard(ws)
         return ws
