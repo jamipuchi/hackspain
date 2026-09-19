@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -9,7 +10,12 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from object_definitions import build_object_definition, propose_physics, validate_object_definition
+from object_definitions import (
+    _validate_llm_proposal,
+    build_object_definition,
+    propose_physics,
+    validate_object_definition,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -177,12 +183,14 @@ class ObjectDefinitionTest(unittest.TestCase):
 
         def fake_call(url, key, payload, out, live):
             calls.append((url, key, payload, out, live))
+            digest = hashlib.sha256(json.dumps([url, payload], sort_keys=True).encode()).hexdigest()
             return {
                 "response": {"choices": [{
                     "finish_reason": "stop",
                     "message": {"content": json.dumps(raw)},
                 }]},
-                "request_sha256": "b" * 64,
+                "request_sha256": digest,
+                "endpoint": url,
                 "cached": True,
             }
 
@@ -210,7 +218,7 @@ class ObjectDefinitionTest(unittest.TestCase):
 
             self.assertEqual(proposal, repeated)
             self.assertEqual("llm", proposal["provenance"]["kind"])
-            self.assertEqual("b" * 64, proposal["provenance"]["request_sha256"])
+            self.assertEqual(64, len(proposal["provenance"]["request_sha256"]))
             self.assertEqual(2, len(calls))
             self.assertFalse(calls[0][4])
             self.assertNotIn("secret", (evidence / "physics_request.json").read_text())
@@ -227,12 +235,16 @@ class ObjectDefinitionTest(unittest.TestCase):
         }
 
         def fake_call(*args):
+            url, _, payload, _, _ = args
             return {
                 "response": {"choices": [{
                     "finish_reason": "stop",
                     "message": {"content": json.dumps(raw)},
                 }]},
-                "request_sha256": "c" * 64,
+                "request_sha256": hashlib.sha256(
+                    json.dumps([url, payload], sort_keys=True).encode()
+                ).hexdigest(),
+                "endpoint": url,
                 "cached": False,
             }
 
@@ -257,6 +269,101 @@ class ObjectDefinitionTest(unittest.TestCase):
         value = self.build_star(physics_proposal=proposal)
         self.assertIsNone(value["physics"]["mass_kg"])
         self.assertEqual("llm", value["physics"]["proposal_provenance"]["kind"])
+
+    def test_llm_wrapper_rejects_mismatched_request_provenance(self):
+        raw = {
+            "shape": "box",
+            "dimensions_m": [0.016, 0.012, 0.002],
+            "density_kg_m3": 1200.0,
+            "material_assumption": "Decorative polymer.",
+            "limitations": "Visual appearance does not establish material.",
+            "unsupported_reason": "",
+        }
+        fake_probe = SimpleNamespace(
+            OPENROUTER_URL="https://openrouter.example/v1",
+            credentials=lambda path: {"OPENROUTER_API_KEY": "secret"},
+            provider_schema=lambda value: value,
+            call=lambda *args: {
+                "response": {"choices": [{
+                    "finish_reason": "stop",
+                    "message": {"content": json.dumps(raw)},
+                }]},
+                "request_sha256": "d" * 64,
+                "endpoint": "https://openrouter.example/v1",
+                "cached": True,
+            },
+        )
+        with tempfile.TemporaryDirectory() as folder:
+            probe_path = Path(folder) / "probe.py"
+            probe_path.write_text("fake probe")
+            with patch("object_definitions._load_generator_probe", return_value=(fake_probe, probe_path)):
+                with self.assertRaisesRegex(ValueError, "provenance"):
+                    propose_physics(
+                        description="A small star token.",
+                        visual_dimensions_m=[0.016, 0.012, 0.002],
+                        evidence_dir=Path(folder) / "evidence",
+                    )
+
+    def test_llm_wrapper_allows_cached_replay_without_credential(self):
+        raw = {
+            "shape": "box",
+            "dimensions_m": [0.016, 0.012, 0.002],
+            "density_kg_m3": 1200.0,
+            "material_assumption": "Decorative polymer.",
+            "limitations": "Visual appearance does not establish material.",
+            "unsupported_reason": "",
+        }
+
+        def cached_call(url, key, payload, out, live):
+            self.assertEqual("", key)
+            self.assertFalse(live)
+            digest = hashlib.sha256(json.dumps([url, payload], sort_keys=True).encode()).hexdigest()
+            return {
+                "response": {"choices": [{
+                    "finish_reason": "stop",
+                    "message": {"content": json.dumps(raw)},
+                }]},
+                "request_sha256": digest,
+                "endpoint": url,
+                "cached": True,
+            }
+
+        fake_probe = SimpleNamespace(
+            OPENROUTER_URL="https://openrouter.example/v1",
+            credentials=lambda path: {},
+            provider_schema=lambda value: value,
+            call=cached_call,
+        )
+        with tempfile.TemporaryDirectory() as folder:
+            probe_path = Path(folder) / "probe.py"
+            probe_path.write_text("fake probe")
+            with patch("object_definitions._load_generator_probe", return_value=(fake_probe, probe_path)):
+                proposal = propose_physics(
+                    description="A small star token.",
+                    visual_dimensions_m=[0.016, 0.012, 0.002],
+                    evidence_dir=Path(folder) / "evidence",
+                )
+
+        self.assertEqual("box", proposal["shape"])
+
+    def test_llm_proposal_enforces_local_schema_bounds(self):
+        valid = {
+            "shape": "box",
+            "dimensions_m": [0.016, 0.012, 0.002],
+            "density_kg_m3": 1200.0,
+            "material_assumption": "Decorative polymer.",
+            "limitations": "Visual appearance does not establish material.",
+            "unsupported_reason": "",
+        }
+        for field, invalid in (
+            ("dimensions_m", [2.0, 0.012, 0.002]),
+            ("dimensions_m", [0.0000001, 0.012, 0.002]),
+            ("density_kg_m3", 50000.0),
+        ):
+            with self.subTest(field=field, invalid=invalid):
+                value = {**valid, field: invalid}
+                with self.assertRaisesRegex(ValueError, "schema bounds"):
+                    _validate_llm_proposal(value)
 
 
 if __name__ == "__main__":

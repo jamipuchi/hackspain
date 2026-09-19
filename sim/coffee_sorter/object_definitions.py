@@ -178,8 +178,6 @@ def propose_physics(
     evidence_path.mkdir(parents=True, exist_ok=True)
     probe, probe_path = _load_generator_probe()
     keys = probe.credentials(Path(env_file))
-    if not keys.get("OPENROUTER_API_KEY"):
-        raise RuntimeError("OPENROUTER_API_KEY is missing")
 
     payload = {
         "model": model,
@@ -205,13 +203,23 @@ def propose_physics(
     if model != "google/gemini-3.8-flash":
         payload["temperature"] = 0
     _save_immutable(evidence_path / "physics_request.json", payload)
+    expected_request_sha256 = hashlib.sha256(
+        json.dumps([probe.OPENROUTER_URL, payload], sort_keys=True).encode()
+    ).hexdigest()
+    cache_path = evidence_path.parent / "cache" / f"{expected_request_sha256}.json"
+    key = keys.get("OPENROUTER_API_KEY", "")
+    if live and not key and not cache_path.exists():
+        raise RuntimeError("OPENROUTER_API_KEY is missing for an uncached live request")
     result = probe.call(
         probe.OPENROUTER_URL,
-        keys["OPENROUTER_API_KEY"],
+        key,
         payload,
         evidence_path,
         live,
     )
+    if (result.get("request_sha256") != expected_request_sha256 or
+            result.get("endpoint") != probe.OPENROUTER_URL):
+        raise ValueError("physics provider result provenance does not match the request")
     try:
         choice = result["response"]["choices"][0]
         if choice["finish_reason"] != "stop":
@@ -238,7 +246,7 @@ def propose_physics(
     proposal["provenance"] = {
         "kind": "llm",
         "provider_model": model,
-        "request_sha256": result["request_sha256"],
+        "request_sha256": expected_request_sha256,
         "generator_probe_sha256": hashlib.sha256(probe_path.read_bytes()).hexdigest(),
     }
     _save_immutable(evidence_path / "physics_proposal.json", proposal)
@@ -509,7 +517,9 @@ def _validate_llm_proposal(value: Any) -> None:
     shape = value["shape"]
     if shape not in SUPPORTED_PROXY_SHAPES | {"unsupported"}:
         raise ValueError("physics provider proposal shape is unsupported")
-    _positive_vector(value["dimensions_m"], "physics provider proposal dimensions")
+    dimensions = _positive_vector(value["dimensions_m"], "physics provider proposal dimensions")
+    if any(item < 0.000001 or item > 1.0 for item in dimensions):
+        raise ValueError("physics provider proposal dimensions are outside schema bounds")
     limitations = _nonempty_text(value["limitations"], "physics provider proposal limitations", maximum=2000)
     if not limitations:
         raise ValueError("physics provider proposal limitations are required")
@@ -518,7 +528,9 @@ def _validate_llm_proposal(value: Any) -> None:
             raise ValueError("unsupported provider proposal cannot claim density or material")
         _nonempty_text(value["unsupported_reason"], "physics provider unsupported reason", maximum=1000)
     else:
-        _positive_number(value["density_kg_m3"], "physics provider density")
+        density = _positive_number(value["density_kg_m3"], "physics provider density")
+        if density > 30000:
+            raise ValueError("physics provider density is outside schema bounds")
         _nonempty_text(value["material_assumption"], "physics provider material assumption", maximum=1000)
         if value["unsupported_reason"] != "":
             raise ValueError("supported provider proposal cannot contain an unsupported reason")
