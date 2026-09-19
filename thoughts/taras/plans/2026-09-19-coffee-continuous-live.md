@@ -1,7 +1,7 @@
 ---
 date: 2026-09-19
 owner: taras
-status: approved
+status: in-progress
 implementation_branch: from-main-per-increment
 quality_integration_revision: 90dffc1
 ---
@@ -113,7 +113,7 @@ Continuous commands use a server-issued epoch lasting 60 wall seconds. Retain co
 Allow at most 64 admitted commands per epoch. Retain pending commands until their result arrives, within the existing bounded queue.
 Reject an expired epoch with `command_epoch_expired` and no spawn. Never reinterpret an expired duplicate as a new injection.
 Keep the latest 64 completed injection cards and all bounded pending requests. Mark history eviction visibly.
-Finalize this proposed v2 command contract before implementation. Bounded v1 commands keep their existing session-long identity rule.
+The [v2 interface contract](../contracts/2026-09-19-coffee-continuous-v2.md) fixes these fields and assigns parallel file ownership. Bounded v1 commands keep their existing session-long identity rule.
 
 ### Verification
 

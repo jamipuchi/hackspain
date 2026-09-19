@@ -54,6 +54,21 @@ No history rewrite, garbage collection, or object pruning belongs to this cleanu
 The quality acceptance failure remains unchanged. Capture passed, while good loss and engine speed still missed their requirements.
 Taras retains functional QA and acceptance.
 
+## Published baseline
+
+Revision `05763c1` is published to main. All four PRs within Taras's fork now show merged.
+The main checkout is clean and uses the exact selected model. Frozen evaluation input validation and model reuse both pass.
+The demonstration service moved to the main checkout on port 8890. The retired quality service on port 8891 stopped.
+All eight obsolete fork branches without open upstream PRs were removed after ancestry verification.
+Two remote branches remain pending Taras's decision because they support open PRs in `jamipuchi/hackspain`.
+They are `codex/jev` and `codex/coffee-sorter-upstream`. Neither contains work absent from main.
+All former local feature branches were removed.
+
+The user-created detached worktree at `/Users/taras/.codex/worktrees/0833/hackspain` remains intact.
+The old core worktree remains detached while an existing file-review window references its plan.
+Its branch was removed. Preserve any review comments before removing that final temporary checkout.
+Private backups also preserve both completed tasks' local model files.
+
 ## Next work
 
 Start new isolated worktrees from the consolidated `main`.
