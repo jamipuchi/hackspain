@@ -11,6 +11,7 @@ let shownSession = null;
 let frames = 0;
 let fpsStart = performance.now();
 let previousPacket = null;
+let restartPending = false;
 const selectedEvents = new Map();
 const measurements = {fps: null, acknowledgment_ms: null, outcome_wall_s: null, pose_hz: null};
 window.coffeeMeasurements = measurements;
@@ -21,6 +22,7 @@ function connect() {
   socket.onclose = () => {
     $('status').textContent = 'Disconnected';
     $('inject').disabled = true;
+    $('restart').disabled = true;
     $('notice').textContent = 'Connection lost. Reconnecting to the engine.';
     setTimeout(connect, 1200);
   };
@@ -28,8 +30,7 @@ function connect() {
     const packet = JSON.parse(event.data);
     if (packet.type === 'state') {
       if (shownSession && packet.session_id && shownSession !== packet.session_id) {
-        selected = request = spawnWall = outcomeWall = null;
-        selectedEvents.clear();
+        clearSelection();
       }
       if (packet.session_id) shownSession = packet.session_id;
       if (previousPacket !== null) measurements.pose_hz = 1000 / (performance.now() - previousPacket);
@@ -38,7 +39,7 @@ function connect() {
       window.coffeeState = state;
       update();
       // A lost acknowledgment can be requested again without another physical injection.
-      if (request && !request.acknowledged && state.session_id === request.payload.session_id) {
+      if (request && !request.acknowledged && ['ready', 'running'].includes(state.status) && state.session_id === request.payload.session_id) {
         if (performance.now() - request.lastSend > 2000) {
           socket.send(JSON.stringify(request.payload));
           request.lastSend = performance.now();
@@ -63,8 +64,44 @@ function connect() {
   };
 }
 
+function clearSelection() {
+  selected = request = spawnWall = outcomeWall = null;
+  selectedEvents.clear();
+  previousPacket = null;
+  measurements.acknowledgment_ms = measurements.outcome_wall_s = measurements.pose_hz = null;
+  $('object-title').textContent = 'Follow your stone';
+  $('command').textContent = 'No injection yet';
+  $('ack').textContent = 'Waiting';
+  $('error').textContent = '';
+  for (const [id, text] of Object.entries({prediction:'Not observed', decision:'Not decided', hit:'Not recorded', outcome:'Unresolved', 'outcome-time':'Waiting'})) $(id).textContent = text;
+}
+
+$('restart').onclick = async () => {
+  if (!state?.session_id || !state.restart_supported || restartPending || socket.readyState !== WebSocket.OPEN) return;
+  restartPending = true;
+  $('error').textContent = '';
+  update();
+  try {
+    const response = await fetch('/restart', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({session_id: state.session_id}),
+    });
+    if (!response.headers.get('Content-Type')?.includes('application/json')) {
+      throw new Error(response.status === 404 ? 'Restart is unavailable on this server. The service needs the latest update.' : `Restart failed with server status ${response.status}. Try again.`);
+    }
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'The session could not restart. Try again.');
+  } catch (error) {
+    $('error').textContent = error.message;
+  } finally {
+    restartPending = false;
+    update();
+  }
+};
+
 $('inject').onclick = () => {
-  if (!state || socket.readyState !== WebSocket.OPEN) return;
+  if (!state || restartPending || socket.readyState !== WebSocket.OPEN) return;
   const payload = {type: 'inject', command_id: crypto.randomUUID(), session_id: state.session_id, class_name: 'stone'};
   request = {payload, sent: performance.now(), lastSend: performance.now(), acknowledged: false};
   selected = null;
@@ -83,10 +120,13 @@ $('inject').onclick = () => {
 function update() {
   if (!state) return;
   const status = state.status;
-  $('status').textContent = ({starting:'Preparing', ready:'Ready', running:'Live', completed:'Session complete', failed:'Engine failed'})[status] || status;
+  const connected = socket?.readyState === WebSocket.OPEN;
+  $('status').textContent = !connected ? 'Disconnected' : ({starting:'Preparing', restarting:'Restarting', ready:'Ready', running:'Live', completed:'Session complete', failed:'Engine failed'})[status] || status;
   $('status').dataset.state = status;
-  $('inject').disabled = !['ready', 'running'].includes(status) || (request && !request.acknowledged) || state.sim_time_s >= (state.limits?.sim_seconds || 10) - 0.6;
-  $('notice').textContent = ({starting:'Preparing the engine', ready:'Ready for one physical injection', running:'The simulation clock shows the actual engine rate', completed:'This bounded session is complete. Restart the service to inject again.', failed:'The engine stopped. See its console for the error.'})[status];
+  $('inject').disabled = !connected || restartPending || !['ready', 'running'].includes(status) || (request && !request.acknowledged) || state.sim_time_s >= (state.limits?.sim_seconds || 10) - 0.6;
+  $('restart').disabled = !connected || !state.restart_supported || restartPending || !state.session_id || !['ready', 'running', 'completed', 'failed'].includes(status);
+  $('restart').textContent = restartPending || status === 'restarting' ? 'Restarting…' : 'Restart session';
+  $('notice').textContent = ({starting:'Preparing the engine', restarting:'Stopping the old session and preparing a new one', ready:'Ready for a physical injection', running:'The simulation clock shows the actual engine rate', completed:'Session complete. Select Restart session to inject again.', failed:'The engine stopped. Select Restart session to try again.'})[status] || 'Waiting for the engine';
   if (state.error) $('error').textContent = state.error;
   $('sim-time').textContent = `${(state.sim_time_s || 0).toFixed(2)} s`;
   $('engine-rate').textContent = state.engine_rate ? `${state.engine_rate.toFixed(2)}×` : 'Waiting';
@@ -98,7 +138,7 @@ function update() {
     const decision = object.decision;
     $('prediction').textContent = decision ? `${decision.predicted_class}${decision.association_approximate ? ' (approximate object match)' : ''}` : 'Not observed';
     $('decision').textContent = decision ? `${decision.reject ? 'Reject' : 'Keep'}${decision.scheduled ? ', valves scheduled' : ''}${decision.late ? ', late' : ''}` : 'Not decided';
-    $('hit').textContent = object.jet_hits ? `${object.own_pulse_hit ? 'Own pulse' : 'Other or unassociated pulse'}, ${object.jet_hits} contact steps` : 'No contact recorded';
+    $('hit').textContent = object.jet_hits ? `${object.own_pulse_hit ? 'Own pulse' : 'Other or unassociated pulse'}, ${object.jet_hits} nozzle contact steps` : 'No contact recorded';
     $('outcome').textContent = object.outcome ? ({accept:'Accept path', reject:'Reject path', spilled:'Spilled'})[object.outcome] : 'Unresolved';
     if (object.outcome && outcomeWall === null && spawnWall !== null) {
       outcomeWall = performance.now();
@@ -106,7 +146,7 @@ function update() {
     }
     if (object.spawn_to_outcome_wall_s != null) $('outcome-time').textContent = `${object.spawn_to_outcome_wall_s.toFixed(2)} wall seconds from physical spawn`;
   }
-  if (state.model_version) $('versions').textContent = `Session ${state.session_id.slice(0,8)} · Model ${state.model_version.slice(0,12)} · Policy ${state.policy_version.slice(0,12)} · Preset ${state.preset_version.slice(0,12)}`;
+  $('versions').textContent = state.model_version ? `Engine source ${state.source_revision?.slice(0,7) || 'unavailable'} · Session ${state.session_id.slice(0,8)} · Model ${state.model_version.slice(0,12)} · Policy ${state.policy_version.slice(0,12)} · Preset ${state.preset_version.slice(0,12)}` : 'Source, model, and policy versions appear when the engine is ready.';
   for (const event of state.events || []) {
     if (selected !== null && (event.object_id === selected || event.object_ids?.includes(selected))) selectedEvents.set(event.event_id, event);
   }
@@ -118,7 +158,7 @@ function update() {
     return li;
   }));
   if (!relevant.length) { const li = document.createElement('li'); li.textContent = 'Waiting for an associated camera decision.'; $('events').append(li); }
-  $('limit-note').textContent = `Requested feed ${state.requested_rate || 500}/s. Session limit ${state.limits?.sim_seconds || 10} simulated seconds or ${state.limits?.wall_seconds || 300} wall seconds. Restart the service to reset.`;
+  $('limit-note').textContent = `Requested feed ${state.requested_rate || 500}/s. Session limit ${state.limits?.sim_seconds || 10} simulated seconds or ${state.limits?.wall_seconds || 300} wall seconds. Restart session resets the shared session for all browsers.`;
 }
 
 function draw() {

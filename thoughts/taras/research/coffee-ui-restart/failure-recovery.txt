@@ -1,0 +1,19 @@
+Coffee live restart verification, 2026-09-19
+
+PASS: python3 -m py_compile sim/coffee_sorter/live.py
+PASS: git diff --check
+PASS: bounded fake-worker lifecycle probes
+
+The fake-worker probes covered these cases:
+
+- A full state queue drained while the old worker joined.
+- A queued successful acknowledgment won over a synthetic restart failure.
+- A failed worker initialization preserved a valid retry session ID.
+- A second restart succeeded after the failed initialization.
+- Restart cancellation completed bounded cleanup, published failed state, and re-raised cancellation.
+- A failed pump detached cleanly, and the next restart request recovered successfully.
+- A slow WebSocket close did not block longer than one second.
+- Lifecycle cleanup closed queues after a profile write error.
+- WebSocket state broadcasts and GET /state exposed restart_supported: true.
+
+The probes did not start MuJoCo or bind a network port.

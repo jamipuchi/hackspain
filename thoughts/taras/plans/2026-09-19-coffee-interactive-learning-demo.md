@@ -3,12 +3,12 @@ date: 2026-09-19
 planner: Codex
 topic: Coffee sorting quality and the first live engine demonstration
 status: in-progress
-next_increment: ui-restart-in-progress
+next_increment: ui-restart-feedback
 updated: 2026-09-19
 owner: taras
 initial_source_branch: codex/coffee-sorter-upstream
 initial_source_revision: 4d0f705
-current_implementation_revision: 10d0975
+previous_implementation_revision: 10d0975
 implementation_branch: codex/coffee-core-live
 ---
 
@@ -24,6 +24,9 @@ Each visible increment keeps its own feedback checkpoint.
 
 ## Current checkpoint
 
+Phase 2A now provides restart from the page. Its [checkpoint evidence](../research/coffee-ui-restart/REPORT.md) records lifecycle checks and the browser result.
+Taras's restart acceptance remains pending. Phase 2B follows that feedback checkpoint.
+
 The first increment from Phases 1 and 2 is implemented and pushed. Taras's functional acceptance remains pending.
 The [checkpoint report](../research/coffee-core-live/REPORT.md) records measurements and evidence from implementation revision `51181c3`.
 The [run guide](../../../sim/coffee_sorter/LIVE.md) provides installation, startup, and reset commands.
@@ -35,7 +38,9 @@ Live policy activation still requires the physical-quality checkpoint and Taras'
 
 Taras then reported dropping and bouncing in the live demonstration.
 Commit `91dedc3` corrects capsule spawn height. The [motion follow-up](../research/2026-09-19-coffee-motion-followup.md) records the bounded measurements and remaining uncertainty.
-The model was rebuilt for that source change. No full quality evaluation ran afterward.
+The model was rebuilt for that source change. This task ran no reserved-seed acceptance evaluation afterward.
+A later user session at `10d0975` captured 326/701 defects and lost 242/3,609 keep objects, with one unresolved cohort object.
+That completed session also misses the targets. Its evidence remains in `/tmp/coffee-motion-taras-qa-91dedc3`.
 The figures above remain historical baseline measurements. Overall smoothness and sorting targets remain unaccepted.
 
 ## Next steps after alignment
@@ -51,7 +56,7 @@ The figures above remain historical baseline measurements. Overall smoothness an
 
 Integrate reviewed quality revisions as the parallel task supplies them. Never import its uncommitted experiments.
 The running demo must show its actual engine revision, model, policy, and preset.
-The service on port 8890 currently uses engine revision `10d0975`. It does not include the parallel task's newer engine changes.
+Before Phase 2A, the service on port 8890 used engine revision `10d0975`. It does not include the parallel task's newer engine changes.
 Its session `263d2001-256d-451e-acb5-22823117c9d9` completed before this restart increment.
 
 Sorting quality does not block the restart control, injection cards, or independent visual work.
@@ -125,7 +130,10 @@ The [live contract](../contracts/2026-09-19-coffee-live-v1.md) defines IDs, time
 
 The task named "Improve coffee sorting motion" starts from `/Users/taras/.codex/worktrees/0833/hackspain`.
 Its active engine checkout is now `/private/tmp/hackspain-coffee-quality`, based on `10d0975`.
-Read-only inspection found its first quality commit, `46219fe`, plus ongoing local engine work.
+The quality task supplied source checkpoint `0e0df4b` and its final delivery at `1944538` on `codex/coffee-quality`.
+Its evidence includes the reserved evaluation, seven feed rates, and a browser demonstration. Existing engine interfaces remain unchanged.
+All three reserved seeds passed the capture bound. All three failed the good-loss bound, with observed losses from 4.95% to 6.42%.
+These changes are not yet integrated into this branch. Review and integration remain a separate increment.
 Do not edit either checkout from this task.
 
 Use port 8890 for this task and 8891 for the quality task.
@@ -166,6 +174,8 @@ A keep object is a class the policy requires keeping. Under specialty, this is t
 Quality acceptance needs locked seeds 111, 112, and 113 with at least 2,000 eligible objects per seed.
 Every seed must meet the bound rules. Also report pooled counts and intervals.
 Use seed 7 for training and seed 8 for development. An initial exploratory diagnostic exposed seed 101, so acceptance excludes it. Reserve separate object IDs and seed 9 for model holdout.
+The parallel task completed the frozen evaluation on seeds 111, 112, and 113. These seeds are now exposed.
+Choose fresh acceptance seeds before any further tuning that uses these results.
 Do not use locked physical evaluation seeds for tuning or training.
 The first short diagnostic run does not fulfill these acceptance requirements.
 
@@ -271,7 +281,7 @@ curl --fail http://127.0.0.1:8890/health
 - [x] Taras tried the live demonstration and reported motion and quality problems.
 - [ ] Taras accepts the final behavior. Independent interface work continues under the revised sequence.
 
-## Phase 2A: restart the shared session from the page (in progress)
+## Phase 2A: restart the shared session from the page (implemented, awaiting Taras)
 
 ### Deliverable
 
@@ -304,14 +314,14 @@ Do not start two services on this port. Leave the quality task's port 8891 uncha
 
 #### Automated Verification
 
-- [ ] Syntax checks pass.
-- [ ] A bounded lifecycle check verifies a new session ID and an ended old worker.
-- [ ] Stale restart requests and foreign origins cannot restart the worker.
-- [ ] Prior evidence survives the restart.
+- [x] Syntax checks pass.
+- [x] A bounded lifecycle check verifies a new session ID and an ended old worker.
+- [x] Stale restart requests and foreign origins cannot restart the worker.
+- [x] Prior evidence survives the restart.
 
 #### Automated QA
 
-- [ ] Capture the ready page after one browser-triggered restart through agent-browser.
+- [x] Capture the ready page after one browser-triggered restart through agent-browser.
 
 #### Manual Verification
 

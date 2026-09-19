@@ -18,10 +18,12 @@ python sim/coffee_sorter/live.py --host 127.0.0.1 --port 8890 --preset sim/coffe
 
 Open [the local page](http://127.0.0.1:8890), then select **Inject stone**.
 The first injection starts the simulation. A ring identifies the injected object in both projections.
-Prediction, jet contact, and physical outcome appear separately. Approximate object associations carry an explicit label.
+Prediction, jet contact, and physical outcome appear separately.
+The contact counter counts nozzle contact steps. Multiple nozzles can contact an object during one physics step. Approximate object associations carry an explicit label.
 The page draws schematic primitive projections. It does not provide the swarm's realistic assets or a complete 3D viewer.
 
-The service prints its evidence directory. It writes `commands.jsonl`, `report.json`, `final-state.json`, and `service-profile.json` there.
+The service prints its initial evidence directory. It writes `commands.jsonl`, `report.json`, `final-state.json`, and `service-profile.json` there.
+Each UI restart creates a separate adjacent directory with a `restart-` suffix. Previous session files remain intact.
 The model bootstrap takes approximately 25 seconds on the measured Mac. It validates provenance before reusing an existing model.
 Training uses seed 7. Holdout observations come from separate seed-9 objects. Anomaly statistics use training objects only.
 The bootstrap score describes observation-weighted classifier output. It excludes anomaly policy and physical sorting outcomes.
@@ -37,7 +39,11 @@ The bootstrap score describes observation-weighted classifier output. It exclude
 - Reconnect obtains the current snapshot and retained command results.
 - Snapshots contain the latest 50 events. The page retains six events for the selected object.
 - Reports retain up to 2,000 event records and full-session event counters. They label any truncated event window.
-- Ctrl+C stops the service and its worker. Restart the command to reset the session.
+- **Restart session** stops the old worker and creates a fresh session for every connected browser.
+- Restart clears the page's selected object and commands. The prior session's evidence remains on disk.
+- Injection stays disabled while the engine restarts. A page reload alone does not reset the session.
+- The footer identifies the engine source revision, session, model, policy, and preset.
+- Ctrl+C stops the service and its worker.
 
 The service binds only to loopback and rejects foreign origins.
 For an accepted later SSH installation, forward its loopback port with:
@@ -61,7 +67,8 @@ python sim/coffee_sorter/engine.py --preset sim/coffee_sorter/configs/default_de
 
 Run these commands sequentially. Stop the live engine first to avoid contention.
 These short runs use development seed 8 and are diagnostic evidence, not acceptance runs.
-Seeds 111, 112, and 113 remain reserved for later acceptance measurements.
+The parallel quality task completed its frozen evaluation on seeds 111, 112, and 113. These seeds are now exposed.
+This branch does not yet include that task's engine changes.
 
 The quality cohort uses the closed spawn-time interval `[0.8, end - 0.6]` in simulated seconds.
 Capture counts required defects in reject. Good loss counts keep objects rejected or spilled.
@@ -82,6 +89,19 @@ A functioning transport does not establish successful sorting.
 The later capsule-placement correction removes excess stick spawn height. Other objects still bounce after collisions.
 The short motion diagnostic does not establish smoother overall physics or acceptable sorting quality.
 The 80% capture and 2% good-loss targets remain unproven. Lighting robustness remains unsupported.
-Reset through the page, a full object inspector, language policies, and learning controls remain deferred.
+A retained result card for every injection, explicit decision reasons, and live quality scores are the next interface increments.
+The current two-dimensional projections are temporary. A later increment provides a 3D view using the existing render assets.
+Language policies and learning controls remain deferred.
 
 See the checkpoint report under `thoughts/taras/research/coffee-core-live/` for the measured configuration, source hashes, and evidence.
+
+## Restart checkpoint for Taras
+
+Open the page and select **Restart session**. Wait until the status shows **Ready**.
+The session ID in the footer must change. All open browsers must show the same new ID.
+Select **Inject stone** after restart. The server must acknowledge its physical spawn.
+Restart also works after the bounded session completes. You do not need a terminal command for each run.
+
+Restart uses `POST /restart` with the current `session_id` and the same browser origin.
+The service rejects stale requests and simultaneous restarts.
+This shared-session control resets the engine for every connected browser.
