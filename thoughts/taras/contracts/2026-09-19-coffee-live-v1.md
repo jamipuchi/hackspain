@@ -7,8 +7,8 @@ The parallel quality task completed its delivery. Commit `90dffc1` integrates th
 
 | Files | Owner |
 |---|---|
-| `sim.py`, `scene.py`, `controller.py`, `vision.py`, `classifier.py`, `bootstrap_model.py`, `engine.py`, engine presets | Original demo task after the committed quality handoff. Preserve the completed quality checkout. |
-| `live.py`, `live_web/*`, `LIVE.md`, separate language-policy files | Original demo task, `codex/coffee-core-live` |
+| `sim.py`, `scene.py`, `controller.py`, `vision.py`, `classifier.py`, `bootstrap_model.py`, `engine.py`, engine presets | Original demo task after the committed quality handoff. |
+| `live.py`, `live_web/*`, `LIVE.md`, separate language-policy files | Original demo task, on an increment branch created from main. |
 | Overall plan, shared contract, existing demo evidence | Original demo task |
 | New quality evidence and local quality plan | Parallel task, `thoughts/taras/research/coffee-quality/` |
 | `export_replay.py` | Existing replay owner. Frozen until coordinated with Taras and the swarm. |
@@ -17,18 +17,15 @@ The parallel quality task completed its delivery. Commit `90dffc1` integrates th
 | Rendering assets, GLBs, cinematic scripts | Swarm. Visual acceptance remains with Taras. |
 
 The original demo task uses `/Users/taras/Documents/code/hackspain` and port 8890.
-The task named "Improve coffee sorting motion" uses `/private/tmp/hackspain-coffee-quality` and port 8891 for engine work.
-Its Codex task directory remains `/Users/taras/.codex/worktrees/0833/hackspain`.
-Each task edits only its own checkout and assigned files.
+Create each implementation branch from main. Keep the file ownership boundaries below.
 The original task owns subsequent additive snapshot changes. Coordinate any resumed parallel engine work before overlapping edits.
-Only committed, reviewed quality changes enter the demo branch. Delivery `1944538` is integrated.
+Only committed, reviewed quality changes enter main. Delivery `1944538` is integrated.
 
 The diagnostic page uses a separate directory. Existing viewer files remain frozen until Taras confirms ownership.
-The render integration source is `codex/coffee-cinematic-scene`, currently `2fa9853`.
-It includes the earlier asset and moodboard work. Reuse those outputs after owner coordination.
+Revision `2fa9853` contains the cinematic scene and the earlier asset and moodboard work.
+Those files are merged into main. Reuse them after owner coordination.
 Independent interface and offline language work can proceed before physical-quality acceptance.
 Live language activation still requires the physical and language checkpoints.
-The source checkout and its unpushed moodboard plan commit remain intact.
 
 ## Identity and time
 

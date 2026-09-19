@@ -126,6 +126,17 @@ This halves pose spacing to about 16/18 ms, but still undersamples 3–12 ms val
 
 ## Validation
 
+Run the artifact tests from a Git checkout with the original recording history available.
+The tests validate the shipped artifacts against archived scripts at `a230f2cdf3fec8c906e947a9b7f2ad795dea7ec8` and its parent.
+Current cinematic scripts differ from those archived scripts. Source archives without Git metadata cannot run this provenance check.
+For a shallow checkout, fetch the required history before validation:
+
+```bash
+git fetch --depth=2 origin a230f2cdf3fec8c906e947a9b7f2ad795dea7ec8
+git cat-file -e a230f2cdf3fec8c906e947a9b7f2ad795dea7ec8^
+python3 -m unittest discover -s sim/coffee_sorter/visual_assets -p 'test_*.py' -v
+```
+
 Three artifact-contract tests pass: all 30 frame row hashes, UIDs, outcomes, timestamps, counters, valve/decision events and source/model/config provenance match the shipped replay; movie/poster hashes match; all four GLBs have one primitive/material, embedded PBR images, fewer than 650 triangles, and exact original bounds after the glTF basis conversion. Every rendered frame passed evaluated-transform assertions. FFmpeg decoded 30 frames / 1.00 s without error.
 
 Existing `npm ci`, `npm run build` and `npm test` pass: the unchanged page is 1,842,120 bytes; six replay tests run, one optional fresh-physics test skipped. Existing simulator discovery runs 66 tests, one optional UR5e/imageio test skipped, all others pass. [Artifact test log](evidence/delivery-tests.log), [simulator log](evidence/recording-sim-tests.log), [decode log](evidence/recording-decode.log). The same draft PR remains on the explicitly requested baseline; the integration branch's previously documented pinned-source test issue is outside this asset change.

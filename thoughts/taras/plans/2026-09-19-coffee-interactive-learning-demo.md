@@ -9,7 +9,7 @@ owner: taras
 initial_source_branch: codex/coffee-sorter-upstream
 initial_source_revision: 4d0f705
 current_implementation_revision: 90dffc1
-implementation_branch: codex/coffee-core-live
+implementation_branch: from-main-per-increment
 ---
 
 # Coffee sorter implementation
@@ -19,7 +19,7 @@ The parallel quality task completed its delivery. This task now owns its integra
 The swarm owns rendering assets.
 
 This revision addresses [Claude's review](../reviews/2026-09-19-review-of-coffee-interactive-learning-demo.md).
-The first bounded increment is complete. Taras requested continued progress while the parallel task improves the engine.
+The first bounded increment and the parallel quality delivery are complete. Taras requested continued progress on the continuous engine.
 Taras aligned on continued demo work and added the interaction requirements below.
 Each visible increment keeps its own feedback checkpoint.
 
@@ -72,7 +72,7 @@ Taras retains functional QA and acceptance.
 
 ## Existing rendering checkpoint
 
-The previous rendering phase description was stale. The following work already exists in separate branches:
+The previous rendering phase description was stale. The following work is merged into main:
 
 | Work | Recorded evidence | Remaining work |
 |---|---|---|
@@ -81,11 +81,10 @@ The previous rendering phase description was stale. The following work already e
 | Moodboard and selected looks | `7eede49`, `visual_assets/MOODBOARD.md` | Reuse the selected direction |
 | Reproducible cinematic scene | `2fa9853`, `visual_assets/SCENE.md` | Visual acceptance and any requested scene corrections |
 
-Paths in this table are relative to `sim/coffee_sorter/` in the rendering checkout.
-The cinematic scene checkout is `/private/tmp/hackspain-coffee-scene`, branch `codex/coffee-cinematic-scene`.
-That branch includes the asset and moodboard work. Use it as the render integration source after coordination.
+Paths in this table are relative to `sim/coffee_sorter/` in `/Users/taras/Documents/code/hackspain`.
+Revision `2fa9853` contains the cinematic scene. It includes the asset and moodboard work.
+Use the merged files from main as the render integration source after coordination.
 `SCENE.md` records local preview checks. Its final scene PNG and Blender proof files are not committed.
-The moodboard checkout is `/private/tmp/hackspain-coffee-moodboard`, branch `codex/coffee-moodboard`.
 Taras selected textured `noir-rim`, textured `blueprint`, and clay `warm-roastery`.
 The scene assigns them realism, machine explanation, and composition roles. These roles do not establish final visual acceptance.
 
@@ -105,13 +104,12 @@ Keep sorting quality, render quality, and runtime claims tied to their respectiv
 
 ## Working agreement
 
-- Commit and push small increments to `codex/coffee-core-live`.
-- Preserve `/private/tmp/hackspain-coffee-pr`, including its untracked `.gitignore` and unpushed moodboard plan commit.
+- Create each small implementation branch from main. Commit and push each increment on its own branch.
 - Preserve the separate magnet experiment.
 - Add no QA framework or routine unit tests. Use minimum syntax, startup, and runtime checks.
 - Leave functional acceptance unchecked until Taras confirms it.
 - Confirm ownership before modifying overlapping UI or asset files. Continue work in this task's owned files meanwhile.
-- The parallel task owns engine changes. Coordinate snapshot and policy interfaces before either task modifies them.
+- Assign engine ownership before parallel increments begin. Coordinate snapshot and policy interfaces before any task modifies them.
 - Provide a runnable command and request feedback after each visible increment.
 
 ## What We're NOT Doing
@@ -126,23 +124,20 @@ The [live contract](../contracts/2026-09-19-coffee-live-v1.md) defines IDs, time
 
 | Scope | Owner and location |
 |---|---|
-| `sim.py`, `scene.py`, `controller.py`, `vision.py`, `classifier.py`, `bootstrap_model.py`, `engine.py`, engine presets | This task after committed quality handoff. Preserve the completed quality checkout. |
-| Overall plan, shared contract, `LIVE.md`, `live.py`, `live_web/*`, separate language-policy files | This task, `/Users/taras/Documents/code/hackspain`, branch `codex/coffee-core-live` |
+| `sim.py`, `scene.py`, `controller.py`, `vision.py`, `classifier.py`, `bootstrap_model.py`, `engine.py`, engine presets | This task after the committed quality handoff. |
+| Overall plan, shared contract, `LIVE.md`, `live.py`, `live_web/*`, separate language-policy files | This task in `/Users/taras/Documents/code/hackspain`, on an increment branch created from main. |
 | New quality evidence and local quality plan | Parallel task, `thoughts/taras/research/coffee-quality/` |
 | `visual_assets/*`, GLBs, cinematic scripts | Swarm and existing render owners |
 | Existing `web/*` and `export_replay.py` | Frozen until Taras confirms integration ownership |
 | Generated `web/index.html` | Taras remains the integration owner |
 | Functional QA and acceptance | Taras |
 
-The task named "Improve coffee sorting motion" starts from `/Users/taras/.codex/worktrees/0833/hackspain`.
-Its active engine checkout is now `/private/tmp/hackspain-coffee-quality`, based on `10d0975`.
-The quality task supplied source checkpoint `0e0df4b` and its final delivery at `1944538` on `codex/coffee-quality`.
+The completed quality task supplied source checkpoint `0e0df4b` and final delivery `1944538`.
 Its evidence includes the reserved evaluation, seven feed rates, and a browser demonstration. Existing engine interfaces remain unchanged.
 All three reserved seeds passed the capture bound. All three failed the good-loss bound, with observed losses from 4.95% to 6.42%.
-Commit `90dffc1` integrates these changes into this branch with the exact selected model restored locally.
-Do not edit either checkout from this task.
+Commit `90dffc1` integrates these changes with the exact selected model restored locally.
 
-Use port 8890 for this task and 8891 for the quality task.
+Use port 8890 for the main demonstration service.
 Coordinate timed jobs. Never stop another task's process to obtain a benchmark.
 Review a supplied quality commit before integration. Never merge its uncommitted experiment state.
 
@@ -316,7 +311,7 @@ node --check sim/coffee_sorter/live_web/live.js
 ```
 
 Run `curl --fail http://127.0.0.1:8890/health` from another terminal.
-Do not start two services on this port. Leave the quality task's port 8891 unchanged.
+Do not start two services on this port.
 
 #### Automated Verification
 
@@ -458,8 +453,8 @@ The handoff must supply the exact bounded comparison command before implementati
 
 Create a versioned contract, an offline case file, and a deterministic policy compiler in separate files.
 Use `keep`, `reject`, and `unchanged` for raw class actions. Store the compiled policy separately.
-Do not edit the parallel task's controller or change the live protocol in this increment.
-Review the existing `codex/jev` contracts for useful conventions. They solve a different sorting task, so do not merge them wholesale.
+Do not edit the assigned engine owner's controller or change the live protocol in this increment.
+Review the merged Jev contracts for useful conventions. They solve a different sorting task, so do not copy them wholesale.
 
 The eight-call Jev spike does not establish accuracy.
 The two effective policy matches partly inherit defaults. Ignoring most reject instructions could produce the same result.
@@ -509,7 +504,7 @@ Synthetic responses verify compiler behavior only. They do not measure language 
 
 This task adds `sim/coffee_sorter/jev_policy.py` as the evaluator for the frozen language cases.
 Run provider evaluation only after Taras authorizes the calls and their cost.
-Coordinate the per-class controller policy with the quality task before editing `controller.py`.
+Coordinate the per-class controller policy with the assigned engine owner before editing `controller.py`.
 Specify whether known kept classes override anomaly rejection. Preserve rejection for unknown observations.
 Apply a reviewed policy at a defined session boundary and record its version.
 Demonstrate affected classes through injection after physical-quality acceptance and Taras's approval of language results.
@@ -542,7 +537,7 @@ Demonstrate affected classes through injection after physical-quality acceptance
 
 This task owns a gallery under `live_web/` and a candidate report from the proposed `learning.py` command.
 The report identifies reviewed training objects, locked evaluation objects, candidate provenance, and the comparison with the active model.
-Coordinate classifier changes with the quality task before enabling training.
+Coordinate classifier changes with the assigned engine owner before enabling training.
 
 Implement crops, a fixed standardized PCA map, class corrections, and one candidate comparison.
 Do not implement a second binary policy learner, vision-model suggestion queue, activation framework, or rollback framework yet.
@@ -602,8 +597,8 @@ Keep textures and Blender sources outside ordinary Git when a new bundle exceeds
 
 ```bash
 # Inspect the completed assets without starting a render or a simulation.
-git -C /private/tmp/hackspain-coffee-scene show --stat 2fa9853
-python3 -m http.server 8765 --bind 127.0.0.1 --directory /private/tmp/hackspain-coffee-scene/sim/coffee_sorter
+git -C /Users/taras/Documents/code/hackspain show --stat 2fa9853
+python3 -m http.server 8765 --bind 127.0.0.1 --directory /Users/taras/Documents/code/hackspain/sim/coffee_sorter
 ```
 
 The existing proof is at `http://127.0.0.1:8765/visual_assets/browser/proof.html`.
@@ -698,7 +693,7 @@ Coin switching, generalized products, automated suggestions, and advanced learni
 
 ## Manual E2E
 
-Taras runs the completed increment from its isolated checkout:
+Taras runs the completed increment from the main checkout:
 
 ```bash
 cd /Users/taras/Documents/code/hackspain
@@ -728,4 +723,4 @@ ssh -N -L 8890:127.0.0.1:8890 hackspain
 ```
 
 No public deployment or language command is required for this checkpoint.
-The quality task supplies separate commands on port 8891. Preserve that service while Taras reviews this interface.
+Port 8890 remains the main demonstration service while Taras reviews this interface.
