@@ -1,6 +1,7 @@
 # hack-growth.dev coffee demo deployment guide
 
-Date: 2026-09-19. Baseline: `c599bd9988b9fff95c78209040e31e28697a4041`.
+Date: 2026-09-19. Historical inspection baseline:
+`c599bd9988b9fff95c78209040e31e28697a4041`.
 
 This document is a deployment plan. It does not record a deployment, a DNS
 change, a package installation, or a server configuration change.
@@ -122,12 +123,16 @@ The reviewed image contract must include:
 
 - a Python 3.13 base image pinned by immutable digest,
 - `WORKDIR /app`,
-- exactly the source at `c599bd9988b9fff95c78209040e31e28697a4041`,
+- the chosen reviewed release commit, recorded as a full immutable SHA,
 - packages from `thoughts/taras/research/coffee-quality/requirements-resolved.txt`,
 - the selected model and adjacent manifest in the image release path,
 - a POSIX shell with `mktemp` for atomic evidence-directory allocation,
 - a validated headless MuJoCo backend,
 - a recorded final image digest.
+
+Do not build the release from the historical inspection baseline by default.
+Choose the reviewed release commit that contains the approved UI and runtime.
+Write its full SHA to `source-revision.txt` before the image build.
 
 Prepare each model as a versioned release artifact. Do not restore it over an
 existing `live_green_arabica` file. A release can use this layout:
@@ -251,6 +256,10 @@ validated, integrated into reviewed assets, and copied to a persistent
 read-only asset path. A model update needs the paired manifest validation and
 a controlled coffee-service restart.
 
+The [CINTA generated-item controls plan](../../plans/2026-09-19-cinta-item-controls.md)
+describes a future automatic queue, training, and activation flow. That flow is
+not implemented by this deployment guide. Do not expose or promise it yet.
+
 ## Public control decision
 
 The current page permits injection commands from every connected browser. It
@@ -291,6 +300,36 @@ Run this smoke test after DNS, HTTPS, and WSS are ready:
 curl --fail --show-error https://hack-growth.dev/health
 curl --fail --show-error https://hack-growth.dev/state > /tmp/hack-growth-state.json
 curl --fail --show-error https://hack-growth.dev/live.js >/dev/null
+curl --fail --show-error https://hack-growth.dev/timeline.mjs >/dev/null
+```
+
+An HTTP listener alone is insufficient. Confirm a healthy worker and advancing
+simulation time:
+
+```bash
+python3 - <<'PY'
+import json
+import time
+from urllib.request import urlopen
+
+base = "https://hack-growth.dev"
+with urlopen(base + "/health") as response:
+    health = json.load(response)
+assert health["status"] in {"ready", "running"}, health
+
+with urlopen(base + "/state") as response:
+    first = json.load(response)
+deadline = time.monotonic() + 15
+while time.monotonic() < deadline:
+    time.sleep(1)
+    with urlopen(base + "/state") as response:
+        current = json.load(response)
+    if current["sim_time_s"] > first["sim_time_s"]:
+        break
+else:
+    raise SystemExit("simulation time did not advance")
+assert current["session_id"] == first["session_id"], (first, current)
+PY
 ```
 
 Open `https://hack-growth.dev` in two browsers. Confirm one session ID,
@@ -308,6 +347,7 @@ Do not deploy until all items pass:
 
 - The public Host, Origin, and bind application change is reviewed.
 - The reviewed Python 3.13 image and its digest are recorded.
+- The full reviewed release SHA is recorded in `source-revision.txt`.
 - Caddy configuration ownership is confirmed.
 - The public IPv4 target is confirmed before the DNS record is created.
 - Caddy can obtain the certificate.
@@ -316,6 +356,7 @@ Do not deploy until all items pass:
 - The coffee process has one replica and persistent run storage.
 - A host benchmark sets CPU and memory limits.
 - Taras selects the public injection policy.
-- HTTPS, WSS, `/health`, `/state`, and two-browser sharing pass.
+- HTTPS, WSS, `/health`, `/state`, `/timeline.mjs`, and two-browser sharing pass.
+- The worker reports healthy status and simulation time advances.
 
 No server result is claimed by this document.
