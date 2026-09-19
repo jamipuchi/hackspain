@@ -108,6 +108,7 @@ class LineConfig:
     door_d6_open_ms: int = 180  # how long to spin towards OPEN (into the stop)
     door_d6_close_ms: int = 180  # how long to spin back to CLOSED
     door_d6_dir: int = 1  # +1 or -1: flip if OPEN spins the wrong way
+    action_position: str = "closed"  # which saved position the door takes when it acts on a bean: 'closed' | 'open' (rest = the other one)
     act_on: str = "all"  # 'all': the door moves for every bean (bring-up); 'suspect': only for suspect verdicts (sorting)
     lost_after_s: float = 0.4  # no blob for this long while tracking → bean lost, re-arm
     dry_run: bool = True  # the closed loop logs gate pulses instead of sending them until switched off in the panel

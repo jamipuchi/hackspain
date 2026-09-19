@@ -66,6 +66,33 @@ back later: move the orange wire three holes towards the USB end (~6 → ~9) and
 `conveyor_button.py` STOP and its exit handler send `C 0`, which detaches the door servo (goes limp) — do not press STOP there
 while the door/tray is in use.
 
+## Bench state 19 Sep 14:55 (seen on the panel snapshot, not measured by hand)
+
+- A white foam-board **U-chute is built**: long channel, low walls (looks ≈ 2 cm, not the 3 cm of the sheet), inner width read by
+  the camera agent as ≈ 2.5 cm (105–110 px). It rests on a cardboard box at the top end; the slope is therefore whatever that
+  box gives and is not yet measured.
+- The **SG90 carries a flat white paddle** glued to a single horn arm (≈ 4–5 cm long from the shaft). It is lying loose beside
+  the chute, wired (orange/red/brown) to the Uno on **D6**. This is the "1 servo + barrera" of the original concept: the paddle is
+  the door and the servo shaft is the hinge, so no wall cut-out, no toothpick.
+- Camera: phone ≈ 28 cm above the paper (camera agent, from the scale), `camera.px_per_mm = 4.3`, proposed
+  `camera.zone = [992, 395, 1274, 505]` (floor only, walls and shadows excluded). Paper median gray 152, threshold adapts.
+- Servo commands go through D6 (`gate.channel = "belt"`, `C` mapping above); a config re-save from the panel can flip this back.
+
+Open as-built numbers (need Jaume's tape measure): chute length along the slant, wall height, box height under the top end
+(→ slope), paddle length, where the servo will be fixed (outside the right wall near the exit is the intended place), zone
+position along the chute, and 10 stopwatch transit times.
+
+### Paddle-gate mounting (recommended for what is on the bench)
+- Fix the servo body to the OUTSIDE of the right wall with its shaft vertical (square to the floor), shaft 0.3 cm past the
+  exit edge, horn at wall-top height, so the paddle sweeps across the exit opening and never needs a slot. Glue a foam-board
+  block (2.5 × 1.5 × 2.3 cm) between servo and wall for the standoff; strap with tape around block and servo.
+- CLOSED = paddle across the channel at the exit (bean stops against it, photo, decide); GOOD = paddle swings 90° downstream,
+  bean rolls into the bowl; SUSPECT = paddle stays closed and swings 90° UPSTREAM-in? — no: with one paddle at the exit only a
+  stop-and-release is possible, so the second bin needs either the tilting tray or the side kicker. If Jaume wants two bins with
+  this paddle alone, mount it as the swing DOOR instead: shaft at 36 cm from the top on the right wall, paddle 6 cm long lying
+  flush along the inside of the wall (there is no wall material to remove if the paddle sits in a 6 cm gap of the wall), swing
+  25° in for a suspect while the bean rolls (timing per the table; D6 is unramped so settle 150 ms).
+
 ## As built (fill in when the chute exists)
 
 ```

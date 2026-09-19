@@ -16,7 +16,7 @@
       75
     ],
     "settle_ms": 150,
-    "default_dwell_s": 0.6,
+    "default_dwell_s": 0.8,
     "ramp_override": false,
     "door_vmax_deg_s": 400,
     "door_accel_deg_s2": 8000

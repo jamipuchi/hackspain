@@ -10,7 +10,10 @@ from line.gate import Gate
 
 
 @pytest.fixture
-def env():
+def env(tmp_path, monkeypatch):
+    from line import config as C
+
+    monkeypatch.setattr(C, "CONFIG_PATH", tmp_path / "absent.json")  # no config.json on disk → Gate uses the cfg it was given
     cfg = LineConfig()  # base=D9, flush 90, open 65, hold (90, 75)
     fake = FakeArduino()
     gates = []

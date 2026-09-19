@@ -63,6 +63,7 @@ class DoorOnD6:
         self.inner, self.cfg = inner, cfg
         self.angle = int(cfg.gate.flush_deg)
         self.n_translated = 0
+        self.pos = None  # 'OPEN' | 'CLOSED' | None (unknown until the first pulse)
 
     @staticmethod
     def deg_to_speed(deg: float) -> int:
@@ -88,11 +89,14 @@ class DoorOnD6:
             deg = max(0, min(180, int(float(p[self.IDX.get(self.cfg.gate.channel, 1)]))))
             self.n_translated += 1
             if getattr(self.cfg, "door_d6_mode", "continuous") == "continuous":
-                want_open = abs(deg - self.cfg.gate.open_deg) < abs(deg - self.cfg.gate.flush_deg)
-                if (self.angle == self.cfg.gate.open_deg) == want_open and self.n_translated > 1:
+                gate_open = abs(deg - self.cfg.gate.open_deg) < abs(deg - self.cfg.gate.flush_deg)  # what the gate driver asked for
+                # the gate driver "opens" to act on a bean; the operator chooses which physical position that is
+                go_closed = gate_open if getattr(self.cfg, "action_position", "closed") == "closed" else not gate_open
+                if self.pos == ("CLOSED" if go_closed else "OPEN"):
                     return "ok"  # already there: do not grind into the stop again
-                self.angle = self.cfg.gate.open_deg if want_open else self.cfg.gate.flush_deg
-                return self._pulse(+1 if want_open else -1, self.cfg.door_d6_open_ms if want_open else self.cfg.door_d6_close_ms, "OPEN" if want_open else "CLOSED")
+                self.pos = "CLOSED" if go_closed else "OPEN"
+                self.angle = self.cfg.gate.flush_deg if go_closed else self.cfg.gate.open_deg
+                return self._pulse(-1 if go_closed else +1, self.cfg.door_d6_close_ms if go_closed else self.cfg.door_d6_open_ms, self.pos)
             self.angle = deg
             reply = self.inner.cmd(f"C {self.deg_to_speed(deg)}")
             log(f"door→D6: {deg}° as C {self.deg_to_speed(deg)} → {reply.strip()}")
@@ -127,7 +131,7 @@ class DoorOnD6:
 
     def status(self) -> dict:
         d = dict(self.inner.status())
-        d.update({"name": f"{d.get('name', '?')} +door-on-D6", "door_deg": self.angle, "door_speed_cmd": self.deg_to_speed(self.angle), "translated": self.n_translated})
+        d.update({"name": f"{d.get('name', '?')} +door-on-D6", "door_pos": self.pos or "unknown", "door_deg": self.angle, "door_speed_cmd": self.deg_to_speed(self.angle), "translated": self.n_translated})
         if isinstance(d.get("pos"), list) and len(d["pos"]) == 3:
             d["pos"][self.IDX.get(self.cfg.gate.channel, 1) - 1] = self.angle
         return d
