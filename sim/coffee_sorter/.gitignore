@@ -6,3 +6,4 @@ runs/*.png
 *.mp4
 models/*.joblib
 .DS_Store
+MUJOCO_LOG.TXT

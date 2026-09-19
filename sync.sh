@@ -14,7 +14,7 @@ rsync -a --delete \
 rsync -a --delete --exclude '__pycache__' --exclude 'runs/' "$SRC/astra_sort/" sim/astra_sort_v0/
 rsync -a "$SRC/demos/" sim/demos/
 # coffee bean optical sorter (belt + camera + air jets); keep its preview renders, drop models/videos/run dirs
-rsync -a --delete --exclude '.git' --exclude '__pycache__' --exclude 'runs/' --exclude 'models/' --exclude '*.mp4' \
+rsync -a --delete --exclude '.git' --exclude '__pycache__' --exclude 'runs/' --exclude 'models/' --exclude '*.mp4' --exclude 'MUJOCO_LOG.TXT' \
   "$SRC/coffee_sorter/" sim/coffee_sorter/
 mkdir -p sim/coffee_sorter/runs/preview
 cp -f "$SRC"/coffee_sorter/runs/preview/*.png sim/coffee_sorter/runs/preview/ 2>/dev/null || true
