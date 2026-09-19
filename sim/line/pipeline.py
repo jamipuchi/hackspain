@@ -139,7 +139,7 @@ class SortingLine:
                 self.event("bean_seen", u=round(best.u), v=round(best.v), partial=best.partial)
             elif self.state == "tracking" and self.enabled and getattr(self.cfg, "trigger_on", "verdict") == "seen" and math.hypot(best.u - self.track_first[0], best.v - self.track_first[1]) > 3.0:
                 verdict = self._decide(frame, best, roi)  # first frame where the object has actually moved: it is falling, act now
-            if self.state == "tracking" and not best.partial and self.enabled and self.track_frac >= float(getattr(self.cfg.camera, "trigger_frac", 0.0)):
+            if self.state == "tracking" and not best.partial and self.enabled and getattr(self.cfg, "trigger_on", "verdict") != "seen" and self.track_frac >= float(getattr(self.cfg.camera, "trigger_frac", 0.0)):
                 verdict = self._decide(frame, best, roi)
         elif self.state != "armed" and frame.t - self.last_seen > float(getattr(self.cfg, "lost_after_s", self.lost_after_s)):
             self.track_pos = None
