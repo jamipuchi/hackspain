@@ -146,6 +146,9 @@ def main() -> None:
     ap.add_argument("--viewer", action="store_true", help="open the MuJoCo viewer and run at wall-clock speed (needs mjpython on macOS)")
     ap.add_argument("--brain", choices=["program", "agent"], default="agent", help="program: one batch program per photo (legacy); agent: GPT-6 tool calls step by step with a photo after each motion")
     ap.add_argument("--decision-model", choices=["astra", "jev"], default="astra", help="agent mode: Astra selects tools, or Jev selects tools from visual observations")
+    ap.add_argument("--routing", choices=["cheap", "strong", "adaptive"], help="opt-in calibrated THEKER experiment (simulation only)")
+    ap.add_argument("--ledger", help="shared $5 sweep accounting ledger; required with --routing")
+    ap.add_argument("--run-dir", type=Path, help="explicit experiment output directory (must not exist)")
     ap.add_argument("--vision-provider", choices=["openai", "openrouter"], default="openai", help="vision provider for the Jev agent")
     ap.add_argument("--vision-model", default=None, help="vision model for the Jev agent; defaults to Astra or DeepSeek V4.1 Flash")
     ap.add_argument("--reuse-pick-observation", action="store_true", help="reuse the known part description to select placement, then refresh vision after placement")
@@ -161,12 +164,14 @@ def main() -> None:
     ap.add_argument("--no-record", action="store_true")
     ap.add_argument("--cycles", type=int, default=3, help="conveyor builds: number of belt batches")
     args = ap.parse_args()
+    if args.routing and (not args.ledger or args.port or args.viewer or args.phone != "mujoco" or args.build != "theker_v1" or args.brain != "agent" or args.planner != "gpt6" or args.cameras != "A,B"):
+        ap.error("--routing requires --ledger, theker_v1, agent/gpt6, MuJoCo A,B, headless simulation")
     if args.decision_model == "jev" and (args.brain != "agent" or args.planner != "gpt6"):
         ap.error("--decision-model jev requires --brain agent and --planner gpt6")
     if args.decision_model != "jev" and (args.vision_provider != "openai" or args.vision_model or args.reuse_pick_observation):
         ap.error("vision overrides and --reuse-pick-observation require --decision-model jev")
 
-    run_dir = sd.ROOT / "runs" / datetime.now().strftime("%Y%m%d-%H%M%S")
+    run_dir = args.run_dir or sd.ROOT / "runs" / datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir.mkdir(parents=True)
     seed = args.seed if args.seed is not None else int(time.time()) % 10_000
     rng = np.random.default_rng(seed)
@@ -235,7 +240,7 @@ def main() -> None:
                 "brain": args.brain, "decision_model": args.decision_model, "phone": args.phone,
                 "vision_provider": args.vision_provider, "reuse_pick_observation": args.reuse_pick_observation,
                 "effort": args.effort, "viewer": args.viewer,
-                "max_steps": args.max_steps, "budget_usd": args.budget}
+                "max_steps": args.max_steps, "budget_usd": args.budget, "routing": args.routing}
     (run_dir / "meta.json").write_text(json.dumps(metadata, indent=2))
     hopper = list(pieces)
     rng.shuffle(hopper)
@@ -269,8 +274,10 @@ def main() -> None:
             cams[cn] = BlenderPhoneCamera(blender, model, data, run_dir / "phone", samples=args.samples, name=cn)
         print(f"Blender scene built in {blender.build_s:.1f}s (Cycles, Metal GPU); cameras {cam_names}")
     else:
+        renderer = None
         for cn in cam_names:
-            cams[cn] = MujocoPhoneCamera(model, data, cn)
+            cams[cn] = MujocoPhoneCamera(model, data, cn, renderer=renderer)
+            renderer = cams[cn].renderer
     phone = cams[cam_names[0]]
 
     ctrl = ArmController(ard, step, frame_grab=phone.grab)
@@ -408,11 +415,17 @@ def main() -> None:
             return f"This batch is accepted. The operator has put {len(newp)} NEW parts on the card ({len(hopper)} more will follow later). Take a photo, rebuild your inventory with note_parts and continue the same task with the new parts."
 
         agent_class = JevAgent if args.decision_model == "jev" else GPT6Agent
+        if args.routing:
+            from adaptive_brain import AdaptiveAgent
+
+            agent_class = AdaptiveAgent
         agent = None
         failure = None
         try:
             vision_options = {}
-            if args.decision_model == "jev":
+            if args.routing:
+                vision_options = {"routing": args.routing, "ledger_path": args.ledger}
+            elif args.decision_model == "jev":
                 from brain import MODEL
 
                 vision_options = {"vision_provider": args.vision_provider, "reuse_pick_observation": args.reuse_pick_observation,

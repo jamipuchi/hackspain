@@ -92,13 +92,17 @@ def phone_look(frame_bgr: np.ndarray, rng: np.random.Generator | None = None) ->
 class MujocoPhoneCamera:
     """Fast fallback: MuJoCo's own rasteriser for a phone view (camera name 'phone' = legacy top-down, or 'A'/'B')."""
 
-    def __init__(self, model, data, name: str = "phone"):
+    def __init__(self, model, data, name: str = "phone", renderer=None):
         import mujoco
 
         self.model, self.data = model, data
         cam = sd.CAMERAS.get(name, sd.PHONE_CAM)
         self.cam_name = f"cam_{name}" if name in sd.CAMERAS else "phone"
-        self.renderer = mujoco.Renderer(model, height=cam["height"], width=cam["width"])
+        # Share a context for equal-sized views: multiple OSMesa contexts can
+        # leave an earlier Renderer writing into an uninitialised framebuffer.
+        self.renderer = renderer if renderer is not None else mujoco.Renderer(model, height=cam["height"], width=cam["width"])
+        if (self.renderer.height, self.renderer.width) != (cam["height"], cam["width"]):
+            raise ValueError("shared renderer dimensions must match the camera")
         self.rng = np.random.default_rng(0)
         self.last_render_s = 0.0
 

@@ -83,6 +83,10 @@ the Arduino and the four ArUco markers from the two configured viewpoints.
 
 ## Blocking hazard for the experiment run: one Renderer per process
 
+Phase B fixes this in `run_demo.py`: the A/B cameras now share one Renderer.
+The original failure below is retained as environment evidence. See
+[the paired evaluation](adaptive-report.md) for the continuation results.
+
 **`run_demo.py --cameras A,B` will produce a garbage frame for one of the two cameras under
 OSMesa.** This is not a hypothetical; it is what happened on the first render attempt:
 
