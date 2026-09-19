@@ -338,16 +338,21 @@ class SklearnClassifier:
 
 
 # ====================================================================== training
-def load_dataset(dataset_dir, features: list[str] | None = None):
+def load_dataset(dataset_dir, features: list[str] | None = None, include_partial: bool = False):
     """datasets/beans/<label>/*.json -> (X, y, feature_names). A JSON is a Sample ({'features': {...}, 'label': ...})
-    or a flat {feature: value} dict. Label = folder name."""
+    or a flat {feature: value} dict. Label = folder name. Samples saved with `partial: true` (blob touching the ROI edge,
+    i.e. not the whole bean) are skipped unless include_partial=True; the count is in load_dataset.skipped_partial."""
     root = Path(dataset_dir)
     rows, labels = [], []
+    load_dataset.skipped_partial = 0
     for sub in sorted(p for p in root.iterdir() if p.is_dir()):
         for j in sorted(sub.glob("*.json")):
             try:
                 d = json.loads(j.read_text())
             except json.JSONDecodeError:
+                continue
+            if isinstance(d, dict) and d.get("partial") and not include_partial:
+                load_dataset.skipped_partial += 1
                 continue
             f = d.get("features", d) if isinstance(d, dict) else None
             if not isinstance(f, dict) or not f:

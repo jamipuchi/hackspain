@@ -401,6 +401,21 @@ def make_handler(panel: Panel):
                     f = STATIC / p[len("/static/"):]
                     ctype = "text/css" if f.suffix == ".css" else "application/javascript" if f.suffix == ".js" else "application/octet-stream"
                     return self._send(200, f.read_bytes(), ctype)
+                if p == "/api/captures":
+                    from line.pipeline import CAPTURES
+                    items = []
+                    for f in sorted(CAPTURES.glob("*.json"), key=lambda f: f.stat().st_mtime, reverse=True)[:60]:
+                        try:
+                            m = json.loads(f.read_text())
+                            fe = m.get("features", {})
+                            items.append({"stem": m["stem"], "t": m["t"], "label": m.get("label"), "verdict": m["verdict"]["label"], "suspect": m["verdict"]["suspect"], "dark_core": fe.get("core_dark_frac", fe.get("dark_frac")), "gray": fe.get("mean_gray"), "major_mm": fe.get("major_mm"), "partial": m.get("partial")})
+                        except Exception:  # noqa: BLE001
+                            continue
+                    return self._json({"ok": True, "items": items})
+                if p.startswith("/captures/") and p.endswith(".png") and ".." not in p:
+                    from line.pipeline import CAPTURES
+                    f = CAPTURES / p[len("/captures/"):]
+                    return self._send(200, f.read_bytes(), "image/png") if f.exists() else self._json({"ok": False, "error": "no such capture"}, 404)
                 if p == "/api/state":
                     return self._json(panel.state())
                 if p == "/snapshot.jpg":
@@ -434,6 +449,56 @@ def make_handler(panel: Panel):
             p = urlparse(self.path).path
             try:
                 b = self._body()
+                if p == "/api/label":
+                    from line.pipeline import CAPTURES, DATASETS
+                    import shutil
+                    stem, label = str(b.get("stem", "")), str(b.get("label", ""))
+                    f = CAPTURES / f"{stem}.json"
+                    if not f.exists() or ".." in stem:
+                        return self._json({"ok": False, "error": "no such capture"}, 404)
+                    m = json.loads(f.read_text())
+                    m["label"] = label or None
+                    f.write_text(json.dumps(m))
+                    if label:
+                        d = DATASETS / label
+                        d.mkdir(parents=True, exist_ok=True)
+                        shutil.copy(CAPTURES / f"{stem}.png", d / f"{stem}.png")
+                        (d / f"{stem}.json").write_text(json.dumps(m))
+                    log(f"capture {stem} labelled {label or '(cleared)'}")
+                    return self._json({"ok": True, "stem": stem, "label": m["label"]})
+                if p == "/api/delete_capture":
+                    from line.pipeline import CAPTURES, DATASETS
+                    stem = str(b.get("stem", ""))
+                    if not stem or ".." in stem or "/" in stem:
+                        return self._json({"ok": False, "error": "bad stem"}, 400)
+                    if b.get("all"):
+                        stems = [f.stem for f in CAPTURES.glob("*.json")]
+                    else:
+                        stems = [stem]
+                    n = 0
+                    for st in stems:
+                        for f in list(CAPTURES.glob(f"{st}.*")) + list(DATASETS.glob(f"*/{st}.*")):
+                            f.unlink(missing_ok=True)
+                            n += 1
+                    log(f"deleted capture(s): {stems if len(stems) < 4 else str(len(stems)) + ' items'}")
+                    return self._json({"ok": True, "deleted_files": n})
+                if p == "/api/threshold_from_labels":
+                    from line.pipeline import CAPTURES
+                    vals = {"white": [], "black": []}
+                    for f in CAPTURES.glob("*.json"):
+                        try:
+                            m = json.loads(f.read_text())
+                            if m.get("label") in vals:
+                                fe = m["features"]
+                                vals[m["label"]].append(float(fe.get("core_dark_frac", fe.get("dark_frac", 0))))
+                        except Exception:  # noqa: BLE001
+                            continue
+                    if not vals["white"] or not vals["black"]:
+                        return self._json({"ok": False, "error": "label at least one white and one black bean first", "counts": {k: len(v) for k, v in vals.items()}}, 400)
+                    hi_white, lo_black = max(vals["white"]), min(vals["black"])
+                    thr = round((hi_white + lo_black) / 2, 4)
+                    panel.set_config("classifier.color_white_max_dark_frac", thr)
+                    return self._json({"ok": True, "threshold": thr, "white_max": hi_white, "black_min": lo_black, "separable": lo_black > hi_white, "counts": {k: len(v) for k, v in vals.items()}})
                 if p == "/api/cmd":
                     return self._json({"ok": True, "reply": panel.cmd(b.get("line", ""))})
                 if p == "/api/conveyor":

@@ -191,6 +191,10 @@ td.mono{font-family:var(--mono);font-size:.8rem}
     <svg id="calScale" viewBox="0 0 600 110" style="width:100%"></svg>
     <div class="row"><span class="hint">threshold</span><input class="num" id="calThr" type="number" min="0" max="255"><button class="acc" onclick="applyThr()">apply threshold</button><span class="hint" id="calThrHint"></span></div>
    </div>
+   <div class="card"><h2>Recent beans · label them after the fact <span><button class="sm acc" onclick="thrFromLabels()">set threshold from labels</button> <button class="sm stop" onclick="if(confirm('Delete ALL photographed examples and their labels?'))delCap('*',true)">delete all</button></span></h2>
+    <div class="hint" id="galHint">every bean that got a verdict is photographed; press WHITE or BLACK under each</div>
+    <div id="gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;max-height:520px;overflow:auto"></div>
+   </div>
    <div class="card"><h2>What the door does</h2>
     <label>which beans get REMOVED (door CLOSED)<select id="calRemove" onchange="applyThr()"><option value="white">white beans</option><option value="black">black beans</option></select></label>
     <div class="hint">The other colour keeps the door OPEN. The door holds its side until a bean of the other colour comes.</div>
@@ -237,7 +241,7 @@ td.mono{font-family:var(--mono);font-size:.8rem}
 <script>
 const $=id=>document.getElementById(id);
 const TABS=['Door','Calibrate','Line','Cameras','Classifier','Overview','Log'];let tab=localStorage.getItem('tab')||'Door';let S=null;let beltSp=0,timer=null,swT={};
-function showTab(t){tab=t;localStorage.setItem('tab',t);document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.dataset.tab===t));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.textContent===t));}
+function showTab(t){tab=t;localStorage.setItem('tab',t);setTimeout(loadGallery,50);document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.dataset.tab===t));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.textContent===t));}
 $('nav').innerHTML=TABS.map(t=>`<button onclick="showTab('${t}')">${t}</button>`).join('');showTab(tab);
 async function postJSON(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});const j=await r.json();if(!j.ok)toast('error: '+j.error);return j;}
 function toast(m){$('pServer').textContent=m;$('pServer').className='pill bad';setTimeout(refresh,1500);}
@@ -260,6 +264,17 @@ document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.
  else if(e.key==='g')sample('good');else if(e.key==='d')sample('defect');else if(e.key==='f')sample('foreign');});
 
 // ---- calibration tab
+async function loadGallery(){if(tab!=='Calibrate')return;try{const j=await (await fetch('/api/captures')).json();const items=j.items||[];
+ $('gallery').innerHTML=items.map(it=>`<div class="card" style="padding:8px;gap:6px;border-color:${it.label==='white'?'#e8edf2':it.label==='black'?'#7aa7ff':'var(--line)'}">
+  <img src="/captures/${it.stem}.png" style="width:100%;border-radius:6px;background:#000" onclick="window.open('/captures/${it.stem}.png')">
+  <div class="hint" style="font-family:var(--mono)">core ${(+it.dark_core).toFixed(3)} · grey ${Math.round(it.gray)}<br>said: ${it.verdict}${it.label?' · <b>you: '+it.label+'</b>':''}</div>
+  <div class="row" style="gap:4px"><button class="sm" style="background:#e8edf2;color:#111;flex:1" onclick="labelCap('${it.stem}','white')">WHITE</button><button class="sm" style="background:#222;color:#eee;border:1px solid #555;flex:1" onclick="labelCap('${it.stem}','black')">BLACK</button><button class="sm" title="clear label" onclick="labelCap('${it.stem}','')">✕</button><button class="sm stop" title="delete this example" onclick="delCap('${it.stem}')">🗑</button></div></div>`).join('')||'<span class="hint">no beans judged yet</span>';
+ const w=items.filter(i=>i.label==='white').length,b=items.filter(i=>i.label==='black').length;$('galHint').textContent=`${items.length} beans photographed · labelled: ${w} white, ${b} black · white threshold now ${S?.cfg?.classifier?.color_white_max_dark_frac}`;}catch(e){}}
+async function delCap(stem,all){await postJSON('/api/delete_capture',{stem:all?'all':stem,all:!!all});loadGallery();}
+async function labelCap(stem,label){await postJSON('/api/label',{stem,label});loadGallery();}
+async function thrFromLabels(){const j=await postJSON('/api/threshold_from_labels',{});if(j.ok){alert(`threshold set to ${j.threshold}\nwhite beans max core ${j.white_max.toFixed(3)} · black beans min core ${j.black_min.toFixed(3)}\n${j.separable?'clean separation':'WARNING: classes overlap, label more or improve lighting'}`);refresh();loadGallery();}}
+setInterval(loadGallery,2500);
+
 let calSamples={white:[],black:[]};try{calSamples=JSON.parse(localStorage.getItem('calSamples'))||calSamples;}catch(e){}
 function saveCal(){try{localStorage.setItem('calSamples',JSON.stringify(calSamples));}catch(e){}}
 let calLast=null;

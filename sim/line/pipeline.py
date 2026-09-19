@@ -26,6 +26,7 @@ from line.contracts import Blob, Frame, LineEvent, ROI, Verdict, now
 
 ROOT = Path(__file__).resolve().parent
 DATASETS = ROOT / "datasets" / "beans"
+CAPTURES = ROOT / "datasets" / "captures"
 
 
 def flow_fraction(blob: Blob, roi: ROI, flow_axis: str) -> float:
@@ -200,7 +201,8 @@ class SortingLine:
         self.last_verdict, self.last_blob = verdict, blob
         self.state = "decided"
         frac = flow_fraction(blob, roi, self.cfg.camera.flow_axis)
-        self.event("verdict", label=verdict.label, p=round(verdict.p_defect, 2), suspect=verdict.suspect, gray=round(blob.features.get("mean_gray", 0)), dark_core=round(blob.features.get("core_dark_frac", blob.features.get("dark_frac", 0)), 3), major_mm=round(blob.features.get("major_mm", 0), 1), reason=verdict.reason, ms=round(verdict.ms, 1), frac=round(frac, 2))
+        stem = self._capture(frame, blob, verdict)
+        self.event("verdict", capture=stem, label=verdict.label, p=round(verdict.p_defect, 2), suspect=verdict.suspect, gray=round(blob.features.get("mean_gray", 0)), dark_core=round(blob.features.get("core_dark_frac", blob.features.get("dark_frac", 0)), 3), major_mm=round(blob.features.get("major_mm", 0), 1), reason=verdict.reason, ms=round(verdict.ms, 1), frac=round(frac, 2))
         if verdict.suspect:
             self.counters["suspect"] += 1
         else:
@@ -223,6 +225,23 @@ class SortingLine:
             self.counters["gate_pulses"] += 1
             self.event("gate_open", in_s=round(delay, 3), dwell_s=round(dwell, 2), dry_run=getattr(self.gate, "dry_run", True), because="every bean" if not verdict.suspect else "suspect")
         return verdict
+
+    def _capture(self, frame: Frame, blob: Blob, verdict: Verdict) -> str:
+        """Photo of the judged bean (crop around its box, 30 px pad) + JSON with features and verdict → datasets/captures/."""
+        try:
+            CAPTURES.mkdir(parents=True, exist_ok=True)
+            x, y, w, h = blob.bbox
+            pad = 30
+            H, W = frame.bgr.shape[:2]
+            crop = frame.bgr[max(0, y - pad) : min(H, y + h + pad), max(0, x - pad) : min(W, x + w + pad)]
+            stem = time.strftime("%H%M%S") + f"-{int((now() * 1000) % 1000):03d}"
+            cv2.imwrite(str(CAPTURES / f"{stem}.png"), crop)
+            meta = {"stem": stem, "t": time.time(), "features": {k: round(float(v), 4) for k, v in blob.features.items()}, "bbox": list(blob.bbox), "partial": blob.partial, "verdict": asdict(verdict), "label": None}
+            (CAPTURES / f"{stem}.json").write_text(json.dumps(meta))
+            return stem
+        except Exception as exc:  # noqa: BLE001
+            self.event("error", where="capture", error=str(exc))
+            return ""
 
     # ------------------------------------------------------------ preview
     def _render(self, frame: Frame, blobs: list[Blob], best: Blob | None) -> None:
