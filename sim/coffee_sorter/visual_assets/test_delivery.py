@@ -3,9 +3,22 @@ import hashlib
 import json
 from pathlib import Path
 import struct
+import subprocess
 import unittest
 
 HERE = Path(__file__).resolve().parent
+REPOSITORY_ROOT = HERE.parents[2]
+
+# Rendering started at the manifest revision while the recording scripts were uncommitted.
+# This direct child is the first immutable revision containing those exact script bytes.
+RECORDING_SCRIPT_ARCHIVE_REVISION = 'a230f2cdf3fec8c906e947a9b7f2ad795dea7ec8'
+
+
+def git_bytes(*args):
+    return subprocess.run(
+        ['git', *args], cwd=REPOSITORY_ROOT, check=True,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    ).stdout
 
 
 class DeliveryTests(unittest.TestCase):
@@ -34,8 +47,12 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(manifest['fires'], [f for f in replay['fires'] if f[0] < end and f[1] >= start])
         self.assertEqual(manifest['decisions'], [d for d in replay['decisions'] if start <= d[0] < end])
         self.assertLessEqual(manifest['threads'], 16)
+        archive_parent = git_bytes('rev-parse', f'{RECORDING_SCRIPT_ARCHIVE_REVISION}^').decode().strip()
+        self.assertEqual(archive_parent, manifest['script_revision'])
         for name, digest in manifest['script_sha256'].items():
-            self.assertEqual(hashlib.sha256((HERE/name).read_bytes()).hexdigest(), digest)
+            archived_path = f'sim/coffee_sorter/visual_assets/{name}'
+            archived_source = git_bytes('show', f'{RECORDING_SCRIPT_ARCHIVE_REVISION}:{archived_path}')
+            self.assertEqual(hashlib.sha256(archived_source).hexdigest(), digest)
 
     def test_movie_and_poster(self):
         manifest = json.loads((HERE/'recording/manifest.json').read_text())
