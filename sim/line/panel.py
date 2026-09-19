@@ -52,22 +52,11 @@ def _try(info: dict, key: str, label: str, factory, fallback):
 
 def build_modules(cfg: LineConfig, all_fake: bool = False) -> tuple[dict, dict]:
     info: dict[str, str] = {}
-    # arduino
-    if all_fake or cfg.arduino.backend == "fake":
-        def mk_ard():
-            from line.arduino_link import FakeArduino
-            return FakeArduino()
-        ard = _try(info, "arduino", "arduino_link.FakeArduino", mk_ard, _stubs.StubArduino)
-    elif cfg.arduino.backend == "serial":
-        def mk_ard():
-            from line.arduino_link import DirectSerial
-            return DirectSerial(cfg.arduino.port_glob, cfg.arduino.baud, cfg.arduino.boot_wait_s)
-        ard = _try(info, "arduino", "arduino_link.DirectSerial", mk_ard, _stubs.StubArduino)
-    else:
-        def mk_ard():
-            from line.arduino_link import HttpPanelLink
-            return HttpPanelLink(cfg.arduino.http_url)
-        ard = _try(info, "arduino", f"arduino_link.HttpPanelLink({cfg.arduino.http_url})", mk_ard, _stubs.StubArduino)
+    # arduino: the arduino agent's make_link(cfg) picks Fake / HttpPanelLink / DirectSerial from cfg.arduino.backend
+    def mk_ard():
+        from line.arduino_link import FakeArduino, make_link
+        return FakeArduino() if all_fake else make_link(cfg)
+    ard = _try(info, "arduino", "arduino_link.FakeArduino" if all_fake else f"arduino_link.make_link({cfg.arduino.backend})", mk_ard, _stubs.StubArduino)
     # gate
     def mk_gate():
         from line.gate import Gate

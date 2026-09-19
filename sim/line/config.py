@@ -79,9 +79,13 @@ class TimingCfg:  # owner: coffee-sim agent (kinematics) with as-built numbers f
     slope_deg: float = 15.0
     zone_from_top_cm: tuple = (9.0, 15.0)
     door_from_top_cm: tuple = (30.0, 36.0)
-    bean_speed_cm_s: float = 35.0  # measured on the bench; the panel's stopwatch tool updates this
-    zone_to_door_s: float = 0.55  # derived: (door_start − zone_centre) / speed; recomputed by timing.py
-    door_lead_s: float = 0.10  # open this much before the bean is due
+    bean_speed_cm_s: float = 35.0  # measured on the bench; the panel's stopwatch tool updates this ('measured' model)
+    zone_to_door_s: float = 0.55  # derived by timing.refresh(): zone centre -> door start with the active speed model
+    speed_model: str = "drag"  # 'drag' (build agent: v' = a - k v) | 'measured' (constant stopwatch speed) | 'rolling'
+    drag_accel_cm_s2_at_15deg: float = 64.0  # net drive at 15°; a(θ) = (a15 + f)·sinθ/sin15° − f (48/64/80/96 at 12/15/18/21°)
+    drag_friction_cm_s2: float = 19.2  # f: constant friction term of the drive (bean stalls below ~3.4°)
+    drag_k_per_s: float = 1.6  # linear drag -> terminal speed a/k = 40 cm/s at 15°
+    door_lead_s: float = 0.0  # extra margin on top of the door swing (gate.settle_ms): photo age + jitter. Total lead = settle + this
 
 
 @dataclass

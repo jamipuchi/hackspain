@@ -212,3 +212,7 @@ Hardware track for coffee: one bean at a time down a chute, phone camera, one se
 - **Multi-session coordination.** Several Claude sessions share this Mac; port 8765 was taken by the bench
   session's conveyor panel while I tried to serve a preview there. Check `lsof -iTCP:<port>` before binding, and
   use `~/robotics/INTEGRATOR.md` (roles: arduino, camera, coffee-sim, build, integrator) for hand-offs.
+- **Simpler beats faster (14:20).** The swing gate needs a 0.45 s photo→door budget, a hinge, a soft stop and a
+  fast-ramp firmware command. Stopping the bean on a servo-tilted tray (photograph still, then tip 45° to either side)
+  removes every one of those: one servo, stock ramp, no timing, friction handled by tilting further. Cycle ≈ 2 s per bean,
+  which equals the hand-feed rate anyway. Lesson: before optimising a timing budget, ask whether the bean has to be moving.

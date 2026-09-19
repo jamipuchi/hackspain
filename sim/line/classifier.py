@@ -21,14 +21,18 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
-from threadpoolctl import threadpool_limits
+from threadpoolctl import ThreadpoolController
 
 from line.contracts import Blob, Check, Frame, Verdict
 
 # HistGradientBoosting spawns an OpenMP team per call; on tiny inputs (one bean, 120 training rows) that costs more
 # than the maths and thrashes when several processes run at once (86 s for a 120-row fit was measured). One thread.
+# The controller is built once: constructing it rescans every loaded library (~50 ms), which must not happen per bean.
+_CTL = ThreadpoolController()
+
+
 def _single_thread():
-    return threadpool_limits(limits=1, user_api="openmp")
+    return _CTL.limit(limits=1, user_api="openmp")
 
 LINE_DIR = Path(__file__).resolve().parent
 ROOT = LINE_DIR.parent

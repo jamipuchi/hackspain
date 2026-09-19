@@ -14,3 +14,7 @@ Open the HTML files in a browser (they are self-contained; the simulation loads 
 | `servo_wiring_demo.html` | first bench test: one SG90 on D9 / 5V / GND |
 
 Live numbers for the software live in `sim/line/BUILD_ASBUILT.md` (mirrored from `~/robotics/line/`).
+
+**v4 proposal (19 Sep 14:20): `tilt_tray.html`** — stop-look-tip. A 6 × 6 cm tray on the servo horn at the chute exit
+stops the bean, the phone photographs it still, the tray tilts 45° to the bowl or the cup. One servo, no door, no timing
+budget, no firmware change; friction becomes a software angle. Ranked #1 in the simulation. Pending Jaume's decision.
