@@ -81,9 +81,15 @@ class SorterSim:
         self.geom_of = np.array([self.body_geom[b] for b in self.all_bodies])
         self.body_index = {b: i for i, b in enumerate(self.all_bodies)}
         self.active = np.zeros(len(self.all_bodies), bool)
+        self.continuous = False
         self.bean_of = {}                  # body -> Bean (active)
         self.beans: list[Bean] = []        # every bean ever spawned (ground truth log)
         self.bean_by_uid: dict[int, Bean] = {}
+        self._spawned_events: list[Bean] = []
+        self._outcome_events: list[Bean] = []
+        self._retired_events: list[Bean] = []
+        self._activated_events: list[int] = []
+        self._fire_hit_events: list[tuple[int, int]] = []
         self.material_ids = {}
         for fam in ("good", "faded", "black", "sour", "insect", "roast"):
             self.material_ids[fam] = [mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_MATERIAL, f"m_{fam}_{k}") for k in range(N_VARIANTS)]
@@ -98,6 +104,7 @@ class SorterSim:
         self.fired_targets: set[int] = set()
         self.fire_hits: set[tuple[int, int]] = set()  # (controller track id, bean uid)
         self.uid = 0
+        self.n_spawned = 0
         self.starved = 0
         self.spawn_accum = 0.0
         self.class_by_name = {c.name: c for c in profile.classes}
@@ -179,7 +186,11 @@ class SorterSim:
         bean = Bean(self.uid, b, spec.name, spec.defect, d.time, axes.copy(), mass)
         self.uid += 1
         self.bean_of[b] = bean
-        self.beans.append(bean)
+        self.n_spawned += 1
+        if self.continuous:
+            self._spawned_events.append(bean)
+        else:
+            self.beans.append(bean)
         self.bean_by_uid[bean.uid] = bean
         self.active[self.body_index[b]] = True
         return bean
@@ -215,6 +226,9 @@ class SorterSim:
         d.qvel[va:va + 6] = 0
         d.xfrc_applied[b] = 0
         bean = self.bean_of.pop(b)
+        if self.continuous:
+            self._retired_events.append(bean)
+            self.bean_by_uid.pop(bean.uid, None)
         for k, v in self.pools.items():
             if b in v:
                 self.free[k].append(b)
@@ -262,7 +276,10 @@ class SorterSim:
                             fr.activated = True
                             self.n_activated += 1
                             if fr.uid is not None:
-                                self.fired_targets.add(fr.uid)
+                                if self.continuous:
+                                    self._activated_events.append(fr.uid)
+                                else:
+                                    self.fired_targets.add(fr.uid)
                         hit = inflight & (np.abs(pos[:, 0] - L.ej_x) < JET_HALF_X) & \
                               (np.abs(pos[:, 1] - self.nozzle_y[fr.nozzle]) < JET_HALF_Y_FACTOR * L.nozzle_pitch) & \
                               (pos[:, 2] > L.belt_z - 0.07) & (pos[:, 2] < L.belt_z + 0.03)
@@ -271,7 +288,10 @@ class SorterSim:
                             bean = self.bean_of[b]
                             bean.jet_hits += 1
                             if fr.uid is not None:
-                                self.fire_hits.add((fr.uid, bean.uid))
+                                if self.continuous:
+                                    self._fire_hit_events.append((fr.uid, bean.uid))
+                                else:
+                                    self.fire_hits.add((fr.uid, bean.uid))
             d.xfrc_applied[bodies, :3] = f
             # outcome capture at the splitter plane and recycling
             past = pos[:, 0] >= L.split_x
@@ -280,6 +300,8 @@ class SorterSim:
                 if bean.outcome is None:
                     bean.outcome = "accept" if p[2] > L.split_z else "reject"
                     bean.resolved_t = t
+                    if self.continuous:
+                        self._outcome_events.append(bean)
             gone = (pos[:, 0] > L.split_x + 0.16) | (pos[:, 2] < L.belt_z - 0.44) | \
                    ((pos[:, 0] < 0) & (np.abs(pos[:, 1]) > L.belt_w / 2 + 0.03)) | (pos[:, 2] < 0.05)
             for b, p in zip(bodies[gone], pos[gone]):
@@ -288,6 +310,8 @@ class SorterSim:
                 if bean.outcome is None:
                     bean.outcome = "spilled"
                     bean.resolved_t = t
+                    if self.continuous:
+                        self._outcome_events.append(bean)
                 self._park(b)
         # conveyor: the belt body never moves in position but always carries belt_speed, so friction
         # transports whatever rests on it (standard MuJoCo conveyor idiom)
@@ -298,6 +322,14 @@ class SorterSim:
         d.qpos[self.roller_head] += w
         d.qpos[self.roller_tail] += w
         mujoco.mj_step(m, d)
+
+    def drain_continuous_events(self):
+        """Return new physical facts and clear their per-step queues."""
+        events = (self._spawned_events, self._outcome_events, self._retired_events,
+                  self._activated_events, self._fire_hit_events)
+        self._spawned_events, self._outcome_events, self._retired_events = [], [], []
+        self._activated_events, self._fire_hit_events = [], []
+        return events
 
     # ------------------------------------------------------------------ ground truth helpers
     def active_state(self, rendered=False):

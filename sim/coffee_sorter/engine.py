@@ -24,13 +24,20 @@ from threadpoolctl import threadpool_info
 from classifier import Model
 from controller import Controller, Policy
 from profiles import PROFILES
+from rolling_scores import RollingScoreLedger, SETTLING_SECONDS
 from scene import Layout
 from sim import SorterSim
 from vision import Inspector
 
 
 HERE = Path(__file__).resolve().parent
-SOURCE_FILES = ("engine.py", "controller.py", "sim.py", "vision.py", "classifier.py", "profiles.py", "scene.py")
+SOURCE_FILES = ("engine.py", "controller.py", "sim.py", "rolling_scores.py", "vision.py",
+                "classifier.py", "profiles.py", "scene.py")
+MAX_COMPLETED_INJECTIONS = 64
+MAX_CONTINUOUS_EVENTS = 2000
+MAX_RECENT_RESOLVED_FEED = 200
+MAX_TIMING_SAMPLES = 4096
+MAX_OBJECT_DECISIONS = 8
 
 
 def _json_hash(value) -> str:
@@ -76,6 +83,7 @@ class Engine:
         startup_started = time.perf_counter()
         self.preset_path = Path(preset_path).resolve()
         self.preset = json.loads(self.preset_path.read_text())
+        self.continuous = self.preset.get("mode") == "continuous"
         self.session_id = str(uuid.uuid4())
         self.seq = 0
         self._started_wall: float | None = None
@@ -90,13 +98,30 @@ class Engine:
         self._track_members: dict[int, dict] = {}
         self._decision_by_track: dict[int, object] = {}
         self._decision_by_uid: dict[int, object] = {}
-        self._decision_evidence: list[dict] = []
+        limits = self.preset["limits"]
+        timing_limit = int(limits.get("max_timing_samples", MAX_TIMING_SAMPLES))
+        event_limit = int(limits["max_events"])
+        resolved_limit = int(limits["max_recent_resolved_objects"])
+        if self.continuous:
+            timing_limit = min(timing_limit, MAX_TIMING_SAMPLES)
+            event_limit = min(event_limit, MAX_CONTINUOUS_EVENTS)
+            resolved_limit = min(resolved_limit, MAX_RECENT_RESOLVED_FEED)
+        self._decision_evidence = (deque(maxlen=event_limit)
+                                   if self.continuous else [])
         self._object_records: dict[int, dict] = {}
         self._injected_ids: set[int] = set()
-        self._recent_resolved = deque(maxlen=int(self.preset["limits"]["max_recent_resolved_objects"]))
-        self._events = deque(maxlen=int(self.preset["limits"]["max_events"]))
-        self._timings = {name: [] for name in ("physics_ms", "render_ms", "evaluation_ms",
-                                               "snapshot_ms", "control_path_ms", "camera_frame_ms")}
+        self._active_injections: set[int] = set()
+        self._completed_injections: deque[int] = deque()
+        self._injection_history_evicted = 0
+        self._recent_resolved = deque(maxlen=resolved_limit)
+        self._events = deque(maxlen=event_limit)
+        self._timings = {
+            name: deque(maxlen=timing_limit) if self.continuous else []
+            for name in ("physics_ms", "render_ms", "evaluation_ms", "snapshot_ms",
+                         "control_path_ms", "camera_frame_ms")
+        }
+        self._score_ledger = (RollingScoreLedger(float(self.preset["score_window_seconds"]))
+                              if self.continuous else None)
         self._peak_active = 0
 
         profile_name = self.preset["profile"]
@@ -106,6 +131,7 @@ class Engine:
         layout = Layout(**self.preset["layout"])
         self.sim = SorterSim(self.profile, layout, rate=float(self.preset["requested_rate"]),
                              seed=int(self.preset["seed"]))
+        self.sim.continuous = self.continuous
         self.inspector = Inspector(self.sim)
 
         model_path = Path(self.preset["model_path"])
@@ -129,8 +155,11 @@ class Engine:
             fixed_latency=policy_config["fixed_latency_s"],
             target_nozzles=policy_config["target_nozzles"],
         )
-        self.controller = Controller(self.sim, self.inspector, self.model, self.policy,
-                                     jet_force=float(self.preset["jet_force_n"]))
+        self.controller = Controller(
+            self.sim, self.inspector, self.model, self.policy,
+            jet_force=float(self.preset["jet_force_n"]), continuous=self.continuous,
+            timing_limit=timing_limit,
+        )
         self.model_version = _file_hash(self.model_path)
         self.policy_version = _json_hash(asdict(self.policy))
         self.preset_version = _json_hash(self.preset)
@@ -191,11 +220,23 @@ class Engine:
             "quat": None,
             "decisions": [],
             "associated_rejection_tracks": set(),
+            "activated_rejection_tracks": set(),
+            "outcome": bean.outcome,
+            "resolved_time_s": bean.resolved_t,
+            "jet_hits": int(bean.jet_hits),
+            "own_pulse_hit": False,
         }
         if injected:
             self._injected_ids.add(bean.uid)
+            if self.continuous:
+                self._active_injections.add(bean.uid)
             self._event("injected", object_id=bean.uid)
         else:
+            if self.continuous:
+                self._score_ledger.add(
+                    bean.uid, bean.spawn_t,
+                    self._object_records[bean.uid]["required_reject"],
+                )
             self._event("spawned", object_id=bean.uid)
 
     def _update_active_records(self):
@@ -206,9 +247,78 @@ class Engine:
             record = self._object_records[bean.uid]
             record["pos"] = [float(value) for value in pose[:3]]
             record["quat"] = [float(value) for value in pose[3:7]]
+            record["outcome"] = bean.outcome
+            record["resolved_time_s"] = bean.resolved_t
+            record["jet_hits"] = int(bean.jet_hits)
         self._peak_active = max(self._peak_active, self.sim.n_active())
 
+    def _record_outcome(self, bean):
+        if bean.uid in self._seen_outcomes:
+            return
+        self._seen_outcomes.add(bean.uid)
+        record = self._object_records.get(bean.uid)
+        if record is not None:
+            record["outcome"] = bean.outcome
+            record["resolved_time_s"] = bean.resolved_t
+            record["jet_hits"] = int(bean.jet_hits)
+            if record["spawn_wall"] is not None:
+                record["spawn_to_outcome_wall_s"] = time.perf_counter() - record["spawn_wall"]
+            if bean.last_pos is not None:
+                record["pos"] = [float(value) for value in bean.last_pos]
+            if self.continuous and record["injected"]:
+                self._completed_injections.append(bean.uid)
+                while len(self._completed_injections) > MAX_COMPLETED_INJECTIONS:
+                    self._completed_injections.popleft()
+                    self._injection_history_evicted += 1
+            elif self.continuous:
+                self._recent_resolved.append(bean.uid)
+                self._score_ledger.resolve(bean.uid, bean.outcome)
+            else:
+                self._recent_resolved.append(bean.uid)
+        self._event("outcome", object_id=bean.uid, outcome=bean.outcome)
+
     def _physical_events(self):
+        if self.continuous:
+            spawned, outcomes, retired, activated_tracks, fire_hits = self.sim.drain_continuous_events()
+            for bean in spawned:
+                self._register_bean(bean)
+            for track_id in activated_tracks:
+                if track_id in self._seen_fired_tracks:
+                    continue
+                self._seen_fired_tracks.add(track_id)
+                decision = self._decision_by_track.get(track_id)
+                uids = decision.target_uids if decision else ()
+                for uid in uids:
+                    record = self._object_records.get(uid)
+                    if record is not None:
+                        record["activated_rejection_tracks"].add(track_id)
+                        if len(record["activated_rejection_tracks"]) > MAX_OBJECT_DECISIONS:
+                            record["activated_rejection_tracks"].remove(
+                                min(record["activated_rejection_tracks"])
+                            )
+                    bean = self.sim.bean_by_uid.get(uid)
+                    if bean is not None:
+                        bean.fired_target = True
+                self._event("valve_activated", object_ids=uids, track_id=int(track_id))
+            for track_id, uid in fire_hits:
+                hit = (track_id, uid)
+                if hit in self._seen_fire_hits:
+                    continue
+                self._seen_fire_hits.add(hit)
+                decision = self._decision_by_track.get(track_id)
+                own_pulse = bool(decision and uid in decision.target_uids)
+                record = self._object_records.get(uid)
+                if record is not None and own_pulse:
+                    record["own_pulse_hit"] = True
+                self._event("own_pulse_hit" if own_pulse else "collateral_jet_hit",
+                            object_id=uid, track_id=int(track_id))
+            for bean in outcomes:
+                self._record_outcome(bean)
+            for bean in retired:
+                self._record_outcome(bean)
+                self._active_injections.discard(bean.uid)
+            return
+
         for track_id in sorted(self.sim.fired_targets - self._seen_fired_tracks):
             decision = self._decision_by_track.get(track_id)
             uids = decision.target_uids if decision else ()
@@ -227,14 +337,38 @@ class Engine:
         for bean in self.sim.beans:
             if bean.outcome is None or bean.uid in self._seen_outcomes:
                 continue
-            self._seen_outcomes.add(bean.uid)
-            self._recent_resolved.append(bean.uid)
-            record = self._object_records.get(bean.uid)
-            if record is not None and record["spawn_wall"] is not None:
-                record["spawn_to_outcome_wall_s"] = time.perf_counter() - record["spawn_wall"]
-            if record is not None and bean.last_pos is not None:
-                record["pos"] = [float(value) for value in bean.last_pos]
-            self._event("outcome", object_id=bean.uid, outcome=bean.outcome)
+            self._record_outcome(bean)
+
+    def _prune_continuous_state(self):
+        if not self.continuous:
+            return
+        self._score_ledger.prune(float(self.sim.data.time))
+        active_ids = {bean.uid for bean in self.sim.bean_of.values()}
+        retained_ids = (active_ids | set(self._recent_resolved) |
+                        set(self._completed_injections))
+        self._active_injections.intersection_update(active_ids)
+        self._injected_ids = self._active_injections | set(self._completed_injections)
+        for uid in list(self._object_records):
+            if uid not in retained_ids:
+                self._object_records.pop(uid, None)
+                self._decision_by_uid.pop(uid, None)
+        pending_tracks = {fire.uid for fire in self.sim.fires if fire.uid is not None}
+        live_tracks = {track.tid for track in self.controller.tracks}
+        retained_tracks = pending_tracks | live_tracks
+        self._decision_by_track = {
+            tid: decision for tid, decision in self._decision_by_track.items()
+            if tid in retained_tracks
+        }
+        self._track_members = {
+            tid: members for tid, members in self._track_members.items()
+            if tid in retained_tracks
+        }
+        self._seen_fired_tracks.intersection_update(retained_tracks)
+        self._seen_fire_hits = {
+            (tid, uid) for tid, uid in self._seen_fire_hits
+            if uid in retained_ids or tid in pending_tracks
+        }
+        self._seen_outcomes.intersection_update(retained_ids)
 
     def _evaluate_frame(self, blobs, full, blob_tracks, captured_t: float):
         members = self.inspector.component_members(blobs)
@@ -252,8 +386,12 @@ class Engine:
                 bean.camera_observations += 1
                 bean.merged_observations += int(len(uids) >= 2)
 
-        new_decisions = self.controller.decisions[self._decision_index:]
-        self._decision_index = len(self.controller.decisions)
+        if self.continuous:
+            new_decisions = list(self.controller.decisions)
+            self.controller.decisions.clear()
+        else:
+            new_decisions = self.controller.decisions[self._decision_index:]
+            self._decision_index = len(self.controller.decisions)
         for decision in new_decisions:
             self._decision_by_track[decision.tid] = decision
             association = self._track_members.get(decision.tid)
@@ -276,13 +414,23 @@ class Engine:
             }
             self._decision_evidence.append(evidence)
             for uid in decision.target_uids:
-                record = self._object_records[uid]
+                record = self._object_records.get(uid)
+                if record is None:
+                    continue
                 record["decisions"].append(evidence)
+                if self.continuous and len(record["decisions"]) > MAX_OBJECT_DECISIONS:
+                    del record["decisions"][:-MAX_OBJECT_DECISIONS]
                 self._decision_by_uid[uid] = decision
                 if decision.reject:
                     record["associated_rejection_tracks"].add(decision.tid)
+                    if self.continuous and len(record["associated_rejection_tracks"]) > MAX_OBJECT_DECISIONS:
+                        record["associated_rejection_tracks"].remove(
+                            min(record["associated_rejection_tracks"])
+                        )
                     if decision.scheduled:
-                        self.sim.bean_by_uid[uid].targeted = True
+                        bean = self.sim.bean_by_uid.get(uid)
+                        if bean is not None:
+                            bean.targeted = True
             self._event("decision", object_ids=decision.target_uids, track_id=int(decision.tid))
 
     def step(self):
@@ -298,8 +446,9 @@ class Engine:
         self.sim.step()
         self._timings["physics_ms"].append((time.perf_counter() - started) * 1e3)
         started = time.perf_counter()
-        for bean in self.sim.beans[bean_count:]:
-            self._register_bean(bean)
+        if not self.continuous:
+            for bean in self.sim.beans[bean_count:]:
+                self._register_bean(bean)
         self._update_active_records()
         self._physical_events()
         evaluation_ms += (time.perf_counter() - started) * 1e3
@@ -318,6 +467,7 @@ class Engine:
             evaluation_ms += (time.perf_counter() - started) * 1e3
             self._timings["camera_frame_ms"].append((time.perf_counter() - frame_started) * 1e3)
         self._timings["evaluation_ms"].append(evaluation_ms)
+        self._prune_continuous_state()
         self._step_index += 1
 
     def inject(self, class_name) -> int:
@@ -337,15 +487,14 @@ class Engine:
         return bean.uid
 
     def _snapshot_object(self, uid: int, active: bool) -> dict:
-        bean = self.sim.bean_by_uid[uid]
         record = self._object_records[uid]
         decision = self._decision_by_uid.get(uid)
         decision_evidence = record["decisions"][-1] if record["decisions"] else None
-        own_pulse_hit = any(
+        own_pulse_hit = (record["own_pulse_hit"] if self.continuous else any(
             (track_id, uid) in self.sim.fire_hits
             for track_id in record["associated_rejection_tracks"]
-        )
-        return {
+        ))
+        result = {
             "object_id": uid,
             "spawn_to_outcome_wall_s": record["spawn_to_outcome_wall_s"],
             "active": active,
@@ -361,13 +510,20 @@ class Engine:
                 "reject": bool(decision.reject),
                 "scheduled": bool(decision.scheduled),
                 "late": bool(decision.late),
-                "association": decision_evidence["association"],
-                "association_approximate": decision_evidence["association_approximate"],
+                "association": decision_evidence["association"] if decision_evidence else "unknown",
+                "association_approximate": (decision_evidence["association_approximate"]
+                                            if decision_evidence else False),
             }),
-            "outcome": bean.outcome,
-            "jet_hits": int(bean.jet_hits),
+            "outcome": record["outcome"],
+            "jet_hits": record["jet_hits"],
             "own_pulse_hit": own_pulse_hit,
         }
+        if self.continuous and record["injected"]:
+            result["overdue"] = bool(
+                record["outcome"] is None and
+                float(self.sim.data.time) - record["spawn_time_s"] > SETTLING_SECONDS
+            )
+        return result
 
     def snapshot(self) -> dict:
         """Return one bounded, truth-free transport snapshot."""
@@ -378,7 +534,7 @@ class Engine:
         sim_time = float(self.sim.data.time)
         wall_elapsed = self._wall_elapsed()
         result = {
-            "protocol_version": 1,
+            "protocol_version": 2 if self.continuous else 1,
             "session_id": self.session_id,
             "seq": self.seq,
             "sim_time_s": sim_time,
@@ -388,13 +544,60 @@ class Engine:
             "preset_version": self.preset_version,
             "engine_rate": sim_time / wall_elapsed if wall_elapsed > 0 else 0.0,
             "requested_rate": float(self.preset["requested_rate"]),
-            "admitted_rate": len(self.sim.beans) / sim_time if sim_time > 0 else 0.0,
+            "admitted_rate": ((self.sim.n_spawned if self.continuous else len(self.sim.beans)) /
+                              sim_time if sim_time > 0 else 0.0),
             "layout": asdict(self.sim.L),
-            "objects": [self._snapshot_object(uid, uid in active_ids) for uid in sorted(retained)],
+            "objects": [self._snapshot_object(uid, uid in active_ids) for uid in sorted(retained)
+                        if uid in self._object_records],
             "events": list(self._events)[-50:],
         }
+        if self.continuous:
+            result.update(
+                mode="continuous",
+                injection_history_evicted=self._injection_history_evicted,
+                retention={
+                    "active_physical_objects": len(active_ids),
+                    "recent_resolved_feed_objects": len(self._recent_resolved),
+                    "active_injections": len(self._active_injections),
+                    "completed_injection_records": len(self._completed_injections),
+                    "injection_history_evicted": self._injection_history_evicted,
+                    "events": len(self._events),
+                    "score_rows": len(self._score_ledger),
+                    "object_records": len(self._object_records),
+                    "decision_evidence": len(self._decision_evidence),
+                    "controller_tracks": len(self.controller.tracks),
+                    "pending_valve_targets": len(self.sim.fires),
+                    "timing_samples": {
+                        **{name: len(samples) for name, samples in self._timings.items()},
+                        "detection_ms": len(self.controller.detection_ms),
+                        "inference_ms": len(self.controller.inference_ms),
+                        "control_ms": len(self.controller.control_ms),
+                        "compute_ms": len(self.controller.compute_ms),
+                        "latency_ms": len(self.controller.latency_ms),
+                    },
+                    "limits": {
+                        "recent_resolved_feed_objects": self._recent_resolved.maxlen,
+                        "completed_injection_records": MAX_COMPLETED_INJECTIONS,
+                        "events": self._events.maxlen,
+                        "timing_samples_per_category": self._timings["physics_ms"].maxlen,
+                        "object_decisions": MAX_OBJECT_DECISIONS,
+                    },
+                },
+            )
         self._timings["snapshot_ms"].append((time.perf_counter() - started) * 1e3)
         return result
+
+    def rolling_scores(self) -> dict:
+        """Return the continuous rolling evaluator aggregate."""
+        if not self.continuous:
+            raise RuntimeError("rolling scores require continuous mode")
+        return self._score_ledger.scores(
+            as_of_sim_time_s=float(self.sim.data.time),
+            score_epoch_id=self.session_id,
+            model_version=self.model_version,
+            policy_version=self.policy_version,
+            source_revision=self.source_revision,
+        )
 
     def _object_evidence(self, bean, cohort: bool) -> dict:
         record = self._object_records[bean.uid]
@@ -493,8 +696,9 @@ class Engine:
                 "active_wall_seconds": wall_elapsed,
                 "engine_rate": sim_time / wall_elapsed if wall_elapsed > 0 else 0.0,
                 "requested_rate": float(self.preset["requested_rate"]),
-                "admitted_rate": len(self.sim.beans) / sim_time if sim_time > 0 else 0.0,
-                "objects_spawned": len(self.sim.beans),
+                "admitted_rate": ((self.sim.n_spawned if self.continuous else len(self.sim.beans)) /
+                                  sim_time if sim_time > 0 else 0.0),
+                "objects_spawned": self.sim.n_spawned if self.continuous else len(self.sim.beans),
                 "peak_active_bodies": self._peak_active,
                 "pool_starved": self.sim.starved,
                 "platform": platform.platform(),
@@ -541,7 +745,7 @@ class Engine:
             },
             "timings": timings,
             "objects": evidence,
-            "decision_evidence": self._decision_evidence,
+            "decision_evidence": list(self._decision_evidence),
         }
 
     def close(self):
