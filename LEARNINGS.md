@@ -51,6 +51,10 @@ extra use cases for the demo.
     correctly read as long; rusty correctly rejected). Same layout bug as kitting: parts 0.6–2 cm apart → 5 failed
     picks and a short screw carried into the long cup. GPT-6's final report again listed the exceptions instead of
     claiming success. Re-run pending with the fixed layout + waves.
+  - **taras_kitting with the fixed layout + waves (2 cameras, seed 4): 3/3 kits, 10/10 picks clean, 46 steps.**
+    Waves of 5 / 4 / 1 parts; GPT-6 counted what each cup already had across batches ("kit B needs only a screw"),
+    asked for the next batch itself, and sent the leftover washer to the unknown tray. Same brain, same physics as
+    the 1/3 run: the whole difference was part spacing. This is the demo-day recipe: a handful of parts at a time.
   - Cost/step ≈ $0.06–0.08 with two 1280×960 images per step at medium effort.
 
 ## Layout bug found 19 Sep 01:50 — the real cause of the co-picks

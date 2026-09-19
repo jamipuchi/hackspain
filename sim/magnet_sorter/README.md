@@ -145,3 +145,11 @@ permission the first time; run from Terminal.app so the prompt appears, with the
 and on the same Apple ID. Print the four markers (`assets/aruco_*.png`, 35 mm) and glue them at
 the positions in `scene_def.MARKERS`; calibration then needs no other setup. Real-camera mode is
 wired but has not been exercised in this session (no camera permission for the agent shell).
+
+## Layout and waves
+
+The pick sector of the 7+7 cm arm is ~57 cm², so only ~5 parts fit with the 2.6 cm gaps a Ø20 magnet needs.
+`run_demo.py` places `BuildConfig.wave_size` parts at a time (guaranteed spacing, keep-out zones around the
+containers, prints `layout: n parts, closest pair x cm`) and parks the rest. When GPT-6's `done` is accepted and
+parts remain, the operator "puts the next batch on the card": the agent gets a tool result saying so, resets its
+inventory and continues. Conveyor builds feed by belt instead. Never trust a layout you did not print.

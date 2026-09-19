@@ -1,0 +1,12 @@
+layout: 4/5 parts on the workspace, closest pair 3.0 cm (1 wait for the next wave)
+waves: 4 parts on the card now, 5 more arrive when GPT-6 finishes this batch
+camera A calibrated from markers [1, 2, 3]: 0.56 mm reprojection error
+camera B calibrated from markers [0, 1, 2, 3]: 0.50 mm reprojection error
+build=taras_grading planner=gpt-6-astra seed=4 run=/Users/jaumepuig/robotics/magnet_sorter/runs/20260919-020539
+ground truth (hidden from GPT-6): screw_m4x12→short, screw_m4x16→short, screw_m5x16→short, screw_m4x30→long, screw_m5x30→long, screw_m4x25_black→long, screw_m4x16_rusty→reject, screw_m5x30_rusty→reject, nut_m5_zinc→unknown
+viewer open: watch the run in the MuJoCo window
+agent mode: 2 camera(s) ['A', 'B'], effort=medium, max 70 steps, budget $5.00
+  → take_photo({"camera": "B", "zoom_x_cm": 8, "zoom_y_cm": 0})  [17.6s]
+     ✓ photo taken; magnet face now at (3.4, 4.7, z=10.3) cm, magnet off
+  → take_photo({"camera": "all", "zoom_x_cm": null, "zoom_y_cm": null})  [1.7s]
+     ✓ photo taken; magnet face now at (3.4, 4.7, z=10.3) cm, magnet off
