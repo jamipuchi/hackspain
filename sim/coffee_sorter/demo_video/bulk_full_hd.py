@@ -85,6 +85,14 @@ def main():
 
         try:
             fcntl.flock(batch_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            message = "Another batch holds the output lock. Its state remains unchanged."
+            note(message)
+            output = {"status": "fail", "log": str(log_path), "summary": message}
+            print(json.dumps(output) if args.json else f"FAIL: {message} (log: {log_path})")
+            return 1
+
+        try:
             for name in NAMES:
                 state["current"] = name
                 write_json(state_path, state)
