@@ -12,7 +12,7 @@ Panel: conveyor forward / reverse / stop with speed, timed runs, angle sliders f
 (pins 9 / 10 / 11), Home, magnet on/off, live status from `?`, and a raw command box.
 Keyboard: Space or Esc = stop belt, ← → = reverse / forward at the slider speed, H = home.
 """
-import argparse, glob, json, sys, threading, time, webbrowser
+import argparse, glob, json, os, sys, threading, time, webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -121,7 +121,7 @@ async function poll(){
 poll(); setInterval(poll,1000);
 </script></body></html>"""
 
-ALLOWED = set("SMCH?")   # firmware commands the raw box may send
+ALLOWED = set("SMCH?TDNLR")   # firmware commands the raw box / HTTP API may send (T D N L R added 19 Sep, firmware >= 17:20)
 
 class Uno:
     def __init__(self, port):
@@ -135,6 +135,11 @@ class Uno:
         if self.ser:
             try: self.ser.close()
             except Exception: pass
+            try:  # macOS: a dead CDC device can leave the fd half-open and the re-open fails with ENXIO until it is really closed
+                fd = getattr(self.ser, "fd", None)
+                if fd is not None: os.close(fd)
+            except Exception: pass
+            self.ser = None
         self.port = self.port if glob.glob(self.port) else find_port()
         self.ser = serial.Serial(self.port, 115200, timeout=0.5)
         time.sleep(2.5)                      # opening the port resets the Uno; wait for boot
@@ -197,7 +202,7 @@ def main():
                 elif u.path == "/cmd":
                     line = q.get("line", [""])[0].strip()
                     if not line or line[0] not in ALLOWED or "\n" in line:
-                        return self._json({"ok": False, "error": "command must start with S, M, C, H or ?"}, 400)
+                        return self._json({"ok": False, "error": "command must start with S, M, C, H, ?, T, D, N, L or R"}, 400)
                 else:
                     return self._json({"ok": False, "error": "unknown endpoint"}, 404)
                 reply = uno.cmd(line); print(f"{line} -> {reply.strip()}")
