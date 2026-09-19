@@ -87,8 +87,8 @@ The evidence directory stores an immutable request and normalized proposal. Neit
 
 ```python
 proposal = propose_physics(
-    description="A small five-point gold star token.",
-    visual_dimensions_m=[0.0169496, 0.0161209, 0.002],
+    description="A small five-point gold star token, about 18 mm wide and 2 mm thick.",
+    visual_dimensions_m=[0.01694960594177246, 0.016120851516723633, 0.002],
     evidence_dir="/private/tmp/coffee-object-definition-physics-smoke-v2",
     env_file=".env",
     live=False,
