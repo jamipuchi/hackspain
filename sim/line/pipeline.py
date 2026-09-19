@@ -11,6 +11,7 @@ State per bean: armed → tracking (blob seen, still partial) → decided (verdi
 from __future__ import annotations
 
 import json
+import math
 import threading
 import time
 from collections import deque
@@ -78,6 +79,11 @@ class SortingLine:
         self.track_started = 0.0
         self.track_frac = 0.0  # where along the zone the tracked bean was last seen (0 enter … 1 leave)
         self.door_side: str | None = None  # 'act' | 'rest' | None (unknown: the first verdict sets it)
+        self.track_pos: tuple[float, float] | None = None
+        self.track_first: tuple[float, float] = (0.0, 0.0)
+        self.track_moved_t = 0.0
+        self.static_after_s = 1.0  # a 'bean' that has not moved for this long is a shadow / rim / horn: ignore it
+        self.ignored: list[tuple[float, float, float]] = []  # (u, v, last_seen_t) of static objects to skip
         self.last_seen = 0.0
         self.lost_after_s = 0.4
         self.fps = 0.0
@@ -109,18 +115,34 @@ class SortingLine:
         self.last_frame, self.last_blobs = frame, blobs
         self.counters["frames"] += 1
         verdict: Verdict | None = None
+        blobs = self._drop_static(blobs, frame.t)
         best = self._pick(blobs, roi)
         if best is not None:
             self.last_seen = frame.t
             self.track_frac = flow_fraction(best, roi, self.cfg.camera.flow_axis)
+            if self.track_pos is None or math.hypot(best.u - self.track_pos[0], best.v - self.track_pos[1]) > 3.0:
+                self.track_pos, self.track_moved_t = (best.u, best.v), frame.t
+            elif self.state in ("tracking", "decided") and frame.t - self.track_moved_t > self.static_after_s:
+                # it has not moved for a second: a shadow, the chute rim, the horn… not a falling object
+                self.ignored.append((best.u, best.v, frame.t))
+                if self.state == "tracking":
+                    self.counters["beans"] -= 1
+                self.event("static_object", u=round(best.u), v=round(best.v), note="did not move: ignored until it disappears")
+                self.state, self.track_pos = "armed", None
+                self._render(frame, blobs, None)
+                return None
             if self.state == "armed":
                 self.state = "tracking"
                 self.track_started = frame.t
+                self.track_first = (best.u, best.v)
                 self.counters["beans"] += 1
                 self.event("bean_seen", u=round(best.u), v=round(best.v), partial=best.partial)
+            elif self.state == "tracking" and self.enabled and getattr(self.cfg, "trigger_on", "verdict") == "seen" and math.hypot(best.u - self.track_first[0], best.v - self.track_first[1]) > 3.0:
+                verdict = self._decide(frame, best, roi)  # first frame where the object has actually moved: it is falling, act now
             if self.state == "tracking" and not best.partial and self.enabled and self.track_frac >= float(getattr(self.cfg.camera, "trigger_frac", 0.0)):
                 verdict = self._decide(frame, best, roi)
         elif self.state != "armed" and frame.t - self.last_seen > float(getattr(self.cfg, "lost_after_s", self.lost_after_s)):
+            self.track_pos = None
             if self.state == "tracking":
                 self.counters["lost"] += 1
                 self.event("bean_lost", after_s=round(frame.t - self.track_started, 2))
@@ -128,6 +150,24 @@ class SortingLine:
         self.loop_ms = (now() - t0) * 1000
         self._render(frame, blobs, best)
         return verdict
+
+    def _drop_static(self, blobs: list[Blob], t: float) -> list[Blob]:
+        """Remove blobs sitting on a known static object; forget a static object once nothing is seen there for 1 s."""
+        if not self.ignored:
+            return blobs
+        keep, alive = [], []
+        for b in blobs:
+            hit = None
+            for i, (u, v, _) in enumerate(self.ignored):
+                if math.hypot(b.u - u, b.v - v) < 25:
+                    hit = i
+                    break
+            if hit is None:
+                keep.append(b)
+            else:
+                alive.append(hit)
+        self.ignored = [(u, v, t if i in alive else seen) for i, (u, v, seen) in enumerate(self.ignored) if t - (t if i in alive else seen) < 1.0]
+        return keep
 
     def _pick(self, blobs: list[Blob], roi: ROI) -> Blob | None:
         """Which blob is *the* bean this frame. Beans only move forward along the zone, so while tracking one we follow
@@ -278,6 +318,8 @@ class SortingLine:
         self.events.clear()
         self.state = "armed"
         self.last_verdict = None
+        self.ignored = []
+        self.track_pos = None
         self.door_side = None  # next verdict sets the side again (and moves the door)
 
     def status(self) -> dict:

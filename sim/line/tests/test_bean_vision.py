@@ -171,3 +171,39 @@ def test_still_tracker_counts_consecutive_frames_and_averages():
     assert tr.update([_blob(280, 100, mean_gray=100)]) == []
     tr.reset()
     assert tr.update([_blob(200, 100)]) == []
+
+
+def _shadowed_scene():
+    """Floor in shadow (gray 85 -> threshold 40), bean core (12) with its own shadow (34) attached along +x."""
+    c = cfg_small()
+    img = paper(gray=85)
+    cv2.ellipse(img, (356, 200), (36, 21), 0, 0, 360, (34, 34, 34), -1)  # shadow (under the 40 threshold), offset right of the bean
+    cv2.ellipse(img, (320, 200), (36, 21), 0, 0, 360, (12, 12, 12), -1)  # bean core
+    return c, img
+
+
+def test_shadow_split_off_merges_bean_and_shadow():
+    c, img = _shadowed_scene()
+    b = PaperBeanDetector(c).detect(frame(img))[0]
+    assert b.features["major_mm"] > 15  # merged: bean + shadow
+
+
+def test_shadow_split_on_keeps_bean_core():
+    c, img = _shadowed_scene()
+    c.vision.shadow_split = True
+    blobs = PaperBeanDetector(c).detect(frame(img))
+    assert len(blobs) == 1
+    b = blobs[0]
+    assert b.features["major_mm"] == pytest.approx(12.0, rel=0.12)
+    assert b.features["minor_mm"] == pytest.approx(7.0, rel=0.15)
+    assert b.u == pytest.approx(320, abs=4)
+
+
+def test_shadow_split_leaves_unimodal_bean_alone():
+    c = cfg_small()
+    c.vision.shadow_split = True
+    img = paper()
+    cv2.ellipse(img, (320, 200), (36, 21), 0, 0, 360, (60, 70, 90), -1)
+    cv2.ellipse(img, (320, 200), (30, 4), 0, 0, 360, (50, 60, 80), -1)  # slightly darker crease, gap < 15
+    b = PaperBeanDetector(c).detect(frame(img))[0]
+    assert b.features["major_mm"] == pytest.approx(12.0, rel=0.08)

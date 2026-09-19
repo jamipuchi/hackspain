@@ -67,6 +67,8 @@ class VisionCfg:  # owner: camera agent
     max_area_px: int = 40000
     dark_spot_gray: int = 45
     max_fg_frac: float = 0.5  # more of the ROI than this is dark -> no paper in view, detector returns nothing
+    shadow_split: bool = False  # re-threshold each blob at Otsu of its own gray levels to drop the bean's shadow (shadowed floor)
+    shadow_split_min_gap: int = 15  # only split when the two gray modes are at least this far apart
 
 
 @dataclass
@@ -117,6 +119,7 @@ class LineConfig:
     door_d6_close_ms: int = 180  # how long to spin back to CLOSED
     door_d6_trim: int = 0  # dead-centre correction added to every spin command (−20..20): raise if CLOSE travels less than OPEN at equal ms
     door_d6_dir: int = 1  # +1 or -1: flip if OPEN spins the wrong way
+    trigger_on: str = "seen"  # 'seen': act the moment anything enters the zone (partial ok); 'verdict': wait for a full view + classifier
     door_policy: str = "state"  # 'state': the door holds its last side and only moves when a bean's verdict differs from it; 'pulse': act, dwell, return
     action_position: str = "closed"  # which saved position the door takes when it acts on a bean: 'closed' | 'open' (rest = the other one)
     act_on: str = "all"  # 'all': the door moves for every bean (bring-up); 'suspect': only for suspect verdicts (sorting)
