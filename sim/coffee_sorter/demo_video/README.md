@@ -6,8 +6,13 @@ It does not own the source scene, simulator, model, live interface, or recorded 
 ## Current scene studies
 
 Taras approved the concept direction and requested basic renders of every scene.
-The current pass contains nine stills and a screenshot of the continuous UI.
+The current pass includes nine scene studies and three matched mode variants.
+Taras will record the UI separately. The gallery excludes the UI.
 It does not contain new animation.
+The discharge has blueprint and normal versions.
+The closing view has clay, blueprint, and normal versions.
+Each group retains its camera, source frame, focus, and geometry settings.
+The gallery provides a wipe control for comparing modes and links to each clean PNG.
 
 ```sh
 python3 sim/coffee_sorter/demo_video/render_studies.py \
@@ -18,7 +23,6 @@ python3 -m http.server 8894 --bind 127.0.0.1 \
 ```
 
 Open `http://127.0.0.1:8894/` to inspect the gallery.
-The UI screenshot must come from the current service. The Blender command does not create it.
 Use `--only <shot>` to render one composition.
 Each shot produces a PNG, an editable Blender scene, a log, and a source manifest.
 The renderer retains all recorded beans and lists each presentation cutaway.

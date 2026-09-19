@@ -1,7 +1,8 @@
 # Basic scene render review
 
 Date: 2026-09-19.
-Status: Nine draft Blender stills completed. Taras owns visual acceptance.
+Status: Nine scene studies and three matched mode variants completed. Taras owns visual acceptance.
+Taras will record the UI separately. The delivered gallery contains only Blender stills.
 No new animation, simulation, model change, or exporter change ran for this pass.
 
 ![All scene studies](/private/tmp/coffee-demo-video-previews/scene-review-sheet.png)
@@ -17,6 +18,7 @@ No new animation, simulation, model change, or exporter change ran for this pass
 
 Each Blender folder contains `scene.png`, `scene.blend`, `manifest.json`, and `blender.log`.
 The gallery links each image to its clean original.
+Two comparison controls preview wipes between aligned modes.
 Six optional markers identify the two beans across three slow-motion studies.
 The markers use camera projections of the recorded positions.
 They do not modify the rendered image or imply pulse contact.
@@ -41,16 +43,42 @@ All frames use Blender 5.2.2, CPU Cycles, 24 samples, eight threads, and 960 by 
 Motion blur remains disabled.
 Each Blender process acquired the shared runtime lock before execution.
 
+## Matched modes for transitions
+
+Taras requested several modes for selected scenes, including blueprint-to-normal transitions.
+Three additional renders complete two matched groups:
+
+| Added variant | Matches | Process seconds |
+|---|---|---:|
+| `04b-normal-discharge` | `04-blueprint-discharge` | 13.772 |
+| `07b-blueprint-closing` | `07-warm-closing` | 18.065 |
+| `07c-normal-closing` | `07-warm-closing` | 12.435 |
+
+The additional renders took 44.272 process seconds.
+All twelve selected renders took 163.417 process seconds in total.
+The variant batch waited for the shared endurance run to release its runtime lock.
+It did not interrupt that simulation.
+
+Within each group, only the title and look differ in the shot settings.
+The source frame, camera, lens, focus, geometry, and cutaway settings match.
+The manifests also contain identical source-frame poses, bean counts, replay hashes, and hidden-object lists within each group.
+Lighting and materials follow the selected look.
+The gallery shows blueprint-to-normal wipes for both groups.
+The closing comparison also supports clay-to-normal.
+These controls preview a transition between stills. They do not establish alignment across future animation frames.
+
 ## Verification performed
 
 - Python source compiled and the shot JSON parsed.
-- All nine PNGs have the expected dimensions.
+- All twelve PNGs have the expected dimensions.
 - PNG and Blender file hashes match their manifests.
 - Each manifest matches its shot settings.
 - Recorded position error is zero for every scene.
 - Maximum quaternion component error is `1.8907454091277032e-07`, below the importer's `1e-5` tolerance.
 - Every source-frame bean remains present. Counts range from 515 to 523.
-- The browser loaded all ten gallery images and all six review markers.
+- The browser loaded all gallery images and all six review markers.
+- A slider keypress changed the wipe from 50% to 51%. The clip boundary changed accordingly.
+- The closing mode button changed the overlay to clay and updated its label.
 - Visual inspection covered the individual renders and the assembled review sheet.
 
 The initial side composition hid the selected beans behind the splitter geometry.
@@ -66,15 +94,11 @@ Its SHA-256 is `e6ed1292b2350d121ffcc0447b4aea38188818077a8254bc1d4598318b286a9f
 Each manifest includes the source frame, object metadata, selected camera, cutaways, and asset-source hashes.
 No performance or sorting-quality claim follows from these images.
 
-## Actual UI reference
+## UI recording excluded
 
-`06-ui-reference.png` is a browser screenshot from http://127.0.0.1:8892/ at 1440 by 900 pixels.
-The capture shows the continuous engine and its real rolling scores at 69.7 simulated seconds.
-The displayed source is `b07604b`, model `89513398373c`, and policy `2d7f41a11898`.
-No injection or restart occurred during this capture.
-The latest-stone card therefore has no injected result.
-The available interface remains a 2D view, not the required final 3D interface.
-This current UI uses a different engine source from the historical Blender recording.
+Taras requested a separate UI recording after the first review sheet was assembled.
+The final gallery therefore excludes the UI.
+An earlier local screenshot remains as an unused reference. No injection or restart occurred during that capture.
 
 ## Remaining work
 
