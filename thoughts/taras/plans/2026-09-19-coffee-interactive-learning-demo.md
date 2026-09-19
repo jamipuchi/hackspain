@@ -342,7 +342,8 @@ Align model origins, axes, dimensions, and contact surfaces with the physics bod
 
 Hyperrealism depends on assets, lighting, materials, and camera work. Choosing Blender alone will not achieve it.
 The camera used for evaluation remains unchanged. Training from realistic renders would require a separate controlled experiment.
-Blender was not found on the local or HackSpain host PATH during inspection. The swarm can use an isolated worker installation.
+Blender was not found on the HackSpain host PATH during inspection. The swarm uses an isolated worker installation of 4.5.4 LTS.
+Blender 5.2.2 LTS was installed on Taras's Mac on 2026-09-19 for the moodboard. The 4.5.4 asset scripts ran unchanged on it.
 
 ### Recording method
 
@@ -353,6 +354,27 @@ The shipped replay is near 30 Hz. Use it for the first visual proof and label th
 For close-up slow motion, capture a separate trajectory at 120 Hz or higher after reviewing interpolation around collisions and jet events.
 The existing exporter accepts `--fps`. Increase capture frequency without replacing the shipped viewer dataset.
 Taras reviews bean realism and camera composition before a full cinematic render starts.
+
+### Look direction (decided 2026-09-19)
+
+Taras picked three go-to looks from a draft moodboard of 4 shots and 5 looks.
+The moodboard lives on `codex/coffee-moodboard`, which branches from the asset commit `df8c241`.
+See `sim/coffee_sorter/visual_assets/MOODBOARD.md`, `moodboard.json`, and `moodboard/index.html` on that branch.
+
+| Look | Mode | What it is |
+|---|---|---|
+| `noir-rim` | textured | Near-black set, cool rim light from behind, small warm key |
+| `blueprint` | textured | One blue material plus Freestyle outlines |
+| `warm-roastery` | clay | Warm window light on one matte grey material |
+
+Taras wants to use all three together. The role of each look in the clip is not decided yet.
+Clay and blueprint use one material, so they cannot show colour defects such as black or faded beans.
+Use `noir-rim` when the defect class must be visible by colour.
+`noir-rim` and `warm-roastery` recolour the belt for the film only. The inspection camera and the simulator belt stay unchanged.
+Bean positions in the moodboard are staged. They are not replay output.
+
+Render a draft moodboard before new stills whenever the direction changes.
+A 960×720 draft at 24 samples took about 5 s per tile on an Apple M2 Pro. The 40 draft tiles took 216 s.
 
 ### Verification
 
