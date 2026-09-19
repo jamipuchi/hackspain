@@ -32,12 +32,12 @@ These are exploratory results from one seed.
 
 | Vision model | Configuration | Measured vision latency | Cost | Outcome |
 | --- | --- | --- | --- | --- |
-| Astra | medium, cached, headless | 8.06s median, 35 calls | $2.2395 estimated combined run | Completed, 8/9 |
-| DeepSeek V4.1 Flash | medium, cached, viewer | 69.16s median, 4 calls | See raw evidence | Stopped for latency and poor observations |
-| Gemini 3.8 Flash | low, corrected grid, cached, viewer | 4.24s median, 25 calls | $0.1070 estimated recorded requests | Reached 8/9, failed final confirmation because usage cost was absent |
+| Astra | medium, observation reuse, headless | 8.06s median, 35 calls | $2.2395 estimated combined run | Agent declared done. Simulator scored 8/9 |
+| DeepSeek V4.1 Flash | medium, observation reuse, viewer | 69.16s median, 4 calls | See raw evidence | Stopped for latency and poor observations |
+| Gemini 3.8 Flash | low, corrected grid, observation reuse, viewer | 4.24s median, 25 calls | $0.1070 estimated recorded requests | Stopped during final-confirmation observation because reported usage cost was missing. Recovered score 8/9 |
 | GLM 5.3 Flash | low observation probe | 6.81s | $0.003124 reported | Valid schema, wrong coordinates |
 | GLM 5.3 Flash | medium, strict provider probe | 17.32s | $0.005679 reported | Reasonable coordinates in one probe |
-| GLM 5.3 Flash | medium, strict provider, cached, viewer | 2.74s median, 11 returned calls | $0.027793 known combined cost | Interrupted after bad coordinates and two failed pickups. Partial score 1/9 |
+| GLM 5.3 Flash | medium, strict provider, observation reuse, viewer | 2.74s median, 11 returned calls | $0.027793 known combined cost | Interrupted after bad coordinates and two failed pickups. Partial score 1/9 |
 | Qwen 3.8 Flash | low observation probe | 28.80s wall | $0.001506 reported | Invalid observation schema |
 | Qwen 3.8 Flash | low diagnostic repeat | Interrupted after 145.49s | Unknown | No response arrived |
 | Qwen 3.8 Flash | reasoning none, strict provider probe | 6.59s | $0.000697 reported | Valid schema, wrong coordinates |
