@@ -78,7 +78,7 @@ class RollingScoreLedgerTest(unittest.TestCase):
             "schema_version", "clock", "score_epoch_id", "as_of_sim_time_s",
             "window_seconds", "settling_seconds", "window_start_exclusive_s",
             "window_end_inclusive_s", "available_seconds", "warming_up",
-            "manual_injections_excluded", "score_basis", "settling_objects",
+            "manual_injections_excluded", "score_basis", "legacy_score_basis", "settling_objects",
             "eligible_objects", "sorting_accuracy", "reject_capture", "keep_loss",
             "defect_capture", "good_loss", "unresolved", "versions",
         })
@@ -107,6 +107,28 @@ class RollingScoreLedgerTest(unittest.TestCase):
         self.assertEqual(self.scores(ledger, 120.5)["available_seconds"], 0.0)
         self.assertAlmostEqual(self.scores(ledger, 121.1)["available_seconds"], 0.5)
 
+    def test_policy_scores_and_legacy_defect_scores_keep_distinct_truth(self):
+        ledger = RollingScoreLedger(60.0)
+        ledger.add(1, 1.0, True, physical_defect=False)
+        ledger.add(2, 1.1, False, physical_defect=True)
+        ledger.resolve(1, "reject")
+        ledger.resolve(2, "accept")
+
+        scores = self.scores(ledger, 2.0)
+
+        self.assertEqual(scores["reject_capture"], {
+            "numerator": 1, "denominator": 1, "value": 1.0,
+        })
+        self.assertEqual(scores["keep_loss"], {
+            "numerator": 0, "denominator": 1, "value": 0.0,
+        })
+        self.assertEqual(scores["defect_capture"], {
+            "numerator": 0, "denominator": 1, "value": 0.0,
+        })
+        self.assertEqual(scores["good_loss"], {
+            "numerator": 1, "denominator": 1, "value": 1.0,
+        })
+
 
 class ContinuousRetentionTest(unittest.TestCase):
     def policy_engine(self):
@@ -124,11 +146,15 @@ class ContinuousRetentionTest(unittest.TestCase):
         engine.policy_applied_sim_time_s = 0.0
         engine.preset = {"score_window_seconds": 60.0}
         engine._score_ledger = RollingScoreLedger(60.0)
-        engine._score_ledger.add(1, 1.0, True)
+        engine._score_ledger.add(1, 1.0, True, physical_defect=True)
         engine.sim = SimpleNamespace(
             data=SimpleNamespace(time=5.0),
-            bean_of={1: object(), 2: object()},
+            bean_of={1: SimpleNamespace(uid=1), 2: SimpleNamespace(uid=2)},
         )
+        engine._object_records = {
+            1: {"injected": False},
+            2: {"injected": True},
+        }
         engine.controller = SimpleNamespace(set_reject_classes=lambda values: setattr(
             engine.controller, "applied", tuple(values)
         ))
@@ -141,7 +167,8 @@ class ContinuousRetentionTest(unittest.TestCase):
         result = engine.set_reject_classes(["stone", "black"])
 
         self.assertTrue(result["changed"])
-        self.assertEqual(result["in_flight_excluded"], 2)
+        self.assertEqual(result["in_flight_excluded"], 1)
+        self.assertEqual(result["feed_score_rows_excluded"], 1)
         self.assertEqual(engine.reject_classes, ("black", "stone"))
         self.assertEqual(engine.controller.applied, ("black", "stone"))
         self.assertNotEqual(engine.score_epoch_id, "epoch-1")
@@ -185,7 +212,9 @@ class ContinuousRetentionTest(unittest.TestCase):
         engine._register_bean(stone)
 
         self.assertFalse(engine._object_records[3]["required_reject"])
+        self.assertTrue(engine._object_records[3]["physical_defect"])
         self.assertTrue(engine._object_records[4]["required_reject"])
+        self.assertTrue(engine._object_records[4]["physical_defect"])
 
     def test_normally_accepted_class_can_become_policy_reject(self):
         engine = self.policy_engine()
@@ -202,6 +231,7 @@ class ContinuousRetentionTest(unittest.TestCase):
         engine._register_bean(bean)
 
         self.assertTrue(engine._object_records[5]["required_reject"])
+        self.assertFalse(engine._object_records[5]["physical_defect"])
 
     def test_pending_fire_records_each_object_contact_once(self):
         fire = Fire(nozzle=1, t_on=0.0, t_off=0.01, force=0.06, uid=42)
@@ -236,7 +266,9 @@ class ContinuousRetentionTest(unittest.TestCase):
         engine.continuous = True
         engine.session_id = "session"
         engine.profile = SimpleNamespace(
-            by_name=lambda name: SimpleNamespace(name=name, severity="major", shape="ellipsoid")
+            by_name=lambda name: SimpleNamespace(
+                name=name, defect=True, severity="major", shape="ellipsoid",
+            )
         )
         engine.policy = SimpleNamespace(reject_severities=("major",))
         engine.reject_classes = ("black",)

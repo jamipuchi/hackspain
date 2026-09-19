@@ -232,9 +232,16 @@ class Engine:
         selected = set(reject_classes)
         canonical = tuple(item.name for item in self.profile.classes if item.name in selected)
         if canonical == self.reject_classes:
-            return {**self.reject_policy(), "changed": False, "in_flight_excluded": 0}
+            return {
+                **self.reject_policy(), "changed": False,
+                "in_flight_excluded": 0, "feed_score_rows_excluded": 0,
+            }
 
-        in_flight = len(self.sim.bean_of)
+        in_flight = sum(
+            not self._object_records.get(bean.uid, {}).get("injected", False)
+            for bean in self.sim.bean_of.values()
+        )
+        score_rows = len(self._score_ledger)
         self.reject_classes = canonical
         self.controller.set_reject_classes(canonical)
         self.policy_version = self._policy_version()
@@ -251,8 +258,13 @@ class Engine:
             policy_version=self.policy_version,
             score_epoch_id=self.score_epoch_id,
             in_flight_excluded=in_flight,
+            feed_score_rows_excluded=score_rows,
         )
-        return {**self.reject_policy(), "changed": True, "in_flight_excluded": in_flight}
+        return {
+            **self.reject_policy(), "changed": True,
+            "in_flight_excluded": in_flight,
+            "feed_score_rows_excluded": score_rows,
+        }
 
     def start(self):
         """Start active wall measurement once."""
@@ -283,6 +295,7 @@ class Engine:
         self._object_records[bean.uid] = {
             "object_id": bean.uid,
             "truth_class": bean.cls,
+            "physical_defect": bool(spec.defect),
             "required_reject": spec.name in self.reject_classes,
             "injected": injected,
             "spawn_time_s": float(bean.spawn_t),
@@ -312,6 +325,7 @@ class Engine:
                 self._score_ledger.add(
                     bean.uid, bean.spawn_t,
                     self._object_records[bean.uid]["required_reject"],
+                    self._object_records[bean.uid]["physical_defect"],
                 )
             self._event("spawned", object_id=bean.uid)
 
@@ -699,6 +713,7 @@ class Engine:
         return {
             "object_id": bean.uid,
             "truth_class": bean.cls,
+            "physical_defect": record["physical_defect"],
             "spawn_time_s": float(bean.spawn_t),
             "outcome": bean.outcome,
             "resolved_time_s": bean.resolved_t,
@@ -730,7 +745,13 @@ class Engine:
         required = [row for row in cohort if row["required_reject"]]
         keep = [row for row in cohort if not row["required_reject"]]
         captured = sum(row["outcome"] == "reject" for row in required)
-        good_lost = sum(row["outcome"] in ("reject", "spilled") for row in keep)
+        keep_lost = sum(row["outcome"] in ("reject", "spilled") for row in keep)
+        physical_defects = [row for row in cohort if row["physical_defect"]]
+        physical_good = [row for row in cohort if not row["physical_defect"]]
+        defects_captured = sum(row["outcome"] == "reject" for row in physical_defects)
+        physical_good_lost = sum(
+            row["outcome"] in ("reject", "spilled") for row in physical_good
+        )
         unresolved = sum(row["outcome"] is None for row in cohort)
         loss_partition = Counter(row["missed_category"] for row in required if row["missed_category"])
         wall_elapsed = self._wall_elapsed()
@@ -790,14 +811,26 @@ class Engine:
                 "cohort_start_s": 0.8,
                 "cohort_end_s": cohort_end,
                 "eligible_objects": len(cohort),
-                "required_defects": len(required),
+                "score_basis": "active_reject_policy",
+                "required_reject_objects": len(required),
                 "keep_objects": len(keep),
-                "captured_required_defects": captured,
-                "capture": captured / len(required) if required else None,
-                "capture_interval_95": _wilson(captured, len(required)),
-                "good_objects_lost": good_lost,
-                "good_loss": good_lost / len(keep) if keep else None,
-                "good_loss_interval_95": _wilson(good_lost, len(keep)),
+                "captured_required_reject_objects": captured,
+                "reject_capture": captured / len(required) if required else None,
+                "reject_capture_interval_95": _wilson(captured, len(required)),
+                "keep_objects_lost": keep_lost,
+                "keep_loss": keep_lost / len(keep) if keep else None,
+                "keep_loss_interval_95": _wilson(keep_lost, len(keep)),
+                "legacy_score_basis": "profile_defect_truth",
+                "required_defects": len(physical_defects),
+                "physical_good_objects": len(physical_good),
+                "captured_required_defects": defects_captured,
+                "capture": (defects_captured / len(physical_defects)
+                            if physical_defects else None),
+                "capture_interval_95": _wilson(defects_captured, len(physical_defects)),
+                "good_objects_lost": physical_good_lost,
+                "good_loss": (physical_good_lost / len(physical_good)
+                              if physical_good else None),
+                "good_loss_interval_95": _wilson(physical_good_lost, len(physical_good)),
                 "unresolved_objects": unresolved,
                 "unresolved_rate": unresolved / len(cohort) if cohort else None,
                 "spills_in_denominators": True,
