@@ -28,7 +28,7 @@ At one score snapshot time `T`, save the following evaluator-truth data:
   "window_seconds": 60.0,
   "settling_seconds": 0.6,
   "score_epoch_id": "session-uuid",
-  "versions": {"model": "...", "policy": "..."},
+  "versions": {"model": "...", "policy": "...", "source_revision": "..."},
   "rows": [
     {
       "object_id": 17,
@@ -46,7 +46,9 @@ At one score snapshot time `T`, save the following evaluator-truth data:
 Include every feed and manual row with `T - 60.6 < spawn_time_s <= T`.
 Include rows with a null outcome. Keep manual rows so the audit can prove their
 exclusion. Include the exact boundary times. Keep each epoch separate. Save
-the aggregate from the same engine snapshot.
+the aggregate from the same engine snapshot. For multiple snapshots, save a
+separate row set inside each snapshot. Each row set must record outcomes as
+they existed at that snapshot time.
 
 ## Independent checker
 
@@ -82,6 +84,7 @@ The fixture passed these cases:
 - A second epoch used a separate cohort.
 - An empty required denominator returned `0/0` and null.
 - A complete matching engine aggregate passed comparison.
+- A later outcome did not change the calculation for an earlier snapshot.
 - A mismatched aggregate returned exit status 1.
 - Missing engine fields and non-boolean manual flags returned exit status 2.
 
@@ -92,7 +95,7 @@ The fixture checks calculation rules. It does not provide physical acceptance ev
 ```bash
 cd /private/tmp/hackspain-coffee-score-audit
 python3 -m py_compile thoughts/taras/research/coffee-score-audit/audit_rolling_scores.py
-python3 thoughts/taras/research/coffee-score-audit/audit_rolling_scores.py capture.json
+python3 -m unittest thoughts/taras/research/coffee-score-audit/test_audit_rolling_scores.py -v
 git diff --check
 ```
 

@@ -1,9 +1,9 @@
 {
-  "rows": [
-    {"object_id": 1, "spawn_time_s": 0.0, "required_reject": false, "outcome": "accept", "score_epoch_id": "epoch-a"}
-  ],
   "snapshots": [
     {
+      "rows": [
+        {"object_id": 1, "spawn_time_s": 0.0, "required_reject": false, "outcome": "accept", "score_epoch_id": "epoch-a"}
+      ],
       "score_epoch_id": "epoch-a",
       "as_of_sim_time_s": 0.6,
       "versions": {"model": "model-a", "policy": "policy-a", "source_revision": "source-a"},
