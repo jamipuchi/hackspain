@@ -1,490 +1,347 @@
 ---
 date: 2026-09-19
 planner: Codex
-topic: Coffee sorting quality, live interaction, and measured adaptation
-status: draft
+topic: Coffee sorting quality and the first live engine demonstration
+status: in-progress
 owner: taras
 source_branch: codex/coffee-sorter-upstream
-source_revision: 3c620dc4e52bedfe098f44499ecabdd40f414ecb
+source_revision: 4d0f705
+implementation_branch: codex/coffee-core-live
 ---
 
-# Coffee sorter: a working default, then natural-language adaptation
+# Coffee sorter implementation
 
-Taras, the first demo opens with a working coffee sorter. A user can watch it, inject objects, and inspect its decisions.
-Natural language changes the default policy afterward. Corrections and retraining are optional next steps.
+Taras owns functional QA and acceptance. Codex owns the plan, engine measurements, and first live demonstration.
+The swarm owns rendering assets. This task does not merge its branch or accept its visuals.
 
-This is a draft for review. The asset task is running in the HackSpain swarm. A bounded Jev micro-spike completed eight requests.
-The rest of the plan remains unimplemented.
-The [revised architecture explanation](../research/2026-09-19-coffee-architecture.md) answers the two review comments in more detail.
+This revision addresses [Claude's review](../reviews/2026-09-19-review-of-coffee-interactive-learning-demo.md).
+Only the first bounded increment is authorized here. Later phases remain proposed work with separate feedback checkpoints.
+
+## Desired End State
+
+Start one local engine session from a fresh checkout. Open a webpage and inject a stone.
+Show camera-derived decisions, actual motion, and the eventual physical outcome.
+Show the actual simulation rate even when the engine runs slower than real time.
+Provide one loss attribution report and timings for the exact preset used by that page.
+Do not claim that this small demonstration establishes sorting quality.
 
 ## Working agreement
 
-Taras owns testing, QA, and acceptance. Deliver small runnable increments and request feedback after each visible change.
-Do not add unit tests unless a specific risk makes them strictly necessary. Explain that need before adding one.
-Do not build a QA framework or test CLI for this demo. Keep existing tests available for Taras to run.
-Builders may compile, build, or execute the minimum command needed to produce a reviewable result.
-Do not describe an increment as accepted or fully tested before Taras confirms it.
-Commit and push review revisions to `codex/coffee-sorter-upstream`. Keep the plan, evidence, and PR description consistent.
+- Commit and push small increments to `codex/coffee-core-live`.
+- Preserve `/private/tmp/hackspain-coffee-pr`, including its untracked `.gitignore` and unpushed moodboard plan commit.
+- Preserve the separate magnet experiment.
+- Add no QA framework or routine unit tests. Use minimum syntax, startup, and runtime checks.
+- Leave functional acceptance unchecked until Taras confirms it.
+- Confirm ownership before modifying existing UI files. Continue independent engine work while Taras responds.
+- Do not expand beyond the first visible demonstration without a feedback checkpoint.
 
-## Recommended sequence
+## What We're NOT Doing
 
-1. Establish trustworthy measurements and select a default coffee configuration.
-2. Connect that default to the live webpage.
-3. Add natural-language policy changes through Jev.
-4. Add an object map, optional corrections, and measured retraining.
-5. Develop realistic assets and a cinematic clip alongside steps 2 through 4.
-6. Prove product switching with one concrete coin task.
+No public deployment, Jev integration, online training, coin switching, generalized engine, asset merge, or full inspector in this increment.
+No automatic sweep or broad QA campaign. No new cinematic renders.
+The [architecture explanation](../research/2026-09-19-coffee-architecture.md) remains historical context, not current performance evidence.
 
-Each phase should be a separate implementation task and PR. The full roadmap is too large for one implementation session.
-The first milestone is phases 1 and 2, plus a visual proof from phase 5.
-Asset quality and the recording method are first-class deliverables, not final polish.
+## Contracts and owners
 
-## What can run in parallel
+The [live contract](../contracts/2026-09-19-coffee-live-v1.md) defines IDs, timestamps, versions, appearance keys, and ownership before implementation.
+Codex owns `vision.py`, `sim.py`, `controller.py`, model/bootstrap changes, and new engine files.
+`export_replay.py` remains frozen under its existing owner until coordination completes.
+Taras owns integration of generated `web/index.html`. Existing `web/viewer.js` remains frozen pending ownership confirmation.
+The first diagnostic page lives in `live_web/`, separate from the existing viewer.
+Swarm assets remain on `codex/coffee-realistic-assets`, with visual acceptance pending.
 
-| Track | Can start now | Boundary and next review |
+## Evidence and honest targets
+
+The recorded 1,000 beans/s run captured 202/392 defects, or 51.5%.
+Its 94/2,208 false ejects equal 4.26%. That figure excludes spills and cannot represent total good loss.
+At 500 beans/s, historical capture was 61.6% and false ejects were 2.9%.
+No known mechanism establishes a path to 80% capture with at most 2% total good loss.
+Merged objects and jet intersection are candidates for investigation, not proven fixes.
+
+Historical execution needed 13 to 37 wall seconds per simulated second.
+The morning review rejected live viewing on that host at the measured configuration.
+Our first demonstration permits a slower clock. It does not contradict that real-time conclusion.
+Preserve the camera schedule while measuring. Any camera, pool, or feed change creates a new preset requiring another physical evaluation.
+A lower feed rate is an explicit throughput tradeoff.
+
+### Metric definitions and pass rules
+
+The quality cohort contains objects spawned after 0.8 simulated seconds and before the run ends minus 0.6 seconds.
+All cohort objects remain in denominators, including spilled and unresolved objects.
+A policy-required defect is a class the active policy requires rejecting.
+A keep object is a class the policy requires keeping. Under specialty, this is the good class.
+
+| Metric | Definition | Proposed acceptance rule |
 |---|---|---|
-| Sorting quality | Data split repair, profiling, and default experiments | Own classifier and evaluation files. Show one baseline comparison before a wider sweep. |
-| Live webpage | Session transport and Three.js controls using the existing default | Own live service and web files. Show one injected object before adding more controls. |
-| Assets and recording | Detailed beans, materials, camera composition, and replay import | Swarm owns new rendering assets. Show the first still, then three stills and one second of motion. |
-| Jev | An isolated language-to-policy micro-spike | Eight requests completed. Inspect proposals before integrating with the live service. |
+| Capture | Required defects in reject / all required defects | Wilson 95% lower bound at least 80% |
+| Good loss | Keep objects rejected or spilled / all keep objects | Wilson 95% upper bound at most 2% |
+| Unresolved | Cohort objects without an outcome / all cohort objects | Report separately. No quality pass with unresolved objects. |
+| Admitted throughput | Actual spawned objects / measured simulation interval | At least 500/s for the stretch target |
+| Engine speed | Simulated seconds / wall seconds | At least 1.0 only when measured on the exact preset |
+| Browser FPS | Render callbacks / browser wall interval | Target 30 at the preset's reported active object count |
+| Injection acknowledgment | Browser send to receipt of successful worker spawn | Proposed p95 below 250 ms on local loopback |
 
-The live page need not wait for a better classifier. It can load a new model and preset later.
-The artist need not wait for the live service. The existing replay supplies recorded motion.
-After the spike, language integration depends on a defined policy contract and the live session boundary.
-Learning from corrections depends on object examples and stable model versions. Coin work follows a working coffee demonstration.
+Quality acceptance needs locked seeds 101, 102, and 103 with at least 2,000 eligible objects per seed.
+Every seed must meet the bound rules. Also report pooled counts and intervals.
+Use seeds 7 and 8 for training and development. Reserve separate object IDs and seed 9 for model holdout.
+Do not use locked physical evaluation seeds for tuning or training.
+The first short diagnostic run does not fulfill these acceptance requirements.
 
-Use separate branches and file ownership. Agree on object IDs, timestamps, policy versions, and appearance keys before integrating tracks.
-This parallel schedule is proposed. Only the asset task and Jev spike were dispatched during this review.
+Degraded lighting remains outside the supported operating envelope until evaluated.
+Later report gains 0.7 and 1.3 separately, with a proposed limit of five percentage points beyond clean good loss.
+Do not market robustness before Taras accepts a measured limit.
 
-```mermaid
-flowchart LR
-  D["Default coffee preset"] --> E["Engine<br/>Perception, decisions, physics"]
-  E --> U["Live webpage<br/>Conveyor and object gallery"]
-  U -->|Inject an object| E
-  N["Natural-language instruction"] --> J["Jev<br/>Defined policy choices"]
-  J --> P["Validated policy version"]
-  P --> E
-  U -->|Optional correction| C["Labeled examples"]
-  C --> T["Train and compare"]
-  T -->|Candidate passes checks| E
-  E --> R["Recorded motion"]
-  R --> B["Blender cinematic render"]
-```
+## Phase 1: reviewed contract, loss attribution, and runtime budget
 
-## Current state and evidence
+### Deliverable
 
-The implementation base is [upstream PR #2](https://github.com/jamipuchi/hackspain/pull/2), revision `3c620dc`, including upstream `fdfc11f`.
-The main local checkout still contains the separate magnet experiment. Implementation must use the coffee branch or its merged successor.
-Upstream now includes `vision_paper.py` and a separate physical-line prototype under `sim/line/`.
-The merge preserves the coffee detector's optimized features and evaluation metadata while enabling the white-paper segmentation override.
-The live Three.js session and learning controls in this plan remain unimplemented. The physical-line prototype does not supply that browser connection.
+Revise the plan before implementation. Deliver a provisional preset and diagnostics before selecting quality changes.
+The preset begins at 500 requested beans/s, 250 Hz inspection, the existing resolution, and 0.06 N jets.
+Pool size and every runtime parameter belong in the preset. The live engine and diagnostics load that same file.
+The preset is provisional. It is not a quality-qualified default.
 
-| Component | Current behavior and source |
-|---|---|
-| Object representation | 23 measured dimensions covering size, shape, color, brightness, and spots. `sim/coffee_sorter/vision.py:15` |
-| Classification | Supervised gradient-boosted trees. A Mahalanobis distance measures departure from known good appearances. `classifier.py:32`, `classifier.py:95` |
-| Training limitation | Collection discards object IDs. The split operates on observations. Anomaly statistics use all good observations. `classifier.py:70`, `classifier.py:106` |
-| Policy | Product class and rejection policy are separate. Probability and anomaly determine rejection. `controller.py:80`, `controller.py:155` |
-| Object history | Tracks and evaluation IDs exist. Standalone crops and editable examples do not. `controller.py:37`, `evidence.py:24` |
-| Browser | Recorded poses, decisions, and outcomes. No live command channel. `export_replay.py:99`, `web/viewer.js:167` |
+Assign each missed required defect one diagnostic category with this precedence:
 
-### Do the 23 features need to be discrete?
+1. `unresolved`: no physical outcome yet.
+2. `not_detected`: no full camera component observation.
+3. `merged_without_target`: merged observations exist but no associated rejection target exists.
+4. `classification_or_tracking`: observed without an associated rejection target.
+5. `targeted_not_hit`: a target exists but its own associated pulse never hits the object.
+6. `hit_not_captured`: its own associated pulse hits, but the object does not enter reject.
 
-No. Code measures continuous values such as area, aspect ratio, and mean color directly from the image.
-They remain numeric inputs to the local classifier. Jev does not need to output those measurements.
-Jev's policy choices are discrete: for example, `keep`, `reject`, `unchanged`, or an unsupported request.
-Its probabilities and scores can be continuous. A typed answer does not require every input or output to be a category.
+These categories partition misses, not experimentally proven causes.
+Report ever-merged status, predictions, association coverage, scheduled/fired targets, any hit, and own-pulse hit as separate fields.
+Do not call a missing decision association a proven misclassification.
+Report captures without an own-pulse hit separately. Do not attribute every capture to control.
 
-```text
-Image → measured values: area=41.2, aspect=1.6, dark_fraction=0.12
-      → local visual classifier
+### Runtime budget
 
-“Keep faded beans” → Jev choice: action_faded=keep
-                  → code updates a validated policy
-```
+The aspirational budget per simulated second totals 1,000 wall milliseconds:
 
-For “group by shape,” Jev can select a defined feature family. Local code calculates similarity from the original numeric values.
+| Component | Budget |
+|---|---:|
+| Physics | 250 ms |
+| Inspection rendering | 250 ms |
+| Detection | 250 ms |
+| Model and controller | 100 ms |
+| Evaluation, serialization, IPC, and service overhead | 150 ms |
 
-The recorded default demonstration captures 51.5% of defects and loses 4.3% of good beans.
-Those figures describe one synthetic run. They do not establish a robust operating point.
-Reported engine speed is 13 to 37 wall seconds per simulated second. Browser smoothness cannot fix that bottleneck.
+The 250 Hz camera has a 4 ms interval. Report distributions and overruns as well as accumulated component time.
+Also report startup time, peak active bodies, pool starvation, thread counts, and whole-loop wall time.
+Keep CPU work in one worker process, separate from network I/O.
+Use one native library thread initially. Do not run bulk jobs on the shared SSH host during this increment.
+Measure locally first. Measure on `hackspain` before making host capacity claims.
+Never infer sequential speed from its reported 32 vCPUs or 128 GiB RAM.
 
-### Proposed first goal
-
-| Measure | Initial target |
-|---|---|
-| Defects physically captured | At least 80% |
-| Good beans wrongly rejected or spilled | At most 2% |
-| Admitted feed rate | At least 500 beans per simulated second |
-| Evidence | Three held-out seeds, at least 2,000 scored objects per seed, with counts and uncertainty |
-| Interactive engine | Real-time factor at least 1.0 at the selected demo rate |
-| Browser | At least 30 FPS on Taras's demo machine |
-| Injection acknowledgment | p95 below 250 ms, measured separately from final sorting time |
-
-These are proposed goals, not achieved results or hardware guarantees.
-Compare candidates against the same baseline at both 500 and 1,000 beans/s. Reducing feed rate alone must remain visible in the comparison.
-Keep good-bean loss as a constraint while maximizing capture and throughput. Report clean and degraded-lighting results separately.
-If no configuration meets the goal, show the tradeoff and let Taras choose the next experiment. Do not change the goal silently.
-More CPU cores help independent experiments. They do not automatically accelerate one sequential simulation by the same factor.
-
-Revision `4dbc350` passed 72 simulator tests and five replay checks on this Mac.
-The later upstream merge received syntax and diff checks. Those earlier test results do not validate the new merge.
-The optional comparison with recorded physics failed across runtimes. Record platform metadata and preserve this known limitation.
-
-## Boundaries that keep the demo honest
-
-- Features describe observed appearance. Clusters group similar appearances. Labels describe classes. Policy determines which classes to reject.
-- Good and bad need not form two visual clusters. Foreign materials and different defects can occupy several groups.
-- Start with the existing local classifier. Jev handles occasional language decisions outside the per-frame control loop.
-- Jev returns choices from supplied alternatives. It does not generate new visual features or unrestricted product code.
-- Keep simulator truth in training and evaluation. Neither live predictions nor Jev receive hidden class labels.
-- Preserve a locked evaluation set. Corrections to reviewed examples cannot alter that set.
-- Model suggestions remain suggestions until accepted or independently checked. Their agreement does not establish truth.
-- Keep cinematic materials separate from the inspection camera. A realistic render does not prove real-camera accuracy.
-
-The requested taxonomy includes black, malformed, immature, sour, and foreign objects.
-Black, sour, and several foreign objects exist. Malformed is only partly represented. Immature needs explicit data and validation.
-The initial UI must show that coverage honestly. Do not rename `faded` to `immature`.
-
-## Verification conventions for Taras
-
-All paths below are relative to the coffee implementation checkout unless an absolute path appears.
-Commands for new files define the proposed CLI contract. They become executable during their named phase.
-They have not been implemented or run unless this document explicitly records a completed spike.
-The commands below are handoff instructions for Taras, not permission for an automatic QA campaign.
-
-Existing baseline commands:
+### Verification
 
 ```bash
-npm ci --prefix sim/coffee_sorter/web
-npm run build --prefix sim/coffee_sorter/web
+python -m py_compile sim/coffee_sorter/engine.py sim/coffee_sorter/controller.py
+python sim/coffee_sorter/engine.py --preset sim/coffee_sorter/configs/default_demo.json --seconds 2 --out /tmp/coffee-core-baseline
 ```
 
-Use the pinned coffee requirements in an isolated environment.
-Existing simulator tests remain available through `python -m unittest discover -s sim/coffee_sorter -p 'test_*.py' -v` if Taras chooses.
-UR5e checks need their picking requirements and Menagerie model. The optional replay comparison also needs a compatible recorded runtime.
+- [ ] Save counts, attribution, source/model/policy/preset versions, and component timings.
+- [ ] Select one bounded performance or quality candidate only after reading attribution and timings.
+- [ ] Compare the candidate with the same seed and preset, changing only the named parameter.
+- [ ] Taras reviews the result before a wider sweep or quality claim.
 
-## Phase 1: trustworthy evaluation and a default preset
+## Phase 2: reproducible startup and one live injection
 
-### Deliverable and changes
+### Deliverable
 
-Produce `runs/default-v1/report.md`, a dataset manifest, and `configs/default_demo.json`.
-These new outputs select a measured default rather than assuming the overnight winner generalizes.
+Make startup runnable from a fresh checkout with a documented training or verified restore command.
+The committed historical model is available under `runs/generalization/green_arabica/model/`, despite the ignored `models/` directory.
+Its training report uses row-level splits and all-good anomaly statistics. Do not claim independent-object accuracy from it.
+Prefer a newly trained model with isolated object groups and train-only statistics for this increment.
 
-1. Extend `classifier.py` collection with run IDs, object IDs, crops, and feature versions. Exclude merged or partial components from singleton labels.
-2. Split by `(run_id, object_uid)` and reserve separate seeds and appearance variants. Fit preprocessing and anomaly statistics on training data only.
-3. Compare the baseline with lighting augmentation and a bounded sweep of feed rate, jet force, and existing nozzle controls.
-4. Add new `evaluate_default.py` and `configs/default_eval.json`. Measure capture, good-bean loss, purity, admitted throughput, latency, and wall-time components.
+Training must exclude partial components and components without exactly one evaluation member.
+Persist `(seed, object_uid)` membership. Keep every object's observations in one partition.
+Use train-only mean, scale, covariance, and anomaly threshold. Disable automatic row-level early stopping.
+Require every supported class in training and holdout. Fail clearly when collection is insufficient.
+Save model provenance and feature version. Never substitute evaluation labels for model inputs.
 
-Use development seeds for tuning and locked seeds for final evaluation. Persist both lists before tuning.
-Require exactly one member from `Inspector.component_members()` before assigning an object label, following `openset.py:157`.
-Nearest-centroid matching alone does not prove that a component contains one object.
-Require each supported class in both partitions. If grouped sampling omits a rare class, collect more examples before training or reporting class recall.
-Run paired comparisons with at least three independent streams. Report counts and uncertainty, including negative results.
-Keep early-stopping validation grouped as well, or disable the estimator's automatic row-level validation split.
-Select the highest measured throughput that meets the quality target chosen from the resulting tradeoff table.
-Use the proposed 80% capture, 2% good-loss, and 500 beans/s goal unless Taras revises it after review.
-Keep the original preset if candidates show no useful improvement.
+Use a single process for simulation and `aiohttp` for HTTP/WebSocket support.
+Pin the installed version. The separate diagnostic page connects to this service at `http://127.0.0.1:8890`.
+It displays physical poses, decisions, outcomes, model/policy versions, and actual speed.
+Inject a class through physical spawning. A request does not force recognition, jet contact, or rejection.
+Keep pixel-derived predictions separate from the known injected class.
 
-### Verification
-
-#### Runnable handoff
-
-- [ ] Deliver `python sim/coffee_sorter/evaluate_default.py --config sim/coffee_sorter/configs/default_eval.json --out sim/coffee_sorter/runs/default-v1` for Taras.
-- [ ] Record split membership and train-only statistics in the run manifest. Reject invalid data through normal runtime validation.
-
-#### Taras's review checkpoint
-
-- [ ] Show one baseline and candidate on the same stream before expanding the sweep.
-- [ ] Taras inspects capture, good loss, throughput, timing, and example mistakes, then chooses the next run.
-
-## Phase 2: the default sorter in a live webpage
-
-### Deliverable and changes
-
-Produce a service on the `hackspain` SSH host with an immediately usable green-coffee preset.
-Keep `http://127.0.0.1:8890` available for local development and SSH forwarding.
-Users can inject an object, select it, and observe the engine's decision and physical outcome.
-
-1. Add `live.py` and a simulation session in a worker process. Keep CPU-bound simulation away from the network event loop.
-2. Serve the existing Three.js interface through HTTP. Stream engine state through WebSocket using the existing pose and event definitions.
-3. Add bounded injection commands and an object inspector. Show crop, predicted class, rejection reason, valve event, and eventual outcome.
-4. Add reset, reconnect, command acknowledgments, and session limits. A reset changes the session ID and invalidates old commands and tracks.
-
-Use `aiohttp` for HTTP and WebSocket support. Protocol handling justifies this dependency. Pin its tested version during implementation.
-Keep one process per active session initially. Add no broker, distributed scheduler, or generalized plugin system.
-Persist a bounded event log and snapshots. On reconnect, send a snapshot and events after the acknowledged sequence.
-Discard obsolete pose updates when a client is slow. Retain decision, command, and outcome events.
-Reuse pose shapes, not the complete replay metadata. The replay contains truth classes and future outcomes that a live observation must not expose.
-Render packets carry opaque appearance keys and instance IDs. Publish outcomes only after the engine records them.
-Construct all model inputs from server-side observations. Never build them from browser render state, injection metadata, or evaluator labels.
-
-Begin at the feed rate that profiling supports. If the engine cannot maintain real time, label its actual simulation rate visibly.
-An injected object enters through a physical spawn location. A browser click must not assign its predicted class or final bin.
+The first increment uses one shared session, at most four browser clients, and bounded command/event queues.
+Limit sessions to 10 simulated seconds or 300 wall seconds initially. Provide explicit completion and failure states.
+Bind to loopback only. Reject foreign browser origins. Use SSH forwarding for remote access.
+Restart resets the session ID and all controller state. Full reset UI and durable event replay follow Taras's first feedback.
+A reconnect receives the current bounded snapshot. It cannot restore events outside the retained window.
 
 ### Verification
 
-#### Runnable handoff
-
-- [ ] `npm run build --prefix sim/coffee_sorter/web`
-- [ ] `python sim/coffee_sorter/live.py --host 127.0.0.1 --port 8890 --preset sim/coffee_sorter/configs/default_demo.json`
-- [ ] Provide the URL, one injection action, and the engine's command/event log. Do not add `check_live.py` or a new test suite.
-
-#### Taras's review checkpoint
-
-- [ ] Show one injected stone reaching a real engine outcome before implementing the full inspector.
-- [ ] Taras checks reset, reconnect, responsiveness, and displayed timing, then gives the next feedback.
-
-## Phase 3: natural-language changes through Jev
-
-### Deliverable and changes
-
-Produce a language control that modifies the working default using a visible, versioned policy proposal.
-Example: “Keep faded beans, but reject black beans and foreign material.”
-
-1. Add `jev_policy.py` and `configs/policy_language_cases.json`. Use a small HTTP client with typed questions and validated responses.
-2. Ask Jev for supported product selection and per-class actions: keep, reject, or unchanged. Include unsupported intent as an explicit outcome.
-3. Show the interpreted changes before activation. Apply a policy at a controlled boundary and tag later decisions with its version.
-
-Unsupported classes, contradictory instructions, or uncertain answers leave the active policy unchanged and request clarification in the UI.
-Numerical calculations, legal ranges, nozzle control, and deadlines remain deterministic code.
-Do not place API credentials in browser code or saved examples.
-The Jev client in the separate magnet PR is reference material. The coffee branch cannot import files that it does not contain.
-
-For reproducible evaluations, pin Jev's resolved model version and store probabilities, response time, and usage.
-Test English and Spanish instructions. Jev's schema guarantee does not guarantee correct interpretation.
-
-### Completed micro-spike and its limitation
-
-The [Jev evidence](../research/coffee-jev-policy-spike/results.md) records eight serial calls to `jev-1.13.0`.
-Observed request latency ranged from 0.721 to 0.879 seconds. This small sample does not establish production latency or accuracy.
-The first six requests exposed ambiguity in the experiment's product question and scoring rules. Preserve them as exploratory evidence.
-Two refined requests separated product selection from capability and compiled `unchanged` actions against the current policy.
-Both English and Spanish requests produced the requested effective policy, but both incorrectly marked the clear instruction as ambiguous.
-The local activation gate therefore deferred both proposals. No policy was activated and no simulator ran during this spike.
-
-Before integration, review whether the ambiguity question confuses a requested policy change with a contradiction against the current policy.
-That explanation is a hypothesis. Do not remove the ambiguity gate just to make these two examples pass.
-Taras should review a revised interpretation contract before another request batch or live integration.
-The API reported 14,593 input tokens and 4,166 output tokens across all eight requests. It returned no billed cost.
-
-### Verification
-
-#### Runnable handoff
-
-- [ ] Deliver `python sim/coffee_sorter/jev_policy.py evaluate --cases sim/coffee_sorter/configs/policy_language_cases.json --out sim/coffee_sorter/runs/jev-policy-v1` for Taras.
-- [ ] Preserve raw and compiled policy proposals, timings, and usage. Do not activate a proposal during the micro-spike.
-
-#### Taras's review checkpoint
-
-- [ ] Taras reviews an English instruction, its Spanish equivalent, and an unsupported request before live integration.
-- [ ] Show the interpreted change before activation. Return clarification instead of pretending to recognize an unsupported class.
-
-## Phase 4: an object map and optional learning from feedback
-
-### Deliverable and changes
-
-Produce a gallery, a map of visual similarity, and a candidate model trained from optional corrections.
-The default remains available throughout.
-
-1. Add `object_examples.py`. Store crops, feature vectors, predictions, sample identities, and immutable model/policy versions.
-2. Add a standardized PCA view using existing scikit-learn. Color by prediction or confirmed label, with the selected mode clearly visible.
-3. Add `learning.py` for appended corrections, candidate training, evaluation, activation, and rollback.
-4. Offer a separate review queue for a vision model's suggestions. Escalate only selected uncertain or novel samples, outside the frame loop.
-
-Start with the 23 existing features. PCA is a projection, not a clustering algorithm or accuracy measurement.
-Show nearby examples and good/bad filters first. Add unsupervised groups only if they improve inspection on real examples.
-Do not force two clusters. Freeze the projection during a comparison so movement cannot masquerade as learning.
-An instruction such as “group by shape” can select a predefined feature subset through Jev.
-Local code computes the view. Label that view change separately from training or policy changes.
-
-“Good/bad” corrections are policy-specific. Store their policy version and optional defect tags.
-Do not turn a binary rejection correction into an invented physical class label.
-Use class corrections to retrain the class model. Evaluate binary-only corrections as a separate policy learner before integrating them.
-Keep class-based mass estimates distinct from any learned rejection score.
-
-Train candidates in the background. Compare them on untouched objects under the same policy and physical scenarios.
-Activate only candidates that meet declared regression limits. Show measured results even when the candidate fails or performance decreases.
-This is supervised learning with review, not reinforcement learning of actuator behavior.
-
-### Verification
-
-#### Runnable handoff
-
-- [ ] Deliver `python sim/coffee_sorter/learning.py evaluate --dataset sim/coffee_sorter/runs/default-v1/dataset.json --out sim/coffee_sorter/runs/learning-v1` for Taras.
-- [ ] Show the model version, unchanged holdout membership, sample count, and candidate comparison in normal output.
-
-#### Taras's review checkpoint
-
-- [ ] Show the gallery and similarity map before adding training controls.
-- [ ] Taras corrects one example and reviews the candidate before deciding whether to activate it.
-
-## Phase 5: realistic assets and the cinematic clip
-
-### Deliverable and changes
-
-First produce three stills and one second of cinematic motion, with a browser-compatible asset sample where practical.
-After visual review, expand this into the cinematic demo.
-Lead delegated this work to Astra through the [HackSpain task](https://hack.agent-swarm.dev/tasks/87808952-b84e-444b-938c-16741b75b078).
-The [asset task](https://hack.agent-swarm.dev/tasks/6ef230e2-c8fe-4fb6-bce5-cf423431d68a) is running on `codex/coffee-realistic-assets`.
-The [recording task](https://hack.agent-swarm.dev/tasks/a7cae1ea-d219-4101-914e-a4c52b1bd562) waits for that asset task.
-Astra reported a first still and is correcting its exposure. That report does not mean Taras accepted the assets.
-These statuses describe the September 19 review snapshot. Follow the task links for later progress.
-
-1. Create reference-based or scanned prototypes for good, black, insect-damaged, and broken beans. Record asset sources and licenses.
-2. Author detailed geometry and materials in `rendering/coffee_demo.blend`. Include creases, irregular silhouettes, surface damage, and restrained material variation.
-3. Add `rendering/import_replay.py`. Import recorded identities, dimensions, positions, quaternions, and valve events into Blender.
-4. Export simplified GLB prototypes with baked PBR maps where practical. Separate simpler browser assets are acceptable if sharing compromises the film or interaction.
-
-Use Cycles for the film and Three.js for interaction. Arbitrary Blender shader nodes do not transfer directly to glTF.
-Bake color, roughness, and normal detail. Use geometry for broken silhouettes that normal maps cannot express.
-Align model origins, axes, dimensions, and contact surfaces with the physics bodies. Do not animate a better sorting result than the engine produced.
-
-Hyperrealism depends on assets, lighting, materials, and camera work. Choosing Blender alone will not achieve it.
-The camera used for evaluation remains unchanged. Training from realistic renders would require a separate controlled experiment.
-Blender was not found on the local or HackSpain host PATH during inspection. The swarm can use an isolated worker installation.
-
-### Recording method
-
-Record the authoritative engine trajectory once. Render the film from that data offline, independently of browser screen capture.
-Save object identity, dimensions, poses, timestamps, decisions, valve events, outcomes, and source/model/policy versions.
-Save camera keyframes, lighting, materials, frame rate, sample count, and output settings with the Blender project.
-The shipped replay is near 30 Hz. Use it for the first visual proof and label that sampling limit.
-For close-up slow motion, capture a separate trajectory at 120 Hz or higher after reviewing interpolation around collisions and jet events.
-The existing exporter accepts `--fps`. Increase capture frequency without replacing the shipped viewer dataset.
-Taras reviews bean realism and camera composition before a full cinematic render starts.
-
-### Verification
-
-#### Runnable handoff
-
-- [ ] Deliver the assets and `blender --background sim/coffee_sorter/rendering/coffee_demo.blend --python sim/coffee_sorter/rendering/import_replay.py -- --replay sim/coffee_sorter/web/replay.json --frames 1:30 --out /tmp/coffee-cinematic-preview`.
-- [ ] Provide source files, exact render settings, render duration, and an asset-size report. No new unit tests or frame-check framework.
-
-#### Taras's review checkpoint
-
-- [ ] Show the first still promptly, then three close-up stills before the full film.
-- [ ] Taras reviews realism, defects, camera composition, and the simpler Three.js fallback independently.
-
-## Phase 6: a concrete product switch
-
-### Deliverable and changes
-
-Demonstrate coffee to one defined euro-versus-penny task, with visible model state and measured adaptation.
-Choose exact denominations and labeled references before implementation.
-
-1. Add the second physical product fixture and its data. Validate cylinder geometry, mass, camera visibility, and actuator feasibility first.
-2. Extract only the shared product fields that both working examples require. Keep feature schema, labels, policy, assets, and physical parameters explicit.
-3. Switch products by ending the previous episode and starting a new versioned episode. Clear tracks, queued actions, and incompatible model state.
-4. Compare pretrained switching with learning from new examples. Show them as separate modes with separate evaluation histories.
-
-Do not assume coffee features can read coin denomination or that coffee jets can eject coins reliably.
-If the actuator cannot handle the second product, report that result and choose a supported mechanism before presenting physical sorting.
-Natural language selects or modifies supported configurations. Unknown products request examples rather than generating unchecked engine code.
-
-### Verification
-
-#### Runnable handoff
-
-- [ ] Deliver `python sim/coffee_sorter/learning.py evaluate --dataset sim/coffee_sorter/runs/coins-v1/dataset.json --out sim/coffee_sorter/runs/coin-adaptation-v1` for Taras.
-- [ ] Expose episode IDs, model changes, and outcomes in the UI and log.
-
-#### Taras's review checkpoint
-
-- [ ] Taras chooses the exact coin task, then reviews one physical switch before adaptation work expands.
-- [ ] Show loading a pretrained model and learning from new labels as separate actions with measured results.
-
-## Deployment on the HackSpain box
-
-The `hackspain` SSH alias works. The host reports 32 vCPUs and about 128 GiB RAM.
-It already runs the swarm, agent-fs, and Caddy. The inspected display device is virtual, so accelerated rendering remains unverified.
-
-```text
-Browser: Three.js frontend on Vercel
-    │ HTTPS requests and WSS connection
-    ↓
-API subdomain: DNS points to the HackSpain box
-    ↓
-Existing Caddy: TLS and reverse proxy
-    ↓
-Python service: live sessions, model inference, training jobs
+```bash
+python -m py_compile sim/coffee_sorter/bootstrap_model.py sim/coffee_sorter/live.py
+python sim/coffee_sorter/bootstrap_model.py
+python sim/coffee_sorter/live.py --host 127.0.0.1 --port 8890 --preset sim/coffee_sorter/configs/default_demo.json
+curl --fail http://127.0.0.1:8890/health
 ```
 
-Use a custom domain managed through Vercel, with a separate API subdomain pointing to the box.
-The exact hostname remains to be selected before DNS changes. This review makes no DNS or service changes.
-Keep long-running engine state on the box. The Vercel webpage connects directly to its WSS endpoint.
-Allow the configured frontend origin and keep session credentials and provider keys on the backend.
+- [ ] Supply the actual dependency installation and bootstrap duration.
+- [ ] Demonstrate one injected stone reaching a recorded physical outcome.
+- [ ] Save that object's command ID, observation association, decision, hit status, and outcome.
+- [ ] Report browser FPS separately from engine rate and admitted throughput.
+- [ ] Taras performs functional QA and acceptance before more controls or broader evaluation.
 
-Use the server for independent training runs, seed comparisons, and rendering jobs as well.
-Begin with an aggregate bulk-work budget of 24 vCPUs and 96 GiB RAM, leaving capacity for live sessions and swarm services.
-Account for worker count multiplied by native-library threads. Avoid launching several jobs that each claim all 32 CPUs.
-Increase or lend idle capacity after observing latency. Interactive work should take priority over long rendering or training jobs.
-This is a starting allocation, not a measured capacity guarantee or an authorization to stress-test the host now.
+## Phase 3: language policy contract, deferred
 
-## Sources for design choices
+The eight-call Jev spike does not establish accuracy.
+The two effective policy matches partly inherit defaults. Ignoring most reject instructions could produce the same result.
+Define `unchanged` as an instruction that does not mention the class.
+Score raw actions for explicitly named classes as well as compiled policies.
+Include opposing initial policies, such as initially keeping black beans before requesting rejection.
+Use a hero request no severity preset expresses, such as keeping broken beans while rejecting shell beans.
 
-- [TypeSafe state](https://docs.typesafe.ai/concepts/state): current Jev input is text or structured text.
-- [TypeSafe primitives](https://docs.typesafe.ai/primitives): supplied choices and typed results.
-- [TypeSafe models](https://docs.typesafe.ai/models): version pinning and domain configuration without customer fine-tuning.
-- [Grouped splits](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupShuffleSplit.html) and [PCA](https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html).
-- [aiohttp server](https://docs.aiohttp.org/en/stable/web_quickstart.html): HTTP and WebSocket support.
-- [Blender rendering](https://docs.blender.org/manual/en/5.1/render/introduction.html) and [glTF materials](https://docs.blender.org/manual/en/5.1/addons/import_export/scene_gltf2.html).
-- [Three.js instancing](https://threejs.org/docs/pages/InstancedMesh.html): shared geometry and material with per-object transforms.
+Replace duplicated intent/ambiguity decisions with one governing interpretation gate.
+Preserve raw choices, probabilities, compiled policies, and gate reasons.
+The recorded ambiguity probabilities were 0.65 and 0.54, with confidence values 0.30 and 0.07.
+Those values justify deferral, not a claim that ambiguity is established.
+Before integration, evaluate 12 paired English/Spanish cases, repeated three times, with unsupported and contradictory cases included.
+Propose at least 95% raw explicit-action accuracy, no unsafe activation, and identical activation decisions across repeats.
+Require supported and clear probabilities at least 0.9 for activation. These thresholds remain uncalibrated safety choices.
+Compare controls with unchanged policy, omitted current actions, and repeated identical requests.
+Do not remove uncertainty gates to force success.
 
-## Review priorities and remaining decisions
+Add a versioned per-class policy in `controller.py` before integration.
+Specify whether known kept classes override anomaly rejection. Preserve rejection for unknown observations.
+Demonstrate the policy with injected affected classes, rather than relying on their random feed frequency.
 
-- Separate achieved results from proposed targets. The quality and real-time goals still need evidence.
-- Review phase boundaries and shared contracts before independent tracks modify the same data structures.
-- Resolve Jev's false ambiguity without treating two successful policy compilations as proof of reliable language control.
-- Choose a domain and session access policy before public deployment. Keep provider credentials on the HackSpain backend.
-- Confirm the first asset stills with Taras before expanding the cinematic work.
-- Keep coin recognition and actuation deferred until the coffee demonstration works.
+### Verification
 
-All eight comments from the second file review are incorporated. The complete roadmap remains a draft pending Claude Code and Taras's review.
+```bash
+python sim/coffee_sorter/jev_policy.py evaluate --cases sim/coffee_sorter/configs/policy_language_cases.json --out /tmp/coffee-jev-policy
+```
+
+This command is a future deliverable. No new provider calls are authorized by this increment.
+Taras reviews the contract and results before live activation.
+
+## Phase 4: gallery and candidate comparison, deferred
+
+Implement crops, a fixed standardized PCA map, class corrections, and one candidate comparison.
+Do not implement a second binary policy learner, vision-model suggestion queue, activation framework, or rollback framework yet.
+A binary keep/reject correction is not a physical class label.
+Train candidates on reviewed training objects. Keep the locked evaluation objects unchanged.
+The existing model remains active during comparison.
+
+### Verification
+
+```bash
+python sim/coffee_sorter/learning.py evaluate --dataset <reviewed-training-manifest> --out /tmp/coffee-learning-candidate
+```
+
+This is a future command. Taras reviews the gallery before training controls.
+
+## Phase 5: swarm assets, separate ownership
+
+The handoff names draft PR https://github.com/tarasyarema/hackspain/pull/4 and last known commit `a230f2c`.
+The source checkout also contains unpushed moodboard decisions in `bef9b61`.
+Preserve those decisions: textured `noir-rim`, textured `blueprint`, and clay `warm-roastery`.
+Blueprint and clay cannot communicate color defects. Use a textured color view when color matters.
+The remote asset branch currently resolves to `a230f2c`. The review's missing-branch statement is stale. Asset acceptance remains pending.
+
+Bound the next proof to three 960x720 stills and one second at 30 FPS.
+Include a belt-contact close-up, a color defect, and the injection class.
+Use explicit primitive fallbacks for classes without a reviewed asset, including faded and stone.
+Represent jets with a labeled schematic overlay tied to recorded valve events.
+Do not animate improved sorting outcomes.
+
+The exporter currently limits `--fps` to 60. Higher sampling requires a separately owned change.
+The 2 ms physics step limits unique state samples to 500 Hz.
+The shipped replay records historical source hashes, including older `vision.py`. Label visual proofs with that provenance.
+Keep textures and Blender sources outside ordinary Git when the bundle exceeds 20 MB, using the swarm's artifact store.
+Do not start a full film until Taras specifies duration, resolution, deadline, and render budget.
+
+### Verification
+
+```bash
+gh pr view 4 --repo tarasyarema/hackspain
+python sim/coffee_sorter/export_replay.py --help
+```
+
+The swarm supplies its exact render command and asset manifest. This task does not regenerate `web/index.html`.
+
+## Phase 6: public deployment, deferred
+
+Codex core owns deployment preparation after local acceptance. Taras chooses DNS and approves public exposure.
+Target: Vercel frontend with an HTTPS/WSS API on `hackspain`.
+The first local demo remains same-origin and requires no CORS or DNS changes.
+Before public deployment, implement an explicit frontend API URL and one exact allowed origin.
+Use authenticated access, a hard cap of one shared session, and a visible busy state.
+Document process supervision, Caddy routing, restart, rollback revision, and resource limits before changing services.
+Reserve one engine process and one native thread. Coordinate rendering or training allocations with the swarm before host work.
+
+### Verification
+
+```bash
+curl --fail "$COFFEE_API_BASE_URL/health"
+ssh hackspain 'systemctl --user status <coffee-service>'
+ssh hackspain 'journalctl --user -u <coffee-service> -n 50 --no-pager'
+```
+
+Rollback procedure must include the actual prior revision and service commands before deployment.
+No public service or DNS changes belong to this increment.
+
+## Quick Verification Reference
+
+| Check | Command |
+|---|---|
+| Branch and changes | `git status --short --branch` |
+| Syntax | `python -m py_compile sim/coffee_sorter/engine.py sim/coffee_sorter/live.py sim/coffee_sorter/bootstrap_model.py` |
+| Model | `python sim/coffee_sorter/bootstrap_model.py` |
+| Exact preset diagnostics | `python sim/coffee_sorter/engine.py --preset sim/coffee_sorter/configs/default_demo.json --seconds 2 --out /tmp/coffee-core-baseline` |
+| Live service | `python sim/coffee_sorter/live.py --host 127.0.0.1 --port 8890 --preset sim/coffee_sorter/configs/default_demo.json` |
+
+Commands become runnable as each implementation commit lands. Evidence must identify what actually ran.
+Existing tests remain available for Taras. Current source contains 72 simulator test functions and six replay test functions. One replay function is opt-in.
+Five default replay checks can pass while the optional sixth remains skipped. Old counts do not verify this increment.
+
+## Appendix: review disposition and deferred work
+
+| Review findings | Resolution |
+|---|---|
+| C1, I1 | Attribute misses first. Define cohorts, spills, uncertainty, and conservative pass rules. Targets remain unproven. |
+| C2, I5 | Profile the exact live preset. Preserve camera rate. Show a slower clock. Include model bootstrap. |
+| C3, I2, I3 | Defer language. Define opposing cases, raw scoring, one gate, per-class policies, and anomaly interaction. |
+| I4 | Record ownership and the protocol before code. Freeze the existing viewer and generated page. |
+| I6 | Create a deployment phase with access, limits, supervision, rollback requirements, and verification commands. |
+| I7 | Bound the asset proof. Correct exporter limits. Require fallback assets, contact proof, provenance, and storage limits. |
+| I8 | Reduce learning to gallery, corrections, and candidate comparison. |
+| M1, M2, M3 | Update source revision. Remove brittle line references. Distinguish six replay functions from five default checks. |
+| M4, M5, M6 | Define timing endpoints and active object counts. Keep replay source provenance visible. |
+| M7 | Add desired state, non-goals, quick commands, and this appendix. |
+
+Coin switching, generalized products, automated suggestions, and advanced learning remain deferred.
 
 ## Manual E2E
 
-Taras runs these steps after phases 1 through 3. Commands for `live.py` and `jev_policy.py` describe future deliverables.
-Load credentials into the backend environment. Use the implementation branch and its actual checkout path in place of the placeholders.
-
-On the HackSpain host:
+Taras runs the completed increment from its isolated checkout:
 
 ```bash
-ssh hackspain
-cd <coffee-checkout>
-git fetch origin
-git switch <implementation-branch-based-on-coffee-pr>
+cd /private/tmp/hackspain-coffee-core
 python3 -m venv .venv-coffee
 source .venv-coffee/bin/activate
 python -m pip install -r sim/coffee_sorter/requirements.txt
-npm ci --prefix sim/coffee_sorter/web
-npm run build --prefix sim/coffee_sorter/web
+python sim/coffee_sorter/bootstrap_model.py
 python sim/coffee_sorter/live.py --host 127.0.0.1 --port 8890 --preset sim/coffee_sorter/configs/default_demo.json
 ```
 
-In a separate local terminal, keep this tunnel open:
-
-```bash
-ssh -N -L 8890:127.0.0.1:8890 hackspain
-```
-
-In another local terminal:
+In another terminal:
 
 ```bash
 curl --fail http://127.0.0.1:8890/health
 open http://127.0.0.1:8890
 ```
 
-Inject a defect through the UI and inspect its physical outcome.
-Enter the faded-bean instruction, inspect the proposed policy, and activate it only after checking its meaning.
-Reset the session and verify that the shipped default returns.
-For a separate language evaluation, run this command in the backend checkout:
+Inject a stone. Observe its command acknowledgment, camera-derived decision, and physical outcome.
+Check actual engine speed and browser FPS separately. Restart the service to reset the session.
+For a later SSH demonstration, install the same revision and requirements on the host, then forward its loopback service:
 
 ```bash
-source .venv-coffee/bin/activate
-python sim/coffee_sorter/jev_policy.py evaluate --cases sim/coffee_sorter/configs/policy_language_cases.json --out /tmp/coffee-jev-e2e
+ssh -N -L 8890:127.0.0.1:8890 hackspain
 ```
 
-After the deployment task, repeat the interaction against its verified frontend URL.
-Use `curl --fail "$COFFEE_API_BASE_URL/health"` for the backend health check.
-Report network latency and host capacity separately from local results. Record Taras's feedback before the next increment.
+No public deployment or language command is required for this first checkpoint.
