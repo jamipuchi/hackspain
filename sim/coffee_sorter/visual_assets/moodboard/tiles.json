@@ -1,0 +1,690 @@
+{
+  "good__lab-daylight__textured.jpg": {
+    "shot": "good",
+    "look": "lab-daylight",
+    "mode": "textured",
+    "render_elapsed_seconds": 5.33,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "good__lab-daylight__clay.jpg": {
+    "shot": "good",
+    "look": "lab-daylight",
+    "mode": "clay",
+    "render_elapsed_seconds": 5.22,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "good__high-key__textured.jpg": {
+    "shot": "good",
+    "look": "high-key",
+    "mode": "textured",
+    "render_elapsed_seconds": 5.39,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "good__high-key__clay.jpg": {
+    "shot": "good",
+    "look": "high-key",
+    "mode": "clay",
+    "render_elapsed_seconds": 4.91,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "good__warm-roastery__textured.jpg": {
+    "shot": "good",
+    "look": "warm-roastery",
+    "mode": "textured",
+    "render_elapsed_seconds": 4.97,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "good__warm-roastery__clay.jpg": {
+    "shot": "good",
+    "look": "warm-roastery",
+    "mode": "clay",
+    "render_elapsed_seconds": 4.74,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "good__noir-rim__textured.jpg": {
+    "shot": "good",
+    "look": "noir-rim",
+    "mode": "textured",
+    "render_elapsed_seconds": 4.68,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "good__noir-rim__clay.jpg": {
+    "shot": "good",
+    "look": "noir-rim",
+    "mode": "clay",
+    "render_elapsed_seconds": 4.39,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "good__blueprint__textured.jpg": {
+    "shot": "good",
+    "look": "blueprint",
+    "mode": "textured",
+    "render_elapsed_seconds": 5.54,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "good__blueprint__clay.jpg": {
+    "shot": "good",
+    "look": "blueprint",
+    "mode": "clay",
+    "render_elapsed_seconds": 5.62,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "defects__lab-daylight__textured.jpg": {
+    "shot": "defects",
+    "look": "lab-daylight",
+    "mode": "textured",
+    "render_elapsed_seconds": 5.01,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "defects__lab-daylight__clay.jpg": {
+    "shot": "defects",
+    "look": "lab-daylight",
+    "mode": "clay",
+    "render_elapsed_seconds": 4.57,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "defects__high-key__textured.jpg": {
+    "shot": "defects",
+    "look": "high-key",
+    "mode": "textured",
+    "render_elapsed_seconds": 4.8,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "defects__high-key__clay.jpg": {
+    "shot": "defects",
+    "look": "high-key",
+    "mode": "clay",
+    "render_elapsed_seconds": 4.73,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "defects__warm-roastery__textured.jpg": {
+    "shot": "defects",
+    "look": "warm-roastery",
+    "mode": "textured",
+    "render_elapsed_seconds": 4.94,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "defects__warm-roastery__clay.jpg": {
+    "shot": "defects",
+    "look": "warm-roastery",
+    "mode": "clay",
+    "render_elapsed_seconds": 4.56,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "defects__noir-rim__textured.jpg": {
+    "shot": "defects",
+    "look": "noir-rim",
+    "mode": "textured",
+    "render_elapsed_seconds": 4.9,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "defects__noir-rim__clay.jpg": {
+    "shot": "defects",
+    "look": "noir-rim",
+    "mode": "clay",
+    "render_elapsed_seconds": 4.61,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "defects__blueprint__textured.jpg": {
+    "shot": "defects",
+    "look": "blueprint",
+    "mode": "textured",
+    "render_elapsed_seconds": 5.6,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "defects__blueprint__clay.jpg": {
+    "shot": "defects",
+    "look": "blueprint",
+    "mode": "clay",
+    "render_elapsed_seconds": 5.41,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor__lab-daylight__textured.jpg": {
+    "shot": "conveyor",
+    "look": "lab-daylight",
+    "mode": "textured",
+    "render_elapsed_seconds": 5.22,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor__lab-daylight__clay.jpg": {
+    "shot": "conveyor",
+    "look": "lab-daylight",
+    "mode": "clay",
+    "render_elapsed_seconds": 5.03,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor__high-key__textured.jpg": {
+    "shot": "conveyor",
+    "look": "high-key",
+    "mode": "textured",
+    "render_elapsed_seconds": 5.15,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor__high-key__clay.jpg": {
+    "shot": "conveyor",
+    "look": "high-key",
+    "mode": "clay",
+    "render_elapsed_seconds": 4.93,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor__warm-roastery__textured.jpg": {
+    "shot": "conveyor",
+    "look": "warm-roastery",
+    "mode": "textured",
+    "render_elapsed_seconds": 5.96,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor__warm-roastery__clay.jpg": {
+    "shot": "conveyor",
+    "look": "warm-roastery",
+    "mode": "clay",
+    "render_elapsed_seconds": 5.83,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor__noir-rim__textured.jpg": {
+    "shot": "conveyor",
+    "look": "noir-rim",
+    "mode": "textured",
+    "render_elapsed_seconds": 5.6,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor__noir-rim__clay.jpg": {
+    "shot": "conveyor",
+    "look": "noir-rim",
+    "mode": "clay",
+    "render_elapsed_seconds": 5.22,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor__blueprint__textured.jpg": {
+    "shot": "conveyor",
+    "look": "blueprint",
+    "mode": "textured",
+    "render_elapsed_seconds": 6.94,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor__blueprint__clay.jpg": {
+    "shot": "conveyor",
+    "look": "blueprint",
+    "mode": "clay",
+    "render_elapsed_seconds": 6.72,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor-low__lab-daylight__textured.jpg": {
+    "shot": "conveyor-low",
+    "look": "lab-daylight",
+    "mode": "textured",
+    "render_elapsed_seconds": 5.6,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor-low__lab-daylight__clay.jpg": {
+    "shot": "conveyor-low",
+    "look": "lab-daylight",
+    "mode": "clay",
+    "render_elapsed_seconds": 5.73,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor-low__high-key__textured.jpg": {
+    "shot": "conveyor-low",
+    "look": "high-key",
+    "mode": "textured",
+    "render_elapsed_seconds": 5.43,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor-low__high-key__clay.jpg": {
+    "shot": "conveyor-low",
+    "look": "high-key",
+    "mode": "clay",
+    "render_elapsed_seconds": 5.12,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor-low__warm-roastery__textured.jpg": {
+    "shot": "conveyor-low",
+    "look": "warm-roastery",
+    "mode": "textured",
+    "render_elapsed_seconds": 5.54,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor-low__warm-roastery__clay.jpg": {
+    "shot": "conveyor-low",
+    "look": "warm-roastery",
+    "mode": "clay",
+    "render_elapsed_seconds": 5.82,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor-low__noir-rim__textured.jpg": {
+    "shot": "conveyor-low",
+    "look": "noir-rim",
+    "mode": "textured",
+    "render_elapsed_seconds": 6.26,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor-low__noir-rim__clay.jpg": {
+    "shot": "conveyor-low",
+    "look": "noir-rim",
+    "mode": "clay",
+    "render_elapsed_seconds": 5.24,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor-low__blueprint__textured.jpg": {
+    "shot": "conveyor-low",
+    "look": "blueprint",
+    "mode": "textured",
+    "render_elapsed_seconds": 6.85,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor-low__blueprint__clay.jpg": {
+    "shot": "conveyor-low",
+    "look": "blueprint",
+    "mode": "clay",
+    "render_elapsed_seconds": 7.43,
+    "samples": 24,
+    "resolution": [
+      960,
+      720
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "good__noir-rim__textured__final.jpg": {
+    "shot": "good",
+    "look": "noir-rim",
+    "mode": "textured",
+    "final": true,
+    "render_elapsed_seconds": 20.32,
+    "samples": 96,
+    "resolution": [
+      1400,
+      1000
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "good__blueprint__textured__final.jpg": {
+    "shot": "good",
+    "look": "blueprint",
+    "mode": "textured",
+    "final": true,
+    "render_elapsed_seconds": 22.9,
+    "samples": 96,
+    "resolution": [
+      1400,
+      1000
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "good__warm-roastery__clay__final.jpg": {
+    "shot": "good",
+    "look": "warm-roastery",
+    "mode": "clay",
+    "final": true,
+    "render_elapsed_seconds": 20.39,
+    "samples": 96,
+    "resolution": [
+      1400,
+      1000
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "defects__noir-rim__textured__final.jpg": {
+    "shot": "defects",
+    "look": "noir-rim",
+    "mode": "textured",
+    "final": true,
+    "render_elapsed_seconds": 21.02,
+    "samples": 96,
+    "resolution": [
+      1400,
+      1000
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "defects__blueprint__textured__final.jpg": {
+    "shot": "defects",
+    "look": "blueprint",
+    "mode": "textured",
+    "final": true,
+    "render_elapsed_seconds": 21.01,
+    "samples": 96,
+    "resolution": [
+      1400,
+      1000
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "defects__warm-roastery__clay__final.jpg": {
+    "shot": "defects",
+    "look": "warm-roastery",
+    "mode": "clay",
+    "final": true,
+    "render_elapsed_seconds": 19.37,
+    "samples": 96,
+    "resolution": [
+      1400,
+      1000
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor__noir-rim__textured__final.jpg": {
+    "shot": "conveyor",
+    "look": "noir-rim",
+    "mode": "textured",
+    "final": true,
+    "render_elapsed_seconds": 20.12,
+    "samples": 96,
+    "resolution": [
+      1400,
+      1000
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor__blueprint__textured__final.jpg": {
+    "shot": "conveyor",
+    "look": "blueprint",
+    "mode": "textured",
+    "final": true,
+    "render_elapsed_seconds": 23.88,
+    "samples": 96,
+    "resolution": [
+      1400,
+      1000
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor__warm-roastery__clay__final.jpg": {
+    "shot": "conveyor",
+    "look": "warm-roastery",
+    "mode": "clay",
+    "final": true,
+    "render_elapsed_seconds": 22.59,
+    "samples": 96,
+    "resolution": [
+      1400,
+      1000
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor-low__noir-rim__textured__final.jpg": {
+    "shot": "conveyor-low",
+    "look": "noir-rim",
+    "mode": "textured",
+    "final": true,
+    "render_elapsed_seconds": 27.24,
+    "samples": 96,
+    "resolution": [
+      1400,
+      1000
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor-low__blueprint__textured__final.jpg": {
+    "shot": "conveyor-low",
+    "look": "blueprint",
+    "mode": "textured",
+    "final": true,
+    "render_elapsed_seconds": 26.13,
+    "samples": 96,
+    "resolution": [
+      1400,
+      1000
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  },
+  "conveyor-low__warm-roastery__clay__final.jpg": {
+    "shot": "conveyor-low",
+    "look": "warm-roastery",
+    "mode": "clay",
+    "final": true,
+    "render_elapsed_seconds": 26.38,
+    "samples": 96,
+    "resolution": [
+      1400,
+      1000
+    ],
+    "threads": 10,
+    "blender_version": "5.2.2 LTS"
+  }
+}
