@@ -1,6 +1,6 @@
 # Coffee live engine checkpoint
 
-Taras owns functional QA and acceptance. This increment provides a local diagnostic page and one stateful Python engine.
+Taras owns functional QA and acceptance. The local page observes one shared Python engine.
 The existing replay viewer and swarm assets remain unchanged.
 
 ## Run from a fresh checkout
@@ -11,24 +11,68 @@ Run these commands from the repository root:
 ```bash
 python3.13 -m venv .venv-coffee
 source .venv-coffee/bin/activate
-python -m pip install -r sim/coffee_sorter/requirements.txt
-python sim/coffee_sorter/bootstrap_model.py
-python sim/coffee_sorter/live.py --host 127.0.0.1 --port 8890 --preset sim/coffee_sorter/configs/default_demo.json
+python -m pip install -r thoughts/taras/research/coffee-quality/requirements-resolved.txt
+python - <<'PY'
+from pathlib import Path
+import gzip
+
+source = Path('thoughts/taras/research/coffee-quality')
+target = Path('sim/coffee_sorter/models')
+target.mkdir(exist_ok=True)
+for suffix in ('joblib', 'manifest.json'):
+    content = gzip.decompress((source / f'model-selected.{suffix}.gz').read_bytes())
+    output = target / f'live_green_arabica.{suffix}'
+    if output.exists() and output.read_bytes() != content:
+        raise SystemExit(f'Preserve your existing artifact before replacing {output}')
+    output.write_bytes(content)
+PY
+python sim/coffee_sorter/live.py --host 127.0.0.1 --port 8890 --preset sim/coffee_sorter/configs/continuous_demo.json
 ```
 
-Open [the local page](http://127.0.0.1:8890), then select **Inject stone**.
-The first injection starts the simulation. A ring identifies the injected object in both projections.
+Open [the local page](http://127.0.0.1:8890). The conveyor starts automatically, including when no browser is connected.
+Select **Inject stone** to add an object. A ring identifies that object in both projections.
 Prediction, jet contact, and physical outcome appear separately.
 The contact counter counts nozzle contact steps. Multiple nozzles can contact an object during one physics step. Approximate object associations carry an explicit label.
 The page draws schematic primitive projections. It does not provide the swarm's realistic assets or a complete 3D viewer.
 
-The service prints its initial evidence directory. It writes `commands.jsonl`, `report.json`, `final-state.json`, and `service-profile.json` there.
-Each UI restart creates a separate adjacent directory with a `restart-` suffix. Previous session files remain intact.
-The model bootstrap takes approximately 25 seconds on the measured Mac. It validates provenance before reusing an existing model.
-Training uses seed 7. Holdout observations come from separate seed-9 objects. Anomaly statistics use training objects only.
-The bootstrap score describes observation-weighted classifier output. It excludes anomaly policy and physical sorting outcomes.
+The service prints its evidence directory. Command logs rotate in continuous mode. Shutdown writes the retained report and final state.
+The command above restores the exact evaluated model. Continuous startup validates its manifest and physical compatibility without retraining.
+The artifact used seed 7 for training and separate seed-9 objects for holdout observations. Anomaly statistics use training objects only.
 
-## Session behavior
+## Continuous operation and rolling scores
+
+The default score window covers 60 simulated seconds, after a 0.6-second settling allowance.
+At simulation time `T`, the cohort contains spawn times in `(T - 0.6 - 60, T - 0.6]`.
+Scores remain unavailable until their denominators contain objects. The page labels warm-up and shows the available duration.
+Newer feed objects appear in the settling count. Manual injections stay outside all feed scores and settling counts.
+
+Sorting accuracy counts required defects rejected and keep objects accepted.
+Defect capture counts required defects rejected. Good loss counts keep objects rejected or spilled.
+Spills and unresolved objects remain in the relevant denominators. Each score shows its numerator and denominator.
+These values describe rolling simulation outcomes. They do not replace the frozen acceptance evaluation or measure classifier confidence.
+
+The service updates score aggregates once per wall second. Pose updates remain separate.
+The engine continues with zero browsers. Reconnecting preserves the session and current scores.
+Each 60-second wall-time command epoch admits at most 256 injections, with at most 16 pending commands.
+Exact retries retain their original command and epoch. An expired unknown epoch returns an error without spawning an object.
+The interface hides visitor restart in continuous mode. Stop and restart the process when an administrative reset is necessary.
+That reset creates a new engine session and starts score warm-up again.
+
+Continuous history retains active objects, bounded recent outcomes, and 64 completed injection records.
+The page identifies evicted injection history. `/state` exposes retention counts and limits for inspection.
+The browser retains up to 64 request records and preserves every pending payload exactly.
+The latest-stone card follows click order. It separates prediction, controller action, air contact, physical outcome, and command failures.
+The main view fits one desktop or mobile viewport. Detailed diagnostics use the **Details** dialog.
+
+## Bounded diagnostic behavior
+
+Use the original preset when a reproducible short session or UI restart is needed:
+
+```bash
+.venv-coffee/bin/python sim/coffee_sorter/live.py --port 8892 --preset sim/coffee_sorter/configs/default_demo.json --out /tmp/coffee-bounded
+```
+
+Open `http://127.0.0.1:8892`. The first injection starts this bounded session.
 
 - One worker serves one shared session, with up to four browser clients.
 - The preset requests 500 objects per simulated second with inspection at 250 Hz.
@@ -90,13 +134,13 @@ The later capsule-placement correction removes excess stick spawn height. Other 
 The short motion diagnostic does not establish smoother overall physics or acceptable sorting quality.
 The frozen evaluation met the 80% capture lower bound on every seed. Every seed exceeded the 2% good-loss upper bound.
 Pooled good loss was 5.80%. Engine speed remained approximately 0.2 times real time. Lighting robustness remains unsupported.
-A retained result card for every injection, explicit decision reasons, and live quality scores are the next interface increments.
+The latest-stone card and rolling scores are diagnostic aids. They do not establish acceptable sorting quality.
 The current two-dimensional projections are temporary. A later increment provides a 3D view using the existing render assets.
 Language policies and learning controls remain deferred.
 
 See the checkpoint report under `thoughts/taras/research/coffee-core-live/` for the measured configuration, source hashes, and evidence.
 
-## Restart checkpoint for Taras
+## Bounded restart checkpoint for Taras
 
 Open the page and select **Restart session**. Wait until the status shows **Ready**.
 The session ID in the footer must change. All open browsers must show the same new ID.
@@ -107,13 +151,10 @@ Restart uses `POST /restart` with the current `session_id` and the same browser 
 The service rejects stale requests and simultaneous restarts.
 This shared-session control resets the engine for every connected browser.
 
-## Continuous-operation direction
+## Remaining continuous verification
 
-The deployed version will start automatically and continue without connected browsers.
-Rolling scores will replace the current need to complete and restart short sessions.
-The proposed default window is 60 simulated seconds, with explicit clock and warm-up labels.
-Continuous mode is not implemented yet. The current local command remains bounded.
-See `thoughts/taras/plans/2026-09-19-coffee-continuous-live.md` for retention, reconnect, and score requirements.
+Three full score windows still need a controlled endurance run and an independent count comparison.
+Taras's functional QA remains separate. Public deployment, supervision, and the required 3D view remain later work.
 
 ## Use the evaluated model
 
@@ -126,5 +167,5 @@ shasum -a 256 sim/coffee_sorter/models/live_green_arabica.joblib
 ```
 
 The expected SHA-256 is `89513398373c6e0e81286419962feb3e312742de14a76d02dd0d819ad5264a5a`.
-Back up any existing local model before replacement. The live engine does not automatically enforce the adjacent manifest.
+Back up any existing local model before replacement. Continuous startup enforces the adjacent manifest before the worker starts.
 For exact evaluation reproduction, validate `freeze.json` as described by the quality report before starting the service.

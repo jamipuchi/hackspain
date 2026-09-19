@@ -87,7 +87,7 @@ The epoch advances by wall time. The HTTP service publishes changes even without
 Version 2 injection payloads contain `command_epoch` alongside the existing session UUID, command UUID, and class name.
 Store the full original payload for retries. Never replace an old epoch with a new one during recovery.
 
-Admit at most 64 unique commands per epoch and 16 pending commands overall.
+Admit at most 256 unique commands per epoch and 16 pending commands overall.
 Retain completed results for the current and previous epoch. Never evict pending requests.
 Accept new requests only in the current epoch. Return retained duplicate results from either retained epoch.
 An expired, unknown epoch returns `error_code: "command_epoch_expired"` and creates no object.
@@ -99,14 +99,22 @@ The browser detects stale connections through an application heartbeat or equiva
 It retries the same pending payload after reconnection. Server acknowledgment recovery must not create duplicate objects.
 A new engine session invalidates pending commands visibly. A reconnect alone preserves the session and score epoch.
 Every browser sees the same score aggregate and engine session.
+The browser retains at most 64 request records and at most 16 pending requests.
+Completed records can leave the client history before a new request is added. Pending records cannot be evicted.
 
 ## Interface and restart
 
 Render server aggregates directly. Never calculate sorting scores from visible poses or truncated event lists.
 Show counts beside percentages, simulated seconds, warm-up, settling count, and manual-injection exclusion.
 Keep engine speed and browser FPS separate. Show unavailable scores when denominators are empty.
-Keep the current per-object evidence panel. Clear stale evidence when the engine session changes.
-Show injection-history eviction explicitly. Later result-card and 3D increments remain in the parent plan.
+Show one prominent latest-stone card above the conveyor. Its headline follows click order instead of acknowledgment order.
+Use In progress, Rejected, Spilled, and Passed for physical states. Show command failure when no object was added.
+Keep prediction, controller action, air contact, physical outcome, and command failure as separate evidence.
+Clear request state, selection, and selected events when the engine session changes.
+Fit the main view in one desktop or mobile viewport without page scrolling or horizontal overflow.
+Keep the injection button, latest card, conveyor, compact scores, counts, warm-up, and engine failure visible.
+Place detailed diagnostics in an on-demand panel with its own scrolling area.
+Show injection-history eviction explicitly. The 3D increment remains in the parent plan.
 
 Continuous mode publishes `restart_supported: false` by default and rejects visitor restart requests.
 The local operator restarts the process when needed. Bounded diagnostic mode retains its existing restart route.

@@ -20,12 +20,15 @@ Taras owns functional QA and acceptance. Existing rendering ownership remains un
 
 The quality delivery is integrated at `90dffc1`. The exact selected model and manifest are installed and match the frozen evaluation.
 Capture passed its reserved-seed bounds. Good loss and real-time engine speed remain below their acceptance requirements.
-The existing service stops after ten simulated seconds. It starts only after the first injection.
+At the start of this plan, the service stopped after ten simulated seconds. It started only after the first injection.
 
 Several engine histories grow with total runtime. The evaluator also scans every historical object on every physics step.
 Removing the duration limit alone would eventually consume more memory and slow the engine.
 The current command limit permits only 64 injections per session. Continuous operation needs bounded retention without a lifetime injection limit.
-An idle browser connection also lost an injection before the worker received it. Reloading allowed the next injection to succeed.
+A provisional continuous preview later stopped publishing after a multi-client reconnect probe.
+The worker continued from 28.237 to 67.497 simulated seconds while the HTTP pump remained blocked.
+The final incomplete broadcast had no matching send-duration sample. The precise triggering client behavior remains unproven.
+Continuous broadcasts therefore need bounded sends, cancelled-task cleanup, and a pump-freshness health check.
 
 ## Score contract
 
@@ -83,7 +86,7 @@ cd /Users/taras/Documents/code/hackspain
 ```
 
 - [ ] Automated verification: compare bounded diagnostic counts before and after retention changes on development seed 8.
-- [ ] Automated verification: check window entry, expiry, delayed outcomes, spills, and zero denominators with a small synthetic stream.
+- [x] Automated verification: check window entry, expiry, delayed outcomes, spills, and zero denominators with a small synthetic stream.
 - [ ] Automated QA: save retained-object counts, snapshot size, and per-step costs over a bounded development run.
 - [ ] Manual verification: Taras reviews the retention limits and visible treatment of unresolved injected objects.
 
@@ -109,10 +112,18 @@ Every restart or worker recovery uses a new session ID and visibly resets score 
 The deployed visitor UI does not expose the administrative restart control.
 This local increment does not change public routing, authentication, or process supervision.
 
+The main page fits one desktop or mobile viewport without page scrolling.
+It keeps the conveyor, compact scores, injection button, and latest requested stone visible.
+Detailed diagnostics use an on-demand dialog with its own scroll area.
+The latest card follows click order and shows In progress, Rejected, Spilled, Passed, or a visible command failure.
+Prediction, controller action, air contact, and physical outcome remain separate fields.
+The browser retains exact payloads for multiple pending UUIDs and never replaces their original command epoch.
+
 Continuous commands use a server-issued epoch lasting 60 wall seconds. Retain completed acknowledgments for the current and previous epoch.
-Allow at most 64 admitted commands per epoch. Retain pending commands until their result arrives, within the existing bounded queue.
+Allow at most 256 admitted commands per epoch. Retain pending commands until their result arrives, within the existing bounded queue.
 Reject an expired epoch with `command_epoch_expired` and no spawn. Never reinterpret an expired duplicate as a new injection.
-Keep the latest 64 completed injection cards and all bounded pending requests. Mark history eviction visibly.
+Keep one prominent latest-stone card. Retain at most 64 client request records and all requests within the 16-pending limit.
+Mark service-side injection-history eviction visibly.
 The [v2 interface contract](../contracts/2026-09-19-coffee-continuous-v2.md) fixes these fields and assigns parallel file ownership. Bounded v1 commands keep their existing session-long identity rule.
 
 ### Verification
@@ -133,9 +144,9 @@ curl --fail http://127.0.0.1:8892/state
 node --check sim/coffee_sorter/live_web/live.js
 ```
 
-- [ ] Automated verification: the simulation advances before any injection and beyond the old ten-second limit.
-- [ ] Automated verification: two clients receive the same score counts and engine session.
-- [ ] Automated verification: expired command epochs cannot create duplicate objects.
+- [x] Automated verification: the simulation advances before any injection and beyond the old ten-second limit.
+- [x] Automated verification: two clients receive the same score counts and engine session.
+- [x] Automated verification: expired command epochs cannot create duplicate objects.
 - [ ] Automated QA: disconnect and reconnect after idle, then verify one acknowledged physical injection.
 - [ ] Manual verification: Taras opens the page, sees an active conveyor, and reads the window without a restart.
 
@@ -166,9 +177,10 @@ ps -o pid,rss,etime,%cpu -p <engine-worker-pid>
 After implementation, start the continuous service with the Phase 2 command.
 Open `http://127.0.0.1:8892` before injecting anything. Check that the conveyor already moves.
 Inject an object and observe its acknowledgment, decision, contact, and outcome.
+Click several times quickly. Confirm the latest card follows the most recent click and earlier pending requests remain retained.
 Close the page and reconnect after one minute. Check that the same engine session continued.
 Wait beyond one score window. Check that old objects leave the counts without a restart.
 Check warm-up and version labels after an administrative restart.
 Stop the local service with Ctrl+C. Preserve its report and rotated logs.
 
-Per-object result cards and the required 3D view remain in the parent plan.
+The required 3D view remains in the parent plan.
