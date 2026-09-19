@@ -17,6 +17,7 @@ It exits with status 75 when another task owns the render slot.
 
 The wrapper writes each image, Blender scene, source manifest, log, and one run manifest to the output directory.
 The generated files remain outside Git.
+See `thoughts/taras/research/coffee-demo-video/PREVIEW_REPORT.md` for the measured preview review.
 
 The stills use the selected looks for separate roles:
 
