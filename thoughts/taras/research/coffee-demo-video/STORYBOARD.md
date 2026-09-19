@@ -1,6 +1,6 @@
 # Coffee demo video storyboard
 
-Status: Proposal for Taras's review before animation.
+Status: Taras approved segment review renders. Render each segment separately and pause for visual review.
 
 ## Proposed 26-second sequence
 

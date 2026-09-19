@@ -27,3 +27,19 @@ The stills use the selected looks for separate roles:
 
 These previews use an old recorded instant.
 They do not show the current live engine or establish sorting quality, speed, or physical feasibility.
+
+## Review segment 1
+
+Render the four-second machine overview:
+
+```sh
+python3 sim/coffee_sorter/demo_video/render_intro_segment.py
+```
+
+The review render is 640 by 360 pixels at 24 frames per second.
+It uses 12 Cycles samples and eight threads.
+The camera moves 0.22 metres forward.
+All beans keep their recorded frame 60 poses.
+
+The command writes PNG frames, an editable Blender scene, an MP4, logs, and one manifest.
+It refuses to replace existing rendered frames.
