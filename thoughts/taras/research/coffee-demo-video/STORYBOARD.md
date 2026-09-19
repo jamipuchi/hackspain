@@ -1,6 +1,9 @@
 # Coffee demo video storyboard
 
-Status: Segment 1 awaits Taras's visual review. Segment 2 remains paused.
+Status: Superseded by [scene studies, revision 2](SCENE_STUDIES.md).
+Taras rejected the slow opening zoom. Animation remains paused while Taras reviews scene mockups.
+
+The sequence below records the previous proposal.
 
 ## Proposed 26-second sequence
 
