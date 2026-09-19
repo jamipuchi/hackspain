@@ -24,9 +24,9 @@ SEGMENTS = {
     "03-overhead-inspection": {"scene": "03-overhead-inspection", "frames": 90, "motion": "locked", "source_start": 30},
     "04-blueprint-discharge": {"scene": "04-blueprint-discharge", "frames": 60, "motion": "locked", "source_start": 45},
     "04b-normal-discharge": {"scene": "04b-normal-discharge", "frames": 60, "motion": "locked", "source_start": 45},
-    "07-warm-closing": {"scene": "07-warm-closing", "frames": 90, "motion": "closing-slide", "source_start": 30},
-    "07b-blueprint-closing": {"scene": "07b-blueprint-closing", "frames": 90, "motion": "closing-slide", "source_start": 30},
-    "07c-normal-closing": {"scene": "07c-normal-closing", "frames": 90, "motion": "closing-slide", "source_start": 30},
+    "07-warm-closing": {"scene": "07-warm-closing", "frames": 90, "motion": "closing-slide", "source_start": 30, "lens": 40},
+    "07b-blueprint-closing": {"scene": "07b-blueprint-closing", "frames": 90, "motion": "closing-slide", "source_start": 30, "lens": 40},
+    "07c-normal-closing": {"scene": "07c-normal-closing", "frames": 90, "motion": "closing-slide", "source_start": 30, "lens": 40},
 }
 
 
@@ -103,6 +103,7 @@ def render(name, args):
     prototypes = {kind: bpy.data.objects[f"bean_{kind}"] for kind in ("good", "black", "insect", "broken")}
     objects, _ = create_recorded_beans(payload, source_frames, prototypes, beans)
     camera = scene.camera
+    camera.data.lens = spec.get("lens", camera.data.lens)
     shot = source_manifest["spec"]
     start = Vector(shot["camera"])
     target = Vector(shot["target"])
@@ -147,7 +148,7 @@ def render(name, args):
             "active_beans": len(frame["beans"]) // 9,
             "pose_rows_sha256": hashlib.sha256(json.dumps(frame["beans"], separators=(",", ":")).encode()).hexdigest(),
             "camera": list(camera.location), "target": list(current_target),
-            "focus_distance": camera.data.dof.focus_distance,
+            "focus_distance": camera.data.dof.focus_distance, "lens_mm": camera.data.lens,
             "max_position_error_m": position_error, "max_quaternion_component_error": rotation_error,
             "render_seconds": round(time.perf_counter() - tick, 3), "png_sha256": sha(path),
         })

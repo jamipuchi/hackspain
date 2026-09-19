@@ -14,10 +14,10 @@ The source is `sim/coffee_sorter/demo_video/render_segments.py`.
 | Segment | Motion | Duration | Status |
 |---|---|---:|---|
 | 01 Bean detail | Camera slide and focus movement on one held recorded instant | 3 s | Complete |
-| 02 Conveyor reveal | Moving camera and consecutive recorded poses | 3 s | Queued |
+| 02 Conveyor reveal | Moving camera and consecutive recorded poses | 3 s | Complete |
 | 03 Overhead inspection | Locked camera and consecutive recorded poses | 3 s | Queued |
 | 04A Discharge, blueprint | Locked camera and consecutive recorded poses | 2 s | Queued |
-| 04B Discharge, normal | Same timing and camera as blueprint | 2 s | Queued |
+| 04B Discharge, normal | Same timing and camera as blueprint | 2 s | Complete |
 | 05 Ultra-slow-motion air jet | Verified high-rate poses and pulse contact | Pending capture | Capture authorized |
 | 07A Closing, clay | Lateral camera movement and consecutive recorded poses | 3 s | Queued |
 | 07B Closing, blueprint | Same timing and camera as clay | 3 s | Queued |
@@ -56,6 +56,33 @@ The opening intentionally begins out of focus.
 This shot holds the bean poses and moves only the camera and focus.
 It does not claim ultra-slow-motion physical movement.
 
+### 04B Discharge, normal
+
+- Path: `/private/tmp/coffee-demo-video-previews/segments-v2/04b-normal-discharge/preview.mp4`
+- Duration: 2.000 seconds.
+- Frames: 60.
+- Blender process time: 143.393 seconds.
+- Source frames: 45 through 104, with timestamps from 1.500 to 3.468 simulated seconds.
+- All 60 frames contain distinct recorded pose sets.
+- Browser playback advanced beyond 0.5 seconds without a media error.
+
+Frame hashes and recorded-pose tolerances passed for both completed clips.
+The locked camera has only float32 interpolation roundoff, below the `1e-6` metre comparison tolerance.
+
+### 02 Conveyor reveal
+
+- Path: `/private/tmp/coffee-demo-video-previews/segments-v2/02-conveyor-reveal/preview.mp4`
+- Duration: 3.000 seconds.
+- Frames: 90.
+- Blender process time: 232.558 seconds.
+- Source frames: 30 through 119.
+- All 90 frames contain distinct recorded pose sets.
+- The camera moves between the two approved reveal positions.
+- Browser playback advanced beyond 0.5 seconds without a media error.
+
+The closing animation will use a 40 mm lens in all three modes.
+This slightly wider composition retains the machine's feet during the lateral movement.
+
 ## High-rate capture coordination
 
 Taras explicitly authorized a fresh recording with air-contact evidence.
@@ -64,3 +91,10 @@ The requested evidence includes dense pose timestamps, valve intervals, per-bean
 All nearby objects must remain in the capture.
 The macro render released the runtime lock before the reserved capture gap.
 The air-jet preview must wait for the verified capture.
+The first capture attempt reached its eight-minute wall limit without writing a replay.
+The engine task reported historical scikit-learn inference as the bottleneck.
+It is checking a faster inference path against the same model outputs before another attempt.
+No physical contact claim follows from the failed attempt.
+The second attempt will replay the recorded valve schedule through the original physics.
+It must compare the dense poses with the existing coarse recording before the render can use them.
+This method replays recorded control decisions. It does not provide a fresh classifier evaluation.
