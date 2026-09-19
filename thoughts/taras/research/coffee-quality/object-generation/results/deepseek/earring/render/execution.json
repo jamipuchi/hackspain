@@ -1,0 +1,36 @@
+{
+  "returncode": 0,
+  "subprocess_wall_seconds": 42.33008383400738,
+  "host_load_before": [
+    4.73486328125,
+    9.16064453125,
+    21.03076171875
+  ],
+  "host_load_after": [
+    5.38134765625,
+    8.703125,
+    20.24853515625
+  ],
+  "command": [
+    "/opt/homebrew/bin/blender",
+    "--background",
+    "--threads",
+    "1",
+    "--python-exit-code",
+    "1",
+    "--python",
+    "/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/render_recipe.py",
+    "--",
+    "--recipe",
+    "/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/results/deepseek/earring/recipe.json",
+    "--out",
+    "/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/results/deepseek/earring/render"
+  ],
+  "thread_environment": {
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "VECLIB_MAXIMUM_THREADS": "1"
+  },
+  "exclusive_lock": "/private/tmp/hackspain-coffee-runtime.lock"
+}

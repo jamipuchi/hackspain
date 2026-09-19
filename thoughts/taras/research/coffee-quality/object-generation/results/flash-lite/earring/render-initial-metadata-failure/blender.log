@@ -1,0 +1,44 @@
+/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/render_recipe.py:244: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  scene.world.use_nodes = True
+/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/render_recipe.py:39: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  material.use_nodes = True
+00:20.590  render           | Saved: '/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/results/flash-lite/earring/render/perspective.png'
+00:42.126  render           | Saved: '/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/results/flash-lite/earring/render/top.png'
+INFO Draco is available, use library at /Applications/Blender.app/Contents/Resources/5.2/scripts/addons_core/io_scene_gltf2/libbf_intern_draco_bridge.dylib
+INFO MeshOptimizer is available, use library at /Applications/Blender.app/Contents/Resources/5.2/scripts/addons_core/io_scene_gltf2/libbf_intern_meshopt_bridge.dylib
+18:54:16 | INFO: Starting glTF 2.0 export
+18:54:16 | INFO: Extracting primitive: Torus
+18:54:16 | INFO: Primitives created: 1
+18:54:16 | INFO: Extracting primitive: Cylinder
+18:54:16 | INFO: Primitives created: 1
+18:54:16 | INFO: Extracting primitive: Sphere
+18:54:16 | INFO: Primitives created: 1
+18:54:16 | INFO: Finished glTF 2.0 export in 0.013638973236083984 s
+render_recipe failed: Object of type bytes is not JSON serializable
+Traceback (most recent call last):
+  File "/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/render_recipe.py", line 351, in <module>
+    main()
+    ~~~~^^
+  File "/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/render_recipe.py", line 345, in main
+    json.dump(metadata, handle, indent=2)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Applications/Blender.app/Contents/Resources/5.2/python/lib/python3.13/json/__init__.py", line 181, in dump
+    for chunk in iterable:
+                 ^^^^^^^^
+  File "/Applications/Blender.app/Contents/Resources/5.2/python/lib/python3.13/json/encoder.py", line 435, in _iterencode
+    yield from _iterencode_dict(o, _current_indent_level)
+  File "/Applications/Blender.app/Contents/Resources/5.2/python/lib/python3.13/json/encoder.py", line 409, in _iterencode_dict
+    yield from chunks
+  File "/Applications/Blender.app/Contents/Resources/5.2/python/lib/python3.13/json/encoder.py", line 442, in _iterencode
+    o = _default(o)
+  File "/Applications/Blender.app/Contents/Resources/5.2/python/lib/python3.13/json/encoder.py", line 182, in default
+    raise TypeError(f'Object of type {o.__class__.__name__} '
+                    f'is not JSON serializable')
+TypeError: Object of type bytes is not JSON serializable
+
+Info: Saved as "object.blend"
+
+Error: script failed, file: '/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/render_recipe.py', exiting.
+Blender 5.2.2 LTS (hash d13f752e3b9c built 2026-09-15 01:49:19)
+
+Blender quit

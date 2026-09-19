@@ -1,0 +1,204 @@
+{
+  "name": "NOVA_company_badge",
+  "design_notes": "26 mm midnight-blue disk badge with a raised white geometric N monogram, raised NOVA lettering, and a small gold five-point star accent. All raised elements sit on the +Z face of the disk and read correctly from the +Z side.",
+  "parts": [
+    {
+      "name": "disk_base",
+      "kind": "cylinder",
+      "position_mm": [
+        0,
+        0,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "size_mm": [
+        26,
+        26,
+        3
+      ],
+      "color": [
+        0.08,
+        0.1,
+        0.28
+      ],
+      "metallic": 0.3,
+      "roughness": 0.35,
+      "tube_mm": 0,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "n_monogram",
+      "kind": "polygon",
+      "position_mm": [
+        0,
+        2,
+        1.8
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "size_mm": [
+        10,
+        10,
+        1
+      ],
+      "color": [
+        0.95,
+        0.95,
+        0.97
+      ],
+      "metallic": 0.1,
+      "roughness": 0.4,
+      "tube_mm": 0,
+      "outline": [
+        [
+          -0.5,
+          -0.5
+        ],
+        [
+          -0.32,
+          -0.5
+        ],
+        [
+          -0.32,
+          0.18
+        ],
+        [
+          0.18,
+          -0.5
+        ],
+        [
+          0.5,
+          -0.5
+        ],
+        [
+          0.5,
+          0.5
+        ],
+        [
+          0.32,
+          0.5
+        ],
+        [
+          0.32,
+          -0.18
+        ],
+        [
+          -0.18,
+          0.5
+        ],
+        [
+          -0.5,
+          0.5
+        ]
+      ],
+      "text": ""
+    },
+    {
+      "name": "nova_lettering",
+      "kind": "text",
+      "position_mm": [
+        0,
+        -6,
+        1.7
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "size_mm": [
+        12,
+        3,
+        0.8
+      ],
+      "color": [
+        0.95,
+        0.95,
+        0.97
+      ],
+      "metallic": 0.1,
+      "roughness": 0.4,
+      "tube_mm": 0,
+      "outline": [],
+      "text": "NOVA"
+    },
+    {
+      "name": "gold_star",
+      "kind": "polygon",
+      "position_mm": [
+        0,
+        8,
+        1.7
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "size_mm": [
+        4,
+        4,
+        0.8
+      ],
+      "color": [
+        0.95,
+        0.78,
+        0.25
+      ],
+      "metallic": 0.9,
+      "roughness": 0.25,
+      "tube_mm": 0,
+      "outline": [
+        [
+          0.0,
+          0.5
+        ],
+        [
+          -0.118,
+          0.162
+        ],
+        [
+          -0.4755,
+          0.1545
+        ],
+        [
+          -0.19,
+          -0.0618
+        ],
+        [
+          -0.294,
+          -0.405
+        ],
+        [
+          0.0,
+          -0.2
+        ],
+        [
+          0.294,
+          -0.405
+        ],
+        [
+          0.19,
+          -0.0618
+        ],
+        [
+          0.4755,
+          0.1545
+        ],
+        [
+          0.118,
+          0.162
+        ]
+      ],
+      "text": ""
+    }
+  ]
+}

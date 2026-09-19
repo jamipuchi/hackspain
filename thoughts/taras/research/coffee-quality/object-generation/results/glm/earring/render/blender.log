@@ -1,0 +1,33 @@
+/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/render_recipe.py:244: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  scene.world.use_nodes = True
+/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/render_recipe.py:39: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  material.use_nodes = True
+00:19.512  render           | Saved: '/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/results/glm/earring/render/perspective.png'
+00:41.926  render           | Saved: '/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/results/glm/earring/render/top.png'
+INFO Draco is available, use library at /Applications/Blender.app/Contents/Resources/5.2/scripts/addons_core/io_scene_gltf2/libbf_intern_draco_bridge.dylib
+INFO MeshOptimizer is available, use library at /Applications/Blender.app/Contents/Resources/5.2/scripts/addons_core/io_scene_gltf2/libbf_intern_meshopt_bridge.dylib
+18:59:44 | INFO: Starting glTF 2.0 export
+18:59:44 | INFO: Extracting primitive: Cylinder.007
+18:59:44 | INFO: Primitives created: 1
+18:59:44 | INFO: Extracting primitive: Cylinder
+18:59:44 | INFO: Primitives created: 1
+18:59:44 | INFO: Extracting primitive: Cylinder.001
+18:59:44 | INFO: Primitives created: 1
+18:59:44 | INFO: Extracting primitive: Cylinder.002
+18:59:44 | INFO: Primitives created: 1
+18:59:44 | INFO: Extracting primitive: Cylinder.003
+18:59:44 | INFO: Primitives created: 1
+18:59:44 | INFO: Extracting primitive: Cylinder.004
+18:59:44 | INFO: Primitives created: 1
+18:59:44 | INFO: Extracting primitive: Cylinder.005
+18:59:44 | INFO: Primitives created: 1
+18:59:44 | INFO: Extracting primitive: Cylinder.006
+18:59:44 | INFO: Primitives created: 1
+18:59:44 | INFO: Extracting primitive: Sphere
+18:59:44 | INFO: Primitives created: 1
+18:59:44 | INFO: Finished glTF 2.0 export in 0.018787860870361328 s
+
+Info: Saved as "object.blend"
+Blender 5.2.2 LTS (hash d13f752e3b9c built 2026-09-15 01:49:19)
+
+Blender quit

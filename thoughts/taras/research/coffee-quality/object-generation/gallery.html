@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Object recipe comparison</title>
+<style>
+:root { color-scheme: light; --paper:#fbf7ef; --ink:#292721; --rule:#d7d0c3; --muted:#716b60; --accent:#49666a; --panel:#fffdf8; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+main { max-width:1800px; margin:0 auto; padding:36px 26px 64px; }
+.masthead { display:flex; justify-content:space-between; align-items:end; gap:24px; padding-bottom:22px; border-bottom:2px solid var(--ink); }
+h1,h2,h3,p { margin:0; }
+h1 { font-family:Georgia,"Times New Roman",serif; font-size:clamp(2rem,4vw,3.5rem); font-weight:500; letter-spacing:-.04em; }
+.intro { max-width:54ch; margin-top:10px; color:var(--muted); line-height:1.45; }
+.controls { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+button { border:1px solid var(--accent); border-radius:3px; background:transparent; color:var(--accent); cursor:pointer; font:inherit; padding:8px 10px; }
+button[aria-pressed="true"] { background:var(--accent); color:white; }
+button:focus-visible,a:focus-visible { outline:3px solid #b7d1d2; outline-offset:2px; }
+.case-row { padding:28px 0 8px; border-bottom:1px solid var(--rule); }
+.case-heading { display:flex; align-items:baseline; justify-content:space-between; gap:16px; padding-bottom:12px; }
+h2 { font-size:1.15rem; font-weight:650; }
+.case-heading p,.quiet { color:var(--muted); font-size:.86rem; }
+.comparison-grid { display:grid; grid-template-columns:repeat(5,minmax(180px,1fr)); gap:12px; min-width:1040px; }
+.case-row { overflow-x:auto; }
+.result-card { min-width:0; min-height:365px; padding:12px; background:var(--panel); border:1px solid var(--rule); display:flex; flex-direction:column; }
+.card-head { display:flex; justify-content:space-between; gap:8px; min-height:38px; }
+.model-name { font-size:.88rem; line-height:1.25; font-weight:650; overflow-wrap:anywhere; }
+.blind-label { color:var(--accent); font-weight:700; }
+.state { display:block; min-height:20px; margin:4px 0 8px; font-size:.75rem; line-height:1.25; }
+.status-wrap { min-height:72px; }
+.ready { color:#346244; } .missing { color:#8a453b; }
+.repair-note { display:inline-block; margin:-4px 0 8px; padding:4px 6px; background:#d8e4e3; color:#294a4e; font-size:.74rem; font-weight:700; line-height:1.25; }
+.image-wrap { aspect-ratio:1; background:#ebe6dc; display:grid; place-items:center; overflow:hidden; }
+.object-image { width:100%; height:100%; object-fit:cover; }
+.missing-image { padding:16px; text-align:center; color:var(--muted); font-size:.85rem; line-height:1.35; }
+.metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:11px 0 0; }
+.metrics div { min-width:0; }
+dt { color:var(--muted); font-size:.68rem; } dd { margin:2px 0 0; font-size:.78rem; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.critique { margin:10px 0 0; color:var(--muted); font-size:.78rem; line-height:1.35; }
+.dimensions { margin-top:8px; color:var(--muted); font-size:.74rem; }
+.links { display:flex; gap:9px; flex-wrap:wrap; margin-top:auto; padding-top:12px; }
+a { color:var(--accent); font-size:.78rem; text-underline-offset:2px; }
+body.blind .model-name { display:none; } body:not(.blind) .blind-label { display:none; }
+body.blind .metrics,body.blind .critique,body.blind .links { display:none; }
+@media (max-width:700px) { main { padding:24px 14px 42px; } .masthead { align-items:start; flex-direction:column; } .controls { justify-content:flex-start; } .case-heading { align-items:start; flex-direction:column; gap:3px; } }
+</style>
+</head>
+<body>
+<main>
+  <header class="masthead">
+    <div><h1>Object recipe comparison</h1><p class="intro">Five model outputs, built by one frozen renderer. Select the view before a taste review.</p></div>
+    <div class="controls" aria-label="Gallery controls">
+      <button type="button" data-view="perspective" aria-pressed="true">Angled</button>
+      <button type="button" data-view="top" aria-pressed="false">Top</button>
+      <button type="button" id="blind-toggle" aria-pressed="false">Blind labels</button>
+    </div>
+  </header>
+  <section class="case-row" data-case="earring">
+  <header class="case-heading"><h2>Earring</h2><p>Original outputs; repairs are labeled</p></header>
+  <div class="comparison-grid"><article class="result-card" data-model="flash-lite">
+  <div class="card-head">
+    <h3 class="model-name" data-real-label="Gemini 2.5 Flash Lite">Gemini 2.5 Flash Lite</h3>
+    <span class="blind-label" aria-hidden="true"></span>
+  </div>
+  <div class="status-wrap"><span class="state ready">Rendered</span></div>
+  <div class="image-wrap"><img class="object-image" src="results/flash-lite/earring/render/perspective.png" data-perspective="results/flash-lite/earring/render/perspective.png" data-top="results/flash-lite/earring/render/top.png" data-real-alt="Earring render from google/gemini-2.5-flash-lite" alt="Earring render from google/gemini-2.5-flash-lite"></div>
+  <dl class="metrics">
+    <div><dt>API</dt><dd>2.01 s</dd></div>
+    <div><dt>Billed</dt><dd>$0.000266</dd></div>
+    <div><dt>Render</dt><dd>43.06 s</dd></div>
+  </dl>
+  <p class="dimensions">Size: 24.0 x 24.0 x 19.0 mm</p>
+  <p class="critique">Floating hoop; the bead does not connect.</p>
+  <nav class="links" aria-label="Saved files"><a href="results/flash-lite/earring/recipe.json" target="_blank">Recipe</a><a class="png-link" href="results/flash-lite/earring/render/perspective.png" target="_blank">Full image</a><a href="results/flash-lite/earring/render/object.glb" target="_blank">GLB</a></nav>
+</article><article class="result-card" data-model="deepseek">
+  <div class="card-head">
+    <h3 class="model-name" data-real-label="DeepSeek V4.1 Flash">DeepSeek V4.1 Flash</h3>
+    <span class="blind-label" aria-hidden="true"></span>
+  </div>
+  <div class="status-wrap"><span class="state ready">Rendered</span></div>
+  <div class="image-wrap"><img class="object-image" src="results/deepseek/earring/render/perspective.png" data-perspective="results/deepseek/earring/render/perspective.png" data-top="results/deepseek/earring/render/top.png" data-real-alt="Earring render from deepseek/deepseek-v4.1-flash" alt="Earring render from deepseek/deepseek-v4.1-flash"></div>
+  <dl class="metrics">
+    <div><dt>API</dt><dd>42.73 s</dd></div>
+    <div><dt>Billed</dt><dd>$0.010516</dd></div>
+    <div><dt>Render</dt><dd>41.39 s</dd></div>
+  </dl>
+  <p class="dimensions">Size: 23.6 x 27.1 x 5.4 mm</p>
+  <p class="critique">Coherent angular hoop, closer to an open cuff.</p>
+  <nav class="links" aria-label="Saved files"><a href="results/deepseek/earring/recipe.json" target="_blank">Recipe</a><a class="png-link" href="results/deepseek/earring/render/perspective.png" target="_blank">Full image</a><a href="results/deepseek/earring/render/object.glb" target="_blank">GLB</a></nav>
+</article><article class="result-card" data-model="glm">
+  <div class="card-head">
+    <h3 class="model-name" data-real-label="GLM 5.3">GLM 5.3</h3>
+    <span class="blind-label" aria-hidden="true"></span>
+  </div>
+  <div class="status-wrap"><span class="state ready">Rendered</span></div>
+  <div class="image-wrap"><img class="object-image" src="results/glm/earring/render/perspective.png" data-perspective="results/glm/earring/render/perspective.png" data-top="results/glm/earring/render/top.png" data-real-alt="Earring render from z-ai/glm-5.3" alt="Earring render from z-ai/glm-5.3"></div>
+  <dl class="metrics">
+    <div><dt>API</dt><dd>5.95 s</dd></div>
+    <div><dt>Billed</dt><dd>$0.01185</dd></div>
+    <div><dt>Render</dt><dd>41.47 s</dd></div>
+  </dl>
+  <p class="dimensions">Size: 19.4 x 22.0 x 5.0 mm</p>
+  <p class="critique">Disconnected rods instead of a continuous hoop.</p>
+  <nav class="links" aria-label="Saved files"><a href="results/glm/earring/recipe.json" target="_blank">Recipe</a><a class="png-link" href="results/glm/earring/render/perspective.png" target="_blank">Full image</a><a href="results/glm/earring/render/object.glb" target="_blank">GLB</a></nav>
+</article><article class="result-card" data-model="qwen">
+  <div class="card-head">
+    <h3 class="model-name" data-real-label="Qwen3.8 Max">Qwen3.8 Max</h3>
+    <span class="blind-label" aria-hidden="true"></span>
+  </div>
+  <div class="status-wrap"><span class="state ready">Rendered</span></div>
+  <div class="image-wrap"><img class="object-image" src="results/qwen/earring/render/perspective.png" data-perspective="results/qwen/earring/render/perspective.png" data-top="results/qwen/earring/render/top.png" data-real-alt="Earring render from qwen/qwen3.8-max-0902" alt="Earring render from qwen/qwen3.8-max-0902"></div>
+  <dl class="metrics">
+    <div><dt>API</dt><dd>185.76 s</dd></div>
+    <div><dt>Billed</dt><dd>$0.05673</dd></div>
+    <div><dt>Render</dt><dd>41.42 s</dd></div>
+  </dl>
+  <p class="dimensions">Size: 24.5 x 33.5 x 7.0 mm</p>
+  <p class="critique">Distracting black blocks. Its 33.5 mm length exceeds the 28 mm brief.</p>
+  <nav class="links" aria-label="Saved files"><a href="results/qwen/earring/recipe.json" target="_blank">Recipe</a><a class="png-link" href="results/qwen/earring/render/perspective.png" target="_blank">Full image</a><a href="results/qwen/earring/render/object.glb" target="_blank">GLB</a></nav>
+</article><article class="result-card" data-model="gemini">
+  <div class="card-head">
+    <h3 class="model-name" data-real-label="Gemini 3.8 Flash">Gemini 3.8 Flash</h3>
+    <span class="blind-label" aria-hidden="true"></span>
+  </div>
+  <div class="status-wrap"><span class="state ready">Rendered</span></div>
+  <div class="image-wrap"><img class="object-image" src="results/gemini/earring/render/perspective.png" data-perspective="results/gemini/earring/render/perspective.png" data-top="results/gemini/earring/render/top.png" data-real-alt="Earring render from google/gemini-3.8-flash" alt="Earring render from google/gemini-3.8-flash"></div>
+  <dl class="metrics">
+    <div><dt>API</dt><dd>8.17 s</dd></div>
+    <div><dt>Billed</dt><dd>$0.005987</dd></div>
+    <div><dt>Render</dt><dd>40.55 s</dd></div>
+  </dl>
+  <p class="dimensions">Size: 14.0 x 23.8 x 6.0 mm</p>
+  <p class="critique">Best earring appearance. Convincing pendant details; hardware remains approximate.</p>
+  <nav class="links" aria-label="Saved files"><a href="results/gemini/earring/recipe.json" target="_blank">Recipe</a><a class="png-link" href="results/gemini/earring/render/perspective.png" target="_blank">Full image</a><a href="results/gemini/earring/render/object.glb" target="_blank">GLB</a></nav>
+</article></div>
+</section><section class="case-row" data-case="star">
+  <header class="case-heading"><h2>Star</h2><p>Original outputs; repairs are labeled</p></header>
+  <div class="comparison-grid"><article class="result-card" data-model="flash-lite">
+  <div class="card-head">
+    <h3 class="model-name" data-real-label="Gemini 2.5 Flash Lite">Gemini 2.5 Flash Lite</h3>
+    <span class="blind-label" aria-hidden="true"></span>
+  </div>
+  <div class="status-wrap"><span class="state ready">Rendered</span></div>
+  <div class="image-wrap"><img class="object-image" src="results/flash-lite/star/render/perspective.png" data-perspective="results/flash-lite/star/render/perspective.png" data-top="results/flash-lite/star/render/top.png" data-real-alt="Star render from google/gemini-2.5-flash-lite" alt="Star render from google/gemini-2.5-flash-lite"></div>
+  <dl class="metrics">
+    <div><dt>API</dt><dd>1.62 s</dd></div>
+    <div><dt>Billed</dt><dd>$0.000192</dd></div>
+    <div><dt>Render</dt><dd>39.01 s</dd></div>
+  </dl>
+  <p class="dimensions">Size: 14.3 x 16.1 x 2.0 mm</p>
+  <p class="critique">Recognizable five-point star, with uneven proportions.</p>
+  <nav class="links" aria-label="Saved files"><a href="results/flash-lite/star/recipe.json" target="_blank">Recipe</a><a class="png-link" href="results/flash-lite/star/render/perspective.png" target="_blank">Full image</a><a href="results/flash-lite/star/render/object.glb" target="_blank">GLB</a></nav>
+</article><article class="result-card" data-model="deepseek">
+  <div class="card-head">
+    <h3 class="model-name" data-real-label="DeepSeek V4.1 Flash">DeepSeek V4.1 Flash</h3>
+    <span class="blind-label" aria-hidden="true"></span>
+  </div>
+  <div class="status-wrap"><span class="state ready">Rendered</span></div>
+  <div class="image-wrap"><img class="object-image" src="results/deepseek/star/render/perspective.png" data-perspective="results/deepseek/star/render/perspective.png" data-top="results/deepseek/star/render/top.png" data-real-alt="Star render from deepseek/deepseek-v4.1-flash" alt="Star render from deepseek/deepseek-v4.1-flash"></div>
+  <dl class="metrics">
+    <div><dt>API</dt><dd>24.79 s</dd></div>
+    <div><dt>Billed</dt><dd>$0.0066</dd></div>
+    <div><dt>Render</dt><dd>35.69 s</dd></div>
+  </dl>
+  <p class="dimensions">Size: 18.0 x 17.9 x 2.0 mm</p>
+  <p class="critique">A decagon. It has no concave star valleys.</p>
+  <nav class="links" aria-label="Saved files"><a href="results/deepseek/star/recipe.json" target="_blank">Recipe</a><a class="png-link" href="results/deepseek/star/render/perspective.png" target="_blank">Full image</a><a href="results/deepseek/star/render/object.glb" target="_blank">GLB</a></nav>
+</article><article class="result-card" data-model="glm">
+  <div class="card-head">
+    <h3 class="model-name" data-real-label="GLM 5.3">GLM 5.3</h3>
+    <span class="blind-label" aria-hidden="true"></span>
+  </div>
+  <div class="status-wrap"><span class="state ready">Rendered</span></div>
+  <div class="image-wrap"><img class="object-image" src="results/glm/star/render/perspective.png" data-perspective="results/glm/star/render/perspective.png" data-top="results/glm/star/render/top.png" data-real-alt="Star render from z-ai/glm-5.3" alt="Star render from z-ai/glm-5.3"></div>
+  <dl class="metrics">
+    <div><dt>API</dt><dd>3.06 s</dd></div>
+    <div><dt>Billed</dt><dd>$0.002162</dd></div>
+    <div><dt>Render</dt><dd>41.74 s</dd></div>
+  </dl>
+  <p class="dimensions">Size: 17.9 x 12.9 x 2.0 mm</p>
+  <p class="critique">Six points instead of the requested five.</p>
+  <nav class="links" aria-label="Saved files"><a href="results/glm/star/recipe.json" target="_blank">Recipe</a><a class="png-link" href="results/glm/star/render/perspective.png" target="_blank">Full image</a><a href="results/glm/star/render/object.glb" target="_blank">GLB</a></nav>
+</article><article class="result-card" data-model="qwen">
+  <div class="card-head">
+    <h3 class="model-name" data-real-label="Qwen3.8 Max">Qwen3.8 Max</h3>
+    <span class="blind-label" aria-hidden="true"></span>
+  </div>
+  <div class="status-wrap"><span class="state missing">Initial outline failed duplicate-vertex validation</span><span class="repair-note">Normalized duplicate closure</span></div>
+  <div class="image-wrap"><img class="object-image" src="results/qwen-repair/star/render/perspective.png" data-perspective="results/qwen-repair/star/render/perspective.png" data-top="results/qwen-repair/star/render/top.png" data-real-alt="Star render from qwen/qwen3.8-max-0902" alt="Star render from qwen/qwen3.8-max-0902"></div>
+  <dl class="metrics">
+    <div><dt>API</dt><dd>49.70 s</dd></div>
+    <div><dt>Billed</dt><dd>$0.015194</dd></div>
+    <div><dt>Render</dt><dd>39.96 s</dd></div>
+  </dl>
+  <p class="dimensions">Size: 6.2 x 9.7 x 2.0 mm</p>
+  <p class="critique">Malformed outline, about 6.2 by 9.7 mm instead of roughly 18 mm.</p>
+  <nav class="links" aria-label="Saved files"><a href="results/qwen-repair/star/recipe.json" target="_blank">Recipe</a><a class="png-link" href="results/qwen-repair/star/render/perspective.png" target="_blank">Full image</a><a href="results/qwen-repair/star/render/object.glb" target="_blank">GLB</a><a href="results/qwen/star/openrouter_response.json" target="_blank">Original JSON</a><a href="results/qwen/star/execution.json" target="_blank">Original failure</a></nav>
+</article><article class="result-card" data-model="gemini">
+  <div class="card-head">
+    <h3 class="model-name" data-real-label="Gemini 3.8 Flash">Gemini 3.8 Flash</h3>
+    <span class="blind-label" aria-hidden="true"></span>
+  </div>
+  <div class="status-wrap"><span class="state ready">Rendered</span></div>
+  <div class="image-wrap"><img class="object-image" src="results/gemini/star/render/perspective.png" data-perspective="results/gemini/star/render/perspective.png" data-top="results/gemini/star/render/top.png" data-real-alt="Star render from google/gemini-3.8-flash" alt="Star render from google/gemini-3.8-flash"></div>
+  <dl class="metrics">
+    <div><dt>API</dt><dd>7.88 s</dd></div>
+    <div><dt>Billed</dt><dd>$0.004508</dd></div>
+    <div><dt>Render</dt><dd>45.14 s</dd></div>
+  </dl>
+  <p class="dimensions">Size: 16.9 x 16.1 x 2.0 mm</p>
+  <p class="critique">Best five-point silhouette. Clean and balanced.</p>
+  <nav class="links" aria-label="Saved files"><a href="results/gemini/star/recipe.json" target="_blank">Recipe</a><a class="png-link" href="results/gemini/star/render/perspective.png" target="_blank">Full image</a><a href="results/gemini/star/render/object.glb" target="_blank">GLB</a></nav>
+</article></div>
+</section><section class="case-row" data-case="logo">
+  <header class="case-heading"><h2>NOVA badge</h2><p>Original outputs; repairs are labeled</p></header>
+  <div class="comparison-grid"><article class="result-card" data-model="flash-lite">
+  <div class="card-head">
+    <h3 class="model-name" data-real-label="Gemini 2.5 Flash Lite">Gemini 2.5 Flash Lite</h3>
+    <span class="blind-label" aria-hidden="true"></span>
+  </div>
+  <div class="status-wrap"><span class="state ready">Rendered</span></div>
+  <div class="image-wrap"><img class="object-image" src="results/flash-lite/logo/render/perspective.png" data-perspective="results/flash-lite/logo/render/perspective.png" data-top="results/flash-lite/logo/render/top.png" data-real-alt="NOVA badge render from google/gemini-2.5-flash-lite" alt="NOVA badge render from google/gemini-2.5-flash-lite"></div>
+  <dl class="metrics">
+    <div><dt>API</dt><dd>2.54 s</dd></div>
+    <div><dt>Billed</dt><dd>$0.000419</dd></div>
+    <div><dt>Render</dt><dd>38.88 s</dd></div>
+  </dl>
+  <p class="dimensions">Size: 26.0 x 26.0 x 1.5 mm</p>
+  <p class="critique">Readable NOVA text, but the white silhouette does not form an N.</p>
+  <nav class="links" aria-label="Saved files"><a href="results/flash-lite/logo/recipe.json" target="_blank">Recipe</a><a class="png-link" href="results/flash-lite/logo/render/perspective.png" target="_blank">Full image</a><a href="results/flash-lite/logo/render/object.glb" target="_blank">GLB</a></nav>
+</article><article class="result-card" data-model="deepseek">
+  <div class="card-head">
+    <h3 class="model-name" data-real-label="DeepSeek V4.1 Flash">DeepSeek V4.1 Flash</h3>
+    <span class="blind-label" aria-hidden="true"></span>
+  </div>
+  <div class="status-wrap"><span class="state missing">Initial attempt reached its token limit</span><span class="repair-note">Retry: 16k token limit</span></div>
+  <div class="image-wrap"><img class="object-image" src="results/deepseek-repair/logo/render/perspective.png" data-perspective="results/deepseek-repair/logo/render/perspective.png" data-top="results/deepseek-repair/logo/render/top.png" data-real-alt="NOVA badge render from deepseek/deepseek-v4.1-flash" alt="NOVA badge render from deepseek/deepseek-v4.1-flash"></div>
+  <dl class="metrics">
+    <div><dt>API total</dt><dd>63.86 s</dd></div>
+    <div><dt>Billed total</dt><dd>$0.019454</dd></div>
+    <div><dt>Render</dt><dd>39.23 s</dd></div>
+  </dl>
+  <p class="dimensions">Size: 26.0 x 26.0 x 2.7 mm</p>
+  <p class="critique">Best badge in the blind review. Clear N and spacious layout, after a retry.</p>
+  <nav class="links" aria-label="Saved files"><a href="results/deepseek-repair/logo/recipe.json" target="_blank">Recipe</a><a class="png-link" href="results/deepseek-repair/logo/render/perspective.png" target="_blank">Full image</a><a href="results/deepseek-repair/logo/render/object.glb" target="_blank">GLB</a><a href="results/deepseek/logo/openrouter_response.json" target="_blank">Original JSON</a><a href="results/deepseek/logo/execution.json" target="_blank">Original failure</a></nav>
+</article><article class="result-card" data-model="glm">
+  <div class="card-head">
+    <h3 class="model-name" data-real-label="GLM 5.3">GLM 5.3</h3>
+    <span class="blind-label" aria-hidden="true"></span>
+  </div>
+  <div class="status-wrap"><span class="state ready">Rendered</span></div>
+  <div class="image-wrap"><img class="object-image" src="results/glm/logo/render/perspective.png" data-perspective="results/glm/logo/render/perspective.png" data-top="results/glm/logo/render/top.png" data-real-alt="NOVA badge render from z-ai/glm-5.3" alt="NOVA badge render from z-ai/glm-5.3"></div>
+  <dl class="metrics">
+    <div><dt>API</dt><dd>8.18 s</dd></div>
+    <div><dt>Billed</dt><dd>$0.007054</dd></div>
+    <div><dt>Render</dt><dd>41.89 s</dd></div>
+  </dl>
+  <p class="dimensions">Size: 26.0 x 26.0 x 3.8 mm</p>
+  <p class="critique">Strong, readable badge. The star sits close to the N.</p>
+  <nav class="links" aria-label="Saved files"><a href="results/glm/logo/recipe.json" target="_blank">Recipe</a><a class="png-link" href="results/glm/logo/render/perspective.png" target="_blank">Full image</a><a href="results/glm/logo/render/object.glb" target="_blank">GLB</a></nav>
+</article><article class="result-card" data-model="qwen">
+  <div class="card-head">
+    <h3 class="model-name" data-real-label="Qwen3.8 Max">Qwen3.8 Max</h3>
+    <span class="blind-label" aria-hidden="true"></span>
+  </div>
+  <div class="status-wrap"><span class="state ready">Rendered</span></div>
+  <div class="image-wrap"><img class="object-image" src="results/qwen/logo/render/perspective.png" data-perspective="results/qwen/logo/render/perspective.png" data-top="results/qwen/logo/render/top.png" data-real-alt="NOVA badge render from qwen/qwen3.8-max-0902" alt="NOVA badge render from qwen/qwen3.8-max-0902"></div>
+  <dl class="metrics">
+    <div><dt>API</dt><dd>78.63 s</dd></div>
+    <div><dt>Billed</dt><dd>$0.023772</dd></div>
+    <div><dt>Render</dt><dd>39.77 s</dd></div>
+  </dl>
+  <p class="dimensions">Size: 26.0 x 26.0 x 2.7 mm</p>
+  <p class="critique">Readable wordmark, but dark seams break the N.</p>
+  <nav class="links" aria-label="Saved files"><a href="results/qwen/logo/recipe.json" target="_blank">Recipe</a><a class="png-link" href="results/qwen/logo/render/perspective.png" target="_blank">Full image</a><a href="results/qwen/logo/render/object.glb" target="_blank">GLB</a></nav>
+</article><article class="result-card" data-model="gemini">
+  <div class="card-head">
+    <h3 class="model-name" data-real-label="Gemini 3.8 Flash">Gemini 3.8 Flash</h3>
+    <span class="blind-label" aria-hidden="true"></span>
+  </div>
+  <div class="status-wrap"><span class="state ready">Rendered</span></div>
+  <div class="image-wrap"><img class="object-image" src="results/gemini/logo/render/perspective.png" data-perspective="results/gemini/logo/render/perspective.png" data-top="results/gemini/logo/render/top.png" data-real-alt="NOVA badge render from google/gemini-3.8-flash" alt="NOVA badge render from google/gemini-3.8-flash"></div>
+  <dl class="metrics">
+    <div><dt>API</dt><dd>7.41 s</dd></div>
+    <div><dt>Billed</dt><dd>$0.005824</dd></div>
+    <div><dt>Render</dt><dd>41.35 s</dd></div>
+  </dl>
+  <p class="dimensions">Size: 26.0 x 26.0 x 2.8 mm</p>
+  <p class="critique">The gold rim adds polish, but dark seams weaken the N.</p>
+  <nav class="links" aria-label="Saved files"><a href="results/gemini/logo/recipe.json" target="_blank">Recipe</a><a class="png-link" href="results/gemini/logo/render/perspective.png" target="_blank">Full image</a><a href="results/gemini/logo/render/object.glb" target="_blank">GLB</a></nav>
+</article></div>
+</section>
+</main>
+<script>
+const buttons = document.querySelectorAll('[data-view]');
+const images = document.querySelectorAll('.object-image');
+const pngLinks = document.querySelectorAll('.png-link');
+function setView(view) {
+  buttons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.view === view)));
+  images.forEach((image) => image.src = image.dataset[view]);
+  pngLinks.forEach((link) => {
+    const image = link.closest('.result-card').querySelector('.object-image');
+    if (image) link.href = image.dataset[view];
+  });
+}
+buttons.forEach((button) => button.addEventListener('click', () => setView(button.dataset.view)));
+document.querySelector('#blind-toggle').addEventListener('click', (event) => {
+  document.body.classList.toggle('blind');
+  images.forEach((image) => image.alt = document.body.classList.contains('blind') ? 'Rendered object' : image.dataset.realAlt);
+  event.currentTarget.setAttribute('aria-pressed', String(document.body.classList.contains('blind')));
+});
+document.querySelectorAll('.comparison-grid').forEach((grid) => grid.querySelectorAll('.blind-label').forEach((label, index) => label.textContent = String.fromCharCode(65 + index)));
+const selectedCase = new URLSearchParams(location.search).get('case');
+if (['earring', 'star', 'logo'].includes(selectedCase)) {
+  document.querySelectorAll('.case-row').forEach((row) => row.hidden = row.dataset.case !== selectedCase);
+}
+</script>
+</body>
+</html>

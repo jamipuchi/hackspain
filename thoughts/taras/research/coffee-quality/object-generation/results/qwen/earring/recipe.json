@@ -1,0 +1,151 @@
+{
+  "name": "Gold Hoop Earring with Turquoise Bead Pendant",
+  "design_notes": "Open gold hoop lying in XY plane with a visible gap, and a turquoise bead pendant hanging from the bottom of the hoop.",
+  "parts": [
+    {
+      "name": "hoop",
+      "kind": "ring",
+      "position_mm": [
+        0,
+        0,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "size_mm": [
+        24,
+        24,
+        3
+      ],
+      "color": [
+        0.93,
+        0.75,
+        0.15
+      ],
+      "metallic": 0.95,
+      "roughness": 0.18,
+      "tube_mm": 1.5,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "gap_fill_left",
+      "kind": "box",
+      "position_mm": [
+        10.5,
+        3.5,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "size_mm": [
+        4,
+        4,
+        3.2
+      ],
+      "color": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "roughness": 1.0,
+      "tube_mm": 0,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "gap_fill_right",
+      "kind": "box",
+      "position_mm": [
+        10.5,
+        -3.5,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "size_mm": [
+        4,
+        4,
+        3.2
+      ],
+      "color": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "roughness": 1.0,
+      "tube_mm": 0,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "bail",
+      "kind": "cylinder",
+      "position_mm": [
+        0,
+        -12.5,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "size_mm": [
+        2.4,
+        2.4,
+        3.4
+      ],
+      "color": [
+        0.93,
+        0.75,
+        0.15
+      ],
+      "metallic": 0.95,
+      "roughness": 0.18,
+      "tube_mm": 0,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "bead",
+      "kind": "ellipsoid",
+      "position_mm": [
+        0,
+        -17.5,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "size_mm": [
+        7,
+        8,
+        7
+      ],
+      "color": [
+        0.15,
+        0.72,
+        0.7
+      ],
+      "metallic": 0.05,
+      "roughness": 0.35,
+      "tube_mm": 0,
+      "outline": [],
+      "text": ""
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "recipe_name": "Five-Point Star Token",
+  "engine": "CYCLES",
+  "samples": 24,
+  "blender_version": "5.2.2 LTS",
+  "blender_build_hash": "d13f752e3b9c",
+  "seed": 20260919,
+  "recipe_sha256": "137b532b38576605797baf9fc81fa263a895df975c144cdc359391ed39402257",
+  "renderer_sha256": "42924fc046d5fd500c55e4517089bc138ca9c880f12cb18d8389a4290320499b",
+  "scene_threads": {
+    "mode": "FIXED",
+    "threads": 1
+  },
+  "mesh_counts": {
+    "objects": 1,
+    "vertices": 140,
+    "polygons": 132
+  },
+  "bounding_dimensions_mm": [
+    14.274733543395996,
+    16.074848175048828,
+    2.0
+  ],
+  "part_bounds_mm": [
+    {
+      "name": "Star Body",
+      "minimum_mm": [
+        -7.137366771697998,
+        -7.148042678833008,
+        0.0
+      ],
+      "maximum_mm": [
+        7.137366771697998,
+        8.92680549621582,
+        2.0
+      ],
+      "dimensions_mm": [
+        14.274733543395996,
+        16.074848175048828,
+        2.0
+      ]
+    }
+  ],
+  "glb_units": "meters",
+  "glb_scale_from_recipe_mm": 0.001,
+  "render_timings_seconds": {
+    "perspective": 18.560528917005286,
+    "top": 20.450272375019267,
+    "total": 39.01080129202455
+  }
+}

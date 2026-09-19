@@ -1,0 +1,25 @@
+{
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "geometry_family": {
+        "type": "choice",
+        "choice": "layered_badge",
+        "confidence": 1.0,
+        "probabilities": {
+          "defer": 0.0,
+          "open_ring": 0.0,
+          "layered_badge": 1.0,
+          "flat_silhouette": 0.0
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 487,
+      "output_tokens": 62
+    }
+  },
+  "latency_s": 0.5961050840560347,
+  "request_sha256": "40bf6cdba151cb87861790675f901542016e8a0077f9c12c723aa6d64f899635",
+  "endpoint": "https://api.typesafe.ai/v1/systemone"
+}

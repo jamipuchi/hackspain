@@ -1,0 +1,76 @@
+{
+  "name": "gold_star_token",
+  "design_notes": "A single continuous five-pointed star token, 18 mm wide, 2 mm thick, lying flat in the XY plane.",
+  "parts": [
+    {
+      "name": "star_body",
+      "kind": "polygon",
+      "position_mm": [
+        0,
+        0,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "size_mm": [
+        18,
+        18,
+        2
+      ],
+      "color": [
+        0.83,
+        0.69,
+        0.22
+      ],
+      "metallic": 0.95,
+      "roughness": 0.25,
+      "tube_mm": 0,
+      "outline": [
+        [
+          -0.0588,
+          0.1809
+        ],
+        [
+          -0.1763,
+          0.2427
+        ],
+        [
+          -0.1763,
+          0.0573
+        ],
+        [
+          -0.2939,
+          -0.0046
+        ],
+        [
+          -0.3527,
+          -0.1855
+        ],
+        [
+          -0.2351,
+          -0.1236
+        ],
+        [
+          -0.1763,
+          -0.3045
+        ],
+        [
+          -0.1176,
+          -0.1236
+        ],
+        [
+          -0.0,
+          -0.1855
+        ],
+        [
+          -0.0588,
+          -0.0046
+        ]
+      ],
+      "text": ""
+    }
+  ]
+}

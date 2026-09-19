@@ -1,0 +1,166 @@
+{
+  "name": "gold_hoop_turquoise_pendant",
+  "design_notes": "Open C-shaped gold hoop in XY plane with a turquoise bead pendant attached at the bottom via a small gold connector. Fits within 28 mm.",
+  "parts": [
+    {
+      "name": "hoop",
+      "kind": "polygon",
+      "position_mm": [
+        0,
+        0,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "size_mm": [
+        24,
+        24,
+        2
+      ],
+      "color": [
+        1.0,
+        0.766,
+        0.336
+      ],
+      "metallic": 1.0,
+      "roughness": 0.2,
+      "tube_mm": 0,
+      "outline": [
+        [
+          -0.17101,
+          0.469846
+        ],
+        [
+          -0.433013,
+          0.25
+        ],
+        [
+          -0.492404,
+          -0.086824
+        ],
+        [
+          -0.321394,
+          -0.383022
+        ],
+        [
+          0.0,
+          -0.5
+        ],
+        [
+          0.321394,
+          -0.383022
+        ],
+        [
+          0.492404,
+          -0.086824
+        ],
+        [
+          0.433013,
+          0.25
+        ],
+        [
+          0.17101,
+          0.469846
+        ],
+        [
+          0.128258,
+          0.352385
+        ],
+        [
+          0.32476,
+          0.1875
+        ],
+        [
+          0.369303,
+          -0.065118
+        ],
+        [
+          0.241045,
+          -0.287267
+        ],
+        [
+          0.0,
+          -0.375
+        ],
+        [
+          -0.241045,
+          -0.287267
+        ],
+        [
+          -0.369303,
+          -0.065118
+        ],
+        [
+          -0.32476,
+          0.1875
+        ],
+        [
+          -0.128258,
+          0.352385
+        ]
+      ],
+      "text": ""
+    },
+    {
+      "name": "connector",
+      "kind": "cylinder",
+      "position_mm": [
+        0,
+        -12,
+        0
+      ],
+      "rotation_deg": [
+        90,
+        0,
+        0
+      ],
+      "size_mm": [
+        2.2,
+        2.2,
+        2.2
+      ],
+      "color": [
+        1.0,
+        0.766,
+        0.336
+      ],
+      "metallic": 1.0,
+      "roughness": 0.2,
+      "tube_mm": 0,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "bead",
+      "kind": "ellipsoid",
+      "position_mm": [
+        0,
+        -13.2,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "size_mm": [
+        5.4,
+        5.4,
+        5.4
+      ],
+      "color": [
+        0.25,
+        0.88,
+        0.82
+      ],
+      "metallic": 0.0,
+      "roughness": 0.3,
+      "tube_mm": 0,
+      "outline": [],
+      "text": ""
+    }
+  ]
+}
