@@ -83,3 +83,28 @@ layout: 5/5 parts on the workspace, closest pair 2.8 cm
   → note_parts({"parts": [{"id": "R1", "x_cm": 6.5, "y_cm": -2.5, "kind": "screw", "material": "rusty_steel", "target": "reject", "status": "done", "note": "Recentered pickup succeeded; released in reject, verified camera B."}, {"id": "R2", "x_cm": 8, "y_cm": 4, "kind": "screw", "material": "rusty_steel", "target": "reject", "status": "todo", "note": "Brown/orange shorter screw; visible rust."}, {"id": "L1", "x_cm": 6, "y_cm": 4, "kind": "screw", "material": "zinc_steel", "target": "long", "status": "todo", "note": "Intact silver cross head; shaft approximately 25\u201330 mm."}, {"id": "L2", "x_cm": 10, "y_cm": 0, "kind": "screw", "material": "zinc_steel", "target": "long", "status": "todo", "note": "Silver screw approximately 30 mm; check head."}, {"id": "L3", "x_cm": 10, "y_cm": -4, "kind": "screw", "material": "black_steel", "target": "long", "status": "todo", "note": "Black screw approximately 25 mm; check head."}]})  [5.9s]
      ✓ inventory noted: 5 parts. A zoom mosaic of each noted part from every camera is attached: confirm kinds/materials, fix the inventory if needed, then a
   → pick_at({"x_cm": 8, "y_cm": 4})  [2.1s]
+     ✓ pick at (0.080,0.040) done, magnet on, arm lifted; magnet face now at (8.1, 4.0, z=7.1) cm, magnet ON
+  → place_in({"target": "reject"})  [2.6s]
+     ✓ pick at (8.0, 4.0) cm succeeded: the spot changed in camera B (part left it); released in the container; magnet face now at (9.6, 8.5, z=7.1) cm, magn
+  → note_parts({"parts": [{"id": "R1", "x_cm": 6.5, "y_cm": -2.5, "kind": "screw", "material": "rusty_steel", "target": "reject", "status": "done", "note": "Recentered pickup succeeded; released in reject, verified camera B."}, {"id": "R2", "x_cm": 8, "y_cm": 4, "kind": "screw", "material": "rusty_steel", "target": "reject", "status": "done", "note": "Released in reject; removal verified camera B."}, {"id": "L1", "x_cm": 6, "y_cm": 4, "kind": "screw", "material": "zinc_steel", "target": "long", "status": "todo", "note": "Intact silver cross head; shaft approximately 25\u201330 mm."}, {"id": "L2", "x_cm": 10, "y_cm": 0, "kind": "screw", "material": "zinc_steel", "target": "long", "status": "todo", "note": "Silver screw approximately 30 mm; check head."}, {"id": "L3", "x_cm": 10, "y_cm": -4, "kind": "screw", "material": "black_steel", "target": "long", "status": "todo", "note": "Black screw approximately 25 mm; check head."}]})  [5.0s]
+     ✓ inventory noted: 5 parts. A zoom mosaic of each noted part from every camera is attached: confirm kinds/materials, fix the inventory if needed, then a
+  → pick_at({"x_cm": 6, "y_cm": 4})  [1.9s]
+     ✓ pick at (0.060,0.040) done, magnet on, arm lifted; magnet face now at (6.2, 4.1, z=7.2) cm, magnet ON
+  → place_in({"target": "long"})  [2.6s]
+     ✗ pick at (6.0, 4.0) cm FAILED: the spot looks unchanged in camera A,B (part still there: not ferrous, or the magnet missed it); released over the conta
+  → take_photo({"camera": "B", "zoom_x_cm": 6, "zoom_y_cm": 4})  [1.9s]
+     ✓ photo taken; magnet face now at (13.1, -0.1, z=7.0) cm, magnet off
+  → take_photo({"camera": "A", "zoom_x_cm": 6, "zoom_y_cm": 4})  [2.2s]
+     ✓ photo taken; magnet face now at (13.1, -0.1, z=7.0) cm, magnet off
+  → pick_at({"x_cm": 6.5, "y_cm": 4.0})  [3.7s]
+     ✓ pick at (0.065,0.040) done, magnet on, arm lifted; magnet face now at (6.6, 4.1, z=7.1) cm, magnet ON
+  → place_in({"target": "long"})  [1.9s]
+     ✗ pick at (6.5, 4.0) cm FAILED: the spot looks unchanged in camera A,B (part still there: not ferrous, or the magnet missed it); released over the conta
+  → take_photo({"camera": "B", "zoom_x_cm": null, "zoom_y_cm": null})  [3.1s]
+     ✓ photo taken; magnet face now at (13.1, -0.1, z=7.0) cm, magnet off
+  → take_photo({"camera": "A", "zoom_x_cm": 10, "zoom_y_cm": 0})  [3.2s]
+     ✓ photo taken; magnet face now at (13.1, -0.1, z=7.0) cm, magnet off
+  → pick_at({"x_cm": 10, "y_cm": 0})  [4.0s]
+     ✓ pick at (0.100,0.000) done, magnet on, arm lifted; magnet face now at (10.2, -0.0, z=7.2) cm, magnet ON
+  → place_in({"target": "long"})  [2.8s]
+     ✗ pick at (10.0, 0.0) cm FAILED: the spot looks unchanged in camera A,B (part still there: not ferrous, or the magnet missed it); released over the cont
