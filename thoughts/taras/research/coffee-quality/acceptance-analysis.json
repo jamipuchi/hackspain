@@ -1,0 +1,49 @@
+{
+  "miss_partition": {
+    "classification_or_tracking": 65,
+    "hit_not_captured": 50,
+    "merged_without_target": 0,
+    "not_detected": 21,
+    "targeted_not_hit": 6,
+    "unresolved": 0
+  },
+  "missed_classes": {
+    "stone": 14,
+    "stick": 33,
+    "broken": 35,
+    "faded": 30,
+    "husk": 21,
+    "shell": 7,
+    "black": 2
+  },
+  "good_loss_contacts": {
+    "own_pulse": 293,
+    "outcome_reject": 339,
+    "other_contact": 46,
+    "no_jet_contact": 1,
+    "outcome_spilled": 1
+  },
+  "late_decisions": 0,
+  "mean_stage_ms_per_sim_second": {
+    "physics": 1186.6480088921421,
+    "inspection_render": 743.4585148261233,
+    "detection": 889.0745297022077,
+    "model_inference": 866.4898696717214,
+    "control": 63.22343313755732,
+    "evaluation": 1061.6410811456976
+  },
+  "other_session_audit": [
+    {
+      "path": "/tmp/coffee-ui-restart-bounded-6b51c36/report.json",
+      "session_id": "e0eb0b37-7d3e-49d5-96f5-adda793cfc3e",
+      "report_written_utc": "2026-09-19T15:21:26.531759+00:00",
+      "active_wall_seconds": 3.012951666954905
+    },
+    {
+      "path": "/tmp/coffee-ui-restart-taras-qa-6b51c36-restart-001-907c4028/report.json",
+      "session_id": "6eec7354-d53a-402c-a613-99174a4ce818",
+      "report_written_utc": "2026-09-19T15:23:48.194427+00:00",
+      "active_wall_seconds": 53.22390120802447
+    }
+  ]
+}
