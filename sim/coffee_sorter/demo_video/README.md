@@ -1,6 +1,6 @@
 # Coffee demo video previews
 
-This directory owns only the demo storyboard and preview-render command.
+This directory owns only the demo storyboard and preview-render commands.
 It does not own the source scene, simulator, model, live interface, or recorded evidence.
 
 ## Separate video previews
@@ -20,6 +20,8 @@ Every Blender process requires the shared runtime lock.
 An occupied lock returns status 75. Run the command again after the slot becomes available.
 
 The video gallery is `http://127.0.0.1:8894/clips.html` when the preview server is active.
+The completed package is `/private/tmp/coffee-demo-video-previews/coffee-demo-clips.zip`.
+It contains nine separate MP4s with descriptive filenames. It excludes the UI and rejected render attempts.
 It exposes each verified MP4 when that segment completes.
 The renderer retains existing verified clips and can resume verified partial frame sequences with identical inputs.
 It refuses mismatched inputs or unverified existing output files.
@@ -29,8 +31,31 @@ Dynamic segments use consecutive actual frames from the historical 30 Hz replay.
 The macro holds one recorded instant while its camera and focus move.
 Mode variants share the same frame sequence and camera path.
 No simulation, inferred bean trajectory, or optical-flow retiming runs inside this renderer.
-The air-jet segment requires a separate high-rate capture and is not part of this command yet.
+The air-jet segment uses a separate high-rate capture and a separate command.
 See `thoughts/taras/research/coffee-demo-video/SEGMENTS_REVIEW.md` for current progress and evidence.
+
+### Verified slow motion
+
+The engine task provides the fresh capture and its reproduction audit under the preview directory.
+Do not render until the independent audit approves that capture.
+The renderer requires the exact validated replay hash and zero pose differences.
+
+```sh
+python3 sim/coffee_sorter/demo_video/render_slowmo.py --study \
+  --output-dir /private/tmp/coffee-demo-video-previews/slowmo-study-review
+python3 sim/coffee_sorter/demo_video/render_slowmo.py
+```
+
+Inspect the seven study frames before the full render.
+The study also checks both bean centres for obstructions across all 120 frames.
+The final clip directory is `/private/tmp/coffee-demo-video-previews/segments-v2/05-ultra-slowmo-v2/`.
+The full clip uses the first 120 samples from the audited 143-sample interval.
+It ends at 1.716 simulated seconds, after both physical outcomes and before the splitter hides the good bean.
+Playback at 30 fps slows the motion by 16.667 times without synthetic poses.
+The camera tracks black bean 1261 and good bean 1256, then retreats as their paths separate.
+All other recorded beans remain present.
+The manifest records the source pulse, direct contacts, outcomes, camera, cutaways, and frame hashes.
+This development-seed example does not establish general sorting quality or hardware feasibility.
 
 ## Current scene studies
 

@@ -2,7 +2,8 @@
 
 Status: Taras approved the concepts and requested basic renders, with an ultra-slow-motion direction.
 The [basic render review](BASIC_RENDER_REVIEW.md) contains the completed still pass.
-See [the three-beat concept](SLOWMO_SHOT.md). New animation remains pending.
+See [the three-beat concept](SLOWMO_SHOT.md) and the separate [video previews](SEGMENTS_REVIEW.md).
+The video previews implement this direction with matched mode passes and a separately verified slow-motion event.
 
 ![Six scene concepts](/private/tmp/coffee-demo-video-previews/mockups/scene-studies-v2.png)
 
