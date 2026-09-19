@@ -4,7 +4,9 @@ from types import SimpleNamespace
 
 import numpy as np
 
+from controller import Policy
 from engine import Engine, MAX_COMPLETED_INJECTIONS
+from profiles import PROFILES
 from rolling_scores import RollingScoreLedger
 from sim import Fire
 
@@ -76,8 +78,9 @@ class RollingScoreLedgerTest(unittest.TestCase):
             "schema_version", "clock", "score_epoch_id", "as_of_sim_time_s",
             "window_seconds", "settling_seconds", "window_start_exclusive_s",
             "window_end_inclusive_s", "available_seconds", "warming_up",
-            "manual_injections_excluded", "settling_objects", "eligible_objects",
-            "sorting_accuracy", "defect_capture", "good_loss", "unresolved", "versions",
+            "manual_injections_excluded", "score_basis", "settling_objects",
+            "eligible_objects", "sorting_accuracy", "reject_capture", "keep_loss",
+            "defect_capture", "good_loss", "unresolved", "versions",
         })
         self.assertEqual(empty["available_seconds"], 0.0)
         self.assertTrue(empty["warming_up"])
@@ -98,8 +101,108 @@ class RollingScoreLedgerTest(unittest.TestCase):
         ledger.resolve(1, "accept")
         self.assertEqual(len(ledger), 0)
 
+    def test_epoch_availability_starts_at_policy_boundary(self):
+        ledger = RollingScoreLedger(60.0, start_sim_time_s=120.0)
+
+        self.assertEqual(self.scores(ledger, 120.5)["available_seconds"], 0.0)
+        self.assertAlmostEqual(self.scores(ledger, 121.1)["available_seconds"], 0.5)
+
 
 class ContinuousRetentionTest(unittest.TestCase):
+    def policy_engine(self):
+        engine = Engine.__new__(Engine)
+        engine.continuous = True
+        engine.session_id = "session"
+        engine.profile = PROFILES["green_arabica"]
+        engine.policy = Policy()
+        engine.reject_classes = tuple(item.name for item in engine.profile.classes if item.defect)
+        engine.policy_version = engine._policy_version()
+        engine.model_version = "model"
+        engine.source_revision = "source"
+        engine.score_epoch_id = "epoch-1"
+        engine.score_epoch_started_sim_time_s = 0.0
+        engine.policy_applied_sim_time_s = 0.0
+        engine.preset = {"score_window_seconds": 60.0}
+        engine._score_ledger = RollingScoreLedger(60.0)
+        engine._score_ledger.add(1, 1.0, True)
+        engine.sim = SimpleNamespace(
+            data=SimpleNamespace(time=5.0),
+            bean_of={1: object(), 2: object()},
+        )
+        engine.controller = SimpleNamespace(set_reject_classes=lambda values: setattr(
+            engine.controller, "applied", tuple(values)
+        ))
+        engine._event = lambda *args, **kwargs: None
+        return engine
+
+    def test_policy_change_starts_isolated_score_epoch_and_excludes_in_flight(self):
+        engine = self.policy_engine()
+
+        result = engine.set_reject_classes(["stone", "black"])
+
+        self.assertTrue(result["changed"])
+        self.assertEqual(result["in_flight_excluded"], 2)
+        self.assertEqual(engine.reject_classes, ("black", "stone"))
+        self.assertEqual(engine.controller.applied, ("black", "stone"))
+        self.assertNotEqual(engine.score_epoch_id, "epoch-1")
+        self.assertEqual(engine.score_epoch_started_sim_time_s, 5.0)
+        self.assertEqual(len(engine._score_ledger), 0)
+        self.assertEqual(engine.rolling_scores()["available_seconds"], 0.0)
+
+    def test_identical_policy_is_noop_and_keeps_score_window(self):
+        engine = self.policy_engine()
+        ledger = engine._score_ledger
+
+        result = engine.set_reject_classes(list(engine.reject_classes))
+
+        self.assertFalse(result["changed"])
+        self.assertEqual(engine.score_epoch_id, "epoch-1")
+        self.assertIs(engine._score_ledger, ledger)
+
+    def test_policy_supports_every_catalog_class_and_rejects_unknown_classes(self):
+        engine = self.policy_engine()
+
+        result = engine.set_reject_classes(["good"])
+        self.assertEqual(result["reject_classes"], ["good"])
+        with self.assertRaisesRegex(ValueError, "unsupported reject classes: unknown"):
+            engine.set_reject_classes(["unknown"])
+
+    def test_new_object_truth_uses_class_policy_after_cutover(self):
+        engine = self.policy_engine()
+        engine.set_reject_classes(["stone"])
+        engine.sim.body_geom = {3: 0, 4: 1}
+        engine.sim.model = SimpleNamespace(geom_rgba=np.ones((2, 4)))
+        engine._object_records = {}
+        engine._injected_ids = set()
+        engine._active_injections = set()
+        engine._event = lambda *args, **kwargs: None
+        black = SimpleNamespace(uid=3, cls="black", body=3, defect=True, spawn_t=5.1,
+                                axes=np.ones(3), outcome=None, resolved_t=None, jet_hits=0)
+        stone = SimpleNamespace(uid=4, cls="stone", body=4, defect=True, spawn_t=5.2,
+                                axes=np.ones(3), outcome=None, resolved_t=None, jet_hits=0)
+
+        engine._register_bean(black)
+        engine._register_bean(stone)
+
+        self.assertFalse(engine._object_records[3]["required_reject"])
+        self.assertTrue(engine._object_records[4]["required_reject"])
+
+    def test_normally_accepted_class_can_become_policy_reject(self):
+        engine = self.policy_engine()
+        engine.set_reject_classes(["good"])
+        engine.sim.body_geom = {5: 0}
+        engine.sim.model = SimpleNamespace(geom_rgba=np.ones((1, 4)))
+        engine._object_records = {}
+        engine._injected_ids = set()
+        engine._active_injections = set()
+        engine._event = lambda *args, **kwargs: None
+        bean = SimpleNamespace(uid=5, cls="good", body=5, defect=False, spawn_t=5.1,
+                               axes=np.ones(3), outcome=None, resolved_t=None, jet_hits=0)
+
+        engine._register_bean(bean)
+
+        self.assertTrue(engine._object_records[5]["required_reject"])
+
     def test_pending_fire_records_each_object_contact_once(self):
         fire = Fire(nozzle=1, t_on=0.0, t_off=0.01, force=0.06, uid=42)
 
@@ -114,6 +217,7 @@ class ContinuousRetentionTest(unittest.TestCase):
         engine.session_id = "session"
         engine.model_version = "model"
         engine.policy_version = "policy"
+        engine.score_epoch_id = "session"
         engine.source_revision = "source"
         engine.sim = SimpleNamespace(data=SimpleNamespace(time=0.6))
         engine._score_ledger = RollingScoreLedger(60.0)
@@ -132,9 +236,10 @@ class ContinuousRetentionTest(unittest.TestCase):
         engine.continuous = True
         engine.session_id = "session"
         engine.profile = SimpleNamespace(
-            by_name=lambda name: SimpleNamespace(severity="major", shape="ellipsoid")
+            by_name=lambda name: SimpleNamespace(name=name, severity="major", shape="ellipsoid")
         )
         engine.policy = SimpleNamespace(reject_severities=("major",))
+        engine.reject_classes = ("black",)
         engine.sim = SimpleNamespace(
             body_geom={1: 0},
             model=SimpleNamespace(geom_rgba=np.ones((1, 4))),

@@ -27,10 +27,11 @@ def _score(numerator: int, denominator: int) -> dict:
 class RollingScoreLedger:
     """Retain only feed truth that can enter the current score window."""
 
-    def __init__(self, window_seconds: float):
+    def __init__(self, window_seconds: float, start_sim_time_s: float = 0.0):
         if window_seconds <= 0:
             raise ValueError("score_window_seconds must be greater than zero")
         self.window_seconds = float(window_seconds)
+        self.start_sim_time_s = float(start_sim_time_s)
         self._rows: deque[ScoreRow] = deque()
         self._by_id: dict[int, ScoreRow] = {}
 
@@ -69,7 +70,12 @@ class RollingScoreLedger:
         accepted_keep = sum(row.outcome == "accept" for row in keep)
         good_lost = sum(row.outcome in ("reject", "spilled") for row in keep)
         unresolved = sum(row.outcome is None for row in eligible)
-        available = max(0.0, min(self.window_seconds, now - SETTLING_SECONDS))
+        available = max(
+            0.0,
+            min(self.window_seconds, now - self.start_sim_time_s - SETTLING_SECONDS),
+        )
+        reject_capture = _score(captured, len(required))
+        keep_loss = _score(good_lost, len(keep))
         return {
             "schema_version": 1,
             "clock": "simulation",
@@ -82,11 +88,14 @@ class RollingScoreLedger:
             "available_seconds": available,
             "warming_up": available < self.window_seconds,
             "manual_injections_excluded": True,
+            "score_basis": "active_reject_policy",
             "settling_objects": settling,
             "eligible_objects": len(eligible),
             "sorting_accuracy": _score(captured + accepted_keep, len(eligible)),
-            "defect_capture": _score(captured, len(required)),
-            "good_loss": _score(good_lost, len(keep)),
+            "reject_capture": reject_capture,
+            "keep_loss": keep_loss,
+            "defect_capture": reject_capture,
+            "good_loss": keep_loss,
             "unresolved": _score(unresolved, len(eligible)),
             "versions": {
                 "model": model_version,

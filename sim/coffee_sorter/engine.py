@@ -155,13 +155,20 @@ class Engine:
             fixed_latency=policy_config["fixed_latency_s"],
             target_nozzles=policy_config["target_nozzles"],
         )
+        self.reject_classes = tuple(
+            item.name for item in self.profile.classes
+            if item.defect and item.severity in self.policy.reject_severities
+        )
         self.controller = Controller(
             self.sim, self.inspector, self.model, self.policy,
             jet_force=float(self.preset["jet_force_n"]), continuous=self.continuous,
             timing_limit=timing_limit,
         )
         self.model_version = _file_hash(self.model_path)
-        self.policy_version = _json_hash(asdict(self.policy))
+        self.policy_version = self._policy_version()
+        self.score_epoch_id = self.session_id
+        self.score_epoch_started_sim_time_s = 0.0
+        self.policy_applied_sim_time_s = 0.0
         self.preset_version = _json_hash(self.preset)
         try:
             self.source_revision = subprocess.check_output(
@@ -177,6 +184,75 @@ class Engine:
                 self.packages[name] = None
         self.source_hashes = {name: _file_hash(HERE / name) for name in SOURCE_FILES}
         self.startup_seconds = time.perf_counter() - startup_started
+
+    def _policy_version(self):
+        return _json_hash({"base": asdict(self.policy), "reject_classes": self.reject_classes})
+
+    def class_catalog(self):
+        return [
+            {"name": item.name, "defect": bool(item.defect), "severity": item.severity}
+            for item in self.profile.classes
+        ]
+
+    def reject_policy(self):
+        return {
+            "reject_classes": list(self.reject_classes),
+            "policy_version": self.policy_version,
+            "score_epoch_id": self.score_epoch_id,
+            "score_epoch_started_sim_time_s": self.score_epoch_started_sim_time_s,
+            "applied_sim_time_s": self.policy_applied_sim_time_s,
+        }
+
+    def spawn_region(self):
+        margin = 0.012
+        return {
+            "x_min": float(self.sim.L.feed_x[0]),
+            "x_max": float(self.sim.L.feed_x[1]),
+            "y_min": float(-self.sim.L.belt_w / 2 + margin),
+            "y_max": float(self.sim.L.belt_w / 2 - margin),
+            "belt_z": float(self.sim.L.belt_z),
+            "feed_drop": float(self.sim.L.feed_drop),
+            "random": True,
+        }
+
+    def set_reject_classes(self, reject_classes):
+        """Apply a class policy at a physics boundary and start a score epoch."""
+        if not self.continuous:
+            raise ValueError("reject policy changes require continuous mode")
+        if not isinstance(reject_classes, list) or any(
+            not isinstance(name, str) for name in reject_classes
+        ):
+            raise ValueError("reject_classes must be a list of supported classes")
+        if len(set(reject_classes)) != len(reject_classes):
+            raise ValueError("reject_classes must not contain duplicates")
+        supported = set(self.profile.names)
+        unknown = set(reject_classes) - supported
+        if unknown:
+            raise ValueError(f"unsupported reject classes: {', '.join(sorted(unknown))}")
+        selected = set(reject_classes)
+        canonical = tuple(item.name for item in self.profile.classes if item.name in selected)
+        if canonical == self.reject_classes:
+            return {**self.reject_policy(), "changed": False, "in_flight_excluded": 0}
+
+        in_flight = len(self.sim.bean_of)
+        self.reject_classes = canonical
+        self.controller.set_reject_classes(canonical)
+        self.policy_version = self._policy_version()
+        self.score_epoch_id = str(uuid.uuid4())
+        self.score_epoch_started_sim_time_s = float(self.sim.data.time)
+        self.policy_applied_sim_time_s = self.score_epoch_started_sim_time_s
+        self._score_ledger = RollingScoreLedger(
+            float(self.preset["score_window_seconds"]),
+            start_sim_time_s=self.score_epoch_started_sim_time_s,
+        )
+        self._event(
+            "reject_policy_changed",
+            reject_classes=list(canonical),
+            policy_version=self.policy_version,
+            score_epoch_id=self.score_epoch_id,
+            in_flight_excluded=in_flight,
+        )
+        return {**self.reject_policy(), "changed": True, "in_flight_excluded": in_flight}
 
     def start(self):
         """Start active wall measurement once."""
@@ -207,7 +283,7 @@ class Engine:
         self._object_records[bean.uid] = {
             "object_id": bean.uid,
             "truth_class": bean.cls,
-            "required_reject": bool(bean.defect and spec.severity in self.policy.reject_severities),
+            "required_reject": spec.name in self.reject_classes,
             "injected": injected,
             "spawn_time_s": float(bean.spawn_t),
             "spawn_wall": time.perf_counter() if injected else None,
@@ -431,9 +507,7 @@ class Engine:
         if self._closed:
             raise RuntimeError("engine is closed")
         self.start()
-        started = time.perf_counter()
-        self._update_active_records()
-        evaluation_ms = (time.perf_counter() - started) * 1e3
+        evaluation_ms = 0.0
         bean_count = len(self.sim.beans)
         started = time.perf_counter()
         self.sim.step()
@@ -478,6 +552,12 @@ class Engine:
         self._update_active_records()
         self.start()
         return bean.uid
+
+    def injection_position(self, object_id):
+        record = self._object_records.get(object_id)
+        if record is None or not record["injected"]:
+            raise ValueError("the injected object is unavailable")
+        return list(record["pos"])
 
     def _snapshot_object(self, uid: int, active: bool) -> dict:
         record = self._object_records[uid]
@@ -534,6 +614,7 @@ class Engine:
             "wall_elapsed_s": wall_elapsed,
             "model_version": self.model_version,
             "policy_version": self.policy_version,
+            "score_epoch_id": self.score_epoch_id,
             "preset_version": self.preset_version,
             "engine_rate": sim_time / wall_elapsed if wall_elapsed > 0 else 0.0,
             "requested_rate": float(self.preset["requested_rate"]),
@@ -543,6 +624,9 @@ class Engine:
             "objects": [self._snapshot_object(uid, uid in active_ids) for uid in sorted(retained)
                         if uid in self._object_records],
             "events": list(self._events)[-50:],
+            "class_catalog": self.class_catalog(),
+            "reject_policy": self.reject_policy(),
+            "spawn_region": self.spawn_region(),
         }
         if self.continuous:
             result.update(
@@ -586,7 +670,7 @@ class Engine:
             raise RuntimeError("rolling scores require continuous mode")
         return self._score_ledger.scores(
             as_of_sim_time_s=float(self.sim.data.time),
-            score_epoch_id=self.session_id,
+            score_epoch_id=self.score_epoch_id,
             model_version=self.model_version,
             policy_version=self.policy_version,
             source_revision=self.source_revision,
