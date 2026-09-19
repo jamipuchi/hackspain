@@ -3,6 +3,35 @@
 This directory owns only the demo storyboard and preview-render command.
 It does not own the source scene, simulator, model, live interface, or recorded evidence.
 
+## Separate video previews
+
+Taras authorized video rendering after the still review.
+Render the approved scenes as separate clips:
+
+```sh
+python3 sim/coffee_sorter/demo_video/render_segments.py
+cp sim/coffee_sorter/demo_video/segment_gallery.html /private/tmp/coffee-demo-video-previews/clips.html
+```
+
+Use `--only 01-bean-macro` to render one segment.
+The command creates silent 640 by 360 MP4 previews at 30 fps.
+The default uses 12 Cycles samples and eight Blender threads.
+Every Blender process requires the shared runtime lock.
+An occupied lock returns status 75. Run the command again after the slot becomes available.
+
+The video gallery is `http://127.0.0.1:8894/clips.html` when the preview server is active.
+It exposes each verified MP4 when that segment completes.
+The renderer retains existing verified clips and can resume verified partial frame sequences with identical inputs.
+It refuses mismatched inputs or unverified existing output files.
+Use a new output directory for a revised render.
+
+Dynamic segments use consecutive actual frames from the historical 30 Hz replay.
+The macro holds one recorded instant while its camera and focus move.
+Mode variants share the same frame sequence and camera path.
+No simulation, inferred bean trajectory, or optical-flow retiming runs inside this renderer.
+The air-jet segment requires a separate high-rate capture and is not part of this command yet.
+See `thoughts/taras/research/coffee-demo-video/SEGMENTS_REVIEW.md` for current progress and evidence.
+
 ## Current scene studies
 
 Taras approved the concept direction and requested basic renders of every scene.
