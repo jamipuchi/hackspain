@@ -198,6 +198,20 @@ defaults remain unchanged pending longer paired runs. The enlarged pool admits
 [readable HUD demo](runs/confirmation-seed1/force-0.06/overview_h264.mp4)
 are committed with metrics and annotated frames. Twenty-six tests pass.
 
+**19 September — product transfer after retraining**
+
+The stock roasted training command works with no shared controller, vision or
+simulation edits. Matched seed-1 runs at 1,000 beans/s give green/roasted physical
+recall 51.53%/39.51% and good false ejects 4.26%/3.82%, each over 2,600 eligible
+beans. Roasted blob holdout accuracy is 98.62%; repeated bean views can cross
+that split. Product configuration transfers; equivalent physical quality does not.
+[Confusion matrices](runs/generalization/comparison/confusion_matrices.png),
+[labelled camera contact sheet](runs/generalization/comparison/camera_strip_contact_sheet.png),
+[full metrics](runs/generalization/comparison/metrics.json) and
+[methodology](runs/generalization/comparison/methodology.json) preserve the evidence.
+Reproduce with `python run_generalization.py all` in the environment above;
+the committed staged models preserve the measured run when resuming.
+
 **Next**
 
 - [x] foreground-only `vision.detect` with exact equivalence proof; train the classifier
@@ -207,7 +221,7 @@ are committed with metrics and annotated frames. Twenty-six tests pass.
 - [x] physical tuning screen, separate merged-bean metrics, fresh-seed demo and phone evidence
 - [ ] longer paired seeds for 0.06 N; improve merged-target jet intersection and capture
 - [ ] model camera backlog before claiming hardware timing margin
-- [ ] `roasted` profile without touching the controller (generalisation)
+- [x] `roasted` profile without touching the controller; matched quality measured
 - [ ] UR5e (Menagerie + mink) picking oversize foreign matter off the infeed — the one thing the air jets cannot do
 - [ ] one-slide summary
 
@@ -232,7 +246,7 @@ must not be compared as interchangeable accuracy figures.
 
 ## Handoff notes (for whoever continues)
 
-- See [NIGHT_LOG.md](NIGHT_LOG.md) for the overnight experiment record and phone-accessible evidence. [NIGHT_PLAN.md](NIGHT_PLAN.md) tracks the current characterization work.
+- See [NIGHT_LOG.md](NIGHT_LOG.md) for the overnight experiment record and phone-accessible evidence. [NIGHT_PLAN.md](NIGHT_PLAN.md) tracks characterization; [the generalization plan](runs/generalization/PLAN.md) tracks product transfer and unseen objects.
 - Use the fresh-checkout environment instructions above. The previous workstation used `~/robotics/.venv`; environment paths are local and are not shipped. Assets regenerate automatically (`assets.build()` is called by the CLI).
 - Foreground-only detection and cached coordinate grids are implemented. The measured detector median is 5.44 ms; the <5 ms target remains open. Use `check_detect.py` to measure the current host and verify exact feature equivalence.
 - The first model was trained with `run.py train --profile green_arabica --seconds 24 --rate 900 --boost 5`. The model and training report are in the prior task's archive, linked in the night log. They are ignored by Git; train or restore them for a fresh checkout. `--boost` multiplies defect priors.

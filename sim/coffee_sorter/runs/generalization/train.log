@@ -1,0 +1,22 @@
+running stock training CLI: /workspace/personal/venvs/coffee-sorter/bin/python -u run.py train --profile roasted --seconds 24.0 --rate 900.0 --boost 5.0 --seed 0
+collecting 24.0s of camera data at 900.0 beans/s, defects x5.0 ...
+  collect   0.0s  samples=0  wall=  0.0s
+  collect   2.4s  samples=4895  wall= 23.3s
+  collect   4.8s  samples=10998  wall= 52.5s
+  collect   7.2s  samples=17044  wall= 82.8s
+  collect   9.6s  samples=23120  wall=113.9s
+  collect  12.0s  samples=29147  wall=145.0s
+  collect  14.4s  samples=35031  wall=173.7s
+  collect  16.8s  samples=40851  wall=203.0s
+  collect  19.2s  samples=46684  wall=231.2s
+  collect  21.6s  samples=52423  wall=258.9s
+samples: 58143 {'quaker': 9041, 'good': 39882, 'stick': 627, 'broken': 3816, 'burnt': 4331, 'stone': 446}
+accuracy 0.9862  defect recall 0.9693  good false-reject 0.0054  predict 5.06 ms/40 blobs  iters 124
+  good     precision 0.986 recall 0.995 n=9971
+  quaker   precision 0.989 recall 0.995 n=2260
+  burnt    precision 0.993 recall 0.991 n=1083
+  broken   precision 0.972 recall 0.875 n=954
+  stone    precision 0.973 recall 0.982 n=111
+  stick    precision 1.000 recall 0.968 n=157
+saved /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/models/roasted.joblib and /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/train_roasted
+saved /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/generalization/roasted/model/roasted.joblib

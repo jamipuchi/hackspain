@@ -1,0 +1,28 @@
+{
+  "origin": "stock run.py train CLI",
+  "training": {
+    "seconds": 24.0,
+    "rate": 900.0,
+    "defect_boost": 5.0,
+    "seed": 0
+  },
+  "command": [
+    "/workspace/personal/venvs/coffee-sorter/bin/python",
+    "-u",
+    "run.py",
+    "train",
+    "--profile",
+    "roasted",
+    "--seconds",
+    "24.0",
+    "--rate",
+    "900.0",
+    "--boost",
+    "5.0",
+    "--seed",
+    "0"
+  ],
+  "model_sha256": "85cc2e0dcc93b7414ae4184bc7182374b2b1f03db9821b67d109552d28411fbe",
+  "report_sha256": "4410329e97ad4230bf28388a73b275d36e1fca654a44bd25fdf779ed68aebfe2",
+  "confusion_sha256": "86742a92050fa2b1133e2de5c981223be2dfce9b07ee41a2c1a6b6fb2cd8a9aa"
+}

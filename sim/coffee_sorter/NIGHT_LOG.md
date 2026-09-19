@@ -444,3 +444,66 @@ durable viewer links remain in the shared drive.
 - [Fresh-seed confirmation](https://hack-s3.agent-swarm.dev/agentfs/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/drives/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/confirmation-summary.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=minioadmin%2F20260919%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260919T031054Z&X-Amz-Expires=86400&X-Amz-Signature=66a7de4587c2e517b51898200fb91b6eec22224072bb24726bb995167ec85435&X-Amz-SignedHeaders=host&response-content-disposition=attachment%3B%20filename%2A%3DUTF-8%27%27confirmation-summary.png&response-content-type=image%2Fpng&x-amz-checksum-mode=ENABLED&x-id=GetObject) · [durable](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/confirmation-summary.png)
 - [All tuning evidence, 38.85 MB](https://hack-s3.agent-swarm.dev/agentfs/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/drives/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/tuning-sweep.tar.gz?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=minioadmin%2F20260919%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260919T031056Z&X-Amz-Expires=86400&X-Amz-Signature=bd9f4af1fcf82e9cc0ca965f37fa45f388d0c695b955a6e3266c6c202aa5ab9f&X-Amz-SignedHeaders=host&response-content-disposition=attachment%3B%20filename%2A%3DUTF-8%27%27tuning-sweep.tar.gz&response-content-type=application%2Fgzip&x-amz-checksum-mode=ENABLED&x-id=GetObject) · [durable](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/tuning-sweep.tar.gz)
 - [All confirmation evidence, 8.23 MB](https://hack-s3.agent-swarm.dev/agentfs/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/drives/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/confirmation-seed1.tar.gz?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=minioadmin%2F20260919%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260919T031057Z&X-Amz-Expires=86400&X-Amz-Signature=afa1360c296727549eeceee45e45b3e84ba5a42f30f3a5a4bbe8ea57a31bcedc&X-Amz-SignedHeaders=host&response-content-disposition=attachment%3B%20filename%2A%3DUTF-8%27%27confirmation-seed1.tar.gz&response-content-type=application%2Fgzip&x-amz-checksum-mode=ENABLED&x-id=GetObject) · [durable](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/characterization/confirmation-seed1.tar.gz)
+
+### Generalization experiments started
+
+The roasted profile already exists. The experiment trains a separate model,
+then compares both products with identical controller and physical settings.
+The open-set experiment separately measures anomaly-only flags, combined
+reject decisions and physical reject-bin outcomes. Neither experiment changes
+controller.py, vision.py or sim.py. Any exception will be reported here.
+
+### New product: roasted, unchanged shared controller
+
+**The pipeline transfers after retraining; sorting quality does not transfer unchanged.**
+The stock `run.py train --profile roasted --seconds 24 --rate 900 --boost 5 --seed 0`
+trained all six roasted classes. No edits were made to `profiles.py`, `controller.py`,
+`vision.py`, `sim.py`, `classifier.py` or `run.py` for this product change.
+The separate experiment harness stages models and records evidence; it does not
+replace perception, decisions or physics.
+
+Training produced 58,143 blobs: 43,607 train and 14,536 test. Roasted holdout
+accuracy is 98.62%; green is 97.91%. This is a random **blob** split, so repeated
+views of one bean can occur in both partitions. These scores are not independent
+lot validation. The anomaly model is also calibrated on all collected good blobs.
+
+Matched physical runs: seed 1, 4 s, 1,000 beans/s, specialty policy, 0.5 reject
+probability, 0.06 N jets and a 60 ms minimum controller latency. Both use the
+same physical layout, pulse settings and source hashes. Each evaluates 2,600
+beans spawned from 0.8 to 3.4 s; 2,599 resolve. Spills and the unresolved bean
+remain in the denominator. Feed composition and bean properties differ by profile. Wilson intervals describe
+within-run bean counts, not variation across seeds or lots.
+
+| Physical metric | Green arabica | Roasted |
+| --- | ---: | ---: |
+| Correct routing / eligible | 88.54% | 89.85% |
+| Defect recall | 202/392 = 51.53% | 96/243 = 39.51% |
+| Recall, Wilson 95% interval | 46.59–56.44% | 33.57–45.77% |
+| Rejection precision | 202/296 = 68.24% | 96/186 = 51.61% |
+| Good false ejects | 94/2,208 = 4.26% | 90/2,357 = 3.82% |
+| Spills / eligible | 55/2,600 = 2.12% | 42/2,600 = 1.62% |
+| Late reject decisions | 0/561 | 0/363 |
+| Admitted objects/s | 1,000 | 1,000 |
+| Pool-starved attempts | 0 | 0 |
+| Total latency p50/p99 | 60/60 ms | 60/60 ms |
+| Measured compute p50/p99 | 26.06/38.43 ms | 14.64/26.22 ms |
+| Wall seconds / simulated second | 15.88 | 13.24 |
+
+Roasted per-class rejection: quaker 44/96, burnt 22/48, broken 19/72,
+stone 4/15 and stick 7/12. Changing only the model lets the existing controller
+run the new product, but 60.49% of eligible roasted defects do not reach reject.
+Overall accuracy also depends on the different class mix;
+it does not establish a better sorter. Timing is a shared-host measurement with
+a simulated latency floor; camera backlog and dropped frames remain unmodeled.
+
+- [Matched metrics and all confidence intervals](runs/generalization/comparison/metrics.json).
+- [Side-by-side confusion matrices](runs/generalization/comparison/confusion_matrices.png).
+- [Single labelled camera contact sheet](runs/generalization/comparison/camera_strip_contact_sheet.png).
+- [Stock training command and output](runs/generalization/train.log).
+- [Green physical metrics](runs/generalization/green_arabica/run/metrics.json) and [roasted physical metrics](runs/generalization/roasted/run/metrics.json).
+- [Protected source integrity](runs/generalization/comparison/shared_source_integrity.json).
+
+Viewable copies: [confusion matrices](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/generalization/comparison/confusion_matrices.png)
+and [camera contact sheet](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/generalization/comparison/camera_strip_contact_sheet.png).
+Durable viewer links require drive access. Roasted source and Spec reviews pass;
+34 regression tests pass ([output](runs/generalization/roasted-checks.log)).
