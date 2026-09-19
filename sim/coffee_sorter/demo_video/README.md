@@ -36,7 +36,10 @@ The HackSpain worker uses an isolated container named `coffee-demo-full-hd`.
 Host files remain under `/opt/coffee-demo-render-20260919/`.
 The container maps `source/` to `/render/source` and `data/` to `/private/tmp/coffee-demo-video-previews`.
 It maps the official Blender 5.2.2 Linux directory to `/opt/blender` without write access.
-The container uses eight CPUs and at most 16 GiB RAM. It does not modify existing services.
+The container currently uses eight CPUs and at most 16 GiB RAM. It does not modify existing services.
+Taras permits up to 14 CPU threads for this remote job.
+The active renderer retains eight threads to preserve its checkpoint contract.
+The host render lock is bind-mounted at `/private/tmp/hackspain-coffee-runtime.lock`.
 Its private credential file contains only `AGENT_FS_API_URL` and `AGENT_FS_API_KEY`.
 
 ```sh
@@ -55,6 +58,8 @@ python3 sim/coffee_sorter/demo_video/bulk_full_hd.py \
 The root batch lock prevents duplicate queues. Each Blender process also holds the shared render lock.
 Completed clips copied from the Mac retain their original GPU manifests.
 Only unfinished clips render with the CPU backend. Do not combine partial GPU frames with CPU frames in one clip.
+Swarm Lead task `8d7515a6-f830-4140-bcf5-2a1d09cea153` owns monitoring and verified delivery in Slack `#x-hackspain`.
+The local render queue stopped after remote verification. Its files remain intact, and its heartbeat is paused.
 
 ### Preview commands
 

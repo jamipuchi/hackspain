@@ -65,8 +65,12 @@ The assets remain recoverable from the verified Swarm copies and unchanged local
 
 The original archive and `clips/` files are 640 by 360 previews at 30 fps.
 Taras authorized native 1920 by 1080 renders of all nine clips after reviewing this archive.
-The Full HD batch is now rendering, with unchanged framing and timing.
+The Full HD batch now renders on the HackSpain box, with unchanged framing and timing.
 Completed Full HD clips upload separately under `full-hd/`, with `-1080p.mp4` filename suffixes.
+The first two Full HD clips passed verification during the remote handoff.
+Swarm Lead task `8d7515a6-f830-4140-bcf5-2a1d09cea153` owns the remaining rendering and delivery checks.
+The task requires exact agent-fs paths and signed links in Slack `#x-hackspain`.
+The final `coffee-demo-clips-1080p.zip` remains pending.
 See [Full HD render status](FULL_HD_RENDER.md) for the render settings and delivery checks.
 
 Taras reported that the slow-motion discard remains difficult to see.
