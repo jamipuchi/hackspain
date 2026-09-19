@@ -235,8 +235,14 @@ Run the compatibility probe without provider, training, or physics work:
 /Users/taras/Documents/code/hackspain/.venv-coffee/bin/python \
   thoughts/taras/research/coffee-generated-object-compatibility/probe_compatibility.py \
   --baseline-revision c599bd9988b9fff95c78209040e31e28697a4041 \
-  --output thoughts/taras/research/coffee-generated-object-compatibility/probe-output.json
+  --output /private/tmp/coffee-generated-object-compatibility-probe.json
 ```
+
+`execution_revision` records the commit that ran the probe. It changes when the working commit changes.
+
+`source_revision` stays fixed at the audited baseline. The probe also verifies that audited source files still match that baseline.
+
+Artifact and source hashes stay fixed while their bytes stay unchanged. Do not expect byte-identical probe output across execution commits.
 
 Validate the probe source and JSON artifacts:
 
@@ -245,7 +251,7 @@ Validate the probe source and JSON artifacts:
   thoughts/taras/research/coffee-generated-object-compatibility/probe_compatibility.py
 
 python3 -m json.tool \
-  thoughts/taras/research/coffee-generated-object-compatibility/probe-output.json >/dev/null
+  /private/tmp/coffee-generated-object-compatibility-probe.json >/dev/null
 
 python3 -m json.tool \
   thoughts/taras/research/coffee-generated-object-compatibility/object-manifest.example.json >/dev/null
