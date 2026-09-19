@@ -96,6 +96,23 @@ extra use cases for the demo.
   perception or physics. Mechanics ceilings above (7/9 etc.) need re-measuring with the new layout.
 
 ## Cameras
+- **Real iPhone over USB-C works, zero phone-side setup (19 Sep 12:45).** macOS Continuity Camera exposes a
+  plugged-in, unlocked iPhone as a normal AVFoundation device ("Jaume's iPhone Camera" plus a "Desk View"
+  variant and the phone microphone). 640×480 … 1920×1440 at 30 or 60 fps. `ffmpeg -f avfoundation -i "1:none"`
+  and `cv2.VideoCapture(i, cv2.CAP_AVFOUNDATION)` both pull frames; `sim/demos/iphone_camera.py` is the viewer.
+- **OpenCV camera indices are not ffmpeg's.** OpenCV's AVFoundation backend lists external / Continuity
+  cameras first, built-in after; ffmpeg and `system_profiler` list built-in first. On the MacBook the phone
+  is OpenCV 0 / ffmpeg 1. The first live viewer opened index 1 and showed the Mac camera while a snapshot
+  "looked plausible"; a thumbnail-per-index probe caught it. Rule: never hard-code a camera index, resolve
+  by name (`sim/demos/avf_cameras.swift`, a 10-line Swift DiscoverySession helper, compiled on first use;
+  `swift file.swift` interpreted takes 15 s, the compiled binary is instant) and keep a `--probe` that saves
+  one thumbnail per index. `camera.RealCamera()` now does this; its old default `index=1` was the Mac camera.
+- Asking OpenCV for 1280×960 on the phone returns 1920×1440 (nearest 4:3 mode); downscale yourself if the
+  GPT-6 image budget matters.
+- ffmpeg needs an explicit supported pixel format for the phone (`uyvy422`, `yuyv422`, `nv12`, `0rgb`,
+  `bgr0`); the default `yuv420p` request is refused. `ffprobe -f avfoundation -i "1:none"` lists modes.
+- Continuity Camera drops when the phone locks or sleeps; the device disappears from every listing. Wake it
+  and reopen. Camera permission must be granted to the terminal app once.
 - One or two oblique phones ≤ 50 cm work; two views help when the arm hides a spot. The final sheet
   puts one phone on a gooseneck 25–30 cm straight above the tray: `theker_v1` camera A.
 - Tall cups between the camera and the tray hide parts: use shallow lids (the sheet agrees).
@@ -128,7 +145,36 @@ extra use cases for the demo.
 - Parts: M3×20 and M4×20 with nuts and washers (+ whatever comes from home); one brass distractor.
 - Elbow servo budget: 63 g at 70 mm with 3× margin → keep the magnet ≤ Ø20 mm.
 
+## Real Arduino bring-up — 19 Sep 2026 (first contact with hardware)
+Bench: Arduino Uno R3 on USB, one blue 9 g micro servo (SG90/FS90R form factor) on a 3-pin lead
+(brown/red/orange) joined to three jumpers (black/red/orange). No breadboard, no external supply yet.
+
+- **"The motor runs permanently on power".** The orange signal jumper was in `~10`, the shoulder pin. The
+  sketch holds the shoulder at its home angle (125°) forever, so a continuous-rotation servo there never
+  stops, and `C 0` (which talks to `~6`) did nothing. A photo of the bench settled in 10 s what 20 min of
+  serial poking did not: **ask for a photo first.**
+- **90 is not "stop" for a continuous servo.** Each DS04-NFC/FS90R has its own dead centre and a trim pot.
+  Fix in firmware, not by trimming: at speed 0 we now `detach()` the belt servo and drive `D6` LOW (no
+  pulses → the servo stands still). Also applied at boot, so nothing moves on power-up until a `C` command.
+- **Servos plugged in with their 5 V rail off freeze the Uno.** Signal pins back-feed the servo electronics
+  through the 328P I/O pins; the USB bridge still enumerates but the MCU stops answering and avrdude
+  reports `not in sync: resp=0x00` on every attempt. Rule: **servo supply on first, off last**; unplug all
+  servo leads before flashing if in doubt. Once everything was unplugged the board answered and flashed
+  first try (`arduino-cli upload --fqbn arduino:avr:uno`, verify with `avrdude -Uflash:v:`).
+- A single micro servo runs fine from the Uno's `5V` pin over USB. The 5 V 5 A supply is only needed once
+  the MG946R/MG90S arm servos join.
+- Opening the serial port resets the Uno (DTR). Anything that talks to it must hold the port open and wait
+  ~2.5 s for `magnet_arm ready` before sending. Re-plugging USB while a program holds the port gives
+  `Device not configured` (ENXIO) on the next write; reopen the port and retry once (done in
+  `conveyor_button.py`).
+- New tooling in `sim/magnet_sorter/`: `conveyor_button.py` (local RUN/STOP web panel on
+  http://127.0.0.1:8765, holds the port, sends `C 0` on start and exit, auto-reconnects) and
+  `docs/servo_wiring.html` (colour wiring guide: orange→`~6`, red→`5V`, black→`GND`, power-up order).
+- Still to verify on the bench: does the micro servo stay still at power-up with the new firmware, and is
+  it positional (RUN twitches to an angle) or continuous (RUN spins)? The conveyor needs a continuous one.
+
 ## Open issues
 - Verifier still confuses look-alike neighbours occasionally (two cameras disagree → we say so to GPT-6).
 - Photoreal Cycles video renders at 13–30 s/frame while the GPU is shared with live sims; render when idle.
-- Real iPhone camera path (`camera.RealCamera`) is wired but untested (needs camera permission in Terminal).
+- `camera.RealCamera` is tested standalone against the USB iPhone (frame grab OK) but not yet wired into
+  `run_demo.py` in place of the rendered phone; the ArUco calibration on real frames is untested.

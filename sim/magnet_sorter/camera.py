@@ -157,11 +157,25 @@ class RealCamera:
     """iPhone via Continuity Camera (or any webcam) through AVFoundation.
 
     macOS asks for camera permission the first time; run from Terminal.app so the prompt
-    appears and grant it to Terminal. The iPhone must be unlocked, on the same Apple ID and
-    Wi-Fi/Bluetooth as the Mac; it shows up as an extra camera index (usually 1).
+    appears and grant it to Terminal. The iPhone must be unlocked and plugged in over USB (or on
+    the same Apple ID + Wi-Fi/Bluetooth for wireless).
+
+    Device indices: OpenCV's AVFoundation backend lists external / Continuity cameras FIRST and
+    the built-in camera after, which is the reverse of `ffmpeg -list_devices` and of
+    `system_profiler`. On a MacBook with one iPhone the phone is OpenCV index 0 and the Mac
+    camera is 1 (verified 19 Sep 2026). Pass ``index=None`` (default) to pick the iPhone by
+    name via ``../demos/avf_cameras`` instead of hard-coding the number.
     """
 
-    def __init__(self, index: int = 1, width: int = 1280, height: int = 960):
+    def __init__(self, index: int | None = None, width: int = 1280, height: int = 960, match: str = "iphone"):
+        if index is None:
+            devices = self.list_devices()
+            hits = [i for i, n in devices if match in n.lower() and "desk view" not in n.lower()]
+            if not hits:
+                names = ", ".join(f"[{i}] {n}" for i, n in devices) or "none"
+                raise RuntimeError(f"no camera matching {match!r}; phone unlocked and plugged in? cameras: {names}")
+            index = hits[0]
+        self.index = index
         self.cap = cv2.VideoCapture(index, cv2.CAP_AVFOUNDATION)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
@@ -177,12 +191,23 @@ class RealCamera:
         return frame
 
     @staticmethod
-    def list_devices() -> str:
+    def list_devices() -> list[tuple[int, str]]:
+        """[(opencv_index, name)] in the order OpenCV indexes them (external cameras first).
+
+        Uses the small Swift helper in ../demos (compiled on first use); falls back to
+        `system_profiler` order (built-in first) if swiftc is unavailable.
+        """
+        demos = Path(__file__).resolve().parent.parent / "demos"
+        src, exe = demos / "avf_cameras.swift", demos / "avf_cameras"
         try:
+            if src.exists() and (not exe.exists() or exe.stat().st_mtime < src.stat().st_mtime):
+                subprocess.run(["swiftc", "-O", str(src), "-o", str(exe)], check=True, capture_output=True)
+            out = subprocess.run([str(exe)], capture_output=True, text=True, check=True, timeout=20).stdout
+            return [(int(i), n) for i, n, *_ in (l.split("\t") for l in out.splitlines() if l.strip())]
+        except Exception:  # noqa: BLE001
             out = subprocess.run(["system_profiler", "SPCameraDataType"], capture_output=True, text=True, timeout=20).stdout
-            return "\n".join(l.strip() for l in out.splitlines() if l.strip().endswith(":") and "Camera" in l)
-        except Exception as exc:  # noqa: BLE001
-            return f"(could not list cameras: {exc})"
+            names = [l.strip()[:-1] for l in out.splitlines() if l.strip().endswith(":") and "Camera" in l]
+            return list(enumerate(names))
 
 
 def draw_grid(frame: np.ndarray, step: int = 100) -> np.ndarray:

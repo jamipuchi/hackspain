@@ -136,15 +136,40 @@ Arduino GND. Full pinout in the sketch header.
 | `blender/render_server.py` · `blender_client.py` | Blender kept alive as a render server (Cycles, Metal) |
 | `make_video.py` | dashboard video: Cycles 3D view + GPT-6 input/output + serial + feedback |
 | `firmware/magnet_arm/magnet_arm.ino` | the real Arduino sketch (same protocol) |
+| `conveyor_button.py` | local RUN/STOP web panel for the conveyor servo (holds the serial port, auto-reconnects) |
+| `docs/servo_wiring.html` | colour wiring guide for the bench: orange→`~6`, red→`5V`, black→`GND`, power-up order |
 | `build_assets.py` | hex mesh, MDF/PCB/breadboard textures, ArUco marker PNGs |
+
+## Real Uno on the bench (19 Sep 2026)
+
+```bash
+arduino-cli compile --fqbn arduino:avr:uno firmware/magnet_arm && arduino-cli upload -p /dev/cu.usbmodem* --fqbn arduino:avr:uno firmware/magnet_arm
+../.venv/bin/python conveyor_button.py      # RUN / STOP page at http://127.0.0.1:8765
+open docs/servo_wiring.html                 # which wire goes where
+```
+
+Rules learned the hard way (details in the hackspain `LEARNINGS.md`): servo supply on first and off last,
+or the Uno freezes and refuses to flash; unplug all servo leads before flashing if in doubt; at speed 0 the
+firmware detaches the belt servo instead of writing 90, because a continuous servo's dead centre is never
+exactly 90; a lone micro servo can run from the Uno's `5V` pin, the arm servos cannot.
 
 ## Using a real iPhone camera
 
-`camera.RealCamera(index)` opens Continuity Camera through AVFoundation. macOS asks for camera
-permission the first time; run from Terminal.app so the prompt appears, with the iPhone unlocked
-and on the same Apple ID. Print the four markers (`assets/aruco_*.png`, 35 mm) and glue them at
-the positions in `scene_def.MARKERS`; calibration then needs no other setup. Real-camera mode is
-wired but has not been exercised in this session (no camera permission for the agent shell).
+`camera.RealCamera()` opens the iPhone through Continuity Camera / AVFoundation and picks it **by
+name**, not by index. Plug the phone in over USB-C (or same Apple ID + Wi-Fi), unlocked; nothing to
+install on the phone. Verified 19 Sep 2026: 1920×1080 frames at 30/60 fps, also 1920×1440.
+
+Gotcha: OpenCV's AVFoundation backend lists external / Continuity cameras first and the built-in
+camera after. That is the reverse of `ffmpeg -f avfoundation -list_devices true -i ""` and of
+`system_profiler`. On this MacBook the phone is OpenCV index 0 and ffmpeg index 1; hard-coding
+`index=1` in OpenCV silently gives you the Mac's own camera. `../demos/avf_cameras.swift` (compiled
+on first use) prints cameras in OpenCV order; `../demos/iphone_camera.py --list | --probe` shows the
+mapping and saves a thumbnail per index.
+
+macOS asks for camera permission the first time; run from Terminal.app so the prompt appears.
+Print the four markers (`assets/aruco_*.png`, 35 mm) and glue them at the positions in
+`scene_def.MARKERS`; calibration then needs no other setup. Real-camera mode is not yet wired into
+`run_demo.py` (it still renders phone frames); `RealCamera.grab()` is the drop-in for `phone.grab`.
 
 ## Layout and waves
 
