@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {OrbitControls} from '/vendor/OrbitControls.js';
 import {RoomEnvironment} from '/vendor/RoomEnvironment.js';
 import {GLTFLoader} from '/assets/vendor/loaders/GLTFLoader.js';
-import {PolicyIntentBuffer, normalizedClassPreview, samePresentationTimeline} from './timeline.mjs';
+import {PolicyIntentBuffer, emptyMetricState, normalizedClassPreview, profilePreviewScale, samePresentationTimeline} from './timeline.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('scene');
@@ -275,10 +275,12 @@ function syncPolicyTransport(value) {
   if (!policyInitialized) {
     policyDesiredClasses = new Set(policy.classes);
     policyInitialized = true;
+    policyError = '';
   }
 }
 
 function resetPolicyControls(message = '') {
+  const invalidatedPolicy = Boolean(activePolicyRequest || pendingPolicyIntents.size);
   clearTimeout(policyDispatchTimer);
   policyDispatchTimer = null;
   activePolicyRequest = null;
@@ -288,7 +290,7 @@ function resetPolicyControls(message = '') {
   policyTransportVersion = null;
   policyInitialized = false;
   pendingPolicyPresentation = null;
-  policyError = message;
+  policyError = invalidatedPolicy ? message : '';
   itemCatalogSignature = '';
   if ($('items-dialog').open) closeItems();
   updateItems();
@@ -402,6 +404,7 @@ function updateItems() {
   const policy = normalizedPolicy(state?.reject_policy);
   if (!catalog.length || !policy) {
     $('items').replaceChildren();
+    $('items-quick').replaceChildren();
     itemCatalogSignature = '';
     $('policy-status').textContent = 'Waiting for catalog';
     $('items-dialog-status').textContent = 'Waiting for catalog';
@@ -426,21 +429,28 @@ function updateItems() {
     $('items').replaceChildren(...catalog.map(item => {
       const row = document.createElement('div'); row.className = 'item-row'; row.dataset.className = item.name; row.tabIndex = 0; row.setAttribute('role', 'option'); row.setAttribute('aria-selected', 'false');
       const thumb = document.createElement('img'); thumb.className = 'item-thumb'; thumb.alt = ''; thumb.dataset.previewName = item.name;
-      const copy = document.createElement('div');
       const name = document.createElement('span'); name.className = 'item-name';
       const dot = document.createElement('i'); dot.dataset.severity = item.severity;
       name.append(dot, document.createTextNode(item.name));
       name.title = item.defect ? `${item.severity} defect` : 'Keep item';
-      const preview = normalizedClassPreview(item);
-      const meta = document.createElement('small'); meta.className = 'item-meta';
-      meta.textContent = preview ? `${preview.shape} · ${preview.axes.map(value => (value * 1000).toFixed(1)).join(' × ')} mm` : 'Preview unavailable';
-      copy.append(name, meta);
       const button = document.createElement('button'); button.type = 'button'; button.className = 'policy-toggle';
+      button.dataset.policyClass = item.name;
       button.onclick = event => { event.stopPropagation(); queuePolicyChange(item.name, !policyDesiredClasses.has(item.name)); };
       row.onclick = () => selectItemPreview(item.name);
       row.onkeydown = event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectItemPreview(item.name); } };
-      row.append(thumb, copy, button);
+      row.append(thumb, name, button);
       return row;
+    }));
+    $('items-quick').replaceChildren(...catalog.map(item => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'quick-policy-toggle';
+      button.dataset.policyClass = item.name;
+      const name = document.createElement('span'); name.textContent = item.name;
+      const action = document.createElement('strong');
+      button.append(name, action);
+      button.onclick = () => queuePolicyChange(item.name, !policyDesiredClasses.has(item.name));
+      return button;
     }));
     if ($('items-dialog').open) refreshItemPreviews();
   }
@@ -450,6 +460,15 @@ function updateItems() {
     const reject = policyDesiredClasses.has(className);
     const pending = reject !== policy.classes.has(className);
     button.textContent = reject ? 'Reject' : 'Keep';
+    button.setAttribute('aria-label', `${className}: ${reject ? 'Reject' : 'Keep'}`);
+    button.setAttribute('aria-pressed', String(reject));
+    button.classList.toggle('pending', pending);
+  }
+  for (const button of $('items-quick').children) {
+    const className = button.dataset.policyClass;
+    const reject = policyDesiredClasses.has(className);
+    const pending = reject !== policy.classes.has(className);
+    button.querySelector('strong').textContent = reject ? 'Reject' : 'Keep';
     button.setAttribute('aria-label', `${className}: ${reject ? 'Reject' : 'Keep'}`);
     button.setAttribute('aria-pressed', String(reject));
     button.classList.toggle('pending', pending);
@@ -472,20 +491,23 @@ function setPreviewMesh(item) {
   if (!itemPreview) return false;
   const preview = normalizedClassPreview(item);
   const pool = item?.name === 'black' && three.pools?.black ? three.pools.black : three.pools?.[preview?.shape];
-  if (!preview || !pool?.geometry) return false;
+  if (!preview || (preview.shape !== 'half' && !pool?.geometry)) return false;
   if (itemPreview.mesh) {
     itemPreview.scene.remove(itemPreview.mesh);
     itemPreview.mesh.geometry.dispose();
     itemPreview.mesh.material.dispose();
   }
-  const geometry = pool.geometry.clone();
+  // The profile half shape is a hemisphere. Its z value is the full cut-half
+  // thickness, while x and y are parent ellipsoid semi-axes.
+  const geometry = preview.shape === 'half'
+    ? new THREE.SphereGeometry(1, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2)
+    : pool.geometry.clone();
+  if (preview.shape === 'half') geometry.rotateX(Math.PI / 2);
   geometry.computeBoundingBox();
   geometry.center();
   const material = new THREE.MeshStandardMaterial({color: new THREE.Color().setRGB(...preview.rgb), roughness: .58, metalness: .03});
   const mesh = new THREE.Mesh(geometry, material);
-  const [x, y, z] = preview.axes;
-  if (preview.shape === 'capsule') mesh.scale.set(y, y, x + y);
-  else mesh.scale.set(x, y, z);
+  mesh.scale.fromArray(profilePreviewScale(preview));
   mesh.rotation.set(.38, 0, -.25);
   itemPreview.scene.add(mesh);
   itemPreview.mesh = mesh;
@@ -509,7 +531,12 @@ function selectItemPreview(name) {
   for (const row of $('items').children) row.setAttribute('aria-selected', String(row.dataset.className === name));
   const preview = normalizedClassPreview(item);
   $('items-preview-name').textContent = item.name;
-  $('items-preview-meta').textContent = `${preview.shape} · ${preview.axes.map(value => (value * 1000).toFixed(1)).join(' × ')} mm · profile preview`;
+  const millimetres = preview.axes.map(value => (value * 1000).toFixed(1));
+  $('items-preview-meta').textContent = preview.shape === 'half'
+    ? `Profile semi-axes ${millimetres[0]} × ${millimetres[1]} mm. Cut-half thickness ${millimetres[2]} mm.`
+    : preview.shape === 'capsule'
+      ? `Profile half-length ${millimetres[0]} mm. Radius ${millimetres[1]} mm.`
+      : `Profile half-extents ${millimetres.join(' × ')} mm.`;
   resizeItemPreview();
 }
 
@@ -635,16 +662,21 @@ function updateLatestEvidence() {
   measurements.outcome_wall_s = request?.outcome_wall_s ?? null;
 }
 
-function formatScore(score) {
+function formatScore(score, name, warmingUp) {
   if (Number.isFinite(score?.value)) return `${(score.value * 100).toFixed(1)}%`;
-  if (score?.denominator === 0) return 'No samples';
+  if (score?.denominator === 0) return emptyMetricState({
+    metric: name,
+    warmingUp,
+    catalogSize: state?.class_catalog?.length || 0,
+    rejectSize: state?.reject_policy?.reject_classes?.length || 0,
+  });
   return 'Computing';
 }
 
-function formatCount(score, emptyLabel) {
+function formatCount(score, emptyLabel, name, warmingUp) {
   return Number.isFinite(score?.denominator) && score.denominator > 0
     ? `${score.numerator ?? 0} / ${score.denominator}`
-    : `0 / 0 · ${emptyLabel}`;
+    : `0 / 0 · ${formatScore(score, name, warmingUp) === 'Computing' ? 'Computing' : emptyLabel}`;
 }
 
 function updateScoreboard() {
@@ -673,8 +705,8 @@ function updateScoreboard() {
     ['unresolved', 'score-unresolved', 'score-unresolved-count', 'No eligible objects'],
   ];
   for (const [name, valueId, countId, emptyLabel] of metricIds) {
-    $(valueId).textContent = formatScore(scores[name]);
-    $(countId).textContent = formatCount(scores[name], emptyLabel);
+    $(valueId).textContent = formatScore(scores[name], name, scores.warming_up);
+    $(countId).textContent = formatCount(scores[name], emptyLabel, name, scores.warming_up);
   }
   const asOf = Number(scores.as_of_sim_time_s || 0);
   const available = Number(scores.available_seconds || 0);
@@ -869,8 +901,8 @@ const annotations = [];
 const clickTargets = [];
 const presets = {
   overview: {position: [1.82, -2.62, 1.98], target: [-.22, 0, .47]},
-  sorting: {position: [.52, -1.44, .90], target: [.16, 0, .45]},
-  inspection: {position: [.58, -1.10, 1.02], target: [-.18, 0, .57]},
+  sorting: {position: [.20, -1.75, .58], target: [.12, 0, .48]},
+  inspection: {position: [1.15, 0, 1.72], target: [-.42, 0, .50]},
 };
 const INK = '#25342d', EDGE = '#34463d', EDGE_SOFT = '#829188', PAPER = '#eef0ea';
 const REJECT_COLOR = new THREE.Color('#d26045'), SPILL_COLOR = new THREE.Color('#d49a27'), SELECT_COLOR = new THREE.Color('#d8781c');
@@ -915,10 +947,7 @@ function initThree() {
       persp.updateProjectionMatrix();
     }
     new ResizeObserver(resize).observe(stage); resize();
-    document.querySelectorAll('[data-camera]').forEach(b => b.onclick = () => setCamera(b.dataset.camera));
-    document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => setView(b.dataset.view));
     setCamera('overview');
-    setView('3d');
     // Click on the belt or table = inject a stone. A drag stays an orbit.
     const raycaster = new THREE.Raycaster(); const pointer = new THREE.Vector2(); let down = null;
     renderer.domElement.addEventListener('pointerdown', e => { down = {x: e.clientX, y: e.clientY, t: performance.now()}; });
@@ -935,7 +964,7 @@ function initThree() {
     measurements.webgl = gpuName;
   } catch (error) {
     const el = document.createElement('div'); el.id = 'webgl-error'; el.setAttribute('role', 'alert');
-    el.textContent = `The 3D view could not start: ${error.message}. Top view still follows the engine. Use a current browser with WebGL 2 and hardware acceleration enabled.`;
+    el.textContent = `The 3D view could not start: ${error.message}. The 2D view still follows the engine.`;
     stage.append(el); console.error(error);
     measurements.webgl = 'unavailable';
   }
@@ -955,10 +984,10 @@ function updateMachineVisibility() {
 }
 
 function setView(name) {
-  if (!['3d', 'top', 'split'].includes(name)) return;
+  if (!['3d', '2d'].includes(name)) return;
   currentView = name;
   document.body.dataset.view = name;
-  document.querySelectorAll('[data-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.view === name)));
+  document.querySelectorAll('button[data-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.view === name)));
   updateMachineVisibility();
   resizeInset();
 }
@@ -1287,37 +1316,59 @@ function drawInset() {
   const width = rect.width, height = rect.height;
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = '#f8f8f4'; ctx.fillRect(0, 0, width, height);
-  const padX = Math.max(28, width * .06), padY = Math.max(46, height * .13);
-  const X = x => padX + (x + 1.1) / 1.6 * (width - padX * 2);
-  const Y = y => height / 2 + y / .5 * (height - padY * 2);
-  const beltTop = Y(-.25), beltHeight = Y(.25) - beltTop;
-  ctx.fillStyle = '#24548b'; ctx.fillRect(X(-1.1), beltTop, X(0) - X(-1.1), beltHeight);
-  ctx.fillStyle = '#dfe8ed'; ctx.fillRect(X(0), beltTop, X(.48) - X(0), beltHeight);
-  ctx.fillStyle = '#93d9e4'; ctx.fillRect(X(-.144), beltTop, X(-.096) - X(-.144), beltHeight);
-  ctx.fillStyle = '#8a9ea9'; ctx.fillRect(X(.1) - 2, beltTop, 4, beltHeight);
-  ctx.strokeStyle = '#34463d'; ctx.lineWidth = 1; ctx.strokeRect(X(-1.1), beltTop, X(.48) - X(-1.1), beltHeight);
-  ctx.font = '12px ui-monospace, monospace'; ctx.fillStyle = '#34463d';
-  for (const [label, x] of [['DROP ZONE', -1.0], ['INSPECT', -.12], ['AIR', .1], ['KEEP / REJECT', .35]]) ctx.fillText(label, X(x), 26);
+  const left = Math.max(52, width * .08), usable = width - left - Math.max(28, width * .05);
+  const X = x => left + (x + 1.1) / 1.6 * usable;
+  const Y = y => height * .28 + y / .5 * height * .18;
+  const Z = z => height * .90 - (z - .30) / .65 * height * .42;
+  const topY = Y(-.25), topHeight = Y(.25) - topY;
+  ctx.font = '12px ui-monospace, monospace';
+  ctx.fillStyle = '#586b7c';
+  ctx.fillText('TOP', 18, 25);
+  ctx.fillText('SIDE', 18, height * .54);
+  ctx.fillText('DROP ZONE', X(-1.05), 25);
+  ctx.fillText('INSPECT', X(-.18), 25);
+  ctx.fillText('AIR', X(.045), 25);
+  ctx.fillText('PHYSICAL OUTCOME', X(.28), 25);
+  ctx.fillStyle = '#24548b';
+  ctx.fillRect(X(-1.1), topY, X(0) - X(-1.1), topHeight);
+  ctx.fillStyle = '#dfe8ed';
+  ctx.fillRect(X(0), topY, X(.48) - X(0), topHeight);
+  ctx.fillStyle = '#93d9e4';
+  ctx.fillRect(X(-.144), topY, X(-.096) - X(-.144), topHeight);
+  ctx.fillStyle = '#8a9ea9';
+  ctx.fillRect(X(.1) - 2, topY, 4, topHeight);
+  ctx.strokeStyle = '#34463d'; ctx.lineWidth = 1;
+  ctx.strokeRect(X(-1.1), topY, X(.48) - X(-1.1), topHeight);
+  ctx.fillStyle = '#b3c0c9';
+  ctx.fillRect(X(-1.1), Z(.6), X(0) - X(-1.1), Math.max(5, height * .012));
+  ctx.strokeStyle = '#91a2ad'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(X(.34), Z(.475)); ctx.lineTo(X(.49), Z(.475)); ctx.stroke();
+  ctx.font = '11px ui-monospace, monospace';
+  ctx.fillStyle = '#466356'; ctx.fillText('KEEP', X(.36), Z(.56));
+  ctx.fillStyle = '#825231'; ctx.fillText('REJECT', X(.36), Z(.40));
   for (const o of state?.objects || []) {
     if ((!o.active && o.object_id !== selected) || !hasAuthoritativeRenderFields(o)) continue;
     displayedPose(o, _p, _q);
-    const x = _p.x, y = _p.y;
+    const x = _p.x, y = _p.y, z = _p.z;
     if (x < -1.2 || x > .55) continue;
     const rgb = o.rgb;
     const color = o.outcome === 'reject' ? '#d26045' : o.outcome === 'spilled' ? '#d49a27'
       : `rgb(${rgb.slice(0,3).map(v => Math.round(v <= 1 ? v * 255 : v)).join(',')})`;
-    const radius = Math.max(2, o.axes[0] / 1.6 * (width - padX * 2));
+    const radius = Math.max(2, o.axes[0] / 1.6 * usable);
     const qw = _q.w, qx = _q.x, qy = _q.y, qz = _q.z;
-    const yaw = Math.atan2(2*(qx*qy+qw*qz),1-2*(qy*qy+qz*qz));
+    const yaw = Math.atan2(2 * (qx * qy + qw * qz), 1 - 2 * (qy * qy + qz * qz));
+    const pitch = Math.atan2(-2 * (qx * qz - qw * qy), 1 - 2 * (qy * qy + qz * qz));
     ctx.globalAlpha = o.outcome ? .55 : 1;
     ctx.fillStyle = color;
-    ctx.save();ctx.translate(X(x),Y(y));ctx.rotate(yaw);
-    if (o.shape === 'box') ctx.fillRect(-radius,-radius*.68,radius*2,radius*1.36);
-    else {ctx.beginPath();ctx.ellipse(0,0,radius,Math.max(1.4,radius*.65),0,0,Math.PI*2);ctx.fill();}
-    ctx.restore();
+    for (const [vertical, angle] of [[Y(y), yaw], [Z(z), pitch]]) {
+      ctx.save(); ctx.translate(X(x), vertical); ctx.rotate(angle);
+      if (o.shape === 'box') ctx.fillRect(-radius, -radius * .68, radius * 2, radius * 1.36);
+      else { ctx.beginPath(); ctx.ellipse(0, 0, radius, Math.max(1.4, radius * .65), 0, 0, Math.PI * 2); ctx.fill(); }
+      ctx.restore();
+    }
     if (o.object_id === selected) {
-      ctx.globalAlpha = 1;ctx.strokeStyle = '#e59a32';ctx.lineWidth = 2;
-      ctx.beginPath();ctx.arc(X(x),Y(y),10,0,Math.PI*2);ctx.stroke();
+      ctx.globalAlpha = 1; ctx.strokeStyle = '#e59a32'; ctx.lineWidth = 2;
+      for (const vertical of [Y(y), Z(z)]) { ctx.beginPath(); ctx.arc(X(x), vertical, 10, 0, Math.PI * 2); ctx.stroke(); }
     }
   }
   ctx.globalAlpha = 1;
@@ -1339,8 +1390,8 @@ function draw(now) {
     frameIntervals = [];
   }
   advanceDisplayTimeline(now);
-  if (currentView !== '3d') drawInset();
-  if (currentView !== 'top') render3d(now);
+  if (currentView === '2d') drawInset();
+  if (currentView === '3d' && !$('items-dialog').open) render3d(now);
   requestAnimationFrame(draw);
 }
 
@@ -1380,6 +1431,9 @@ for (const button of document.querySelectorAll('[data-toggle]')) {
   setCollapsed(id, stored === null ? defaultCollapsed : stored === '1', false);
 }
 new ResizeObserver(resizeInset).observe($('inset'));
+document.querySelectorAll('button[data-camera]').forEach(button => button.onclick = () => setCamera(button.dataset.camera));
+document.querySelectorAll('button[data-view]').forEach(button => button.onclick = () => setView(button.dataset.view));
+setView('3d');
 initThree();
 connect();
 requestAnimationFrame(draw);

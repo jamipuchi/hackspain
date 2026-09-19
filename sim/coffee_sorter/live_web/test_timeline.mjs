@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {PolicyIntentBuffer, normalizedClassPreview, samePresentationTimeline} from './timeline.mjs';
+import {PolicyIntentBuffer, emptyMetricState, normalizedClassPreview, profilePreviewScale, samePresentationTimeline} from './timeline.mjs';
 
 const snapshot = {
   session_id: 'session-a',
@@ -62,4 +62,16 @@ test('class previews require explicit profile geometry with meter dimensions', (
   assert.deepEqual(normalizedClassPreview(item), {shape: 'box', axes: [.004, .003, .002], rgb: [.4, .5, .6]});
   assert.equal(normalizedClassPreview({...item, preview: {...item.preview, source: 'prediction'}}), null);
   assert.equal(normalizedClassPreview({...item, preview: {...item.preview, axes_m: [4, 3, 0]}}), null);
+});
+
+test('profile half preview keeps the declared cut-half thickness', () => {
+  const half = {shape: 'half', axes: [.00245, .0018, .00255], rgb: [.5, .4, .3]};
+  assert.deepEqual(profilePreviewScale(half), [.00245, .0018, .00255]);
+});
+
+test('empty score metrics distinguish warm-up from structurally empty cohorts', () => {
+  assert.equal(emptyMetricState({metric: 'reject_capture', warmingUp: true, catalogSize: 10, rejectSize: 9}), 'Computing');
+  assert.equal(emptyMetricState({metric: 'reject_capture', warmingUp: true, catalogSize: 10, rejectSize: 0}), 'No samples');
+  assert.equal(emptyMetricState({metric: 'keep_loss', warmingUp: true, catalogSize: 10, rejectSize: 10}), 'No samples');
+  assert.equal(emptyMetricState({metric: 'sorting_accuracy', warmingUp: false, catalogSize: 10, rejectSize: 9}), 'No samples');
 });

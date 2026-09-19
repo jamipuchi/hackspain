@@ -81,3 +81,21 @@ export function normalizedClassPreview(item) {
       || preview.rgb.some(component => component < 0 || component > 1)) return null;
   return {shape: preview.shape, axes: preview.axes_m.slice(), rgb: preview.rgb.slice()};
 }
+
+export function profilePreviewScale(preview) {
+  if (!preview) return null;
+  const [x, y, z] = preview.axes;
+  if (preview.shape === 'capsule') return [y, y, x + y];
+  // The half primitive has normalized bounds 2 x 2 x 1. Its profile z value
+  // is the full thickness after the parent ellipsoid is cut in half.
+  return [x, y, z];
+}
+
+export function emptyMetricState({metric, warmingUp, catalogSize, rejectSize}) {
+  const cohortCanReceiveSamples = metric === 'reject_capture' || metric === 'defect_capture'
+    ? rejectSize > 0
+    : metric === 'keep_loss' || metric === 'good_loss'
+      ? rejectSize < catalogSize
+      : catalogSize > 0;
+  return warmingUp && cohortCanReceiveSamples ? 'Computing' : 'No samples';
+}
