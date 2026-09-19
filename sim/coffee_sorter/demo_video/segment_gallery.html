@@ -5,6 +5,7 @@
 <title>Coffee sorter: video previews</title>
 <style>
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body { margin: 0; background: #121719; color: #edf0ec; font: 14px/1.45 system-ui, sans-serif; }
   main { max-width: 1500px; margin: auto; padding: 34px; }
   .eyebrow { color: #b6c5bf; font-size: 11px; letter-spacing: .17em; text-transform: uppercase; }
@@ -12,7 +13,7 @@
   p { color: #a6b4b1; margin: 0; }
   header { margin-bottom: 28px; }
   a { color: #bfd9cd; }
-  header a { display: inline-block; margin-top: 12px; }
+  header a { display: inline-block; margin-top: 12px; margin-right: 20px; }
   .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 18px; }
   article { min-width: 0; }
   video { display: block; width: 100%; aspect-ratio: 16/9; background: #070b0e; }
@@ -31,13 +32,14 @@
     <h1>Video previews, one scene at a time.</h1>
     <p>Completed clips appear automatically. The mode variants share their camera and timing. UI recording remains separate.</p>
     <a href="./">Return to the still studies and mode comparisons</a>
+    <a href="./coffee-demo-clips.zip" download id="pack" hidden>Download all 9 MP4s</a>
   </header>
   <div class="grid" id="clips"></div>
   <footer>
     Preview resolution: 640 × 360 at 30 fps. Clips have no audio, titles, or transitions baked into them.
     Dynamic clips use historical recorded poses at their original sampling rate.
     The macro holds one recorded instant while the camera and focus move.
-    The ultra-slow-motion clip requires a separate verified capture.
+    The slow-motion clip uses a separately verified 500 Hz simulation capture at 16.7× slower speed.
   </footer>
 </main>
 <script>
@@ -47,7 +49,7 @@
     ['03-overhead-inspection', '03 / Overhead inspection', 'A locked camera shows the recorded stream.', '03-overhead-inspection'],
     ['04-blueprint-discharge', '04A / Discharge: blueprint', 'Matched camera and timing with the normal version.', '04-blueprint-discharge'],
     ['04b-normal-discharge', '04B / Discharge: normal', 'A separate mode pass for your transition edit.', '04b-normal-discharge'],
-    ['05-ultra-slowmo', '05 / Ultra-slow-motion air jet', 'Awaiting a verified recording with dense poses and air-contact evidence.', '05b-slowmo-valve-on'],
+    ['05-ultra-slowmo', '05 / Ultra-slow-motion air jet', 'A verified air pulse separates the black bean from its good neighbour. 16.7× slower.', '05b-slowmo-valve-on'],
     ['07-warm-closing', '07A / Closing: clay', 'A lateral camera move with the recorded bean stream.', '07-warm-closing'],
     ['07b-blueprint-closing', '07B / Closing: blueprint', 'The same camera move, bean poses, and timing.', '07b-blueprint-closing'],
     ['07c-normal-closing', '07C / Closing: normal', 'The same camera move, bean poses, and timing.', '07c-normal-closing'],
@@ -57,7 +59,7 @@
     const video = document.createElement('video');
     video.controls = video.loop = video.muted = video.playsInline = true;
     video.preload = 'metadata';
-    video.poster = `./basic-scene-renders-v3/${poster}/scene.png`;
+    video.poster = id === '05-ultra-slowmo' ? './slowmo-study-v6/frames/frame_0076.png' : `./basic-scene-renders-v3/${poster}/scene.png`;
     video.setAttribute('aria-label', title);
     const heading = document.createElement('h2');
     heading.textContent = title;
@@ -65,10 +67,11 @@
     description.textContent = note;
     const status = document.createElement('div');
     status.className = 'status';
-    status.textContent = id.startsWith('05') ? 'Capture requested' : 'Queued';
+    status.textContent = id.startsWith('05') ? 'Framing checks' : 'Queued';
     const download = document.createElement('a');
     download.className = 'download';
-    download.textContent = 'Open MP4';
+    download.textContent = 'Download MP4';
+    download.download = `${id}.mp4`;
     download.hidden = true;
     article.append(video, heading, description, status, download);
     document.querySelector('#clips').append(article);
@@ -76,7 +79,7 @@
   });
   async function refresh() {
     await Promise.all(cards.filter(card => !card.ready).map(async card => {
-      const root = `./segments-v2/${card.id}/`;
+      const root = `./segments-v2/${card.id === '05-ultra-slowmo' ? '05-ultra-slowmo-v2' : card.id}/`;
       try {
         const response = await fetch(`${root}manifest.json`, {cache: 'no-store'});
         if (!response.ok) return;
@@ -94,6 +97,13 @@
         }
       } catch { /* Keep the previous status if a local request fails. */ }
     }));
+    const pack = document.querySelector('#pack');
+    if (cards.every(card => card.ready) && pack.hidden) {
+      try {
+        const response = await fetch('./coffee-demo-clips.zip', {method: 'HEAD'});
+        if (response.ok) pack.hidden = false;
+      } catch { /* Retry with the next refresh. */ }
+    }
   }
   refresh();
   setInterval(refresh, 5000);

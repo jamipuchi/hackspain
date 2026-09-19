@@ -2,7 +2,28 @@
 
 Status: Taras approved the concept and requested an ultra-slow-motion effect.
 Three [basic stills](BASIC_RENDER_REVIEW.md) now show one recorded bean pair.
-Pulse contact and the final animation remain unvalidated.
+The [video preview](SEGMENTS_REVIEW.md) uses a different pair from an independently audited 500 Hz capture.
+The original still pair remains historical composition evidence only.
+
+## Verified video event
+
+The video tracks black bean 1261 and good bean 1256 from source revision `44609edd` with development seed 8.
+The black bean receives its own pulse at 1.628 and 1.630 simulated seconds, then rejects at 1.710 seconds.
+The good bean receives no contact and accepts at 1.714 seconds.
+The renderer uses 120 consecutive source samples from `[1.478, 1.718)`.
+Playback at 30 fps lasts four seconds and slows the recorded motion by 16.667 times.
+The clip ends after both outcomes, before the splitter hides the good bean in later captured frames.
+The camera retains both paths. All nearby recorded beans remain present.
+The render omits both chute walls and splitter side trim as documented presentation cutaways.
+It also omits the decorative right manifold support and clamp to retain visibility during the pulse.
+It contains no airflow graphic, force arrow, labels, sound, motion blur, or synthetic intermediate poses.
+
+The durable independent audit is `/private/tmp/coffee-demo-video-previews/high-rate-capture/independent-audit.json`.
+The source replay is `/private/tmp/coffee-demo-video-previews/high-rate-capture/fresh-current-main/replay.json`.
+The reproduction replay is verification evidence only.
+This selected simulation event does not establish aggregate sorting performance or hardware feasibility.
+
+## Earlier concept
 
 ![Three moments of the slow-motion shot](/private/tmp/coffee-demo-video-previews/mockups/air-jet-slowmo-concept-v1.png)
 
@@ -54,7 +75,7 @@ Keep the simulator, model, policy, and preset provenance with the capture.
 The previous recording notes propose every-step capture at 500 Hz for a 2 ms timestep.
 The existing exporter accepts at most 60 fps. A denser capture requires coordination with its owner.
 
-No simulation, exporter change, or animation ran for this concept.
+No simulation, exporter change, or animation ran during the original concept pass.
 
 ## Recorded pair for the still studies
 
@@ -75,7 +96,7 @@ The gallery adds optional review markers. The clean PNGs contain no markers or s
 
 Stretching this 0.100-second interval to five seconds would imply 50-times slower playback.
 That is an editorial target, not a rendered or validated result.
-The final clip still requires denser capture and per-bean pulse-contact evidence.
+The verified video event above replaces that proposed 50-times slowdown and historical pair.
 
 ## Revised edit proposal
 
