@@ -769,3 +769,68 @@ manifest. Source, configuration, frozen model and software versions are recorded
 Changing source or configuration in an already-running process is rejected.
 Use `--rerun` to archive a completed/incomplete case and actually recompute it.
 The full corrected regression suite passes **58 tests** before the final batch.
+
+## 19 September 05:02 UTC: final sensor realism and economics
+
+**Result: stabilize illumination first; the current physical sorter does not yet justify a positive value claim.** The full 12-case batch completed on the preserved final source. All nine 1,000/s cases have the same 2,600 eligible products (376 defects, 2,224 keep), verified by product-identity hash. Crowded admission changes the high-feed cohorts, so those comparisons are descriptive, not causally paired.
+
+| Scenario | Effective beans/s | Eligible | Physical accuracy | Defect recall | Good false eject |
+|---|---:|---:|---:|---:|---:|
+| base-1000 | 1000.00 | 2600 | 88.65% | 48.67% | 4.14% |
+| brightness-minus30-1000 | 1000.00 | 2600 | 69.81% | 34.84% | 22.80% |
+| brightness-plus30-1000 | 1000.00 | 2600 | 76.42% | 47.61% | 17.45% |
+| gradient-30-1000 | 1000.00 | 2600 | 83.15% | 42.82% | 8.99% |
+| exposure-nominal-100us-1000 | 1000.00 | 2600 | 86.96% | 48.94% | 5.98% |
+| exposure-stress-500us-1000 | 1000.00 | 2600 | 77.73% | 44.68% | 15.78% |
+| noise-nominal-1000 | 1000.00 | 2600 | 87.42% | 52.93% | 6.43% |
+| noise-stress-1000 | 1000.00 | 2600 | 83.96% | 51.06% | 9.80% |
+| belt-jitter-5pct-1000 | 1000.00 | 2600 | 89.85% | 46.81% | 2.61% |
+| high-feed-reference-3000 | 3000.00 | 7800 | 80.74% | 38.81% | 8.55% |
+| touching-3000 | 1192.81 | 3107 | 82.46% | 39.43% | 9.61% |
+| combined-assumed-worst-3000 | 1201.25 | 3136 | 68.59% | 31.36% | 24.40% |
+
+Accuracy counts correctly accepted keep objects plus rejected defects over all eligible objects. Recall uses eligible policy defects; good false eject uses eligible keep objects. Spilled and unresolved objects remain in the denominators; spills are separately charged in the economics. Per-case Wilson intervals and all counts are in [summary.json](runs/sensor-realism/summary.json). One run per scenario means these intervals do not measure between-run uncertainty.
+
+### Which failure matters
+
+- **Illumination is the worst measured single factor.** At −30% gain, physical accuracy loses 18.85 percentage points and good false eject rises 18.66 points. Singleton vision top-1 falls 97.83% → 67.56%; observation-level good reject flags rise 1.47% → 32.06%. This is a substantial vision failure before actuation. +30% gain and the horizontal 0.7→1.3 gain gradient also damage vision. Uniform, regulated lighting and a measured photometric robustness check are the first hardware priorities.
+- **Exposure blur is the next large vision penalty.** Assumed 100 µs and 500 µs shutters at 3 m/s and 4,000 px/m produce 1.2 px and 6 px centered integration kernels. Singleton vision top-1 is 95.98% and 72.60%; physical good false eject is 5.98% and 15.78%. Hardware shutter duration is unknown. The existing 4 ms exposure/transfer pipeline floor is not an exposure measurement. Centered integration uses the exposure midpoint and does not add an artificial half-pixel tracking shift.
+- **Noise also hurts vision.** Gaussian shot-noise approximation plus read noise uses assumed 16 electrons/DN + 1 DN RMS and 4 electrons/DN + 3 DN RMS. Singleton top-1 is 95.42% and 88.81%, with physical good false eject 6.43% and 9.80%. The occasional recall increase is not evidence that noise improves a sorter. These are RGB-space approximations, not a calibrated raw sensor or photon simulation.
+- **Jitter changes transport, not the controller speed estimate.** The simulated belt spans 2.850–3.150 m/s at assumed 8 Hz; the controller retains 3 m/s. Vision stays strong (98.14% singleton top-1), while physical recall is 46.81% versus 48.67%. Own-pulse-hit decisions that end in rejection fall 290/343 → 250/354. Good false eject also falls, so this case does not establish overall harm or a ±5% acceptance bound. Timing, trajectory and capture remain coupled; zero late no-fire decisions does not prove correct pulse intersection.
+- **Crowding is primarily an admission/segmentation/physical limitation here.** The clean high-feed reference sustains 3,000/s, with 31.72% ever merged. Constraining feed to ±60 mm with a conservative 0.2 mm non-penetrating spawn gap admits 1,192.81/s and gives 38.46% ever merged. Contact is real: 1,979 timesteps and 2,723 unique lifetime-UID contact pairs. Singleton top-1 remains 97.16%; all-observation defect-action recall is 81.67%. This models overlapping camera blobs and physically touching objects, not impossible interpenetrating spawns. The three high-feed eligible cohorts differ.
+- **Combined stress is mixed vision and plant failure.** It admits 1,201.25/s, with 66.79% singleton vision top-1, 61.56% observation defect-action recall, 68.59% physical accuracy, 31.36% physical defect recall and 24.40% good false eject. There are 598 associated activated own-pulse misses; 520/722 own-hit decisions lead to rejection. These diagnostics cannot allocate all loss to one cause.
+
+All cases keep the frozen green classifier, specialty policy, seed 1, 0.06 N jets, 250 Hz simulated camera cadence, four simulated seconds and a 60 ms minimum total controller latency. Synthetic transform cost is excluded from detector/controller CPU and reported separately. The clean reference overruns the 4 ms camera interval on 996/1,000 frames. Camera backlog is not modeled: these runs are not real-time or hardware throughput validation.
+
+### One economic number, with every assumption
+
+**Clean reference: 576.0 kg/h input, 502.9 kg/h accepted, EUR −187.20/h incremental value before costs.** Assume every object, including fragments and foreign matter, has equal 0.20 g mass; use measured 1,000 objects/s and 80% duty. Thus input = 1,000 × 3,600 × 0.00020 × 0.8 = 576 kg/h. Use the observed eligible outcome fractions to partition that mass. This deliberately differs from the simulator’s variable-mass feed estimate.
+
+Assume the unsorted lot sells for EUR 6/kg and the accepted stream earns EUR 0.50/kg extra only if a buyer accepts its grade. Reject salvage, spilled/unresolved sale value are zero. Operating, labor and capital costs are excluded. The accepted stream retains 6.52% policy defects by count (incoming 14.46%); a real grade premium is unverified. Revenue change = 502.8923 × 6.50 − 576 × 6 = EUR −187.20/h. At zero premium the change is EUR −438.65/h. Break-even needs EUR 0.872/kg additional accepted-stream value before costs.
+
+The clean case rejects 40.542 kg/h of defects and falsely rejects 20.382 kg/h of good objects. Another 2.215 kg/h of good objects and 9.969 kg/h of defects spill; none of the spilled defects receives a rejection benefit credit. There are no unresolved clean-reference objects. Total good loss is 22.597 kg/h. This is a conditional lot-value ledger, not profit or a price forecast.
+
+| Scenario | Input kg/h | Accepted kg/h | Defects rejected kg/h | Total good lost kg/h | Value change EUR/h | Break-even premium EUR/kg |
+|---|---:|---:|---:|---:|---:|---:|
+| base-1000 | 576.00 | 502.89 | 40.54 | 22.60 | -187.20 | 0.872 |
+| belt-jitter-5pct-1000 | 576.00 | 517.07 | 38.99 | 14.18 | -95.04 | 0.684 |
+| brightness-minus30-1000 | 576.00 | 416.94 | 29.02 | 119.63 | -745.92 | 2.289 |
+| brightness-plus30-1000 | 576.00 | 434.44 | 39.66 | 92.16 | -632.16 | 1.955 |
+| exposure-nominal-100us-1000 | 576.00 | 493.81 | 40.76 | 32.57 | -246.24 | 0.999 |
+| exposure-stress-500us-1000 | 576.00 | 445.74 | 37.22 | 82.19 | -558.72 | 1.753 |
+| gradient-30-1000 | 576.00 | 480.52 | 35.67 | 49.40 | -332.64 | 1.192 |
+| noise-nominal-1000 | 576.00 | 488.27 | 44.09 | 33.23 | -282.24 | 1.078 |
+| noise-stress-1000 | 576.00 | 472.76 | 42.54 | 51.62 | -383.04 | 1.310 |
+| touching-3000 | 687.06 | 578.48 | 39.58 | 59.71 | -362.22 | 1.126 |
+| combined-assumed-worst-3000 | 691.92 | 502.61 | 31.55 | 148.27 | -884.54 | 2.260 |
+| high-feed-reference-3000 | 1728.00 | 1417.18 | 103.68 | 169.26 | -1156.32 | 1.316 |
+
+The [historical four-rate ledger](runs/economics/report.md) remains separate: its 1,000/s EUR −221.76/h result used the earlier 0.09 N setting and a different cohort. The final sensor ledger above uses 0.06 N. All negative scenarios are retained; source metric hashes and complete rejected/spilled/unresolved partitions appear in [sensor economics JSON](runs/sensor-economics/summary.json).
+
+### Deliverables and validation
+
+- [Sensor plot](runs/sensor-realism/summary.png), [camera contact sheet](runs/sensor-realism/camera_contact_sheet.png), [case table](runs/sensor-realism/REPORT.md), and six full-resolution annotated inspection sheets in each scenario directory. [Economic plot](runs/sensor-economics/summary.png) and [ledger](runs/sensor-economics/report.md). README commands regenerate both suites.
+- All 12 completion checks pass; each completion binds metrics, and metrics bind decoded inspection images, camera evidence, decisions and feed manifests. Resuming validates source/config/model identity. Exact 13-file runtime source snapshot and scenario config are in `runs/sensor-realism/source/`; they match the final runtime. Shared simulation/controller/detector/model code remains unchanged from 6515364. The frozen tracked model SHA-256 is `0b9e164cbf4df18f904f30fde38e0b7ed352877653849cc55da25e6f143051c8`.
+- **65 tests pass.** [Full output](runs/sensor-realism/final-tests.log), [resume validation](runs/sensor-realism/resume-validation.log), and separate [Standards/Spec findings and resolutions](runs/sensor-realism/REVIEW.md) are preserved. Compile and scoped-diff checks pass. The fork has zero GitHub Actions workflows; there is no CI result to claim. PR #1 remains draft and unmerged.
+
+Remaining hardware blockers: measure actual illumination/exposure/noise and encoder jitter; validate air-jet intersection/capture and feeder singulation over longer independent runs; model camera backlog; obtain buyer grade acceptance and prices. No blocking questions were needed. Earlier incomplete development runs were archived outside the published final suite before recomputation.

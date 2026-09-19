@@ -1,4 +1,5 @@
-Command: /workspace/personal/venvs/coffee-sorter/bin/python -m unittest discover -p test_*.py -v
+MUJOCO_GL=osmesa LD_LIBRARY_PATH=/workspace/personal/coffee-gl/root/usr/lib/x86_64-linux-gnu LP_NUM_THREADS=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 /workspace/personal/venvs/coffee-sorter/bin/python -m unittest discover -v
+
 test_complete_run_requires_parseable_metrics_evidence_and_six_images (test_characterization.CharacterizationRunnerTest.test_complete_run_requires_parseable_metrics_evidence_and_six_images) ... ok
 test_metrics_alone_is_not_a_complete_run (test_characterization.CharacterizationRunnerTest.test_metrics_alone_is_not_a_complete_run) ... ok
 test_deadline_is_checked_at_scheduling_point (test_controller.ControllerTest.test_deadline_is_checked_at_scheduling_point) ... ok
@@ -66,6 +67,6 @@ test_noise_variance_matches_nominal_and_stress_assumptions (test_sensor_realism.
 test_summarize_rejects_unequal_realized_1000_rate_cohort_hashes (test_sensor_realism.SummaryIntegrityTest.test_summarize_rejects_unequal_realized_1000_rate_cohort_hashes) ... ok
 
 ----------------------------------------------------------------------
-Ran 65 tests in 0.352s
+Ran 65 tests in 0.373s
 
 OK

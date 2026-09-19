@@ -1,0 +1,8 @@
+PASS: all 12 final scenarios validate with run_sensor_realism.py all (no simulation repeated).
+PASS: 13 runtime source snapshots and scenario config match current bytes and recorded hashes.
+PASS: 11 shared behavioral source modules unchanged from 6515364.
+PASS: 65 unittest tests; see final-tests.log for full command/output.
+PASS: py_compile for experiment/economics modules and their tests.
+PASS: economics uses all 12 cases and source metric hashes; mass ledgers balance.
+Visual inspection: sensor summary, 12-case contact sheet, economics plot legible. Full-size case evidence retained.
+GitHub Actions workflow count: 0 (no CI result claimed).

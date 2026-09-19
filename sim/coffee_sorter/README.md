@@ -102,6 +102,7 @@ Sensor-realism and economics commands use the same environment above:
 .venv/bin/python run_sensor_realism.py run --scenario exposure-nominal-100us-1000 --rerun
 .venv/bin/python run_sensor_realism.py summarize
 .venv/bin/python economics.py --config configs/economics.json --output runs/economics
+.venv/bin/python economics.py --metrics 'runs/sensor-realism/*/metrics.json' --config configs/economics.json --output runs/sensor-economics
 ```
 
 [Sensor settings](configs/sensor_realism_scenarios.json) label exposure, noise,
@@ -256,16 +257,44 @@ another virtual environment); `plot.py` in that directory regenerates the
 physical chart. `bash runs/generalization/publish.sh` uploads and byte-verifies
 the six visual outputs using an authenticated agent-fs CLI.
 
-**19 September — sensor realism and economics (in progress)**
+**19 September — sensor realism and economics**
 
-The historical rate sweep now has a rerunnable [mass/value ledger](runs/economics/report.md).
-At 1,000 effective objects/s, 0.20 g/object and 80% duty imply 576 kg/h input
-and 497.6 kg/h accepted. Assuming EUR 6/kg unsorted, an additional EUR 0.50/kg
-on accepted output and zero reject salvage gives **EUR −221.76/h before costs**.
-The accepted stream still has 7.03% policy defects by count; the buyer premium
-is hypothetical. Break-even needs EUR 0.946/kg additional accepted-stream value.
-Run `.venv/bin/python economics.py --config configs/economics.json --output runs/economics`.
-See [NIGHT_LOG.md](NIGHT_LOG.md) for every assumption, loss component and all four rates.
+Twelve synthetic cases measure physical accuracy, defect recall, good false
+ejection, merged beans and camera/actuation diagnostics. The nine 1,000/s cases
+use the same 2,600 eligible products. **Illumination hurts most among the tested
+single factors:** −30% brightness lowers physical accuracy 88.65% → 69.81%,
+recall 48.67% → 34.84%, and raises good false ejection 4.14% → 22.80%.
+Singleton camera accuracy falls 97.83% → 67.56%, identifying a substantial
+vision failure. Stabilize illumination before relying on this classifier.
+
+Assumed 100/500 µs shutter exposures produce 1.2/6 px centered motion blur at
+3 m/s. Good false ejection rises to 5.98%/15.78%. Actual shutter exposure is
+unknown; the existing 4 ms pipeline floor is not a shutter measurement.
+Crowded feed admits only 1,193/s of the requested 3,000/s, with 38.46% of
+eligible beans ever seen merged. Its cohort differs from the high-feed
+reference. One seed, four simulated seconds per case, synthetic camera noise,
+and omitted camera backlog prevent hardware or real-time claims.
+The combined assumed stress case admits 1,201/s and gives 68.59% physical
+accuracy, 31.36% defect recall and 24.40% good false ejection.
+[All twelve cases](runs/sensor-realism/REPORT.md),
+[four-panel plot](runs/sensor-realism/summary.png),
+[camera contact sheet](runs/sensor-realism/camera_contact_sheet.png), and
+[diagnostics and cohort checks](runs/sensor-realism/summary.json) preserve the evidence.
+
+The [current sensor-run mass/value ledger](runs/sensor-economics/report.md)
+gives **576 kg/h input and EUR −187.20/h before costs** for the clean 1,000/s
+reference: equal 0.20 g/object, 80% duty, EUR 6/kg unsorted feed, hypothetical
+EUR 0.50/kg accepted-stream premium, and zero salvage. It accepts 502.9 kg/h,
+rejects 40.5 kg/h of defects, falsely rejects 20.4 kg/h of good beans and spills
+another 2.2 kg/h of good beans. Accepted output still contains 6.52% policy
+defects by count; grade eligibility is unverified. Break-even requires
+EUR 0.872/kg premium before operating, labor or capital costs.
+
+The [historical rate-sweep ledger](runs/economics/report.md) retains all four
+rates and its EUR −221.76/h 1,000/s result; it uses the earlier 0.09 N setting
+and a different cohort. The sensor sweep uses 0.06 N. Neither ledger establishes
+a profitable sorter. [NIGHT_LOG.md](NIGHT_LOG.md) records assumptions, failure
+diagnostics and validation; all 65 tests pass.
 
 **Next**
 
@@ -276,7 +305,8 @@ See [NIGHT_LOG.md](NIGHT_LOG.md) for every assumption, loss component and all fo
 - [x] physical tuning screen, separate merged-bean metrics, fresh-seed demo and phone evidence
 - [ ] longer paired seeds for 0.06 N; improve merged-target jet intersection and capture
 - [ ] model camera backlog before claiming hardware timing margin
-- [ ] sensor degradation sweep and throughput/value ledger with stated assumptions
+- [x] sensor degradation sweep and throughput/value ledger with stated assumptions
+- [ ] stabilize illumination and validate photometric robustness before hardware accuracy claims
 - [ ] calibrate exposure, sensor noise and belt jitter from real hardware; verify buyer grade premium
 - [x] `roasted` profile without touching the controller; matched quality measured
 - [x] unseen colour/material/size experiment, anomaly and physical threshold tradeoffs

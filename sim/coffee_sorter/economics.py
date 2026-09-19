@@ -276,7 +276,7 @@ def plot(rows, assumptions, output):
 
 
 def write_report(rows, assumptions, command, output):
-    headline = next((row for row in rows if "rate-1000" in row["source"]), rows[0])
+    headline = next((row for row in rows if Path(row["source"]).parent.name in {"rate-1000", "base-1000"}), rows[0])
     r = headline["revenue_eur_h"]
     c = headline["cost_eur_h"]
     mass = headline["mass_kg_h"]
@@ -289,7 +289,7 @@ def write_report(rows, assumptions, command, output):
         "",
         "This is a rerunnable, hypothetical ledger from preserved physical metrics; it is not a market, premium, certification, or cost claim.",
         "",
-        f"Headline (rate-1000 when present): {scenario_label(headline)}.",
+        f"Headline (1,000/s reference when present): {scenario_label(headline)}.",
         f"Input {mass['input']:.3f} kg/h; accepted {mass['accepted']:.3f} kg/h; defects rejected {mass['defect_rejected']:.3f} kg/h.",
         f"Good falsely ejected {mass['good_rejected']:.3f} kg/h, spilled {mass['good_spilled']:.3f} kg/h, unresolved {mass['good_unresolved']:.3f} kg/h. Defects spilled {mass['defect_spilled']:.3f} kg/h, unresolved {mass['defect_unresolved']:.3f} kg/h; neither earns a rejection credit.",
         f"Baseline EUR {r['baseline_unsorted']:.2f}/h; sorted EUR {r['sorted']:.2f}/h; uplift EUR {r['uplift']:.2f}/h; zero-premium value EUR {r['at_zero_premium']:.2f}/h.",

@@ -1,0 +1,2626 @@
+{
+  "assumptions": {
+    "accepted_stream_premium_eur_per_kg": 0.5,
+    "base_feed_price_eur_per_kg": 6.0,
+    "capital_cost_eur_per_h": 0.0,
+    "duty_cycle": 0.8,
+    "labor_cost_eur_per_h": 0.0,
+    "object_mass_g": 0.2,
+    "operating_cost_eur_per_h": 0.0,
+    "rejected_salvage_eur_per_kg": 0.0,
+    "spilled_or_unresolved_sale_eur_per_kg": 0.0
+  },
+  "commands": {
+    "exact": "/workspace/personal/venvs/coffee-sorter/bin/python /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/economics.py --metrics 'runs/sensor-realism/*/metrics.json' --config configs/economics.json --output runs/sensor-economics",
+    "portable_from_sim_coffee_sorter": ".venv/bin/python economics.py --metrics 'runs/sensor-realism/*/metrics.json' --config configs/economics.json --output runs/sensor-economics"
+  },
+  "formula": "Q = measured throughput_beans_per_s * 3600 * object_mass_g / 1000 * duty_cycle",
+  "purpose": "hypothetical economics ledger from preserved physical metrics, not market evidence",
+  "scenarios": [
+    {
+      "break_even_accepted_stream_premium_eur_per_kg": 0.8722466960352425,
+      "class_counts": {
+        "black": {
+          "accepted": 24,
+          "n": 73,
+          "policy_defect": true,
+          "rejected": 49,
+          "severity": "major",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "broken": {
+          "accepted": 18,
+          "n": 45,
+          "policy_defect": true,
+          "rejected": 24,
+          "severity": "major",
+          "spilled": 3,
+          "unresolved": 0
+        },
+        "faded": {
+          "accepted": 35,
+          "n": 74,
+          "policy_defect": true,
+          "rejected": 37,
+          "severity": "minor",
+          "spilled": 2,
+          "unresolved": 0
+        },
+        "good": {
+          "accepted": 2122,
+          "n": 2224,
+          "policy_defect": false,
+          "rejected": 92,
+          "severity": "none",
+          "spilled": 10,
+          "unresolved": 0
+        },
+        "husk": {
+          "accepted": 6,
+          "n": 26,
+          "policy_defect": true,
+          "rejected": 5,
+          "severity": "foreign",
+          "spilled": 15,
+          "unresolved": 0
+        },
+        "insect": {
+          "accepted": 20,
+          "n": 44,
+          "policy_defect": true,
+          "rejected": 23,
+          "severity": "major",
+          "spilled": 1,
+          "unresolved": 0
+        },
+        "shell": {
+          "accepted": 9,
+          "n": 27,
+          "policy_defect": true,
+          "rejected": 3,
+          "severity": "major",
+          "spilled": 15,
+          "unresolved": 0
+        },
+        "sour": {
+          "accepted": 28,
+          "n": 65,
+          "policy_defect": true,
+          "rejected": 37,
+          "severity": "major",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "stick": {
+          "accepted": 6,
+          "n": 10,
+          "policy_defect": true,
+          "rejected": 4,
+          "severity": "foreign",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "stone": {
+          "accepted": 2,
+          "n": 12,
+          "policy_defect": true,
+          "rejected": 1,
+          "severity": "foreign",
+          "spilled": 9,
+          "unresolved": 0
+        }
+      },
+      "controller_config": {
+        "jet_force_n": 0.06,
+        "layout": {
+          "belt_len": 1.1,
+          "belt_speed": 3.0,
+          "belt_w": 0.5,
+          "belt_z": 0.6,
+          "cam_fov": 0.048,
+          "cam_h": 192,
+          "cam_w": 2080,
+          "cam_x": -0.12,
+          "ej_x": 0.1,
+          "ej_z_offset": 0.045,
+          "feed_drop": 0.006,
+          "feed_vx": 2.6,
+          "feed_x": [
+            -1.05,
+            -0.95
+          ],
+          "n_box": 30,
+          "n_capsule": 30,
+          "n_ellipsoid": 1800,
+          "n_half": 72,
+          "n_nozzles": 64,
+          "split_x": 0.34,
+          "split_z_drop": 0.125,
+          "timestep": 0.002
+        },
+        "policy": {
+          "anomaly": true,
+          "base_pulse": 0.003,
+          "fixed_latency": 0.06,
+          "induced_delay": 0.0,
+          "latency_floor": 0.004,
+          "lead": 0.0015,
+          "max_pulse": 0.012,
+          "name": "specialty",
+          "ref_mass": 0.0002,
+          "reject_severities": [
+            "minor",
+            "major",
+            "foreign"
+          ],
+          "target_nozzles": null,
+          "threshold": 0.5
+        },
+        "requested_rate_beans_per_s": 1000.0
+      },
+      "cost_eur_h": {
+        "all_rejected_base_value": 365.53846153848656,
+        "good_false_ejections": 122.28923076923914,
+        "good_spills": 13.2923076923086,
+        "good_unresolved": 0.0,
+        "spills": 73.1076923076973,
+        "unresolved": 0.0
+      },
+      "counts": {
+        "accepted": 2270,
+        "defect_accepted": 148,
+        "defect_input": 376,
+        "defect_rejected": 183,
+        "defect_spilled": 45,
+        "defect_unresolved": 0,
+        "good_rejected": 92,
+        "good_spilled": 10,
+        "good_unresolved": 0,
+        "input": 2600,
+        "rejected": 275,
+        "spilled": 55,
+        "unresolved": 0
+      },
+      "defect_count_percent": {
+        "incoming": 14.461538461538462,
+        "residual_accepted": 6.5198237885462555
+      },
+      "effective_rate_beans_per_s": 1000.0000000000686,
+      "formula": "Q = measured throughput_beans_per_s * 3600 * object_mass_g / 1000 * duty_cycle",
+      "mass_kg_h": {
+        "accepted": 502.8923076923421,
+        "defect_accepted": 32.78769230769455,
+        "defect_input": 83.29846153846724,
+        "defect_rejected": 40.541538461541236,
+        "defect_spilled": 9.969230769231451,
+        "defect_unresolved": 0.0,
+        "good_rejected": 20.381538461539858,
+        "good_spilled": 2.215384615384767,
+        "good_unresolved": 0.0,
+        "input": 576.0000000000394,
+        "rejected": 60.92307692308109,
+        "spilled": 12.184615384616219,
+        "unresolved": 0.0
+      },
+      "policy": {
+        "name": "specialty",
+        "reject_severities": [
+          "minor",
+          "major",
+          "foreign"
+        ]
+      },
+      "requested_rate_beans_per_s": 1000.0,
+      "revenue_eur_h": {
+        "at_zero_premium": -438.64615384618355,
+        "baseline_unsorted": 3456.0000000002365,
+        "sorted": 3268.800000000224,
+        "uplift": -187.20000000001255
+      },
+      "source": "runs/sensor-realism/base-1000/metrics.json",
+      "source_denominators": {
+        "accepted_beans": 2270,
+        "cohort_end_s": 3.399999999999781,
+        "cohort_start_s": 0.8,
+        "decisions": 3712,
+        "defects_to_remove": 376,
+        "eligible_beans": 2600,
+        "frames": 1000,
+        "keep_beans": 2224,
+        "reject_decisions": 566,
+        "rejected_beans": 275,
+        "resolved_beans": 2600
+      },
+      "source_sha256": "c4ca8ffc073663681d8ab299f8848ec488a5cd2daa835f237a7118133696ebf8"
+    },
+    {
+      "break_even_accepted_stream_premium_eur_per_kg": 0.683804627249357,
+      "class_counts": {
+        "black": {
+          "accepted": 35,
+          "n": 73,
+          "policy_defect": true,
+          "rejected": 38,
+          "severity": "major",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "broken": {
+          "accepted": 16,
+          "n": 45,
+          "policy_defect": true,
+          "rejected": 28,
+          "severity": "major",
+          "spilled": 1,
+          "unresolved": 0
+        },
+        "faded": {
+          "accepted": 39,
+          "n": 74,
+          "policy_defect": true,
+          "rejected": 35,
+          "severity": "minor",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "good": {
+          "accepted": 2160,
+          "n": 2224,
+          "policy_defect": false,
+          "rejected": 58,
+          "severity": "none",
+          "spilled": 6,
+          "unresolved": 0
+        },
+        "husk": {
+          "accepted": 11,
+          "n": 26,
+          "policy_defect": true,
+          "rejected": 4,
+          "severity": "foreign",
+          "spilled": 11,
+          "unresolved": 0
+        },
+        "insect": {
+          "accepted": 21,
+          "n": 44,
+          "policy_defect": true,
+          "rejected": 23,
+          "severity": "major",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "shell": {
+          "accepted": 12,
+          "n": 27,
+          "policy_defect": true,
+          "rejected": 7,
+          "severity": "major",
+          "spilled": 7,
+          "unresolved": 1
+        },
+        "sour": {
+          "accepted": 33,
+          "n": 65,
+          "policy_defect": true,
+          "rejected": 32,
+          "severity": "major",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "stick": {
+          "accepted": 4,
+          "n": 10,
+          "policy_defect": true,
+          "rejected": 6,
+          "severity": "foreign",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "stone": {
+          "accepted": 3,
+          "n": 12,
+          "policy_defect": true,
+          "rejected": 3,
+          "severity": "foreign",
+          "spilled": 6,
+          "unresolved": 0
+        }
+      },
+      "controller_config": {
+        "jet_force_n": 0.06,
+        "layout": {
+          "belt_len": 1.1,
+          "belt_speed": 3.0,
+          "belt_w": 0.5,
+          "belt_z": 0.6,
+          "cam_fov": 0.048,
+          "cam_h": 192,
+          "cam_w": 2080,
+          "cam_x": -0.12,
+          "ej_x": 0.1,
+          "ej_z_offset": 0.045,
+          "feed_drop": 0.006,
+          "feed_vx": 2.6,
+          "feed_x": [
+            -1.05,
+            -0.95
+          ],
+          "n_box": 30,
+          "n_capsule": 30,
+          "n_ellipsoid": 1800,
+          "n_half": 72,
+          "n_nozzles": 64,
+          "split_x": 0.34,
+          "split_z_drop": 0.125,
+          "timestep": 0.002
+        },
+        "policy": {
+          "anomaly": true,
+          "base_pulse": 0.003,
+          "fixed_latency": 0.06,
+          "induced_delay": 0.0,
+          "latency_floor": 0.004,
+          "lead": 0.0015,
+          "max_pulse": 0.012,
+          "name": "specialty",
+          "ref_mass": 0.0002,
+          "reject_severities": [
+            "minor",
+            "major",
+            "foreign"
+          ],
+          "target_nozzles": null,
+          "threshold": 0.5
+        },
+        "requested_rate_beans_per_s": 1000.0
+      },
+      "cost_eur_h": {
+        "all_rejected_base_value": 311.0400000000213,
+        "good_false_ejections": 77.09538461538989,
+        "good_spills": 7.9753846153851615,
+        "good_unresolved": 0.0,
+        "spills": 41.20615384615667,
+        "unresolved": 1.3292307692308603
+      },
+      "counts": {
+        "accepted": 2334,
+        "defect_accepted": 174,
+        "defect_input": 376,
+        "defect_rejected": 176,
+        "defect_spilled": 25,
+        "defect_unresolved": 1,
+        "good_rejected": 58,
+        "good_spilled": 6,
+        "good_unresolved": 0,
+        "input": 2600,
+        "rejected": 234,
+        "spilled": 31,
+        "unresolved": 1
+      },
+      "defect_count_percent": {
+        "incoming": 14.461538461538462,
+        "residual_accepted": 7.455012853470437
+      },
+      "effective_rate_beans_per_s": 1000.0000000000686,
+      "formula": "Q = measured throughput_beans_per_s * 3600 * object_mass_g / 1000 * duty_cycle",
+      "mass_kg_h": {
+        "accepted": 517.0707692308047,
+        "defect_accepted": 38.547692307694945,
+        "defect_input": 83.29846153846724,
+        "defect_rejected": 38.990769230771896,
+        "defect_spilled": 5.538461538461918,
+        "defect_unresolved": 0.2215384615384767,
+        "good_rejected": 12.84923076923165,
+        "good_spilled": 1.3292307692308603,
+        "good_unresolved": 0.0,
+        "input": 576.0000000000394,
+        "rejected": 51.84000000000355,
+        "spilled": 6.867692307692778,
+        "unresolved": 0.2215384615384767
+      },
+      "policy": {
+        "name": "specialty",
+        "reject_severities": [
+          "minor",
+          "major",
+          "foreign"
+        ]
+      },
+      "requested_rate_beans_per_s": 1000.0,
+      "revenue_eur_h": {
+        "at_zero_premium": -353.57538461540844,
+        "baseline_unsorted": 3456.0000000002365,
+        "sorted": 3360.96000000023,
+        "uplift": -95.04000000000633
+      },
+      "source": "runs/sensor-realism/belt-jitter-5pct-1000/metrics.json",
+      "source_denominators": {
+        "accepted_beans": 2334,
+        "cohort_end_s": 3.399999999999781,
+        "cohort_start_s": 0.8,
+        "decisions": 3618,
+        "defects_to_remove": 376,
+        "eligible_beans": 2600,
+        "frames": 1000,
+        "keep_beans": 2224,
+        "reject_decisions": 544,
+        "rejected_beans": 234,
+        "resolved_beans": 2599
+      },
+      "source_sha256": "c07ed263838bd5014c606be2c02169672564405b9ca23011b6993074d54fb00c"
+    },
+    {
+      "break_even_accepted_stream_premium_eur_per_kg": 2.2890541976620615,
+      "class_counts": {
+        "black": {
+          "accepted": 38,
+          "n": 73,
+          "policy_defect": true,
+          "rejected": 35,
+          "severity": "major",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "broken": {
+          "accepted": 30,
+          "n": 45,
+          "policy_defect": true,
+          "rejected": 9,
+          "severity": "major",
+          "spilled": 6,
+          "unresolved": 0
+        },
+        "faded": {
+          "accepted": 52,
+          "n": 74,
+          "policy_defect": true,
+          "rejected": 20,
+          "severity": "minor",
+          "spilled": 2,
+          "unresolved": 0
+        },
+        "good": {
+          "accepted": 1684,
+          "n": 2224,
+          "policy_defect": false,
+          "rejected": 507,
+          "severity": "none",
+          "spilled": 32,
+          "unresolved": 1
+        },
+        "husk": {
+          "accepted": 7,
+          "n": 26,
+          "policy_defect": true,
+          "rejected": 7,
+          "severity": "foreign",
+          "spilled": 12,
+          "unresolved": 0
+        },
+        "insect": {
+          "accepted": 26,
+          "n": 44,
+          "policy_defect": true,
+          "rejected": 17,
+          "severity": "major",
+          "spilled": 1,
+          "unresolved": 0
+        },
+        "shell": {
+          "accepted": 10,
+          "n": 27,
+          "policy_defect": true,
+          "rejected": 5,
+          "severity": "major",
+          "spilled": 12,
+          "unresolved": 0
+        },
+        "sour": {
+          "accepted": 33,
+          "n": 65,
+          "policy_defect": true,
+          "rejected": 30,
+          "severity": "major",
+          "spilled": 2,
+          "unresolved": 0
+        },
+        "stick": {
+          "accepted": 1,
+          "n": 10,
+          "policy_defect": true,
+          "rejected": 7,
+          "severity": "foreign",
+          "spilled": 2,
+          "unresolved": 0
+        },
+        "stone": {
+          "accepted": 1,
+          "n": 12,
+          "policy_defect": true,
+          "rejected": 1,
+          "severity": "foreign",
+          "spilled": 10,
+          "unresolved": 0
+        }
+      },
+      "controller_config": {
+        "jet_force_n": 0.06,
+        "layout": {
+          "belt_len": 1.1,
+          "belt_speed": 3.0,
+          "belt_w": 0.5,
+          "belt_z": 0.6,
+          "cam_fov": 0.048,
+          "cam_h": 192,
+          "cam_w": 2080,
+          "cam_x": -0.12,
+          "ej_x": 0.1,
+          "ej_z_offset": 0.045,
+          "feed_drop": 0.006,
+          "feed_vx": 2.6,
+          "feed_x": [
+            -1.05,
+            -0.95
+          ],
+          "n_box": 30,
+          "n_capsule": 30,
+          "n_ellipsoid": 1800,
+          "n_half": 72,
+          "n_nozzles": 64,
+          "split_x": 0.34,
+          "split_z_drop": 0.125,
+          "timestep": 0.002
+        },
+        "policy": {
+          "anomaly": true,
+          "base_pulse": 0.003,
+          "fixed_latency": 0.06,
+          "induced_delay": 0.0,
+          "latency_floor": 0.004,
+          "lead": 0.0015,
+          "max_pulse": 0.012,
+          "name": "specialty",
+          "ref_mass": 0.0002,
+          "reject_severities": [
+            "minor",
+            "major",
+            "foreign"
+          ],
+          "target_nozzles": null,
+          "threshold": 0.5
+        },
+        "requested_rate_beans_per_s": 1000.0
+      },
+      "cost_eur_h": {
+        "all_rejected_base_value": 848.0492307692889,
+        "good_false_ejections": 673.9200000000461,
+        "good_spills": 42.53538461538753,
+        "good_unresolved": 1.3292307692308603,
+        "spills": 105.00923076923796,
+        "unresolved": 1.3292307692308603
+      },
+      "counts": {
+        "accepted": 1882,
+        "defect_accepted": 198,
+        "defect_input": 376,
+        "defect_rejected": 131,
+        "defect_spilled": 47,
+        "defect_unresolved": 0,
+        "good_rejected": 507,
+        "good_spilled": 32,
+        "good_unresolved": 1,
+        "input": 2600,
+        "rejected": 638,
+        "spilled": 79,
+        "unresolved": 1
+      },
+      "defect_count_percent": {
+        "incoming": 14.461538461538462,
+        "residual_accepted": 10.520722635494154
+      },
+      "effective_rate_beans_per_s": 1000.0000000000686,
+      "formula": "Q = measured throughput_beans_per_s * 3600 * object_mass_g / 1000 * duty_cycle",
+      "mass_kg_h": {
+        "accepted": 416.93538461541317,
+        "defect_accepted": 43.86461538461839,
+        "defect_input": 83.29846153846724,
+        "defect_rejected": 29.021538461540448,
+        "defect_spilled": 10.412307692308405,
+        "defect_unresolved": 0.0,
+        "good_rejected": 112.32000000000768,
+        "good_spilled": 7.089230769231254,
+        "good_unresolved": 0.2215384615384767,
+        "input": 576.0000000000394,
+        "rejected": 141.34153846154814,
+        "spilled": 17.50153846153966,
+        "unresolved": 0.2215384615384767
+      },
+      "policy": {
+        "name": "specialty",
+        "reject_severities": [
+          "minor",
+          "major",
+          "foreign"
+        ]
+      },
+      "requested_rate_beans_per_s": 1000.0,
+      "revenue_eur_h": {
+        "at_zero_premium": -954.3876923077573,
+        "baseline_unsorted": 3456.0000000002365,
+        "sorted": 2710.0800000001855,
+        "uplift": -745.920000000051
+      },
+      "source": "runs/sensor-realism/brightness-minus30-1000/metrics.json",
+      "source_denominators": {
+        "accepted_beans": 1882,
+        "cohort_end_s": 3.399999999999781,
+        "cohort_start_s": 0.8,
+        "decisions": 3834,
+        "defects_to_remove": 376,
+        "eligible_beans": 2600,
+        "frames": 1000,
+        "keep_beans": 2224,
+        "reject_decisions": 1473,
+        "rejected_beans": 638,
+        "resolved_beans": 2599
+      },
+      "source_sha256": "66dc49ded742a39e4c5bead52ffb5b94a59d253dea30b9ac6f4e2424ab991b4e"
+    },
+    {
+      "break_even_accepted_stream_premium_eur_per_kg": 1.9551249362570127,
+      "class_counts": {
+        "black": {
+          "accepted": 35,
+          "n": 73,
+          "policy_defect": true,
+          "rejected": 37,
+          "severity": "major",
+          "spilled": 1,
+          "unresolved": 0
+        },
+        "broken": {
+          "accepted": 27,
+          "n": 45,
+          "policy_defect": true,
+          "rejected": 14,
+          "severity": "major",
+          "spilled": 4,
+          "unresolved": 0
+        },
+        "faded": {
+          "accepted": 33,
+          "n": 74,
+          "policy_defect": true,
+          "rejected": 41,
+          "severity": "minor",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "good": {
+          "accepted": 1808,
+          "n": 2224,
+          "policy_defect": false,
+          "rejected": 388,
+          "severity": "none",
+          "spilled": 28,
+          "unresolved": 0
+        },
+        "husk": {
+          "accepted": 9,
+          "n": 26,
+          "policy_defect": true,
+          "rejected": 4,
+          "severity": "foreign",
+          "spilled": 13,
+          "unresolved": 0
+        },
+        "insect": {
+          "accepted": 20,
+          "n": 44,
+          "policy_defect": true,
+          "rejected": 24,
+          "severity": "major",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "shell": {
+          "accepted": 6,
+          "n": 27,
+          "policy_defect": true,
+          "rejected": 5,
+          "severity": "major",
+          "spilled": 16,
+          "unresolved": 0
+        },
+        "sour": {
+          "accepted": 20,
+          "n": 65,
+          "policy_defect": true,
+          "rejected": 45,
+          "severity": "major",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "stick": {
+          "accepted": 1,
+          "n": 10,
+          "policy_defect": true,
+          "rejected": 8,
+          "severity": "foreign",
+          "spilled": 1,
+          "unresolved": 0
+        },
+        "stone": {
+          "accepted": 2,
+          "n": 12,
+          "policy_defect": true,
+          "rejected": 1,
+          "severity": "foreign",
+          "spilled": 9,
+          "unresolved": 0
+        }
+      },
+      "controller_config": {
+        "jet_force_n": 0.06,
+        "layout": {
+          "belt_len": 1.1,
+          "belt_speed": 3.0,
+          "belt_w": 0.5,
+          "belt_z": 0.6,
+          "cam_fov": 0.048,
+          "cam_h": 192,
+          "cam_w": 2080,
+          "cam_x": -0.12,
+          "ej_x": 0.1,
+          "ej_z_offset": 0.045,
+          "feed_drop": 0.006,
+          "feed_vx": 2.6,
+          "feed_x": [
+            -1.05,
+            -0.95
+          ],
+          "n_box": 30,
+          "n_capsule": 30,
+          "n_ellipsoid": 1800,
+          "n_half": 72,
+          "n_nozzles": 64,
+          "split_x": 0.34,
+          "split_z_drop": 0.125,
+          "timestep": 0.002
+        },
+        "policy": {
+          "anomaly": true,
+          "base_pulse": 0.003,
+          "fixed_latency": 0.06,
+          "induced_delay": 0.0,
+          "latency_floor": 0.004,
+          "lead": 0.0015,
+          "max_pulse": 0.012,
+          "name": "specialty",
+          "ref_mass": 0.0002,
+          "reject_severities": [
+            "minor",
+            "major",
+            "foreign"
+          ],
+          "target_nozzles": null,
+          "threshold": 0.5
+        },
+        "requested_rate_beans_per_s": 1000.0
+      },
+      "cost_eur_h": {
+        "all_rejected_base_value": 753.6738461538978,
+        "good_false_ejections": 515.7415384615738,
+        "good_spills": 37.218461538464084,
+        "good_unresolved": 0.0,
+        "spills": 95.70461538462195,
+        "unresolved": 0.0
+      },
+      "counts": {
+        "accepted": 1961,
+        "defect_accepted": 153,
+        "defect_input": 376,
+        "defect_rejected": 179,
+        "defect_spilled": 44,
+        "defect_unresolved": 0,
+        "good_rejected": 388,
+        "good_spilled": 28,
+        "good_unresolved": 0,
+        "input": 2600,
+        "rejected": 567,
+        "spilled": 72,
+        "unresolved": 0
+      },
+      "defect_count_percent": {
+        "incoming": 14.461538461538462,
+        "residual_accepted": 7.802141764405915
+      },
+      "effective_rate_beans_per_s": 1000.0000000000686,
+      "formula": "Q = measured throughput_beans_per_s * 3600 * object_mass_g / 1000 * duty_cycle",
+      "mass_kg_h": {
+        "accepted": 434.4369230769528,
+        "defect_accepted": 33.89538461538694,
+        "defect_input": 83.29846153846724,
+        "defect_rejected": 39.65538461538733,
+        "defect_spilled": 9.747692307692974,
+        "defect_unresolved": 0.0,
+        "good_rejected": 85.95692307692896,
+        "good_spilled": 6.203076923077347,
+        "good_unresolved": 0.0,
+        "input": 576.0000000000394,
+        "rejected": 125.61230769231629,
+        "spilled": 15.950769230770323,
+        "unresolved": 0.0
+      },
+      "policy": {
+        "name": "specialty",
+        "reject_severities": [
+          "minor",
+          "major",
+          "foreign"
+        ]
+      },
+      "requested_rate_beans_per_s": 1000.0,
+      "revenue_eur_h": {
+        "at_zero_premium": -849.3784615385198,
+        "baseline_unsorted": 3456.0000000002365,
+        "sorted": 2823.840000000193,
+        "uplift": -632.1600000000435
+      },
+      "source": "runs/sensor-realism/brightness-plus30-1000/metrics.json",
+      "source_denominators": {
+        "accepted_beans": 1961,
+        "cohort_end_s": 3.399999999999781,
+        "cohort_start_s": 0.8,
+        "decisions": 3740,
+        "defects_to_remove": 376,
+        "eligible_beans": 2600,
+        "frames": 1000,
+        "keep_beans": 2224,
+        "reject_decisions": 1333,
+        "rejected_beans": 567,
+        "resolved_beans": 2600
+      },
+      "source_sha256": "58e040f669cb3ca601caefbd4c245a67f3bc7ff5112cfb19d37dcf69ae7e0224"
+    },
+    {
+      "break_even_accepted_stream_premium_eur_per_kg": 0.998654104979812,
+      "class_counts": {
+        "black": {
+          "accepted": 33,
+          "n": 73,
+          "policy_defect": true,
+          "rejected": 40,
+          "severity": "major",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "broken": {
+          "accepted": 18,
+          "n": 45,
+          "policy_defect": true,
+          "rejected": 20,
+          "severity": "major",
+          "spilled": 7,
+          "unresolved": 0
+        },
+        "faded": {
+          "accepted": 24,
+          "n": 74,
+          "policy_defect": true,
+          "rejected": 50,
+          "severity": "minor",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "good": {
+          "accepted": 2077,
+          "n": 2224,
+          "policy_defect": false,
+          "rejected": 133,
+          "severity": "none",
+          "spilled": 12,
+          "unresolved": 2
+        },
+        "husk": {
+          "accepted": 6,
+          "n": 26,
+          "policy_defect": true,
+          "rejected": 5,
+          "severity": "foreign",
+          "spilled": 15,
+          "unresolved": 0
+        },
+        "insect": {
+          "accepted": 21,
+          "n": 44,
+          "policy_defect": true,
+          "rejected": 23,
+          "severity": "major",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "shell": {
+          "accepted": 9,
+          "n": 27,
+          "policy_defect": true,
+          "rejected": 7,
+          "severity": "major",
+          "spilled": 11,
+          "unresolved": 0
+        },
+        "sour": {
+          "accepted": 31,
+          "n": 65,
+          "policy_defect": true,
+          "rejected": 34,
+          "severity": "major",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "stick": {
+          "accepted": 5,
+          "n": 10,
+          "policy_defect": true,
+          "rejected": 4,
+          "severity": "foreign",
+          "spilled": 1,
+          "unresolved": 0
+        },
+        "stone": {
+          "accepted": 5,
+          "n": 12,
+          "policy_defect": true,
+          "rejected": 1,
+          "severity": "foreign",
+          "spilled": 6,
+          "unresolved": 0
+        }
+      },
+      "controller_config": {
+        "jet_force_n": 0.06,
+        "layout": {
+          "belt_len": 1.1,
+          "belt_speed": 3.0,
+          "belt_w": 0.5,
+          "belt_z": 0.6,
+          "cam_fov": 0.048,
+          "cam_h": 192,
+          "cam_w": 2080,
+          "cam_x": -0.12,
+          "ej_x": 0.1,
+          "ej_z_offset": 0.045,
+          "feed_drop": 0.006,
+          "feed_vx": 2.6,
+          "feed_x": [
+            -1.05,
+            -0.95
+          ],
+          "n_box": 30,
+          "n_capsule": 30,
+          "n_ellipsoid": 1800,
+          "n_half": 72,
+          "n_nozzles": 64,
+          "split_x": 0.34,
+          "split_z_drop": 0.125,
+          "timestep": 0.002
+        },
+        "policy": {
+          "anomaly": true,
+          "base_pulse": 0.003,
+          "fixed_latency": 0.06,
+          "induced_delay": 0.0,
+          "latency_floor": 0.004,
+          "lead": 0.0015,
+          "max_pulse": 0.012,
+          "name": "specialty",
+          "ref_mass": 0.0002,
+          "reject_severities": [
+            "minor",
+            "major",
+            "foreign"
+          ],
+          "target_nozzles": null,
+          "threshold": 0.5
+        },
+        "requested_rate_beans_per_s": 1000.0
+      },
+      "cost_eur_h": {
+        "all_rejected_base_value": 421.36615384618267,
+        "good_false_ejections": 176.7876923077044,
+        "good_spills": 15.950769230770323,
+        "good_unresolved": 2.6584615384617205,
+        "spills": 69.12000000000472,
+        "unresolved": 2.6584615384617205
+      },
+      "counts": {
+        "accepted": 2229,
+        "defect_accepted": 152,
+        "defect_input": 376,
+        "defect_rejected": 184,
+        "defect_spilled": 40,
+        "defect_unresolved": 0,
+        "good_rejected": 133,
+        "good_spilled": 12,
+        "good_unresolved": 2,
+        "input": 2600,
+        "rejected": 317,
+        "spilled": 52,
+        "unresolved": 2
+      },
+      "defect_count_percent": {
+        "incoming": 14.461538461538462,
+        "residual_accepted": 6.819201435621355
+      },
+      "effective_rate_beans_per_s": 1000.0000000000686,
+      "formula": "Q = measured throughput_beans_per_s * 3600 * object_mass_g / 1000 * duty_cycle",
+      "mass_kg_h": {
+        "accepted": 493.80923076926456,
+        "defect_accepted": 33.67384615384846,
+        "defect_input": 83.29846153846724,
+        "defect_rejected": 40.763076923079716,
+        "defect_spilled": 8.861538461539068,
+        "defect_unresolved": 0.0,
+        "good_rejected": 29.4646153846174,
+        "good_spilled": 2.6584615384617205,
+        "good_unresolved": 0.4430769230769534,
+        "input": 576.0000000000394,
+        "rejected": 70.22769230769711,
+        "spilled": 11.520000000000788,
+        "unresolved": 0.4430769230769534
+      },
+      "policy": {
+        "name": "specialty",
+        "reject_severities": [
+          "minor",
+          "major",
+          "foreign"
+        ]
+      },
+      "requested_rate_beans_per_s": 1000.0,
+      "revenue_eur_h": {
+        "at_zero_premium": -493.1446153846491,
+        "baseline_unsorted": 3456.0000000002365,
+        "sorted": 3209.7600000002194,
+        "uplift": -246.24000000001706
+      },
+      "source": "runs/sensor-realism/exposure-nominal-100us-1000/metrics.json",
+      "source_denominators": {
+        "accepted_beans": 2229,
+        "cohort_end_s": 3.399999999999781,
+        "cohort_start_s": 0.8,
+        "decisions": 3751,
+        "defects_to_remove": 376,
+        "eligible_beans": 2600,
+        "frames": 1000,
+        "keep_beans": 2224,
+        "reject_decisions": 649,
+        "rejected_beans": 317,
+        "resolved_beans": 2598
+      },
+      "source_sha256": "da56294a0b75eb2769feb873e2712a6e54950fe852a3ce1fe713e3df81b39583"
+    },
+    {
+      "break_even_accepted_stream_premium_eur_per_kg": 1.7534791252485094,
+      "class_counts": {
+        "black": {
+          "accepted": 34,
+          "n": 73,
+          "policy_defect": true,
+          "rejected": 38,
+          "severity": "major",
+          "spilled": 1,
+          "unresolved": 0
+        },
+        "broken": {
+          "accepted": 22,
+          "n": 45,
+          "policy_defect": true,
+          "rejected": 19,
+          "severity": "major",
+          "spilled": 4,
+          "unresolved": 0
+        },
+        "faded": {
+          "accepted": 28,
+          "n": 74,
+          "policy_defect": true,
+          "rejected": 45,
+          "severity": "minor",
+          "spilled": 1,
+          "unresolved": 0
+        },
+        "good": {
+          "accepted": 1853,
+          "n": 2224,
+          "policy_defect": false,
+          "rejected": 351,
+          "severity": "none",
+          "spilled": 20,
+          "unresolved": 0
+        },
+        "husk": {
+          "accepted": 7,
+          "n": 26,
+          "policy_defect": true,
+          "rejected": 4,
+          "severity": "foreign",
+          "spilled": 15,
+          "unresolved": 0
+        },
+        "insect": {
+          "accepted": 31,
+          "n": 44,
+          "policy_defect": true,
+          "rejected": 13,
+          "severity": "major",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "shell": {
+          "accepted": 7,
+          "n": 27,
+          "policy_defect": true,
+          "rejected": 4,
+          "severity": "major",
+          "spilled": 16,
+          "unresolved": 0
+        },
+        "sour": {
+          "accepted": 23,
+          "n": 65,
+          "policy_defect": true,
+          "rejected": 42,
+          "severity": "major",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "stick": {
+          "accepted": 4,
+          "n": 10,
+          "policy_defect": true,
+          "rejected": 3,
+          "severity": "foreign",
+          "spilled": 3,
+          "unresolved": 0
+        },
+        "stone": {
+          "accepted": 3,
+          "n": 12,
+          "policy_defect": true,
+          "rejected": 0,
+          "severity": "foreign",
+          "spilled": 9,
+          "unresolved": 0
+        }
+      },
+      "controller_config": {
+        "jet_force_n": 0.06,
+        "layout": {
+          "belt_len": 1.1,
+          "belt_speed": 3.0,
+          "belt_w": 0.5,
+          "belt_z": 0.6,
+          "cam_fov": 0.048,
+          "cam_h": 192,
+          "cam_w": 2080,
+          "cam_x": -0.12,
+          "ej_x": 0.1,
+          "ej_z_offset": 0.045,
+          "feed_drop": 0.006,
+          "feed_vx": 2.6,
+          "feed_x": [
+            -1.05,
+            -0.95
+          ],
+          "n_box": 30,
+          "n_capsule": 30,
+          "n_ellipsoid": 1800,
+          "n_half": 72,
+          "n_nozzles": 64,
+          "split_x": 0.34,
+          "split_z_drop": 0.125,
+          "timestep": 0.002
+        },
+        "policy": {
+          "anomaly": true,
+          "base_pulse": 0.003,
+          "fixed_latency": 0.06,
+          "induced_delay": 0.0,
+          "latency_floor": 0.004,
+          "lead": 0.0015,
+          "max_pulse": 0.012,
+          "name": "specialty",
+          "ref_mass": 0.0002,
+          "reject_severities": [
+            "minor",
+            "major",
+            "foreign"
+          ],
+          "target_nozzles": null,
+          "threshold": 0.5
+        },
+        "requested_rate_beans_per_s": 1000.0
+      },
+      "cost_eur_h": {
+        "all_rejected_base_value": 689.8707692308164,
+        "good_false_ejections": 466.5600000000319,
+        "good_spills": 26.5846153846172,
+        "good_unresolved": 0.0,
+        "spills": 91.71692307692936,
+        "unresolved": 0.0
+      },
+      "counts": {
+        "accepted": 2012,
+        "defect_accepted": 159,
+        "defect_input": 376,
+        "defect_rejected": 168,
+        "defect_spilled": 49,
+        "defect_unresolved": 0,
+        "good_rejected": 351,
+        "good_spilled": 20,
+        "good_unresolved": 0,
+        "input": 2600,
+        "rejected": 519,
+        "spilled": 69,
+        "unresolved": 0
+      },
+      "defect_count_percent": {
+        "incoming": 14.461538461538462,
+        "residual_accepted": 7.90258449304175
+      },
+      "effective_rate_beans_per_s": 1000.0000000000686,
+      "formula": "Q = measured throughput_beans_per_s * 3600 * object_mass_g / 1000 * duty_cycle",
+      "mass_kg_h": {
+        "accepted": 445.7353846154151,
+        "defect_accepted": 35.22461538461779,
+        "defect_input": 83.29846153846724,
+        "defect_rejected": 37.218461538464084,
+        "defect_spilled": 10.855384615385358,
+        "defect_unresolved": 0.0,
+        "good_rejected": 77.76000000000532,
+        "good_spilled": 4.430769230769534,
+        "good_unresolved": 0.0,
+        "input": 576.0000000000394,
+        "rejected": 114.9784615384694,
+        "spilled": 15.286153846154892,
+        "unresolved": 0.0
+      },
+      "policy": {
+        "name": "specialty",
+        "reject_severities": [
+          "minor",
+          "major",
+          "foreign"
+        ]
+      },
+      "requested_rate_beans_per_s": 1000.0,
+      "revenue_eur_h": {
+        "at_zero_premium": -781.5876923077458,
+        "baseline_unsorted": 3456.0000000002365,
+        "sorted": 2897.280000000198,
+        "uplift": -558.7200000000385
+      },
+      "source": "runs/sensor-realism/exposure-stress-500us-1000/metrics.json",
+      "source_denominators": {
+        "accepted_beans": 2012,
+        "cohort_end_s": 3.399999999999781,
+        "cohort_start_s": 0.8,
+        "decisions": 3709,
+        "defects_to_remove": 376,
+        "eligible_beans": 2600,
+        "frames": 1000,
+        "keep_beans": 2224,
+        "reject_decisions": 1375,
+        "rejected_beans": 519,
+        "resolved_beans": 2600
+      },
+      "source_sha256": "79397da6442740899f7d16209322127c3c769de8e9c35975b4b066c078c66115"
+    },
+    {
+      "break_even_accepted_stream_premium_eur_per_kg": 1.1922544951590601,
+      "class_counts": {
+        "black": {
+          "accepted": 30,
+          "n": 73,
+          "policy_defect": true,
+          "rejected": 41,
+          "severity": "major",
+          "spilled": 2,
+          "unresolved": 0
+        },
+        "broken": {
+          "accepted": 22,
+          "n": 45,
+          "policy_defect": true,
+          "rejected": 18,
+          "severity": "major",
+          "spilled": 5,
+          "unresolved": 0
+        },
+        "faded": {
+          "accepted": 45,
+          "n": 74,
+          "policy_defect": true,
+          "rejected": 28,
+          "severity": "minor",
+          "spilled": 1,
+          "unresolved": 0
+        },
+        "good": {
+          "accepted": 2001,
+          "n": 2224,
+          "policy_defect": false,
+          "rejected": 200,
+          "severity": "none",
+          "spilled": 23,
+          "unresolved": 0
+        },
+        "husk": {
+          "accepted": 6,
+          "n": 26,
+          "policy_defect": true,
+          "rejected": 4,
+          "severity": "foreign",
+          "spilled": 16,
+          "unresolved": 0
+        },
+        "insect": {
+          "accepted": 17,
+          "n": 44,
+          "policy_defect": true,
+          "rejected": 25,
+          "severity": "major",
+          "spilled": 2,
+          "unresolved": 0
+        },
+        "shell": {
+          "accepted": 11,
+          "n": 27,
+          "policy_defect": true,
+          "rejected": 4,
+          "severity": "major",
+          "spilled": 12,
+          "unresolved": 0
+        },
+        "sour": {
+          "accepted": 32,
+          "n": 65,
+          "policy_defect": true,
+          "rejected": 33,
+          "severity": "major",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "stick": {
+          "accepted": 2,
+          "n": 10,
+          "policy_defect": true,
+          "rejected": 5,
+          "severity": "foreign",
+          "spilled": 3,
+          "unresolved": 0
+        },
+        "stone": {
+          "accepted": 3,
+          "n": 12,
+          "policy_defect": true,
+          "rejected": 3,
+          "severity": "foreign",
+          "spilled": 6,
+          "unresolved": 0
+        }
+      },
+      "controller_config": {
+        "jet_force_n": 0.06,
+        "layout": {
+          "belt_len": 1.1,
+          "belt_speed": 3.0,
+          "belt_w": 0.5,
+          "belt_z": 0.6,
+          "cam_fov": 0.048,
+          "cam_h": 192,
+          "cam_w": 2080,
+          "cam_x": -0.12,
+          "ej_x": 0.1,
+          "ej_z_offset": 0.045,
+          "feed_drop": 0.006,
+          "feed_vx": 2.6,
+          "feed_x": [
+            -1.05,
+            -0.95
+          ],
+          "n_box": 30,
+          "n_capsule": 30,
+          "n_ellipsoid": 1800,
+          "n_half": 72,
+          "n_nozzles": 64,
+          "split_x": 0.34,
+          "split_z_drop": 0.125,
+          "timestep": 0.002
+        },
+        "policy": {
+          "anomaly": true,
+          "base_pulse": 0.003,
+          "fixed_latency": 0.06,
+          "induced_delay": 0.0,
+          "latency_floor": 0.004,
+          "lead": 0.0015,
+          "max_pulse": 0.012,
+          "name": "specialty",
+          "ref_mass": 0.0002,
+          "reject_severities": [
+            "minor",
+            "major",
+            "foreign"
+          ],
+          "target_nozzles": null,
+          "threshold": 0.5
+        },
+        "requested_rate_beans_per_s": 1000.0
+      },
+      "cost_eur_h": {
+        "all_rejected_base_value": 479.8523076923405,
+        "good_false_ejections": 265.84615384617206,
+        "good_spills": 30.572307692309785,
+        "good_unresolved": 0.0,
+        "spills": 93.04615384616021,
+        "unresolved": 0.0
+      },
+      "counts": {
+        "accepted": 2169,
+        "defect_accepted": 168,
+        "defect_input": 376,
+        "defect_rejected": 161,
+        "defect_spilled": 47,
+        "defect_unresolved": 0,
+        "good_rejected": 200,
+        "good_spilled": 23,
+        "good_unresolved": 0,
+        "input": 2600,
+        "rejected": 361,
+        "spilled": 70,
+        "unresolved": 0
+      },
+      "defect_count_percent": {
+        "incoming": 14.461538461538462,
+        "residual_accepted": 7.745504840940526
+      },
+      "effective_rate_beans_per_s": 1000.0000000000686,
+      "formula": "Q = measured throughput_beans_per_s * 3600 * object_mass_g / 1000 * duty_cycle",
+      "mass_kg_h": {
+        "accepted": 480.51692307695595,
+        "defect_accepted": 37.218461538464084,
+        "defect_input": 83.29846153846724,
+        "defect_rejected": 35.66769230769475,
+        "defect_spilled": 10.412307692308405,
+        "defect_unresolved": 0.0,
+        "good_rejected": 44.30769230769534,
+        "good_spilled": 5.0953846153849645,
+        "good_unresolved": 0.0,
+        "input": 576.0000000000394,
+        "rejected": 79.97538461539008,
+        "spilled": 15.507692307693368,
+        "unresolved": 0.0
+      },
+      "policy": {
+        "name": "specialty",
+        "reject_severities": [
+          "minor",
+          "major",
+          "foreign"
+        ]
+      },
+      "requested_rate_beans_per_s": 1000.0,
+      "revenue_eur_h": {
+        "at_zero_premium": -572.8984615385007,
+        "baseline_unsorted": 3456.0000000002365,
+        "sorted": 3123.360000000214,
+        "uplift": -332.6400000000226
+      },
+      "source": "runs/sensor-realism/gradient-30-1000/metrics.json",
+      "source_denominators": {
+        "accepted_beans": 2169,
+        "cohort_end_s": 3.399999999999781,
+        "cohort_start_s": 0.8,
+        "decisions": 3731,
+        "defects_to_remove": 376,
+        "eligible_beans": 2600,
+        "frames": 1000,
+        "keep_beans": 2224,
+        "reject_decisions": 745,
+        "rejected_beans": 361,
+        "resolved_beans": 2600
+      },
+      "source_sha256": "d59267c1b10eea7fa8dd17717b285f64fa126e66470ea10461ca7e5fadfdcbbb"
+    },
+    {
+      "break_even_accepted_stream_premium_eur_per_kg": 1.0780399274047188,
+      "class_counts": {
+        "black": {
+          "accepted": 26,
+          "n": 73,
+          "policy_defect": true,
+          "rejected": 46,
+          "severity": "major",
+          "spilled": 1,
+          "unresolved": 0
+        },
+        "broken": {
+          "accepted": 14,
+          "n": 45,
+          "policy_defect": true,
+          "rejected": 25,
+          "severity": "major",
+          "spilled": 6,
+          "unresolved": 0
+        },
+        "faded": {
+          "accepted": 28,
+          "n": 74,
+          "policy_defect": true,
+          "rejected": 45,
+          "severity": "minor",
+          "spilled": 1,
+          "unresolved": 0
+        },
+        "good": {
+          "accepted": 2074,
+          "n": 2224,
+          "policy_defect": false,
+          "rejected": 143,
+          "severity": "none",
+          "spilled": 7,
+          "unresolved": 0
+        },
+        "husk": {
+          "accepted": 5,
+          "n": 26,
+          "policy_defect": true,
+          "rejected": 7,
+          "severity": "foreign",
+          "spilled": 14,
+          "unresolved": 0
+        },
+        "insect": {
+          "accepted": 16,
+          "n": 44,
+          "policy_defect": true,
+          "rejected": 28,
+          "severity": "major",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "shell": {
+          "accepted": 9,
+          "n": 27,
+          "policy_defect": true,
+          "rejected": 3,
+          "severity": "major",
+          "spilled": 15,
+          "unresolved": 0
+        },
+        "sour": {
+          "accepted": 24,
+          "n": 65,
+          "policy_defect": true,
+          "rejected": 40,
+          "severity": "major",
+          "spilled": 1,
+          "unresolved": 0
+        },
+        "stick": {
+          "accepted": 4,
+          "n": 10,
+          "policy_defect": true,
+          "rejected": 4,
+          "severity": "foreign",
+          "spilled": 2,
+          "unresolved": 0
+        },
+        "stone": {
+          "accepted": 4,
+          "n": 12,
+          "policy_defect": true,
+          "rejected": 1,
+          "severity": "foreign",
+          "spilled": 7,
+          "unresolved": 0
+        }
+      },
+      "controller_config": {
+        "jet_force_n": 0.06,
+        "layout": {
+          "belt_len": 1.1,
+          "belt_speed": 3.0,
+          "belt_w": 0.5,
+          "belt_z": 0.6,
+          "cam_fov": 0.048,
+          "cam_h": 192,
+          "cam_w": 2080,
+          "cam_x": -0.12,
+          "ej_x": 0.1,
+          "ej_z_offset": 0.045,
+          "feed_drop": 0.006,
+          "feed_vx": 2.6,
+          "feed_x": [
+            -1.05,
+            -0.95
+          ],
+          "n_box": 30,
+          "n_capsule": 30,
+          "n_ellipsoid": 1800,
+          "n_half": 72,
+          "n_nozzles": 64,
+          "split_x": 0.34,
+          "split_z_drop": 0.125,
+          "timestep": 0.002
+        },
+        "policy": {
+          "anomaly": true,
+          "base_pulse": 0.003,
+          "fixed_latency": 0.06,
+          "induced_delay": 0.0,
+          "latency_floor": 0.004,
+          "lead": 0.0015,
+          "max_pulse": 0.012,
+          "name": "specialty",
+          "ref_mass": 0.0002,
+          "reject_severities": [
+            "minor",
+            "major",
+            "foreign"
+          ],
+          "target_nozzles": null,
+          "threshold": 0.5
+        },
+        "requested_rate_beans_per_s": 1000.0
+      },
+      "cost_eur_h": {
+        "all_rejected_base_value": 454.59692307695417,
+        "good_false_ejections": 190.080000000013,
+        "good_spills": 9.304615384616021,
+        "good_unresolved": 0.0,
+        "spills": 71.77846153846644,
+        "unresolved": 0.0
+      },
+      "counts": {
+        "accepted": 2204,
+        "defect_accepted": 130,
+        "defect_input": 376,
+        "defect_rejected": 199,
+        "defect_spilled": 47,
+        "defect_unresolved": 0,
+        "good_rejected": 143,
+        "good_spilled": 7,
+        "good_unresolved": 0,
+        "input": 2600,
+        "rejected": 342,
+        "spilled": 54,
+        "unresolved": 0
+      },
+      "defect_count_percent": {
+        "incoming": 14.461538461538462,
+        "residual_accepted": 5.898366606170599
+      },
+      "effective_rate_beans_per_s": 1000.0000000000686,
+      "formula": "Q = measured throughput_beans_per_s * 3600 * object_mass_g / 1000 * duty_cycle",
+      "mass_kg_h": {
+        "accepted": 488.27076923080267,
+        "defect_accepted": 28.800000000001972,
+        "defect_input": 83.29846153846724,
+        "defect_rejected": 44.08615384615686,
+        "defect_spilled": 10.412307692308405,
+        "defect_unresolved": 0.0,
+        "good_rejected": 31.680000000002167,
+        "good_spilled": 1.5507692307693368,
+        "good_unresolved": 0.0,
+        "input": 576.0000000000394,
+        "rejected": 75.76615384615903,
+        "spilled": 11.963076923077741,
+        "unresolved": 0.0
+      },
+      "policy": {
+        "name": "specialty",
+        "reject_severities": [
+          "minor",
+          "major",
+          "foreign"
+        ]
+      },
+      "requested_rate_beans_per_s": 1000.0,
+      "revenue_eur_h": {
+        "at_zero_premium": -526.3753846154204,
+        "baseline_unsorted": 3456.0000000002365,
+        "sorted": 3173.7600000002176,
+        "uplift": -282.2400000000189
+      },
+      "source": "runs/sensor-realism/noise-nominal-1000/metrics.json",
+      "source_denominators": {
+        "accepted_beans": 2204,
+        "cohort_end_s": 3.399999999999781,
+        "cohort_start_s": 0.8,
+        "decisions": 3673,
+        "defects_to_remove": 376,
+        "eligible_beans": 2600,
+        "frames": 1000,
+        "keep_beans": 2224,
+        "reject_decisions": 647,
+        "rejected_beans": 342,
+        "resolved_beans": 2600
+      },
+      "source_sha256": "34ec5010fb9a4f2cdc31bcd4aa1f3a17537121eb6c94ad2077241d508ed06dec"
+    },
+    {
+      "break_even_accepted_stream_premium_eur_per_kg": 1.3102155576382384,
+      "class_counts": {
+        "black": {
+          "accepted": 27,
+          "n": 73,
+          "policy_defect": true,
+          "rejected": 45,
+          "severity": "major",
+          "spilled": 1,
+          "unresolved": 0
+        },
+        "broken": {
+          "accepted": 16,
+          "n": 45,
+          "policy_defect": true,
+          "rejected": 24,
+          "severity": "major",
+          "spilled": 5,
+          "unresolved": 0
+        },
+        "faded": {
+          "accepted": 35,
+          "n": 74,
+          "policy_defect": true,
+          "rejected": 39,
+          "severity": "minor",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "good": {
+          "accepted": 1991,
+          "n": 2224,
+          "policy_defect": false,
+          "rejected": 218,
+          "severity": "none",
+          "spilled": 15,
+          "unresolved": 0
+        },
+        "husk": {
+          "accepted": 9,
+          "n": 26,
+          "policy_defect": true,
+          "rejected": 2,
+          "severity": "foreign",
+          "spilled": 15,
+          "unresolved": 0
+        },
+        "insect": {
+          "accepted": 17,
+          "n": 44,
+          "policy_defect": true,
+          "rejected": 27,
+          "severity": "major",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "shell": {
+          "accepted": 9,
+          "n": 27,
+          "policy_defect": true,
+          "rejected": 5,
+          "severity": "major",
+          "spilled": 13,
+          "unresolved": 0
+        },
+        "sour": {
+          "accepted": 21,
+          "n": 65,
+          "policy_defect": true,
+          "rejected": 44,
+          "severity": "major",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "stick": {
+          "accepted": 5,
+          "n": 10,
+          "policy_defect": true,
+          "rejected": 4,
+          "severity": "foreign",
+          "spilled": 1,
+          "unresolved": 0
+        },
+        "stone": {
+          "accepted": 4,
+          "n": 12,
+          "policy_defect": true,
+          "rejected": 2,
+          "severity": "foreign",
+          "spilled": 6,
+          "unresolved": 0
+        }
+      },
+      "controller_config": {
+        "jet_force_n": 0.06,
+        "layout": {
+          "belt_len": 1.1,
+          "belt_speed": 3.0,
+          "belt_w": 0.5,
+          "belt_z": 0.6,
+          "cam_fov": 0.048,
+          "cam_h": 192,
+          "cam_w": 2080,
+          "cam_x": -0.12,
+          "ej_x": 0.1,
+          "ej_z_offset": 0.045,
+          "feed_drop": 0.006,
+          "feed_vx": 2.6,
+          "feed_x": [
+            -1.05,
+            -0.95
+          ],
+          "n_box": 30,
+          "n_capsule": 30,
+          "n_ellipsoid": 1800,
+          "n_half": 72,
+          "n_nozzles": 64,
+          "split_x": 0.34,
+          "split_z_drop": 0.125,
+          "timestep": 0.002
+        },
+        "policy": {
+          "anomaly": true,
+          "base_pulse": 0.003,
+          "fixed_latency": 0.06,
+          "induced_delay": 0.0,
+          "latency_floor": 0.004,
+          "lead": 0.0015,
+          "max_pulse": 0.012,
+          "name": "specialty",
+          "ref_mass": 0.0002,
+          "reject_severities": [
+            "minor",
+            "major",
+            "foreign"
+          ],
+          "target_nozzles": null,
+          "threshold": 0.5
+        },
+        "requested_rate_beans_per_s": 1000.0
+      },
+      "cost_eur_h": {
+        "all_rejected_base_value": 544.9846153846527,
+        "good_false_ejections": 289.77230769232756,
+        "good_spills": 19.938461538462903,
+        "good_unresolved": 0.0,
+        "spills": 74.43692307692817,
+        "unresolved": 0.0
+      },
+      "counts": {
+        "accepted": 2134,
+        "defect_accepted": 143,
+        "defect_input": 376,
+        "defect_rejected": 192,
+        "defect_spilled": 41,
+        "defect_unresolved": 0,
+        "good_rejected": 218,
+        "good_spilled": 15,
+        "good_unresolved": 0,
+        "input": 2600,
+        "rejected": 410,
+        "spilled": 56,
+        "unresolved": 0
+      },
+      "defect_count_percent": {
+        "incoming": 14.461538461538462,
+        "residual_accepted": 6.701030927835052
+      },
+      "effective_rate_beans_per_s": 1000.0000000000686,
+      "formula": "Q = measured throughput_beans_per_s * 3600 * object_mass_g / 1000 * duty_cycle",
+      "mass_kg_h": {
+        "accepted": 472.7630769231093,
+        "defect_accepted": 31.680000000002167,
+        "defect_input": 83.29846153846724,
+        "defect_rejected": 42.53538461538753,
+        "defect_spilled": 9.083076923077545,
+        "defect_unresolved": 0.0,
+        "good_rejected": 48.295384615387924,
+        "good_spilled": 3.3230769230771506,
+        "good_unresolved": 0.0,
+        "input": 576.0000000000394,
+        "rejected": 90.83076923077545,
+        "spilled": 12.406153846154695,
+        "unresolved": 0.0
+      },
+      "policy": {
+        "name": "specialty",
+        "reject_severities": [
+          "minor",
+          "major",
+          "foreign"
+        ]
+      },
+      "requested_rate_beans_per_s": 1000.0,
+      "revenue_eur_h": {
+        "at_zero_premium": -619.4215384615809,
+        "baseline_unsorted": 3456.0000000002365,
+        "sorted": 3072.96000000021,
+        "uplift": -383.04000000002634
+      },
+      "source": "runs/sensor-realism/noise-stress-1000/metrics.json",
+      "source_denominators": {
+        "accepted_beans": 2134,
+        "cohort_end_s": 3.399999999999781,
+        "cohort_start_s": 0.8,
+        "decisions": 3745,
+        "defects_to_remove": 376,
+        "eligible_beans": 2600,
+        "frames": 1000,
+        "keep_beans": 2224,
+        "reject_decisions": 901,
+        "rejected_beans": 410,
+        "resolved_beans": 2600
+      },
+      "source_sha256": "54decdd6af6515211f09d12a7a37b7d0b153eb7db741d24856595cf78767fc70"
+    },
+    {
+      "break_even_accepted_stream_premium_eur_per_kg": 1.126146788990825,
+      "class_counts": {
+        "black": {
+          "accepted": 45,
+          "n": 85,
+          "policy_defect": true,
+          "rejected": 40,
+          "severity": "major",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "broken": {
+          "accepted": 31,
+          "n": 53,
+          "policy_defect": true,
+          "rejected": 18,
+          "severity": "major",
+          "spilled": 3,
+          "unresolved": 1
+        },
+        "faded": {
+          "accepted": 55,
+          "n": 94,
+          "policy_defect": true,
+          "rejected": 37,
+          "severity": "minor",
+          "spilled": 2,
+          "unresolved": 0
+        },
+        "good": {
+          "accepted": 2383,
+          "n": 2653,
+          "policy_defect": false,
+          "rejected": 255,
+          "severity": "none",
+          "spilled": 14,
+          "unresolved": 1
+        },
+        "husk": {
+          "accepted": 13,
+          "n": 30,
+          "policy_defect": true,
+          "rejected": 5,
+          "severity": "foreign",
+          "spilled": 12,
+          "unresolved": 0
+        },
+        "insect": {
+          "accepted": 24,
+          "n": 56,
+          "policy_defect": true,
+          "rejected": 31,
+          "severity": "major",
+          "spilled": 1,
+          "unresolved": 0
+        },
+        "shell": {
+          "accepted": 20,
+          "n": 36,
+          "policy_defect": true,
+          "rejected": 4,
+          "severity": "major",
+          "spilled": 12,
+          "unresolved": 0
+        },
+        "sour": {
+          "accepted": 35,
+          "n": 72,
+          "policy_defect": true,
+          "rejected": 37,
+          "severity": "major",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "stick": {
+          "accepted": 7,
+          "n": 12,
+          "policy_defect": true,
+          "rejected": 4,
+          "severity": "foreign",
+          "spilled": 1,
+          "unresolved": 0
+        },
+        "stone": {
+          "accepted": 3,
+          "n": 16,
+          "policy_defect": true,
+          "rejected": 3,
+          "severity": "foreign",
+          "spilled": 10,
+          "unresolved": 0
+        }
+      },
+      "controller_config": {
+        "jet_force_n": 0.06,
+        "layout": {
+          "belt_len": 1.1,
+          "belt_speed": 3.0,
+          "belt_w": 0.5,
+          "belt_z": 0.6,
+          "cam_fov": 0.048,
+          "cam_h": 192,
+          "cam_w": 2080,
+          "cam_x": -0.12,
+          "ej_x": 0.1,
+          "ej_z_offset": 0.045,
+          "feed_drop": 0.006,
+          "feed_vx": 2.6,
+          "feed_x": [
+            -1.05,
+            -0.95
+          ],
+          "n_box": 30,
+          "n_capsule": 30,
+          "n_ellipsoid": 1800,
+          "n_half": 72,
+          "n_nozzles": 64,
+          "split_x": 0.34,
+          "split_z_drop": 0.125,
+          "timestep": 0.002
+        },
+        "policy": {
+          "anomaly": true,
+          "base_pulse": 0.003,
+          "fixed_latency": 0.06,
+          "induced_delay": 0.0,
+          "latency_floor": 0.004,
+          "lead": 0.0015,
+          "max_pulse": 0.012,
+          "name": "specialty",
+          "ref_mass": 0.0002,
+          "reject_severities": [
+            "minor",
+            "major",
+            "foreign"
+          ],
+          "target_nozzles": null,
+          "threshold": 0.5
+        },
+        "requested_rate_beans_per_s": 3000.0
+      },
+      "cost_eur_h": {
+        "all_rejected_base_value": 575.8301383972073,
+        "good_false_ejections": 338.33337624720707,
+        "good_spills": 18.57516575474862,
+        "good_unresolved": 1.3267975539106158,
+        "spills": 72.97386546508388,
+        "unresolved": 2.6535951078212316
+      },
+      "counts": {
+        "accepted": 2616,
+        "defect_accepted": 233,
+        "defect_input": 454,
+        "defect_rejected": 179,
+        "defect_spilled": 41,
+        "defect_unresolved": 1,
+        "good_rejected": 255,
+        "good_spilled": 14,
+        "good_unresolved": 1,
+        "input": 3107,
+        "rejected": 434,
+        "spilled": 55,
+        "unresolved": 2
+      },
+      "defect_count_percent": {
+        "incoming": 14.612166076601223,
+        "residual_accepted": 8.906727828746178
+      },
+      "effective_rate_beans_per_s": 1192.8125000000816,
+      "formula": "Q = measured throughput_beans_per_s * 3600 * object_mass_g / 1000 * duty_cycle",
+      "mass_kg_h": {
+        "accepted": 578.4837335050286,
+        "defect_accepted": 51.52397167686225,
+        "defect_input": 100.39434824590327,
+        "defect_rejected": 39.58279369166671,
+        "defect_spilled": 9.066449951722541,
+        "defect_unresolved": 0.2211329256517693,
+        "good_rejected": 56.38889604120118,
+        "good_spilled": 3.0958609591247703,
+        "good_unresolved": 0.2211329256517693,
+        "input": 687.0600000000472,
+        "rejected": 95.97168973286789,
+        "spilled": 12.162310910847312,
+        "unresolved": 0.4422658513035386
+      },
+      "policy": {
+        "name": "specialty",
+        "reject_severities": [
+          "minor",
+          "major",
+          "foreign"
+        ]
+      },
+      "requested_rate_beans_per_s": 3000.0,
+      "revenue_eur_h": {
+        "at_zero_premium": -651.457598970112,
+        "baseline_unsorted": 4122.360000000283,
+        "sorted": 3760.144267782686,
+        "uplift": -362.21573221759763
+      },
+      "source": "runs/sensor-realism/touching-3000/metrics.json",
+      "source_denominators": {
+        "accepted_beans": 2616,
+        "cohort_end_s": 3.399999999999781,
+        "cohort_start_s": 0.8,
+        "decisions": 4068,
+        "defects_to_remove": 454,
+        "eligible_beans": 3107,
+        "frames": 1000,
+        "keep_beans": 2653,
+        "reject_decisions": 694,
+        "rejected_beans": 434,
+        "resolved_beans": 3105
+      },
+      "source_sha256": "b33de9ddf3d28d83430488f9ac16d09f7281e633bd938f2d383c2433955fcc9c"
+    },
+    {
+      "break_even_accepted_stream_premium_eur_per_kg": 2.259877085162423,
+      "class_counts": {
+        "black": {
+          "accepted": 46,
+          "n": 86,
+          "policy_defect": true,
+          "rejected": 39,
+          "severity": "major",
+          "spilled": 1,
+          "unresolved": 0
+        },
+        "broken": {
+          "accepted": 29,
+          "n": 53,
+          "policy_defect": true,
+          "rejected": 19,
+          "severity": "major",
+          "spilled": 5,
+          "unresolved": 0
+        },
+        "faded": {
+          "accepted": 75,
+          "n": 94,
+          "policy_defect": true,
+          "rejected": 18,
+          "severity": "minor",
+          "spilled": 1,
+          "unresolved": 0
+        },
+        "good": {
+          "accepted": 2008,
+          "n": 2680,
+          "policy_defect": false,
+          "rejected": 654,
+          "severity": "none",
+          "spilled": 16,
+          "unresolved": 2
+        },
+        "husk": {
+          "accepted": 13,
+          "n": 30,
+          "policy_defect": true,
+          "rejected": 6,
+          "severity": "foreign",
+          "spilled": 11,
+          "unresolved": 0
+        },
+        "insect": {
+          "accepted": 39,
+          "n": 57,
+          "policy_defect": true,
+          "rejected": 17,
+          "severity": "major",
+          "spilled": 1,
+          "unresolved": 0
+        },
+        "shell": {
+          "accepted": 16,
+          "n": 36,
+          "policy_defect": true,
+          "rejected": 5,
+          "severity": "major",
+          "spilled": 15,
+          "unresolved": 0
+        },
+        "sour": {
+          "accepted": 40,
+          "n": 72,
+          "policy_defect": true,
+          "rejected": 32,
+          "severity": "major",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "stick": {
+          "accepted": 7,
+          "n": 12,
+          "policy_defect": true,
+          "rejected": 5,
+          "severity": "foreign",
+          "spilled": 0,
+          "unresolved": 0
+        },
+        "stone": {
+          "accepted": 5,
+          "n": 16,
+          "policy_defect": true,
+          "rejected": 2,
+          "severity": "foreign",
+          "spilled": 9,
+          "unresolved": 0
+        }
+      },
+      "controller_config": {
+        "jet_force_n": 0.06,
+        "layout": {
+          "belt_len": 1.1,
+          "belt_speed": 3.0,
+          "belt_w": 0.5,
+          "belt_z": 0.6,
+          "cam_fov": 0.048,
+          "cam_h": 192,
+          "cam_w": 2080,
+          "cam_x": -0.12,
+          "ej_x": 0.1,
+          "ej_z_offset": 0.045,
+          "feed_drop": 0.006,
+          "feed_vx": 2.6,
+          "feed_x": [
+            -1.05,
+            -0.95
+          ],
+          "n_box": 30,
+          "n_capsule": 30,
+          "n_ellipsoid": 1800,
+          "n_half": 72,
+          "n_nozzles": 64,
+          "split_x": 0.34,
+          "split_z_drop": 0.125,
+          "timestep": 0.002
+        },
+        "policy": {
+          "anomaly": true,
+          "base_pulse": 0.003,
+          "fixed_latency": 0.06,
+          "induced_delay": 0.0,
+          "latency_floor": 0.004,
+          "lead": 0.0015,
+          "max_pulse": 0.012,
+          "name": "specialty",
+          "ref_mass": 0.0002,
+          "reject_severities": [
+            "minor",
+            "major",
+            "foreign"
+          ],
+          "target_nozzles": null,
+          "threshold": 0.5
+        },
+        "requested_rate_beans_per_s": 3000.0
+      },
+      "cost_eur_h": {
+        "all_rejected_base_value": 1055.0897448980313,
+        "good_false_ejections": 865.7825510204673,
+        "good_spills": 21.181224489797366,
+        "good_unresolved": 2.6476530612246707,
+        "spills": 78.1057653061278,
+        "unresolved": 2.6476530612246707
+      },
+      "counts": {
+        "accepted": 2278,
+        "defect_accepted": 270,
+        "defect_input": 456,
+        "defect_rejected": 143,
+        "defect_spilled": 43,
+        "defect_unresolved": 0,
+        "good_rejected": 654,
+        "good_spilled": 16,
+        "good_unresolved": 2,
+        "input": 3136,
+        "rejected": 797,
+        "spilled": 59,
+        "unresolved": 2
+      },
+      "defect_count_percent": {
+        "incoming": 14.540816326530612,
+        "residual_accepted": 11.852502194907814
+      },
+      "effective_rate_beans_per_s": 1201.2500000000823,
+      "formula": "Q = measured throughput_beans_per_s * 3600 * object_mass_g / 1000 * duty_cycle",
+      "mass_kg_h": {
+        "accepted": 502.6128061224834,
+        "defect_accepted": 59.572193877555094,
+        "defect_input": 100.61081632653749,
+        "defect_rejected": 31.551198979593995,
+        "defect_spilled": 9.487423469388403,
+        "defect_unresolved": 0.0,
+        "good_rejected": 144.29709183674456,
+        "good_spilled": 3.5302040816328946,
+        "good_unresolved": 0.4412755102041118,
+        "input": 691.9200000000474,
+        "rejected": 175.84829081633856,
+        "spilled": 13.017627551021299,
+        "unresolved": 0.4412755102041118
+      },
+      "policy": {
+        "name": "specialty",
+        "reject_severities": [
+          "minor",
+          "major",
+          "foreign"
+        ]
+      },
+      "requested_rate_beans_per_s": 3000.0,
+      "revenue_eur_h": {
+        "at_zero_premium": -1135.8431632653837,
+        "baseline_unsorted": 4151.520000000284,
+        "sorted": 3266.9832397961422,
+        "uplift": -884.536760204142
+      },
+      "source": "runs/sensor-realism/combined-assumed-worst-3000/metrics.json",
+      "source_denominators": {
+        "accepted_beans": 2278,
+        "cohort_end_s": 3.399999999999781,
+        "cohort_start_s": 0.8,
+        "decisions": 4062,
+        "defects_to_remove": 456,
+        "eligible_beans": 3136,
+        "frames": 1000,
+        "keep_beans": 2680,
+        "reject_decisions": 1457,
+        "rejected_beans": 797,
+        "resolved_beans": 3134
+      },
+      "source_sha256": "36d50ec77dec2112a97f61e47066d0e82208563e055f665875c0614f21f26855"
+    },
+    {
+      "break_even_accepted_stream_premium_eur_per_kg": 1.3159293418790052,
+      "class_counts": {
+        "black": {
+          "accepted": 86,
+          "n": 201,
+          "policy_defect": true,
+          "rejected": 106,
+          "severity": "major",
+          "spilled": 8,
+          "unresolved": 1
+        },
+        "broken": {
+          "accepted": 69,
+          "n": 152,
+          "policy_defect": true,
+          "rejected": 46,
+          "severity": "major",
+          "spilled": 37,
+          "unresolved": 0
+        },
+        "faded": {
+          "accepted": 138,
+          "n": 252,
+          "policy_defect": true,
+          "rejected": 103,
+          "severity": "minor",
+          "spilled": 10,
+          "unresolved": 1
+        },
+        "good": {
+          "accepted": 5830,
+          "n": 6594,
+          "policy_defect": false,
+          "rejected": 564,
+          "severity": "none",
+          "spilled": 190,
+          "unresolved": 10
+        },
+        "husk": {
+          "accepted": 33,
+          "n": 82,
+          "policy_defect": true,
+          "rejected": 14,
+          "severity": "foreign",
+          "spilled": 35,
+          "unresolved": 0
+        },
+        "insect": {
+          "accepted": 87,
+          "n": 163,
+          "policy_defect": true,
+          "rejected": 74,
+          "severity": "major",
+          "spilled": 2,
+          "unresolved": 0
+        },
+        "shell": {
+          "accepted": 28,
+          "n": 93,
+          "policy_defect": true,
+          "rejected": 19,
+          "severity": "major",
+          "spilled": 46,
+          "unresolved": 0
+        },
+        "sour": {
+          "accepted": 94,
+          "n": 185,
+          "policy_defect": true,
+          "rejected": 85,
+          "severity": "major",
+          "spilled": 5,
+          "unresolved": 1
+        },
+        "stick": {
+          "accepted": 21,
+          "n": 42,
+          "policy_defect": true,
+          "rejected": 17,
+          "severity": "foreign",
+          "spilled": 4,
+          "unresolved": 0
+        },
+        "stone": {
+          "accepted": 11,
+          "n": 36,
+          "policy_defect": true,
+          "rejected": 4,
+          "severity": "foreign",
+          "spilled": 21,
+          "unresolved": 0
+        }
+      },
+      "controller_config": {
+        "jet_force_n": 0.06,
+        "layout": {
+          "belt_len": 1.1,
+          "belt_speed": 3.0,
+          "belt_w": 0.5,
+          "belt_z": 0.6,
+          "cam_fov": 0.048,
+          "cam_h": 192,
+          "cam_w": 2080,
+          "cam_x": -0.12,
+          "ej_x": 0.1,
+          "ej_z_offset": 0.045,
+          "feed_drop": 0.006,
+          "feed_vx": 2.6,
+          "feed_x": [
+            -1.05,
+            -0.95
+          ],
+          "n_box": 30,
+          "n_capsule": 30,
+          "n_ellipsoid": 1800,
+          "n_half": 72,
+          "n_nozzles": 64,
+          "split_x": 0.34,
+          "split_z_drop": 0.125,
+          "timestep": 0.002
+        },
+        "policy": {
+          "anomaly": true,
+          "base_pulse": 0.003,
+          "fixed_latency": 0.06,
+          "induced_delay": 0.0,
+          "latency_floor": 0.004,
+          "lead": 0.0015,
+          "max_pulse": 0.012,
+          "name": "specialty",
+          "ref_mass": 0.0002,
+          "reject_severities": [
+            "minor",
+            "major",
+            "foreign"
+          ],
+          "target_nozzles": null,
+          "threshold": 0.5
+        },
+        "requested_rate_beans_per_s": 3000.0
+      },
+      "cost_eur_h": {
+        "all_rejected_base_value": 1371.766153846248,
+        "good_false_ejections": 749.6861538462053,
+        "good_spills": 252.5538461538635,
+        "good_unresolved": 13.292307692308604,
+        "spills": 475.8646153846481,
+        "unresolved": 17.280000000001188
+      },
+      "counts": {
+        "accepted": 6397,
+        "defect_accepted": 567,
+        "defect_input": 1206,
+        "defect_rejected": 468,
+        "defect_spilled": 168,
+        "defect_unresolved": 3,
+        "good_rejected": 564,
+        "good_spilled": 190,
+        "good_unresolved": 10,
+        "input": 7800,
+        "rejected": 1032,
+        "spilled": 358,
+        "unresolved": 13
+      },
+      "defect_count_percent": {
+        "incoming": 15.461538461538462,
+        "residual_accepted": 8.86352977958418
+      },
+      "effective_rate_beans_per_s": 3000.0000000002055,
+      "formula": "Q = measured throughput_beans_per_s * 3600 * object_mass_g / 1000 * duty_cycle",
+      "mass_kg_h": {
+        "accepted": 1417.181538461636,
+        "defect_accepted": 125.61230769231632,
+        "defect_input": 267.17538461540295,
+        "defect_rejected": 103.68000000000713,
+        "defect_spilled": 37.2184615384641,
+        "defect_unresolved": 0.6646153846154302,
+        "good_rejected": 124.94769230770089,
+        "good_spilled": 42.092307692310584,
+        "good_unresolved": 2.2153846153847674,
+        "input": 1728.0000000001187,
+        "rejected": 228.627692307708,
+        "spilled": 79.31076923077468,
+        "unresolved": 2.880000000000198
+      },
+      "policy": {
+        "name": "specialty",
+        "reject_severities": [
+          "minor",
+          "major",
+          "foreign"
+        ]
+      },
+      "requested_rate_beans_per_s": 3000.0,
+      "revenue_eur_h": {
+        "at_zero_premium": -1864.9107692308971,
+        "baseline_unsorted": 10368.000000000713,
+        "sorted": 9211.680000000633,
+        "uplift": -1156.3200000000797
+      },
+      "source": "runs/sensor-realism/high-feed-reference-3000/metrics.json",
+      "source_denominators": {
+        "accepted_beans": 6397,
+        "cohort_end_s": 3.399999999999781,
+        "cohort_start_s": 0.8,
+        "decisions": 10543,
+        "defects_to_remove": 1206,
+        "eligible_beans": 7800,
+        "frames": 1000,
+        "keep_beans": 6594,
+        "reject_decisions": 1597,
+        "rejected_beans": 1032,
+        "resolved_beans": 7787
+      },
+      "source_sha256": "df124cfad5be0efc911e70d31b819ac12c02ae9510f00e8c078044fb6170bea9"
+    }
+  ],
+  "selection": "all discovered metrics paths; negative results retained without cherry-picking"
+}

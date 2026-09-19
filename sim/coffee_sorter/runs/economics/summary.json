@@ -11,8 +11,8 @@
     "spilled_or_unresolved_sale_eur_per_kg": 0.0
   },
   "commands": {
-    "exact": "/workspace/personal/venvs/coffee-sorter/bin/python /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/economics.py --output runs/economics",
-    "portable_from_sim_coffee_sorter": ".venv/bin/python economics.py --output runs/economics"
+    "exact": "/workspace/personal/venvs/coffee-sorter/bin/python /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/economics.py --config configs/economics.json --output runs/economics",
+    "portable_from_sim_coffee_sorter": ".venv/bin/python economics.py --config configs/economics.json --output runs/economics"
   },
   "formula": "Q = measured throughput_beans_per_s * 3600 * object_mass_g / 1000 * duty_cycle",
   "purpose": "hypothetical economics ledger from preserved physical metrics, not market evidence",
