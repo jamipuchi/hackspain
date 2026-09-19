@@ -1,0 +1,9 @@
+{
+  "name": "coffee-sorter-replay",
+  "private": true,
+  "scripts": {
+    "build": "python3 build_page.py",
+    "test": "python3 -m unittest discover -s . -p 'test_*.py'"
+  },
+  "devDependencies": {"esbuild": "0.25.10"}
+}

@@ -1,0 +1,21 @@
+{
+  "activeJets": 11,
+  "averageFps": 19.470714456012075,
+  "elapsedMs": 5033.200000000001,
+  "fps": 20.65506048981999,
+  "frame": 108,
+  "frames": 98,
+  "pixelRatio": 0.6,
+  "playing": false,
+  "ready": true,
+  "renderCalls": 54,
+  "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+  "resources": [],
+  "time": 3.6,
+  "triangles": 97374,
+  "viewport": [
+    1440,
+    900
+  ],
+  "visibleBeans": 551
+}
