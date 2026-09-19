@@ -18,6 +18,7 @@ ROT_ARMATURE_FACTOR = 2  # added rotational inertia as a multiple of the body's 
 JET_FORCE = 0.09          # N per nozzle on a body inside the jet
 JET_HALF_X = 0.010        # m, jet footprint along travel
 JET_HALF_Y_FACTOR = 0.75  # jet half-width as a multiple of the nozzle pitch (jets overlap slightly)
+RESOLVED_RETIRE_GRACE = 0.5  # s: preserve chute motion, then recycle bodies settled in catch bins
 
 
 @dataclass
@@ -310,8 +311,14 @@ class SorterSim:
                     bean.resolved_t = t
                     if self.continuous:
                         self._outcome_events.append(bean)
+            resolved_expired = np.array([
+                self.bean_of[b].resolved_t is not None and
+                t - self.bean_of[b].resolved_t >= RESOLVED_RETIRE_GRACE
+                for b in bodies
+            ])
             gone = (pos[:, 0] > L.split_x + 0.16) | (pos[:, 2] < L.belt_z - 0.44) | \
-                   ((pos[:, 0] < 0) & (np.abs(pos[:, 1]) > L.belt_w / 2 + 0.03)) | (pos[:, 2] < 0.05)
+                   ((pos[:, 0] < 0) & (np.abs(pos[:, 1]) > L.belt_w / 2 + 0.03)) | \
+                   (pos[:, 2] < 0.05) | resolved_expired
             for b, p in zip(bodies[gone], pos[gone]):
                 bean = self.bean_of[b]
                 bean.last_pos = tuple(np.round(p, 3))
