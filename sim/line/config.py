@@ -102,6 +102,12 @@ class LineConfig:
     classifier: ClassifierCfg = field(default_factory=ClassifierCfg)
     timing: TimingCfg = field(default_factory=TimingCfg)
     panel_port: int = 8800
+    door_on_d6: bool = False  # bench workaround: the door servo answers only on D6 → translate `S <door> ..` into `C <speed>` (see panel.DoorOnD6)
+    door_d6_mode: str = "continuous"  # 'continuous': FS90R-type servo, door driven by timed spin pulses into mechanical stops; 'positional': angle mapping
+    door_d6_speed: int = 60  # spin speed -100..100 used for the pulses
+    door_d6_open_ms: int = 180  # how long to spin towards OPEN (into the stop)
+    door_d6_close_ms: int = 180  # how long to spin back to CLOSED
+    door_d6_dir: int = 1  # +1 or -1: flip if OPEN spins the wrong way
     act_on: str = "all"  # 'all': the door moves for every bean (bring-up); 'suspect': only for suspect verdicts (sorting)
     lost_after_s: float = 0.4  # no blob for this long while tracking → bean lost, re-arm
     dry_run: bool = True  # the closed loop logs gate pulses instead of sending them until switched off in the panel

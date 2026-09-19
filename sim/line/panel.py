@@ -28,7 +28,7 @@ from line.pipeline import SortingLine
 
 ROOT = Path(__file__).resolve().parent
 STATIC = ROOT / "static"
-RAW_ALLOWED = set("SMCH?")
+RAW_ALLOWED = set("SMCH?") | {"STOP"}
 LOG: deque[str] = deque(maxlen=400)
 
 
@@ -50,6 +50,99 @@ def _try(info: dict, key: str, label: str, factory, fallback):
         return fallback()
 
 
+class DoorOnD6:
+    """Bench workaround (19 Sep): the SG90 only responds on D6, the firmware's conveyor pin. This wraps any ArduinoLink and
+    turns the door's `S <deg> <hold> <hold>` into `C <speed>` with deg = 90 + 0.9*speed (what the firmware writes to D6).
+    Speed 0 would DETACH the servo (door goes limp), so 0 maps to 1 (≈ 90.9°). `?` replies get the commanded door angle
+    patched into the base slot so the panel dial and `Gate` see the truth. Conveyor commands are refused while active."""
+
+    name = "door-on-d6"
+    IDX = {"base": 1, "shoulder": 2, "elbow": 3}
+
+    def __init__(self, inner, cfg: LineConfig):
+        self.inner, self.cfg = inner, cfg
+        self.angle = int(cfg.gate.flush_deg)
+        self.n_translated = 0
+
+    @staticmethod
+    def deg_to_speed(deg: float) -> int:
+        sp = int(round((float(deg) - 90.0) / 0.9))
+        sp = max(-100, min(100, sp))
+        return 1 if sp == 0 else sp
+
+    def _pulse(self, direction: int, ms: int, what: str) -> str:
+        """Continuous servo: spin `direction` at door_d6_speed for `ms`, then C 0 (detach = stop). Blocking for `ms`; always stops."""
+        sp = max(5, min(100, int(self.cfg.door_d6_speed))) * (1 if direction > 0 else -1) * (1 if int(self.cfg.door_d6_dir) >= 0 else -1)
+        t0 = time.monotonic()
+        try:
+            reply = self.inner.cmd(f"C {sp}")
+            time.sleep(max(0, int(ms)) / 1000.0)
+        finally:
+            stop = self.inner.cmd("C 0")
+        log(f"door→D6 {what}: C {sp} for {ms} ms, stop → {stop.strip()} ({(time.monotonic() - t0) * 1000:.0f} ms)")
+        return reply
+
+    def cmd(self, line: str) -> str:
+        p = line.strip().split()
+        if p and p[0] == "S" and len(p) == 4:
+            deg = max(0, min(180, int(float(p[self.IDX.get(self.cfg.gate.channel, 1)]))))
+            self.n_translated += 1
+            if getattr(self.cfg, "door_d6_mode", "continuous") == "continuous":
+                want_open = abs(deg - self.cfg.gate.open_deg) < abs(deg - self.cfg.gate.flush_deg)
+                if (self.angle == self.cfg.gate.open_deg) == want_open and self.n_translated > 1:
+                    return "ok"  # already there: do not grind into the stop again
+                self.angle = self.cfg.gate.open_deg if want_open else self.cfg.gate.flush_deg
+                return self._pulse(+1 if want_open else -1, self.cfg.door_d6_open_ms if want_open else self.cfg.door_d6_close_ms, "OPEN" if want_open else "CLOSED")
+            self.angle = deg
+            reply = self.inner.cmd(f"C {self.deg_to_speed(deg)}")
+            log(f"door→D6: {deg}° as C {self.deg_to_speed(deg)} → {reply.strip()}")
+            return reply
+        if p and p[0] == "STOP":
+            return self.inner.cmd("C 0")
+        if p and p[0] == "C":
+            return "err: conveyor channel is driving the door (door_on_d6)"
+        if p and p[0] == "H":
+            return self.cmd(f"S {self.cfg.gate.flush_deg} {self.cfg.gate.hold_deg[0]} {self.cfg.gate.hold_deg[1]}")
+        reply = self.inner.cmd(line)
+        if p and p[0] == "?" and reply.startswith("P "):
+            q = reply.split()
+            try:
+                q[self.IDX.get(self.cfg.gate.channel, 1)] = str(self.angle)
+                reply = " ".join(q)
+            except IndexError:
+                pass
+        return reply
+
+    def query(self):
+        st = self.inner.query()
+        try:
+            pos = list(st.pos) if st.pos else None
+            if pos:
+                pos[self.IDX.get(self.cfg.gate.channel, 1) - 1] = self.angle
+                st.pos = tuple(pos)
+            st.raw = self.cmd("?")
+        except Exception:  # noqa: BLE001
+            pass
+        return st
+
+    def status(self) -> dict:
+        d = dict(self.inner.status())
+        d.update({"name": f"{d.get('name', '?')} +door-on-D6", "door_deg": self.angle, "door_speed_cmd": self.deg_to_speed(self.angle), "translated": self.n_translated})
+        if isinstance(d.get("pos"), list) and len(d["pos"]) == 3:
+            d["pos"][self.IDX.get(self.cfg.gate.channel, 1) - 1] = self.angle
+        return d
+
+    def selftest(self):
+        from line.contracts import Check
+        return list(self.inner.selftest()) + [Check("door_on_d6.mapping", self.deg_to_speed(90) == 1 and self.deg_to_speed(65) == -28 and self.deg_to_speed(180) == 100, "90°→C 1, 65°→C -28, 180°→C 100")]
+
+    def close(self) -> None:
+        try:
+            self.inner.cmd("C 0")  # continuous servo: make sure it is not spinning when we leave
+        finally:
+            self.inner.close()
+
+
 def build_modules(cfg: LineConfig, all_fake: bool = False) -> tuple[dict, dict]:
     info: dict[str, str] = {}
     # arduino: the arduino agent's make_link(cfg) picks Fake / HttpPanelLink / DirectSerial from cfg.arduino.backend
@@ -57,6 +150,9 @@ def build_modules(cfg: LineConfig, all_fake: bool = False) -> tuple[dict, dict]:
         from line.arduino_link import FakeArduino, make_link
         return FakeArduino() if all_fake else make_link(cfg)
     ard = _try(info, "arduino", "arduino_link.FakeArduino" if all_fake else f"arduino_link.make_link({cfg.arduino.backend})", mk_ard, _stubs.StubArduino)
+    if getattr(cfg, "door_on_d6", False):
+        ard = DoorOnD6(ard, cfg)
+        info["arduino"] += " + DoorOnD6 (door servo driven through pin 6)"
     # gate
     def mk_gate():
         from line.gate import Gate
@@ -132,7 +228,7 @@ class Panel:
 
     def cmd(self, line: str) -> str:
         line = line.strip()
-        if not line or line[0] not in RAW_ALLOWED or "\n" in line:
+        if not line or (line[0] not in RAW_ALLOWED and line.split()[0] not in RAW_ALLOWED) or "\n" in line:
             raise ValueError("command must start with S, M, C, H or ?")
         reply = self.modules["arduino"].cmd(line)
         log(f"> {line}  → {reply.strip()}")

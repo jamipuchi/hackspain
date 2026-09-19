@@ -84,7 +84,13 @@
     "fixed_delay_s": 0.0
   },
   "panel_port": 8800,
+  "door_on_d6": true,
+  "door_d6_mode": "continuous",
+  "door_d6_speed": 60,
+  "door_d6_open_ms": 180,
+  "door_d6_close_ms": 180,
+  "door_d6_dir": 1,
   "act_on": "all",
   "lost_after_s": 0.4,
-  "dry_run": false
+  "dry_run": true
 }

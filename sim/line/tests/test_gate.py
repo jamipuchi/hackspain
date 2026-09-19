@@ -185,3 +185,49 @@ def test_ramp_override_dry_run_and_old_firmware(env):
     fake._handle = lambda line: "err" if line.startswith("R") else fake._handle_orig(line)  # firmware without R
     g2 = make()
     assert g2.n_errors == 1 and "refused" in g2.last_error and g2.state == "flush"
+
+
+# ------------------------------------------------------------------ channel "belt": door servo wired to D6, driven with C
+def test_belt_channel_maps_angles_to_C_and_never_sends_C0(env):
+    from line.gate import belt_angle_for_speed, belt_speed_for_angle
+
+    cfg, fake, make = env
+    cfg.gate.channel = "belt"
+    g = make()
+    assert g.command(65) == "C -28" and g.command(90) == "C 1" and g.command(45) == "C -50" and g.command(135) == "C 50"
+    assert g.command(0) == "C -100" and g.command(180) == "C 100" and g.command(-40) == "C -100"
+    for deg in range(0, 181):
+        sp = belt_speed_for_angle(deg)
+        assert sp != 0 and -100 <= sp <= 100
+        assert abs(belt_angle_for_speed(sp) - deg) <= 1 or deg in (90,), (deg, sp)
+    g.open()
+    assert fake.sent[-1] == "C -28" and fake.belt_angle == 65 and fake.belt_attached
+    g.flush()
+    assert fake.sent[-1] == "C 1" and fake.belt_angle == 90 and fake.belt_attached
+    e = g.log[-1]
+    assert e["deg"] == 90 and e["sp"] == 1 and e["deg_actual"] == 90 and e["line"] == "C 1"
+    assert not any(s == "C 0" for s in fake.sent)
+
+
+def test_belt_channel_pulse_and_selftest(env):
+    cfg, fake, make = env
+    cfg.gate.channel = "belt"
+    cfg.gate.ramp_override = True  # must be a harmless no-op on belt
+    g = make()
+    assert g.log[-1]["action"] == "ramp" and g.log[-1]["sent"] is False and "n/a" in g.log[-1]["reply"]
+    assert not any(s.startswith("R") for s in fake.sent)
+    g.pulse(0.02, 0.05)
+    assert wait_state(g, "flush")
+    assert [s for s in fake.sent if s.startswith("C")] == ["C -28", "C 1"]
+    checks = g.selftest()
+    assert all(c.ok for c in checks), [(c.name, c.detail) for c in checks if not c.ok]
+    assert any("never sends C 0" in c.name for c in checks) and any("D6 angle" in c.name for c in checks)
+    assert fake.sent[-1] == "?"  # the real link still only gets ? from selftest
+
+
+def test_belt_channel_disarms_the_links_C0_selftest(env):
+    cfg, fake, make = env
+    fake.selftest_belt_cmd = "C 0"
+    cfg.gate.channel = "belt"
+    make()
+    assert fake.selftest_belt_cmd is None

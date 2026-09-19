@@ -303,3 +303,24 @@ def test_ramp_override_rejects_bad_input_and_clamps():
     assert f.cmd("R 0 400") == "err"
     assert f.cmd("R x 1 1") == "err"
     assert f.cmd("R 1 99999 99999999") == "ok" and f.vmax[1] == 2000.0 and f.amax[1] == 50000.0
+
+
+def test_fake_tracks_the_angle_written_on_d6():
+    f = FakeArduino(clock=Clock())
+    assert f.belt_angle is None
+    assert f.cmd("C -28") == "ok" and f.belt_angle == 65 and f.belt == -28
+    assert f.cmd("C 50") == "ok" and f.belt_angle == 135
+    assert f.cmd("C -50") == "ok" and f.belt_angle == 45
+    assert f.cmd("C 1") == "ok" and f.belt_angle == 90
+    assert f.cmd("C 0") == "ok" and f.belt_angle is None and not f.belt_attached  # detached = limp
+    assert f.status()["belt_angle"] is None
+
+
+def test_http_selftest_skips_C0_when_d6_is_the_door(fake_panel):
+    url, fake, _ = fake_panel
+    fake.cmd("C -28")  # door parked at 65° on D6
+    link = HttpPanelLink(url)
+    link.selftest_belt_cmd = None  # what Gate does on channel belt
+    checks = link.selftest()
+    assert all(c.ok for c in checks) and any("skipped" in c.name for c in checks)
+    assert fake.belt_angle == 65, "selftest must not detach the door"

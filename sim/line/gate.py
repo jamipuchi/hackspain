@@ -8,7 +8,9 @@
     state                   'flush' | 'scheduled' | 'open'
 
 `cfg.gate.channel` says which slot of `S b s e` is the door (base = D9); the other two slots carry
-`cfg.gate.hold_deg`. With `cfg.gate.ramp_override` the gate sends `R <ch> <door_vmax_deg_s> <door_accel_deg_s2>` once at
+`cfg.gate.hold_deg`. `channel = "belt"` drives a positional servo wired to **D6** instead: `command(deg)` becomes
+`C <sp>` with `sp = round((deg - 90) / 0.9)` clamped to -100..100 (firmware: `belt.write(90 + sp*90/100)`), unramped, and
+sp == 0 is mapped to 1 because `C 0` detaches the servo and the door would go limp. The ramp override does not apply. With `cfg.gate.ramp_override` the gate sends `R <ch> <door_vmax_deg_s> <door_accel_deg_s2>` once at
 start (and via `apply_ramp()`), so the door swings in ≈0.11 s while the arm channels keep the gentle default ramp. In `dry_run` every command is logged with sent=False and nothing reaches the link.
 Every command is logged with a monotonic timestamp (`gate.log`). `selftest()` never moves the real door: it runs
 a pulse against a FakeArduino with the same config and checks the open/flush timing (±20 ms).
@@ -23,6 +25,18 @@ from line.arduino_link import FakeArduino, LinkError
 from line.contracts import Check, now
 
 _CHANNEL_INDEX = {"base": 0, "shoulder": 1, "elbow": 2}
+BELT = "belt"  # door on D6 through the conveyor output
+
+
+def belt_speed_for_angle(deg: float) -> int:
+    """deg 0..180 → `C` speed whose firmware angle (90 + sp*90/100, C integer division) is closest to deg; never 0."""
+    sp = int(round((float(deg) - 90.0) / 0.9))
+    sp = max(-100, min(100, sp))
+    return 1 if sp == 0 else sp
+
+
+def belt_angle_for_speed(sp: int) -> int:
+    return 90 + int(sp * 90 / 100)  # what the firmware actually writes (truncation toward zero)
 
 
 class Gate:
@@ -45,6 +59,8 @@ class Gate:
         self._stop = False
         self._worker = threading.Thread(target=self._run, name="gate-timer", daemon=True)
         self._worker.start()
+        if self.on_belt and hasattr(self.link, "selftest_belt_cmd"):
+            self.link.selftest_belt_cmd = None  # the link's selftest must not send C 0 any more: it would drop the door
         if getattr(self.cfg.gate, "ramp_override", False):
             self.apply_ramp()
 
@@ -53,7 +69,11 @@ class Gate:
         return f"R {self._slot()} {int(g.door_vmax_deg_s)} {int(g.door_accel_deg_s2)}"
 
     def apply_ramp(self) -> None:
-        """Send the door channel's ramp override (`R`). Logged as action 'ramp'; respects dry_run."""
+        """Send the door channel's ramp override (`R`). Logged as action 'ramp'; respects dry_run. No-op on channel belt."""
+        if self.on_belt:
+            self.log.append({"t": self.clock(), "action": "ramp", "line": "", "sent": False,
+                             "reply": "n/a: channel belt drives D6 unramped (servo's own speed)"})
+            return
         line = self.ramp_command()
         entry = {"t": self.clock(), "action": "ramp", "line": line, "sent": not self.dry_run, "reply": ""}
         if not self.dry_run:
@@ -69,14 +89,20 @@ class Gate:
         self.log.append(entry)
 
     # --- command building
+    @property
+    def on_belt(self) -> bool:
+        return self.cfg.gate.channel == BELT
+
     def _slot(self) -> int:
         ch = self.cfg.gate.channel
         if ch not in _CHANNEL_INDEX:
-            raise ValueError(f"gate.channel must be one of {list(_CHANNEL_INDEX)}, got {ch!r}")
+            raise ValueError(f"gate.channel must be one of {list(_CHANNEL_INDEX) + [BELT]}, got {ch!r}")
         return _CHANNEL_INDEX[ch]
 
     def command(self, door_deg: int) -> str:
-        """`S b s e` with the door angle in the configured slot and hold_deg in the other two."""
+        """`S b s e` with the door angle in the configured slot and hold_deg in the other two; on channel belt, `C <sp>`."""
+        if self.on_belt:
+            return f"C {belt_speed_for_angle(door_deg)}"
         hold = list(self.cfg.gate.hold_deg)
         vals = []
         for i in range(3):
@@ -85,7 +111,10 @@ class Gate:
 
     def _send(self, action: str, door_deg: int) -> None:
         line = self.command(door_deg)
-        entry = {"t": self.clock(), "action": action, "line": line, "sent": not self.dry_run, "reply": ""}
+        entry = {"t": self.clock(), "action": action, "line": line, "sent": not self.dry_run, "reply": "", "deg": int(door_deg)}
+        if self.on_belt:
+            sp = int(line.split()[1])
+            entry.update(sp=sp, deg_actual=belt_angle_for_speed(sp))
         if not self.dry_run:
             try:
                 entry["reply"] = self.link.cmd(line)
@@ -171,8 +200,11 @@ class Gate:
         """Timing check on a FakeArduino with this gate's config; the real link only gets a `?`."""
         out: list[Check] = []
         try:
-            out.append(Check("command strings", self.command(self.cfg.gate.open_deg) != self.command(self.cfg.gate.flush_deg),
-                             f"open={self.command(self.cfg.gate.open_deg)!r} flush={self.command(self.cfg.gate.flush_deg)!r}"))
+            c_open, c_flush = self.command(self.cfg.gate.open_deg), self.command(self.cfg.gate.flush_deg)
+            out.append(Check("command strings", c_open != c_flush, f"open={c_open!r} flush={c_flush!r}"))
+            if self.on_belt:
+                out.append(Check("belt channel never sends C 0", all(l.split()[1] != "0" for l in (c_open, c_flush)),
+                                 f"{c_open} / {c_flush} (C 0 would detach the door servo)"))
         except ValueError as e:
             return [Check("command strings", False, str(e))]
         fake = FakeArduino()
@@ -192,8 +224,11 @@ class Gate:
             e_flush = (flushes[0]["t"] - t0 - delay - dwell) * 1000
             out.append(Check("open within ±20 ms", abs(e_open) <= 20, f"{e_open:+.1f} ms", e_open))
             out.append(Check("flush within ±20 ms", abs(e_flush) <= 20, f"{e_flush:+.1f} ms", e_flush))
-            out.append(Check("fake received both S commands", fake.sent[-2:] == [g.command(self.cfg.gate.open_deg), g.command(self.cfg.gate.flush_deg)],
+            out.append(Check("fake received both door commands", fake.sent[-2:] == [g.command(self.cfg.gate.open_deg), g.command(self.cfg.gate.flush_deg)],
                              " | ".join(fake.sent[-2:])))
+            if self.on_belt:
+                out.append(Check("fake D6 angle after flush", fake.belt_angle == belt_angle_for_speed(int(g.command(self.cfg.gate.flush_deg).split()[1])),
+                                 f"D6 at {fake.belt_angle}° for flush {self.cfg.gate.flush_deg}°"))
         out.append(Check("state back to flush", g.state == "flush", g.state))
         g.close()
         st = self.link.query()

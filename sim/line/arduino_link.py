@@ -78,6 +78,7 @@ class FakeArduino:
         self.magnet = False
         self.belt = 0
         self.belt_attached = False
+        self.belt_angle: int | None = None  # angle the firmware writes on D6 (90 + sp*90/100, C integer division); None = detached/limp
         self.vmax = [MAX_DEG_PER_S] * 3  # per-channel ramp limits, changed by `R <ch> <vmax> <accel>`
         self.amax = [ACCEL_DEG_S2] * 3
         self._last_tick = self.clock()
@@ -131,6 +132,7 @@ class FakeArduino:
                 sp = 0  # atoi() semantics: garbage → 0
             self.belt = max(-100, min(100, sp))
             self.belt_attached = self.belt != 0
+            self.belt_angle = (90 + int(self.belt * 90 / 100)) if self.belt_attached else None  # trunc toward 0 like C
             return "ok"
         if c == "H":
             self._advance()
@@ -173,7 +175,8 @@ class FakeArduino:
     def status(self) -> dict:
         st = self.query()
         return {"name": self.name, "backend": "fake", "port": self.port, "ok": st.ok, "pos": st.pos, "target": list(self.target),
-                "magnet": st.magnet, "moving": st.moving, "belt": self.belt, "vmax": list(self.vmax), "amax": list(self.amax),
+                "magnet": st.magnet, "moving": st.moving, "belt": self.belt, "belt_angle": self.belt_angle,
+                "vmax": list(self.vmax), "amax": list(self.amax),
                 "n_cmds": len(self.sent), "log": self.log.tail()}
 
     def selftest(self) -> list[Check]:
@@ -203,6 +206,7 @@ class HttpPanelLink:
         self.n_errors = 0
         self.last_error = ""
         self.last_rtt_ms = 0.0
+        self.selftest_belt_cmd: str | None = "C 0"  # Gate sets None when D6 drives the door (C 0 would drop it)
 
     def _http(self, method: str, path: str) -> dict:
         req = urllib.request.Request(self.url + path, method=method)
@@ -271,13 +275,18 @@ class HttpPanelLink:
         out.append(Check("panel reachable + ? answers", st.ok, st.error or st.raw, ms))
         out.append(Check("? within 300 ms", st.ok and ms <= 300, f"{ms:.1f} ms", ms))
         out.append(Check("? reply parses", st.ok and st.pos is not None, st.raw if st.ok else st.error))
+        out.append(self._belt_check())
+        return out
+
+    def _belt_check(self) -> Check:
+        if self.selftest_belt_cmd is None:
+            return Check("C 0 skipped", True, "D6 drives the door: C 0 would detach it")
         try:
             t0 = now()
-            r = self.cmd("C 0")
-            out.append(Check("C 0 → ok (belt stays stopped)", r == "ok", r, (now() - t0) * 1000))
+            r = self.cmd(self.selftest_belt_cmd)
+            return Check("C 0 → ok (belt stays stopped)", r == "ok", r, (now() - t0) * 1000)
         except LinkError as e:
-            out.append(Check("C 0 → ok (belt stays stopped)", False, str(e)))
-        return out
+            return Check("C 0 → ok (belt stays stopped)", False, str(e))
 
     def close(self) -> None:
         pass  # the panel owns the port; leaving it running is the point
@@ -305,6 +314,7 @@ class DirectSerial:
         self.n_reconnects = 0
         self.last_error = ""
         self.connected = False
+        self.selftest_belt_cmd: str | None = "C 0"  # Gate sets None when D6 drives the door (C 0 would drop it)
         self._open()
         self.cmd("C 0")
 
@@ -390,11 +400,7 @@ class DirectSerial:
         out.append(Check("port open + ? answers", st.ok, st.error or f"{self.port}: {st.raw}", ms))
         out.append(Check("? within 300 ms", st.ok and ms <= 300, f"{ms:.1f} ms", ms))
         out.append(Check("? reply parses", st.ok and st.pos is not None, st.raw if st.ok else st.error))
-        try:
-            r = self.cmd("C 0")
-            out.append(Check("C 0 → ok (belt stays stopped)", r == "ok", r))
-        except LinkError as e:
-            out.append(Check("C 0 → ok (belt stays stopped)", False, str(e)))
+        out.append(HttpPanelLink._belt_check(self))
         return out
 
     def close(self) -> None:
