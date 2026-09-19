@@ -2,7 +2,11 @@
 
 Date: 2026-09-19.
 Status: All nine separate preview clips are complete and verified.
+Visual acceptance: Taras reported that the slow-motion discard remains difficult to see.
+That shot needs revised framing before a final-resolution render.
 Taras will record the UI separately.
+
+The [agent-fs archive record](ASSET_ARCHIVE.md) lists the uploaded clips, editable assets, and verification results.
 
 The review page is http://127.0.0.1:8894/clips.html.
 It exposes each clip after encoding and verification.
