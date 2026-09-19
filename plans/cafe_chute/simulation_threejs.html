@@ -1,0 +1,461 @@
+<title>Café Chute Live</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+:root{--bg:#f4efe6;--panel:rgba(255,252,247,.93);--ink:#1d2733;--muted:#6a6f76;--line:#dcd2c4;--accent:#4b2e1e;--ok:#1f8a4c;--warn:#c07a12;--bad:#c0392b;--btn:#ffffff;--btn-ink:#1d2733;--sel:#efe4d3}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#14110e;--panel:rgba(24,20,17,.92);--ink:#efe8df;--muted:#a79e93;--line:#3a322b;--accent:#d9b48f;--ok:#3fbf75;--warn:#e6a23c;--bad:#ec6b5c;--btn:#2a241f;--btn-ink:#efe8df;--sel:#33291f}}
+:root[data-theme="dark"]{--bg:#14110e;--panel:rgba(24,20,17,.92);--ink:#efe8df;--muted:#a79e93;--line:#3a322b;--accent:#d9b48f;--ok:#3fbf75;--warn:#e6a23c;--bad:#ec6b5c;--btn:#2a241f;--btn-ink:#efe8df;--sel:#33291f}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.45 "IBM Plex Mono",monospace;overflow:hidden}
+#app{position:relative;width:100%;height:100%}
+canvas{display:block}
+.card{position:absolute;background:var(--panel);border:1px solid var(--line);border-radius:10px;backdrop-filter:blur(6px)}
+.hud{left:16px;top:16px;padding:12px 14px;max-width:min(330px,calc(100vw - 32px))}
+.hud h1{font:800 18px/1.1 Archivo,system-ui,sans-serif;margin:0 0 2px;color:var(--accent);letter-spacing:-.01em}
+.hud .sub{color:var(--muted);font-size:11px;margin-bottom:10px}
+.counts{display:grid;grid-template-columns:repeat(4,auto);gap:4px 14px;font-size:11px}
+.counts b{display:block;font:800 20px/1 Archivo,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.counts .ok b{color:var(--ok)}.counts .warn b{color:var(--warn)}.counts .bad b{color:var(--bad)}
+#verdict{margin-top:10px;font-size:12px;min-height:18px;color:var(--muted)}
+.mech{right:16px;top:16px;padding:12px 14px;width:min(290px,calc(100vw - 32px));max-height:calc(100% - 120px);overflow:auto}
+.mech h2{font:700 13px/1.2 Archivo,system-ui,sans-serif;margin:0 0 8px;letter-spacing:.02em;text-transform:uppercase;color:var(--muted)}
+.mech button{display:grid;grid-template-columns:22px 1fr auto;gap:2px 8px;align-items:start;width:100%;text-align:left;background:transparent;color:var(--ink);border:1px solid transparent;border-radius:8px;padding:8px 8px;cursor:pointer;font:inherit}
+.mech button:hover{background:var(--sel)}
+.mech button[aria-pressed="true"]{background:var(--sel);border-color:var(--line)}
+.mech button:focus-visible{outline:2px solid var(--accent)}
+.mech .rk{font:800 16px/1.1 Archivo,system-ui,sans-serif;color:var(--accent)}
+.mech .nm{font-weight:600}
+.mech .nm em{font-style:normal;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ok);margin-left:6px}
+.mech .rel{font-weight:600;font-variant-numeric:tabular-nums;color:var(--ok)}
+.mech .why{grid-column:2/4;color:var(--muted);font-size:11px;line-height:1.4}
+.mech .stat{grid-column:2/4;font-size:11px;color:var(--ink);margin-top:2px}
+.mech .foot{color:var(--muted);font-size:11px;margin:8px 4px 0;line-height:1.4}
+.bar{position:absolute;left:16px;right:16px;bottom:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center}
+.bar button,.bar select{font:600 12px "IBM Plex Mono",monospace;background:var(--btn);color:var(--btn-ink);border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer}
+.bar button:focus-visible,.bar select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bar button[aria-pressed="true"]{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.bar .grp{display:flex;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px}
+@media (max-width:760px){.mech{top:auto;bottom:78px;max-height:38vh}.hud{max-width:calc(100vw - 32px)}}
+</style>
+
+<div id="app">
+  <div class="card hud">
+    <h1>Café · Inspección Sencilla</h1>
+    <div class="sub" id="sub">40 cm chute · 15° · one SG90 swings a 6 cm section of the right wall · phone over 9–15 cm from the top</div>
+    <div class="counts">
+      <div><span>fed</span><b id="cFed">0</b></div>
+      <div class="ok"><span>sin defecto</span><b id="cOk">0</b></div>
+      <div class="warn"><span>para revisar</span><b id="cRev">0</b></div>
+      <div class="bad"><span>misrouted</span><b id="cBad">0</b></div>
+    </div>
+    <div id="verdict">waiting for the first bean</div>
+  </div>
+
+  <div class="card mech">
+    <h2>Sorting into two bins, by reliability</h2>
+    <div id="mechList"></div>
+    <div class="foot">Manual door: you decide when the door swings. Watch the verdict in the top-left card and hold Space (or the button) so the door is in before the suspect reaches 30 cm; the misrouted counter scores you. Reliability figures are estimates for a cardboard build with one bean at a time. By default every mechanism routes perfectly; press "Simulate failures" to inject each one's typical fault at its estimated rate. Click a mechanism to rebuild the exit.</div>
+  </div>
+
+  <div class="bar">
+    <div class="grp">
+      <button id="bPlay" aria-pressed="true">Pause</button>
+      <button id="bDrop">Drop a bean</button>
+      <button id="bAuto" aria-pressed="true">Auto feed</button>
+      <select id="sSpeed" aria-label="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
+      <select id="sSlope" aria-label="slope"><option value="12">slope 12°</option><option value="15">slope 15°</option><option value="18">slope 18°</option><option value="21">slope 21°</option></select>
+      <button id="bReset">Reset</button>
+      <button id="bFail" aria-pressed="false">Simulate failures</button>
+      <button id="bManual" aria-pressed="false">Manual door</button>
+      <button id="bHold" hidden>HOLD to open (or Space)</button>
+    </div>
+    <div class="grp">
+      <button id="vOver">Overview</button>
+      <button id="vGate">Gate</button>
+      <button id="vCam">Camera</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+// ---------- constants (cm) ----------
+const SLOPE_DEG=[12,15,18,21].includes(parseInt((location.hash.match(/slope=(\d+)/)||[])[1]))?parseInt(location.hash.match(/slope=(\d+)/)[1]):15;
+const L=40, ANG=SLOPE_DEG*Math.PI/180, EXIT_H=9, INNER=2.5, WALL=0.25, WALL_H=3.0, OUTER=INNER+2*WALL;
+// empirical rolling model: 64 cm/s² net at 15° with terminal speed 40 cm/s; scale the drive term with slope (rolling μ≈0.06)
+const ACC=64*(Math.sin(ANG)-0.06*Math.cos(ANG))/(Math.sin(15*Math.PI/180)-0.06*Math.cos(15*Math.PI/180));
+const BEAN_L=1.2, BEAN_W=0.84, BEAN_T=0.5, SPACING=1.35;
+const S_STOP=L-0.7, ARM_OPEN=-Math.PI/2, G=981, SERVO_RATE=6.5;
+const Z_AXIS=new THREE.Vector3(0,0,1);
+const chuteNormal=new THREE.Vector3(0,1,0).applyAxisAngle(Z_AXIS,-ANG);
+const chuteDir=new THREE.Vector3(1,0,0).applyAxisAngle(Z_AXIS,-ANG);
+// swing gate geometry (distances from the TOP of the chute)
+const DOOR_UP=30, DOOR_DN=36, DOOR_LEN=DOOR_DN-DOOR_UP, DOOR_ANGLE=-Math.asin(INNER/DOOR_LEN)*1.05; // ≈ -25° reaches the far wall
+const ZONE_C=12; // camera zone centre, 9–15 cm from the top
+
+// ---------- renderer / scene ----------
+const app=document.getElementById('app');
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap; renderer.outputEncoding=THREE.sRGBEncoding;
+app.appendChild(renderer.domElement);
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0xe9e2d6);
+const camera=new THREE.PerspectiveCamera(40,1,1,500);
+const controls=new THREE.OrbitControls(camera,renderer.domElement);
+controls.maxPolarAngle=Math.PI/2-0.02; controls.minDistance=6; controls.maxDistance=160;
+function view(p,t){camera.position.set(...p);controls.target.set(...t);controls.update();}
+view([30,44,46],[-14,10,-1]);
+scene.add(new THREE.HemisphereLight(0xfff4e6,0x6b5a4a,0.75));
+const sun=new THREE.DirectionalLight(0xffffff,0.9); sun.position.set(-30,60,40); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048);
+Object.assign(sun.shadow.camera,{left:-70,right:70,top:60,bottom:-40,near:10,far:160}); sun.shadow.bias=-0.0005; scene.add(sun);
+const fill=new THREE.DirectionalLight(0xffffff,0.25); fill.position.set(40,30,-40); scene.add(fill);
+
+const std=(c,o={})=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.8},o));
+const M={wood:std(0xb98b5a,{roughness:.85}),kraft:std(0xc9a878,{roughness:.9}),kraftDark:std(0xa98552,{roughness:.9}),paper:std(0xf7f4ee,{roughness:.7}),
+  block:std(0x5e5a55),servo:std(0x2f5fb3,{roughness:.5}),horn:std(0xf0f2f4,{roughness:.4}),metal:std(0xb8bcc0,{metalness:.8,roughness:.3}),dark:std(0x22252a,{roughness:.5}),
+  bowl:std(0xfbfbfa,{roughness:.35,side:THREE.DoubleSide}),teal:std(0x0d7075,{roughness:.6}),good:std(0x5a3a26,{roughness:.55}),quaker:std(0xcfae7c,{roughness:.6}),burnt:std(0x1c1512,{roughness:.45}),
+  tube:std(0x8fb3c9,{roughness:.4}),puff:new THREE.MeshBasicMaterial({color:0xbfe9ff,transparent:true,opacity:.55}),door:std(0xd8b98a,{roughness:.9})};
+function box(w,h,d,m,x=0,y=0,z=0,parent=scene){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;parent.add(o);return o;}
+function cyl(r,h,m,seg=16){const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,seg),m);o.castShadow=true;return o;}
+function labelTex(txt){const c=document.createElement('canvas');c.width=256;c.height=64;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,256,64);g.fillStyle='#1d2733';g.font='600 26px Archivo, sans-serif';g.textAlign='center';g.fillText(txt,128,42);return new THREE.CanvasTexture(c);}
+
+const table=new THREE.Mesh(new THREE.PlaneGeometry(160,110),M.wood); table.rotation.x=-Math.PI/2; table.receiveShadow=true; scene.add(table);
+
+// ---------- chute ----------
+const chute=new THREE.Group(); chute.position.set(0,EXIT_H,0); chute.rotation.z=-ANG; scene.add(chute);
+const fixed=new THREE.Group(); chute.add(fixed);
+box(WALL,WALL_H+WALL,OUTER,M.kraftDark,-L+WALL/2,WALL_H/2-WALL/2,0,fixed); // top stop
+const zoneMat=std(0x2e8b57,{transparent:true,opacity:.18,emissive:0x2e8b57,emissiveIntensity:0});
+const zone=new THREE.Mesh(new THREE.PlaneGeometry(6,INNER),zoneMat); zone.rotation.x=-Math.PI/2; zone.position.set(-4,0.07,0); fixed.add(zone);
+let variable=new THREE.Group(); chute.add(variable);
+function buildFloor({cutFloor=false,cutWallL=false,cutWallR=false}={}){
+  const segs=cutFloor?[[-L,-3.5],[-0.5,0]]:[[-L,0]];
+  for(const [a,b] of segs){box(b-a,WALL,OUTER,M.kraftDark,(a+b)/2,-WALL/2,0,variable); box(b-a,0.04,INNER,M.paper,(a+b)/2,0.02,0,variable);}
+  const wl=cutWallL?[[-L,-2.9],[-0.3,0]]:[[-L,0]];
+  for(const [a,b] of wl) box(b-a,WALL_H,WALL,M.kraft,(a+b)/2,WALL_H/2,-(INNER/2+WALL/2),variable);
+  const wr=cutWallR?[[-L,-(L-DOOR_UP)],[-(L-DOOR_DN),0]]:[[-L,0]];
+  for(const [a,b] of wr) box(b-a,WALL_H,WALL,M.kraft,(a+b)/2,WALL_H/2,(INNER/2+WALL/2),variable);
+}
+const zoneCenterW=new THREE.Vector3();
+
+// exit stop gate (used by the stop-and-decide mechanisms)
+const servoZ=INNER/2+WALL+0.6;
+const gateG=new THREE.Group(); fixed.add(gateG);
+const servoBody=box(2.3,2.2,1.2,M.servo,-0.4,-WALL-1.1,servoZ,gateG); box(3.2,0.25,1.2,M.servo,-0.4,-WALL-0.15,servoZ,gateG);
+const shaft=cyl(0.28,0.7,M.horn); shaft.position.set(0.15,0.05,servoZ); gateG.add(shaft);
+const armPivot=new THREE.Group(); armPivot.position.set(0.15,0.32,servoZ); gateG.add(armPivot);
+armPivot.add(cyl(0.45,0.14,M.horn,20)); box(0.5,0.16,3.5,M.horn,0,0,-1.75,armPivot);
+let armAngle=0, armTarget=0;
+
+// structure: two full-height trapezoid side panels down to a base tray (cutting plan), instead of loose blocks
+(function(){ const shape=new THREE.Shape(); const uTop=-L*Math.cos(ANG), yTop=EXIT_H+L*Math.sin(ANG);
+  shape.moveTo(uTop,0.25); shape.lineTo(0,0.25); shape.lineTo(0,EXIT_H-WALL-0.02); shape.lineTo(uTop,yTop-WALL-0.02); shape.closePath();
+  const geo=new THREE.ExtrudeGeometry(shape,{depth:WALL,bevelEnabled:false});
+  for(const z of [-(INNER/2+WALL),(INNER/2)]){const m=new THREE.Mesh(geo,M.kraft); m.position.z=z; m.castShadow=m.receiveShadow=true; scene.add(m);}
+  box(42,0.25,18,M.kraftDark,uTop/2,0.125,2.5); // base tray plate
+  for(const [x,z,w,d] of [[uTop/2,-6.4,42,0.25],[uTop/2,11.4,42,0.25],[uTop-0.1,2.5,0.25,18],[0.1,2.5,0.25,18]]) box(w,2,d,M.kraftDark,x,1.0,z); // tray skirt
+})();
+
+// containers
+function bowl(r,h,label){
+  const pts=[new THREE.Vector2(0,0)];for(let i=0;i<=8;i++){const t=i/8;pts.push(new THREE.Vector2(0.4+(r-0.4)*Math.sin(t*Math.PI/2)*0.98+t*0.2,h*(1-Math.cos(t*Math.PI/2))));}
+  const g=new THREE.Group(); const m=new THREE.Mesh(new THREE.LatheGeometry(pts,48),M.bowl); m.castShadow=m.receiveShadow=true; g.add(m);
+  const lab=new THREE.Mesh(new THREE.PlaneGeometry(r*1.15,r*0.3),std(0xffffff,{map:labelTex(label),roughness:.6})); lab.position.set(r*0.93,h*0.45,0); lab.rotation.y=Math.PI/2; g.add(lab);
+  g.userData={r,h,pile:[]}; scene.add(g); return g;
+}
+const bins={good:bowl(6.2,6.0,'Sin defecto visible'),review:bowl(3.6,4.2,'Para revisar')};
+let riser=null;
+function placeBin(name,x,z,baseY=0,faceAngle=0){const b=bins[name];b.position.set(x,baseY+0.02,z);b.rotation.y=faceAngle;}
+
+// phone + tripod + live screen, placed over the zone
+const phoneG=new THREE.Group(); phoneG.rotation.z=-ANG; scene.add(phoneG);
+box(14.7,0.8,7.2,M.dark,0,0,0,phoneG);
+const lens=cyl(0.5,0.1,std(0x223a66,{roughness:.2,metalness:.5})); lens.position.set(0,-0.45,0); phoneG.add(lens);
+const rt=new THREE.WebGLRenderTarget(512,256); rt.texture.encoding=THREE.sRGBEncoding;
+const screen=new THREE.Mesh(new THREE.PlaneGeometry(13.2,6.4),new THREE.MeshBasicMaterial({map:rt.texture})); screen.rotation.x=-Math.PI/2; screen.rotation.z=Math.PI; screen.position.y=0.41; phoneG.add(screen);
+phoneG.traverse(o=>o.layers.set(1));
+const camTop=new THREE.OrthographicCamera(-4,4,2,-2,0.5,80); camTop.up.set(0,0,-1); camTop.layers.set(0);
+let rig=null;
+function placeCamera(zx){
+  zone.position.x=zx; chute.updateMatrixWorld(true); zone.getWorldPosition(zoneCenterW);
+  phoneG.position.copy(zoneCenterW).addScaledVector(chuteNormal,20);
+  camTop.position.copy(phoneG.position).addScaledVector(chuteNormal,-0.5); camTop.lookAt(zoneCenterW);
+  if(rig) scene.remove(rig); rig=new THREE.Group(); scene.add(rig);
+  const tp=phoneG.position; const post=cyl(0.45,tp.y,M.dark,12); post.position.set(tp.x,tp.y/2,tp.z-10); rig.add(post);
+  const armT=cyl(0.3,10.5,M.dark,12); armT.rotation.x=Math.PI/2; armT.position.set(tp.x,tp.y,tp.z-5); rig.add(armT);
+  for(let i=0;i<3;i++){const leg=cyl(0.3,9,M.dark,8);const a=i*2.1;leg.position.set(tp.x+Math.sin(a)*3,3.2,tp.z-10+Math.cos(a)*3);leg.rotation.z=Math.sin(a)*0.6;leg.rotation.x=-Math.cos(a)*0.6;rig.add(leg);}
+}
+
+// laptop
+const lap=new THREE.Group(); lap.position.set(-50,0,26); lap.rotation.y=0.9; scene.add(lap);
+box(30,1.2,20,M.metal,0,0.6,0,lap);
+const lid=box(30,20,0.8,M.metal,0,10.5,-9.8,lap); lid.rotation.x=-0.2;
+const lc=document.createElement('canvas');lc.width=512;lc.height=320;const lg=lc.getContext('2d');const lapTex=new THREE.CanvasTexture(lc);
+const lapScreen=new THREE.Mesh(new THREE.PlaneGeometry(28,17.5),new THREE.MeshBasicMaterial({map:lapTex})); lapScreen.position.set(0,0,0.45); lid.add(lapScreen);
+const log=[]; let lapStatus='door FLUSH · waiting';
+function pushLog(s){log.push(s); if(log.length>12)log.shift();}
+function drawLaptop(){
+  lg.fillStyle='#0f1a24';lg.fillRect(0,0,512,320);
+  lg.fillStyle='#7fd1b9';lg.font='600 19px IBM Plex Mono, monospace';lg.fillText(`cafe_inspeccion.py  --mech ${mech.key}`,16,30);
+  lg.fillStyle='#b9c6d2';lg.font='17px IBM Plex Mono, monospace';
+  lg.fillText(`fed ${counts.fed}  ok ${counts.ok}  revisar ${counts.rev}  misrouted ${counts.bad}`,16,62);
+  lg.fillStyle='#ffd27a';lg.fillText(lapStatus,16,94);
+  lg.fillStyle='#8fa3b3';for(let i=0;i<Math.min(log.length,10);i++)lg.fillText(log[log.length-1-i],16,126+i*20);
+  lapTex.needsUpdate=true;
+}
+box(6.9,0.3,5.3,M.teal,-12,0.4,14); box(1.2,1.0,1.0,M.metal,-15.5,0.9,12.5);
+const wireLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-10,0.8,13),new THREE.Vector3(-6,3,9),new THREE.Vector3(0,8,3)]),new THREE.LineBasicMaterial({color:0xe8722a})); scene.add(wireLine);
+scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-15.5,0.9,12.5),new THREE.Vector3(-28,1,18),new THREE.Vector3(-40,1.2,23)]),new THREE.LineBasicMaterial({color:0x3a7bd5})));
+function wireTo(local){const p=chute.localToWorld(local.clone()); wireLine.geometry.setFromPoints([new THREE.Vector3(-10,0.8,13),new THREE.Vector3(-6,3,9),p]);}
+
+// tweezers
+const tw=new THREE.Group(); tw.visible=false; scene.add(tw);
+for(const s of [-1,1]){const t=box(0.25,12,0.12,M.metal,s*0.35,6,0,tw);t.rotation.z=s*0.05;}
+const twHome=new THREE.Vector3();
+
+// ---------- beans ----------
+const beanGeo=new THREE.SphereGeometry(1,20,14); beanGeo.scale(BEAN_L/2,BEAN_T/2,BEAN_W/2);
+const beans=[]; let counts={fed:0,ok:0,rev:0,bad:0};
+function makeBean(){
+  const r=Math.random(); const kind=r<0.11?'quaker':r<0.19?'burnt':'good';
+  const m=new THREE.Mesh(beanGeo,M[kind]); m.castShadow=true;
+  const crease=new THREE.Mesh(new THREE.BoxGeometry(BEAN_L*0.8,0.05,0.08),M.burnt); crease.position.y=BEAN_T/2-0.01; m.add(crease);
+  const b={mesh:m,kind,s:0.8,v:0,z:(Math.random()-0.5)*(INNER-BEAN_W)*0.8,state:'chute',released:false,vel:new THREE.Vector3(),dest:null};
+  m.position.set(-L+b.s,BEAN_T/2+0.04,b.z); m.rotation.y=(Math.random()-0.5)*0.6; chute.add(m); beans.push(b); counts.fed++; updateCounts(); return b;
+}
+function dropBean(){ const inC=beans.filter(b=>b.state==='chute'); if(inC.length && inC[inC.length-1].s<2.5) return; makeBean(); }
+function toWorldFall(b,vel){const wp=chute.localToWorld(b.mesh.position.clone()); scene.attach(b.mesh); b.mesh.position.copy(wp); b.state='fall'; b.frozen=false; b.vel.copy(vel);}
+function land(b){
+  const dest=b.dest||'table';
+  if(dest==='table'){b.state='done'; b.mesh.position.y=BEAN_T/2; counts.bad++; pushLog(`#${b.id||'?'}  landed on the table  -> MISROUTED`);}
+  else{const bin=bins[dest]; const pile=bin.userData.pile; const y=bin.position.y+1.0+Math.min(pile.length,40)*0.06; const a=Math.random()*6.283,r=Math.random()*(bin.userData.r-2.2);
+    b.mesh.position.set(bin.position.x+Math.cos(a)*r,y,bin.position.z+Math.sin(a)*r); b.mesh.rotation.set(Math.random()*.6,Math.random()*6.3,Math.random()*.6); b.state='done'; pile.push(b);
+    if(pile.length>60){const o=pile.shift();scene.remove(o.mesh);}
+    const correct=(dest==='good')===(b.kind==='good'); if(!correct){counts.bad++; pushLog(`#${b.id||'?'}  ${b.kind} bean in "${dest}"  -> MISROUTED`);} else if(dest==='good')counts.ok++; else counts.rev++;
+  }
+  updateCounts();
+}
+
+// ---------- mechanisms ----------
+const mechs={}; let gear={};
+function gateSeq(bean){return [
+  {start:()=>{armTarget=ARM_OPEN;bean.released=true;bean.frozen=false;lapStatus='S 0 90 75   gate OPEN';},until:()=>armAngle<ARM_OPEN*0.75},
+  {until:()=>bean.state!=='chute',timeout:1.5},{dur:0.12},
+  {start:()=>{armTarget=0;lapStatus='S 90 90 75  gate CLOSED';},until:()=>armAngle>-0.02}];}
+function servoStep(a,t,dt){return Math.abs(t-a)<1e-3?t:a+Math.sign(t-a)*Math.min(SERVO_RATE*dt,Math.abs(t-a));}
+let failures=false; const pfail=m=>failures?m.pf:0;
+let manual=false, held=false;
+
+// --- chosen: swing gate in the right wall, continuous flow ---
+mechs.swing={key:'swing',name:'Swing gate in the right wall',chosen:true,rel:'93 %',stopGate:false,zoneX:-(L-ZONE_C),continuous:true,pf:0.07,
+  why:'One servo, no stop. The camera reads each bean as it rolls past 9–15 cm from the top. If it looks bad, a 6 cm section of the right wall (30–36 cm) swings 25° into the channel and steers it out through its own opening into the cup. Everything else rolls straight into the bowl. Failure: a verdict that arrives late lets the bean pass, or a bean clips the door edge and stays in.',
+  build(){ buildFloor({cutWallR:true});
+    gear.dPivot=new THREE.Group(); gear.dPivot.position.set(-(L-DOOR_DN),0,INNER/2+WALL/2); variable.add(gear.dPivot);
+    box(DOOR_LEN,WALL_H,WALL,M.door,-DOOR_LEN/2,WALL_H/2,0,gear.dPivot); gear.dAngle=0; gear.dTarget=0;
+    // servo on the outside of the wall at the hinge, shaft vertical, horn arm glued to the door's top edge
+    box(2.3,1.2,2.2,M.servo,-(L-DOOR_DN)+1.15,WALL_H+0.6,INNER/2+WALL+1.1,variable);
+    const sh=cyl(0.28,0.8,M.horn); sh.position.set(-(L-DOOR_DN),WALL_H+0.3,INNER/2+WALL/2); variable.add(sh);
+    box(1.6,0.14,0.5,M.horn,-0.8,WALL_H+0.07,0,gear.dPivot);
+    // cup on a riser to the right of the door
+    const cupW=chute.localToWorld(new THREE.Vector3(-(L-33),0,INNER/2+WALL+4.0)); const floorY=chute.localToWorld(new THREE.Vector3(-(L-33),-WALL,0)).y;
+    const rh=floorY-4.2-0.4; riser=box(6,rh,6,M.block,cupW.x,rh/2,cupW.z); placeBin('review',cupW.x,cupW.z,rh,-Math.PI/2);
+    placeBin('good',5,0); wireTo(new THREE.Vector3(-(L-DOOR_DN)+1.15,WALL_H+0.6,INNER/2+WALL+2.2));},
+  update(dt){gear.dAngle=servoStep(gear.dAngle,gear.dTarget,dt); gear.dPivot.rotation.y=gear.dAngle;},
+  flow(dt,inChute){
+    // 1. camera: photograph each bean as it passes the zone centre; verdict after the processing delay
+    for(const b of inChute){
+      if(!b.shot && b.s>=ZONE_C){b.shot=true;b.shotT=0;b.id=++beanId; zoneMat.emissiveIntensity=1.2; zoneMat.opacity=.5; lapStatus=`take_photo() #${b.id}`;
+        if(failures){const r=Math.random(); b.fail=r<this.pf*0.7?'late':r<this.pf?'bounce':null;}}
+      if(b.shot && !b.verdict){b.shotT+=dt; if(b.shotT>(b.fail==='late'?0.9:0.35)){ const ok=b.kind==='good'; b.verdict=ok?'ok':'suspect';
+        if(ok){pushLog(`#${b.id}  L*=${(38+Math.random()*10).toFixed(0)} black=0.0${Math.floor(Math.random()*5)}  -> ok, door stays flush`); setVerdict(`#${b.id} no visible defect → rolls to the bowl`,'ok');}
+        else{const why=b.kind==='quaker'?'pale (quaker)':'black patches (burnt)'; pushLog(`#${b.id}  ${why}  -> SUSPECT, S 65 90 75 door OPEN${b.fail==='late'?' (late!)':''}`); setVerdict(`#${b.id} suspect: ${why} → door swings in`,'warn');}}}
+    }
+    zoneMat.emissiveIntensity=Math.max(0,zoneMat.emissiveIntensity-8*dt); zoneMat.opacity=Math.max(.18,zoneMat.opacity-2*dt);
+    // 2. door: open while a suspect with a verdict is approaching or inside the door section
+    const open=manual?held:inChute.some(b=>b.verdict==='suspect' && b.s>DOOR_UP-9 && b.s<DOOR_DN+0.8);
+    gear.dTarget=open?DOOR_ANGLE:0; if(open) lapStatus=`door OPEN (${(-gear.dAngle*57.3).toFixed(0)}°)`; else if(!inChute.some(b=>b.shot&&!b.verdict)) lapStatus='door FLUSH · beans roll to the bowl';
+    // 3. deflection: the door line runs from (DOOR_UP, far wall) to (DOOR_DN, near wall)
+    const openEnough=gear.dAngle<DOOR_ANGLE*0.85;
+    for(const b of inChute){
+      if(b.s<DOOR_UP || b.s>DOOR_DN+0.6) continue;
+      const zDoor=-INNER/2+(b.s-DOOR_UP)*(INNER/DOOR_LEN)*Math.min(1,-gear.dAngle/-DOOR_ANGLE);
+      if(openEnough && b.z+BEAN_W/2>=zDoor-0.05 && b.fail!=='bounce'){ b.onDoor=true; }
+      if(b.onDoor){ b.z=Math.max(b.z,zDoor-BEAN_W/2); b.v=Math.max(12,b.v*0.985);
+        if(b.z>INNER/2-0.15 || b.s>DOOR_DN-1.2){ b.mesh.position.set(-L+b.s,BEAN_T/2+0.04,b.z); toWorldFall(b,chuteDir.clone().multiplyScalar(b.v*0.35).add(new THREE.Vector3(0,1,26))); b.dest='review'; } }
+    }
+  }};
+
+mechs.kicker={key:'kicker',name:'Side kicker at a stop gate',rel:'98 %',pf:0.03,
+  why:'Two servos. Beans stop at an exit gate; the second SG90 sweeps the stationary suspect through a gap in the left wall into a cup. Nothing to time, but two servos, a slot and a gap to cut. Failure: a bean wedges in the gap and the arm sweeps again.',
+  build(){buildFloor({cutWallL:true});
+    box(2.3,2.2,1.2,M.servo,-4.1,-WALL-1.1,servoZ,variable); box(3.2,0.25,1.2,M.servo,-4.1,-WALL-0.15,servoZ,variable);
+    const sh=cyl(0.28,0.7,M.horn); sh.position.set(-3.6,0.05,servoZ); variable.add(sh);
+    gear.kPivot=new THREE.Group(); gear.kPivot.position.set(-3.6,0.34,servoZ); variable.add(gear.kPivot); gear.kPivot.add(cyl(0.45,0.14,M.horn,20)); box(3.0,0.16,0.5,M.horn,1.5,0,0,gear.kPivot);
+    gear.kAngle=0; gear.kTarget=0;
+    const cupW=chute.localToWorld(new THREE.Vector3(-1.6,0,-5.75));
+    riser=box(4.5,4.6,4.5,M.block,cupW.x,2.3,cupW.z); placeBin('review',cupW.x,cupW.z,4.6,Math.PI/2); placeBin('good',2.5,4.2);},
+  handle(b,ok){ if(ok) return gateSeq(b);
+    const fail=Math.random()<pfail(this); const rest=b.mesh.position.clone(); const out=new THREE.Vector3(-1.6,BEAN_T/2+0.04,-(INNER/2)-0.7);
+    const sweep=(final)=>[
+      {start:()=>{gear.kTarget=Math.PI/2;b.frozen=true;lapStatus='S 90 0 75   kick';},until:()=>gear.kAngle>Math.PI/2-0.05,
+       on:()=>{if(b.state==='chute'){const k=gear.kAngle/(Math.PI/2); b.mesh.position.lerpVectors(rest,out,Math.min(k,final?1:0.55)); b.mesh.rotation.y=k*0.8;}},
+       end:()=>{if(final&&b.state==='chute'){b.mesh.position.copy(out);toWorldFall(b,new THREE.Vector3(1,0,-30));b.dest='review';}}},
+      {dur:0.15},{start:()=>{gear.kTarget=0;lapStatus='S 90 90 75  park';},until:()=>gear.kAngle<0.03}];
+    const seq=sweep(!fail); if(fail){seq.push({start:()=>{pushLog(`#${b.id}  wedged in the gap -> second sweep`);lapStatus='jam · retry';},dur:0.3}); seq.push(...sweep(true));}
+    return seq;},
+  update(dt){gear.kAngle=servoStep(gear.kAngle,gear.kTarget,dt); gear.kPivot.rotation.y=gear.kAngle;}};
+
+mechs.diverter={key:'diverter',name:'Diverter flap under the exit',rel:'95 %',pf:0.05,
+  why:'Two servos. A flap in a Y below the exit gate is set before the gate opens and every bean drops onto it. No wall cut. Failure: a bean bounces off the flap edge to the wrong side.',
+  build(){buildFloor();
+    gear.fPivot=new THREE.Group(); gear.fPivot.position.set(2.4,6.4,0); scene.add(gear.fPivot); box(5.5,0.3,6.5,M.kraft,0,0,0,gear.fPivot);
+    gear.fPost=box(1.2,6.3,1.2,M.kraftDark,2.4,3.15,0); gear.fServo=box(2.3,1.2,2.2,M.servo,5.5,6.4,0); gear.fAngle=0; gear.fTarget=0;
+    gear.fGuideL=box(0.3,3,8,M.kraft,-0.6,7.5,0);
+    placeBin('good',3.5,8.2,0,-Math.PI/2); placeBin('review',3.5,-7.6,0,Math.PI/2);},
+  handle(b,ok){ const side=ok?1:-1; b.divSide=side; b.divFail=Math.random()<pfail(this);
+    return [{start:()=>{gear.fTarget=side*0.45;lapStatus=`flap -> ${ok?'sin defecto':'para revisar'}`;},until:()=>Math.abs(gear.fAngle-gear.fTarget)<0.02},...gateSeq(b)];},
+  update(dt){gear.fAngle=servoStep(gear.fAngle,gear.fTarget,dt); gear.fPivot.rotation.x=gear.fAngle;},
+  fall(b){ if(!b.div && b.mesh.position.y<6.9 && b.mesh.position.x>-0.2 && b.mesh.position.x<5.2){ b.div=true; let side=b.divSide; if(b.divFail){side=-side;pushLog(`#${b.id}  bounced off the flap edge`);} b.vel.set(3,-10,side*42); b.dest=side>0?'good':'review'; } }};
+
+mechs.trapdoor={key:'trapdoor',name:'Trapdoor in the floor',rel:'90 %',pf:0.10,
+  why:'Two servos. The last 3 cm of floor hinge down under a stopped suspect. Cardboard hinges warp and beans stick to the paper, so about one in ten needs a second drop.',
+  build(){buildFloor({cutFloor:true});
+    gear.tPivot=new THREE.Group(); gear.tPivot.position.set(-3.5,-WALL/2,0); variable.add(gear.tPivot); box(3.0,WALL,INNER-0.1,M.kraftDark,1.5,0,0,gear.tPivot); box(3.0,0.04,INNER-0.2,M.paper,1.5,WALL/2+0.02,0,gear.tPivot);
+    box(1.2,2.3,2.2,M.servo,-3.5,-1.8,-(INNER/2+WALL+0.6),variable); gear.tAngle=0; gear.tTarget=0;
+    const cupW=chute.localToWorld(new THREE.Vector3(-1.8,-2,0)); placeBin('review',cupW.x,0,0,Math.PI); placeBin('good',5.6,0);},
+  handle(b,ok){ if(ok) return gateSeq(b);
+    const fail=Math.random()<pfail(this); const rel=b.mesh.position.clone().sub(gear.tPivot.position);
+    const drop=(final)=>[
+      {start:()=>{gear.tTarget=-1.05;b.frozen=true;lapStatus='S 90 0 75   trapdoor OPEN';},until:()=>gear.tAngle<-1.0,
+       on:()=>{ if(b.state==='chute'){ const p=rel.clone().applyAxisAngle(Z_AXIS,gear.tAngle).add(gear.tPivot.position); b.mesh.position.copy(p); b.mesh.rotation.z=gear.tAngle; if(final&&gear.tAngle<-0.55){toWorldFall(b,new THREE.Vector3(-3,-5,0));b.dest='review';}}},
+       end:()=>{ if(final&&b.state==='chute'){toWorldFall(b,new THREE.Vector3(-3,-5,0));b.dest='review';}}},
+      {dur:0.3},{start:()=>{gear.tTarget=0;lapStatus='S 90 90 75  trapdoor CLOSED';},until:()=>gear.tAngle>-0.02,on:()=>{ if(b.state==='chute'){const p=rel.clone().applyAxisAngle(Z_AXIS,gear.tAngle).add(gear.tPivot.position); b.mesh.position.copy(p); b.mesh.rotation.z=gear.tAngle;}}}];
+    const seq=drop(!fail); if(fail){seq.push({start:()=>{pushLog(`#${b.id}  stuck to the door -> drop again`);lapStatus='stuck · retry';},dur:0.25}); seq.push(...drop(true));}
+    return seq;},
+  update(dt){gear.tAngle=servoStep(gear.tAngle,gear.tTarget,dt); gear.tPivot.rotation.z=gear.tAngle;}};
+
+mechs.air={key:'air',name:'Air puff at the exit',rel:'80 %',pf:0.20,
+  why:'A nozzle blows the suspect sideways as it leaves the exit gate. Needs a pump, a valve and millisecond timing; a late puff lets the bean fall straight, a weak one drops it between the bowls.',
+  build(){buildFloor();
+    const noz=cyl(0.35,1.4,M.metal); noz.rotation.x=Math.PI/2; noz.position.set(0.9,0.6,INNER/2+0.9); variable.add(noz);
+    variable.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(0.9,0.6,INNER/2+1.5),new THREE.Vector3(1.5,-1,4),new THREE.Vector3(-3,-4,8)]),12,0.25,8),M.tube));
+    gear.pump=box(4,3,3,M.dark,-4,1.5,12); gear.puff=new THREE.Mesh(new THREE.ConeGeometry(1.4,5,14,1,true),M.puff); gear.puff.visible=false; scene.add(gear.puff); gear.puffT=0;
+    placeBin('good',2.5,1.5); placeBin('review',3,-8.2,0,Math.PI/2);},
+  handle(b,ok){ b.puff=!ok; if(!ok){const r=Math.random(), pf=pfail(this); b.puffMode=r<pf/2?'late':r<pf?'weak':'good';} return gateSeq(b);},
+  update(dt){ if(gear.puff.visible){gear.puffT+=dt; gear.puff.material.opacity=Math.max(0,.55-gear.puffT*3); if(gear.puffT>0.2)gear.puff.visible=false;} },
+  fall(b){ if(b.puff && !b.puffed && b.mesh.position.x>0.4){ b.puffed=true; const p=chute.localToWorld(new THREE.Vector3(0.9,0.6,INNER/2+0.9)); gear.puff.position.copy(p).add(new THREE.Vector3(0,0,-3)); gear.puff.rotation.x=Math.PI/2; gear.puff.visible=true; gear.puffT=0;
+      if(b.puffMode==='good'){b.vel.z=-60;b.dest='review';} else if(b.puffMode==='weak'){b.vel.z=-28;b.dest='table';pushLog(`#${b.id}  weak puff -> fell between the bowls`);} else {pushLog(`#${b.id}  puff late -> fell straight`);} } }};
+
+mechs.manual={key:'tweezers',name:'Tweezers (manual reference)',rel:'100 %',pf:0,
+  why:'Gate stays shut, a person lifts the suspect out. Reliable but not automatic; kept only for comparison.',
+  build(){buildFloor(); placeBin('good',2,0); placeBin('review',3,10.5); twHome.copy(zoneCenterW).add(new THREE.Vector3(6,14,6));},
+  handle(b,ok){ if(ok) return gateSeq(b);
+    const from=new THREE.Vector3(), target=new THREE.Vector3();
+    return [
+      {start:()=>{tw.visible=true;tw.position.copy(twHome);lapStatus='\u0007 suspect · remove with tweezers';target.copy(chute.localToWorld(b.mesh.position.clone())).add(new THREE.Vector3(0,0.35,0));},dur:0.6,on:k=>tw.position.lerpVectors(twHome,target,k*k*(3-2*k)),end:()=>{tw.attach(b.mesh);b.state='held';from.copy(tw.position);}},
+      {dur:0.9,on:k=>{const to=bins.review.position.clone().add(new THREE.Vector3(0,9,0));tw.position.lerpVectors(from,to,k);tw.position.y+=Math.sin(k*Math.PI)*7;},end:()=>{scene.attach(b.mesh);b.state='fall';b.vel.set(0,0,0);b.dest='review';lapStatus='removed · gate CLOSED';}},
+      {dur:0.5,on:k=>tw.position.lerpVectors(bins.review.position.clone().add(new THREE.Vector3(0,9,0)),twHome,k),end:()=>tw.visible=false}];},
+  update(){}};
+
+const ORDER=['kicker','diverter','swing','trapdoor','air','manual'];
+for(const k of ORDER) mechs[k].id=k;
+let mech=mechs.swing;
+function clearMech(){ while(variable.children.length)variable.remove(variable.children[0]); for(const k of ['fPivot','fPost','fServo','fGuideL','pump','puff'])if(gear[k]){scene.remove(gear[k]);} if(riser){scene.remove(riser);riser=null;} gear={}; tw.visible=false; for(const b of bins.good.userData.pile.concat(bins.review.userData.pile)) scene.remove(b.mesh); bins.good.userData.pile=[]; bins.review.userData.pile=[]; }
+function selectMech(key){ mech=mechs[key]; reset(); clearMech(); placeCamera(mech.zoneX!=null?mech.zoneX:-4); gateG.visible=mech.stopGate!==false; if(mech.stopGate!==false) wireTo(new THREE.Vector3(-0.4,-WALL-1.1,servoZ+0.6)); mech.build(); renderMechList();
+  document.getElementById('sub').textContent = mech.continuous ? `40 cm chute · ${SLOPE_DEG}° · one SG90 swings a 6 cm section of the right wall · phone over 9–15 cm from the top` : `40 cm chute · ${SLOPE_DEG}° · exit stop gate SG90 on D9 · phone over the last 6 cm`; }
+
+// ---------- inspection FSM (stop-and-decide mechanisms) ----------
+let fsm={st:'idle',t:0,bean:null,seq:null,i:0};
+let running=true, auto=true, speed=1, autoT=1.8, beanId=0;
+const vEl=document.getElementById('verdict');
+function setVerdict(txt,cls){vEl.textContent=txt; vEl.style.color=cls==='ok'?'var(--ok)':cls==='warn'?'var(--warn)':'var(--muted)';}
+function updateCounts(){cFed.textContent=counts.fed;cOk.textContent=counts.ok;cRev.textContent=counts.rev;cBad.textContent=counts.bad; renderStats();}
+const stats={}; for(const k of ORDER)stats[k]={n:0,bad:0};
+function renderStats(){for(const k of ORDER){const el=document.getElementById('st-'+k); if(el){const s=stats[k]; el.textContent=s.n?`this run: ${s.n} beans, ${s.bad} misrouted (${(100*(1-s.bad/s.n)).toFixed(0)} % correct)`:'this run: not tried yet';}}}
+function runSeq(dt){
+  const s=fsm.seq[fsm.i]; if(!s) return true;
+  if(!s._started){s._started=true; s._t=0; s.start&&s.start();}
+  s._t+=dt; let done=false;
+  if(s.dur!=null){const k=Math.min(1,s._t/s.dur); s.on&&s.on(k); done=k>=1;}
+  else {s.on&&s.on(s._t); done=s.until() || (s.timeout!=null && s._t>s.timeout);}
+  if(done){s.end&&s.end(); fsm.i++; return fsm.i>=fsm.seq.length;}
+  return false;
+}
+
+function step(dt){
+  if(auto){autoT+=dt; if(autoT>(mech.continuous?2.0:2.8)){autoT=0; if(beans.filter(b=>b.state==='chute').length<6) dropBean();}}
+  armAngle=servoStep(armAngle,armTarget,dt); armPivot.rotation.y=armAngle; mech.update(dt);
+  const gateOpen=armAngle<ARM_OPEN*0.75;
+  const inChute=beans.filter(b=>b.state==='chute');
+  for(let i=0;i<inChute.length;i++){
+    const b=inChute[i]; if(b.frozen) continue;
+    let limit=Infinity; if(i>0) limit=inChute[i-1].s-SPACING; else if(!mech.continuous && !(b.released&&gateOpen)) limit=S_STOP;
+    if(mech.continuous) b.released=true;
+    b.v+=(ACC-1.6*b.v)*dt; b.s+=b.v*dt; if(b.s>=limit){b.s=limit; b.v=Math.min(b.v,0);}
+    if(b.s>L+BEAN_L/2 && b.released){ toWorldFall(b,chuteDir.clone().multiplyScalar(b.v+6)); if(!b.dest) b.dest='good'; continue; }
+    b.mesh.position.set(-L+b.s,BEAN_T/2+0.04,b.z); b.mesh.rotation.z-=b.v*dt/0.3;
+  }
+  if(mech.continuous) mech.flow(dt,beans.filter(b=>b.state==='chute'));
+  for(const b of beans){ if(b.state!=='fall') continue;
+    b.vel.y-=G*dt; b.mesh.position.addScaledVector(b.vel,dt); b.mesh.rotation.x+=4*dt; mech.fall&&mech.fall(b,dt);
+    const dest=b.dest||'table'; const floorY=dest==='table'?BEAN_T/2:bins[dest].position.y+1.0+Math.min(bins[dest].userData.pile.length,40)*0.06;
+    if(b.mesh.position.y<floorY){ land(b); stats[mech.id].n++; if((dest==='good')!==(b.kind==='good')) stats[mech.id].bad++; renderStats(); }
+  }
+  if(!mech.continuous){
+    const lead=inChute[0]; fsm.t+=dt;
+    switch(fsm.st){
+      case 'idle': if(lead && !lead.released && Math.abs(lead.s-S_STOP)<0.02 && lead.v<=0.01){fsm={st:'settle',t:0,bean:lead}; lead.frozen=true; lapStatus='bean at gate · settling';} break;
+      case 'settle': if(fsm.t>0.4){fsm.st='flash';fsm.t=0; zoneMat.emissiveIntensity=1.2; zoneMat.opacity=.5; lapStatus='take_photo()  zone crop';} break;
+      case 'flash': zoneMat.emissiveIntensity=Math.max(0,1.2-fsm.t*8); zoneMat.opacity=Math.max(.18,.5-fsm.t*2); if(fsm.t>0.15){fsm.st='think';fsm.t=0; lapStatus='classify()  L*, black fraction, outline'; setVerdict('inspecting…');} break;
+      case 'think': if(fsm.t>0.35){ const b=fsm.bean; b.id=++beanId; const ok=b.kind==='good';
+          if(ok){pushLog(`#${b.id}  L*=${(38+Math.random()*10).toFixed(0)} black=0.0${Math.floor(Math.random()*5)}  -> ok`); setVerdict('no visible defect → let it pass','ok');}
+          else{const why=b.kind==='quaker'?'pale (quaker)':'black patches (burnt)'; pushLog(`#${b.id}  ${why}  -> SUSPECT`); setVerdict(`suspect: ${why} → ${mech.name.toLowerCase()}`,'warn');}
+          fsm.seq=mech.handle(b,ok); fsm.i=0; fsm.st='act'; fsm.t=0; b.frozen=false; } break;
+      case 'act': if(runSeq(dt)){ const b=fsm.bean; if(b&&b.state==='chute'){b.frozen=false; if(!b.released){ b.dest=b.kind==='good'?'good':'review'; fsm.seq=gateSeq(b); fsm.i=0; break;} } fsm={st:'idle',t:0,bean:null}; armTarget=0; } break;
+    }
+  }
+  drawLaptop();
+}
+function reset(){
+  for(const b of beans){ if(b.mesh.parent) b.mesh.parent.remove(b.mesh); } beans.length=0;
+  for(const k in bins){for(const b of bins[k].userData.pile)scene.remove(b.mesh); bins[k].userData.pile=[];}
+  counts={fed:0,ok:0,rev:0,bad:0}; updateCounts(); log.length=0; fsm={st:'idle',t:0,bean:null}; armAngle=armTarget=0; tw.visible=false; autoT=1.8; beanId=0;
+  for(const k of ['k','f','t','d']){ if(gear[k+'Target']!=null){gear[k+'Target']=0;gear[k+'Angle']=0;} }
+  setVerdict('waiting for the first bean'); lapStatus=mech.continuous?'door FLUSH · waiting':'gate CLOSED · waiting';
+}
+
+// ---------- UI ----------
+const q=id=>document.getElementById(id);
+function renderMechList(){ const el=q('mechList'); el.innerHTML=''; ORDER.forEach((k,i)=>{const m=mechs[k]; const b=document.createElement('button'); b.id='mech-'+k; b.setAttribute('aria-pressed',m===mech);
+  b.innerHTML=`<span class="rk">${k==='manual'?'–':i+1}</span><span class="nm">${m.name}${m.chosen?'<em>chosen</em>':''}</span><span class="rel">${m.rel}</span><span class="why">${m.why}</span><span class="stat" id="st-${k}"></span>`; b.onclick=()=>selectMech(k); el.appendChild(b);}); renderStats(); }
+q('bPlay').onclick=()=>{running=!running;q('bPlay').textContent=running?'Pause':'Play';q('bPlay').setAttribute('aria-pressed',running);};
+q('bDrop').onclick=()=>dropBean();
+q('bAuto').onclick=()=>{auto=!auto;q('bAuto').setAttribute('aria-pressed',auto);};
+q('sSpeed').onchange=e=>speed=parseFloat(e.target.value);
+q('sSlope').value=String(SLOPE_DEG); q('sSlope').onchange=e=>{location.hash='slope='+e.target.value; location.reload();};
+q('bReset').onclick=reset;
+q('bFail').onclick=()=>{failures=!failures;q('bFail').setAttribute('aria-pressed',failures);};
+q('bManual').onclick=()=>{manual=!manual;held=false;q('bManual').setAttribute('aria-pressed',manual);q('bHold').hidden=!manual; if(manual&&!mech.continuous)selectMech('swing');};
+const hold=v=>{held=v;q('bHold').setAttribute('aria-pressed',v);};
+q('bHold').onpointerdown=()=>hold(true); q('bHold').onpointerup=q('bHold').onpointerleave=q('bHold').onpointercancel=()=>hold(false);
+addEventListener('keydown',e=>{if(e.code==='Space'&&manual){e.preventDefault();hold(true);}}); addEventListener('keyup',e=>{if(e.code==='Space'){hold(false);}});
+q('vOver').onclick=()=>view([30,44,46],[-14,10,-1]);
+q('vGate').onclick=()=>{ if(mech.continuous){const p=chute.localToWorld(new THREE.Vector3(-(L-33),0,0)); view([p.x+14,p.y+16,p.z+18],[p.x,p.y,p.z]);} else view([16,17,15],[1,8,0]); };
+q('vCam').onclick=()=>{const p=phoneG.position.clone().addScaledVector(chuteNormal,6).add(new THREE.Vector3(0,0,10));view([p.x,p.y,p.z],[zoneCenterW.x,zoneCenterW.y,zoneCenterW.z]);};
+function resize(){const w=app.clientWidth,h=app.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();}
+addEventListener('resize',resize); resize();
+selectMech('swing'); drawLaptop();
+
+const clock=new THREE.Clock(); let acc=0;
+function frame(){
+  requestAnimationFrame(frame);
+  const dt=Math.min(clock.getDelta(),0.1)*speed;
+  if(running){acc+=dt; const h=1/240; let n=0; while(acc>h && n<80){step(h);acc-=h;n++;}}
+  controls.update(); camera.layers.enable(1);
+  renderer.setRenderTarget(rt); renderer.render(scene,camTop); renderer.setRenderTarget(null);
+  renderer.render(scene,camera);
+}
+frame();
+})();
+</script>

@@ -178,3 +178,37 @@ Bench: Arduino Uno R3 on USB, one blue 9 g micro servo (SG90/FS90R form factor) 
 - Photoreal Cycles video renders at 13–30 s/frame while the GPU is shared with live sims; render when idle.
 - `camera.RealCamera` is tested standalone against the USB iPhone (frame grab OK) but not yet wired into
   `run_demo.py` in place of the rendered phone; the ArUco calibration on real frames is untested.
+
+## Café chute — swing-gate inspector, design phase (build session, 19 Sep 2026 10:30–13:45)
+Hardware track for coffee: one bean at a time down a chute, phone camera, one servo. Plans in `plans/cafe_chute/`.
+- **Bring-up of the real Uno from this Mac.** Board was blank; `arduino-cli` (Homebrew) + `arduino:avr` core +
+  the `Servo` library (not bundled with the core in arduino-cli) compile and flash `magnet_arm.ino` in one go.
+  The genuine Uno enumerates as `/dev/cu.usbmodem2140x`; the suffix changes with the USB socket, so resolve it
+  with `arduino-cli board list`, never hard-code it.
+- **Wiring mistakes that look right in a photo.** A servo signal jumper in the RX/TX end of the header (pins 0/1)
+  kills USB serial; a "5V" jumper one hole off lands on Vin or GND. Check against the header labels, not by position.
+- **Rejection mechanisms ranked for a cardboard build, beans fed one at a time:** side kicker at a stop gate (98 %,
+  two servos, nothing to time) > diverter flap under the exit (95 %) > swing gate in the wall (93 %, ONE servo,
+  no stop, but a 0.45 s photo→command budget) > trapdoor (90 %, cardboard hinges stick) > air puff (80 %, needs
+  pump + ms timing). Jaume chose the swing gate for simplicity; the timing budget is the price.
+- **Swing-gate kinematics.** Door = the 6 cm wall cut-out hinged at its downstream end; 25° in reaches the far
+  wall of a 2.5 cm channel (6·sin25° = 2.54). A rolling bean meets the angled door and slides out through the
+  opening it left; no stop needed. Servo axis must be square to the floor (mount on the wall plane, not the table)
+  or the door's free end lifts off the sloped floor.
+- **Timing budget** (empirical rolling model `v' = a − 1.6 v`, a = 64 cm/s² at 15°, terminal 40 cm/s): released from
+  rest, a bean reaches the zone centre (12 cm) at ~0.72 s and the door (30 cm) at ~1.3 s → ~0.55 s zone→door,
+  0.45 s for capture + classify + serial after the servo swing. OpenCV rule fits; a cloud vision call does not.
+  Slope 12/18/21° gives 0.70/0.47/0.42 s. Friction on paper varies, so the slope must be adjustable.
+- **Foam board (2.5 mm) structure that is actually rigid**: make the side walls full-height trapezoid panels that
+  reach a skirted base tray, glue the floor on rails (two 40 cm faces, not a 0.25 cm edge), close both ends with
+  bulkheads → closed box girder. Adjust slope with a tilt block under one end of the tray rather than props under
+  the chute. Servo in a glued box bracket with keepers around its ears, never taped to a 0.25 cm wall top. Door on
+  two bearings (servo shaft + toothpick).
+- **Simulation bugs worth remembering** (three.js chute sim): (1) a generic "gate open ⇒ leading bean released"
+  rule released the *next* bean while the gate was still closing, so it was never inspected and the line stalled;
+  release must be tied to the inspected bean. (2) a sequence step that hands the bean off inside `on()` can finish
+  one frame before the hand-off condition; do the hand-off in `end()`. (3) `renderer.setSize(w,h,false)` with
+  devicePixelRatio 2 shows only a quarter of the scene; let three set the CSS size.
+- **Multi-session coordination.** Several Claude sessions share this Mac; port 8765 was taken by the bench
+  session's conveyor panel while I tried to serve a preview there. Check `lsof -iTCP:<port>` before binding, and
+  use `~/robotics/INTEGRATOR.md` (roles: arduino, camera, coffee-sim, build, integrator) for hand-offs.
