@@ -44,16 +44,32 @@ class Uno:
     def __init__(self, port):
         self.lock = threading.Lock()
         self.port = port
-        self.ser = serial.Serial(port, 115200, timeout=0.5)
+        self.ser = None
+        self._open()
+        print("uno:", self.cmd("C 0").strip() or "(no reply)")
+
+    def _open(self):
+        if self.ser:
+            try: self.ser.close()
+            except Exception: pass
+        self.port = self.port if glob.glob(self.port) else find_port()
+        self.ser = serial.Serial(self.port, 115200, timeout=0.5)
         time.sleep(2.5)                      # opening the port resets the Uno; wait for boot
         self.ser.reset_input_buffer()
-        print("uno:", self.cmd("C 0").strip() or "(no reply)")
+        print("connected:", self.port)
 
     def cmd(self, line):
         with self.lock:
-            self.ser.reset_input_buffer()
-            self.ser.write((line + "\n").encode())
-            return self.ser.readline().decode(errors="replace")
+            for attempt in (1, 2):
+                try:
+                    self.ser.reset_input_buffer()
+                    self.ser.write((line + "\n").encode())
+                    return self.ser.readline().decode(errors="replace")
+                except (serial.SerialException, OSError) as e:
+                    # "Device not configured" = the Uno was re-plugged; reopen the port and retry once
+                    print("serial error:", e, "-> reconnecting")
+                    if attempt == 2: raise
+                    self._open()
 
 def find_port():
     ports = [p for p in glob.glob("/dev/cu.usbmodem*") + glob.glob("/dev/cu.usbserial*")]
