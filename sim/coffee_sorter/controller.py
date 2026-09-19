@@ -189,6 +189,8 @@ class Controller:
                 if anomalous and p_reject < pol.threshold:
                     mass = max(mass, 0.0006)                      # unknown object: assume heavy
                 pulse = float(np.clip(pol.base_pulse * mass / pol.ref_mass, pol.base_pulse * 0.8, pol.max_pulse))
+                # Preserve the pulse window without overdriving classes below the duration floor.
+                force = self.jet_force * min(1.0, mass / (0.8 * pol.ref_mass))
                 j = int((tr.y + L.belt_w / 2) // L.nozzle_pitch)
                 nozzles = [j]
                 off = tr.y - L.nozzle_y(j)
@@ -207,7 +209,7 @@ class Controller:
                     t_on = max(t_on, t_available)
                     for nz in nozzles:
                         scheduled |= self.sim.fire(nz, t_on, pulse + 0.001,
-                                                   self.jet_force, uid=tr.tid) is not None
+                                                   force, uid=tr.tid) is not None
             self.decisions.append(Decision(tr.tid, t, t_available, tr.x, tr.y, v, probs, tr.anomaly,
                                            reject, nozzles, t_fire, pulse, late, tr.n, cls, scheduled))
         # prune
