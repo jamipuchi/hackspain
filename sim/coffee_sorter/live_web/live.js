@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {OrbitControls} from '/vendor/OrbitControls.js';
 import {RoomEnvironment} from '/vendor/RoomEnvironment.js';
 import {GLTFLoader} from '/assets/vendor/loaders/GLTFLoader.js';
-import {samePresentationTimeline} from './timeline.mjs';
+import {PolicyIntentBuffer, samePresentationTimeline} from './timeline.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('scene');
@@ -14,7 +14,8 @@ let selected = null;
 const requests = new Map();
 let latestCommandId = null;
 let activePolicyRequest = null;
-const policyQueue = [];
+const pendingPolicyIntents = new PolicyIntentBuffer();
+let policyDispatchTimer = null;
 let policyTransportClasses = new Set();
 let policyTransportVersion = null;
 let policyDesiredClasses = new Set();
@@ -27,7 +28,7 @@ let frames = 0;
 let fpsStart = performance.now();
 let lastFrameAt = null;
 let frameIntervals = [];
-let previousPacket = null;
+const packetArrivals = [];
 let restartPending = false;
 let reconnectTimer = null;
 let heartbeatSeq = null;
@@ -42,6 +43,7 @@ const MAX_CLIENT_PENDING_REQUESTS = 16;
 const DISPLAY_DELAY_MS = 240;
 const SNAPSHOT_LIMIT = 32;
 const SNAPSHOT_MAX_AGE_MS = 1500;
+const POLICY_COALESCE_MS = 60;
 const localHost = ['localhost', '127.0.0.1', '::1'].includes(location.hostname);
 document.body.classList.toggle('localhost', localHost);
 
@@ -114,12 +116,17 @@ function connect() {
       } else if (!packet.mode || packet.mode !== 'continuous') {
         heartbeatSeenAt = arrivedAt;
       }
-      if (previousPacket !== null) measurements.pose_hz = 1000 / (arrivedAt - previousPacket);
-      previousPacket = arrivedAt;
+      packetArrivals.push(arrivedAt);
+      while (packetArrivals.length > 2 && packetArrivals[0] < arrivedAt - 2000) packetArrivals.shift();
+      if (packetArrivals.length > 1) {
+        measurements.pose_hz = (packetArrivals.length - 1) * 1000 / (arrivedAt - packetArrivals[0]);
+      }
       liveState = packet;
       window.cintaLiveState = liveState;
       syncPolicyTransport(packet.reject_policy);
+      pendingPolicyIntents.setCatalog((packet.class_catalog || []).map(item => item.name));
       enqueueSnapshot(packet, arrivedAt);
+      processPolicyQueue();
       // Retry each retained command after a new connection or an acknowledgment timeout.
       if ((pendingRequest() || activePolicyRequest) && ['ready', 'running'].includes(liveState.status)) {
         const policyRetry = activePolicyRequest && performance.now() - activePolicyRequest.lastSend > 2000;
@@ -269,8 +276,10 @@ function syncPolicyTransport(value) {
 }
 
 function resetPolicyControls(message = '') {
+  clearTimeout(policyDispatchTimer);
+  policyDispatchTimer = null;
   activePolicyRequest = null;
-  policyQueue.length = 0;
+  pendingPolicyIntents.clear();
   policyTransportClasses = new Set();
   policyDesiredClasses = new Set();
   policyTransportVersion = null;
@@ -293,26 +302,24 @@ function queuePolicyChange(className, reject) {
   policyError = '';
   if (reject) policyDesiredClasses.add(className);
   else policyDesiredClasses.delete(className);
-  policyQueue.push({className, reject, retries: 0});
+  pendingPolicyIntents.setCatalog(policyCatalogNames());
+  pendingPolicyIntents.record(className, reject);
   updateItems();
-  processPolicyQueue();
+  clearTimeout(policyDispatchTimer);
+  policyDispatchTimer = setTimeout(() => {
+    policyDispatchTimer = null;
+    processPolicyQueue();
+  }, POLICY_COALESCE_MS);
 }
 
 function processPolicyQueue() {
-  if (activePolicyRequest || !policyQueue.length || socket?.readyState !== WebSocket.OPEN || !liveState?.command_epoch || !policyTransportVersion) return;
-  const op = policyQueue.shift();
-  if (!policyCatalogNames().has(op.className)) {
-    policyError = `Item class left the catalog: ${op.className}`;
-    updateItems();
-    processPolicyQueue();
-    return;
-  }
-  const target = new Set(policyTransportClasses);
-  if (op.reject) target.add(op.className);
-  else target.delete(op.className);
+  if (activePolicyRequest || !pendingPolicyIntents.size || socket?.readyState !== WebSocket.OPEN || !liveState?.command_epoch || !policyTransportVersion) return;
+  if (!pendingPolicyIntents.canDispatch(liveState.command_epoch)) return;
+  pendingPolicyIntents.acceptEpoch(liveState.command_epoch);
+  const intents = pendingPolicyIntents.take();
+  const target = pendingPolicyIntents.apply(policyTransportClasses, intents);
   if (sameSet(target, policyTransportClasses)) {
     updateItems();
-    processPolicyQueue();
     return;
   }
   const payload = {
@@ -323,7 +330,7 @@ function processPolicyQueue() {
     expected_policy_version: policyTransportVersion,
     reject_classes: [...target].sort(),
   };
-  activePolicyRequest = {op, payload, lastSend: performance.now(), serverPending: false};
+  activePolicyRequest = {intents, payload, lastSend: performance.now(), serverPending: false};
   socket.send(JSON.stringify(payload));
   updateItems();
 }
@@ -348,21 +355,23 @@ function handlePolicyAck(packet) {
     return;
   }
   const current = packet.reject_policy || packet.current_reject_policy;
-  if (packet.error_code === 'policy_version_conflict' && normalizedPolicy(current) && active.op.retries < 2) {
+  if (packet.error_code === 'policy_version_conflict' && normalizedPolicy(current)) {
     syncPolicyTransport(current);
     activePolicyRequest = null;
-    policyQueue.unshift({...active.op, retries: active.op.retries + 1});
+    pendingPolicyIntents.requeue(active.intents);
+    policyDesiredClasses = pendingPolicyIntents.apply(policyTransportClasses);
     processPolicyQueue();
     return;
   }
-  if (/epoch/i.test(packet.error_code || '') && active.op.retries < 1) {
+  if (/epoch/i.test(packet.error_code || '')) {
     activePolicyRequest = null;
-    policyQueue.unshift({...active.op, retries: active.op.retries + 1});
-    processPolicyQueue();
+    pendingPolicyIntents.requeue(active.intents);
+    pendingPolicyIntents.waitForFreshEpoch(active.payload.command_epoch);
+    updateItems();
     return;
   }
   activePolicyRequest = null;
-  policyQueue.length = 0;
+  pendingPolicyIntents.clear();
   policyDesiredClasses = new Set(policyTransportClasses);
   policyError = packet.error || packet.error_code || 'Policy change failed';
   updateItems();
@@ -385,7 +394,7 @@ function updateItems() {
       && policy.score_epoch_id === pendingPolicyPresentation.score_epoch_id) {
     pendingPolicyPresentation = null;
   }
-  if (!activePolicyRequest && !policyQueue.length && !pendingPolicyPresentation) {
+  if (!activePolicyRequest && !pendingPolicyIntents.size && !pendingPolicyPresentation) {
     policyDesiredClasses = new Set(policy.classes);
   }
   const signature = catalog.map(item => `${item.name}:${item.severity}`).join('|');
@@ -413,7 +422,7 @@ function updateItems() {
     button.setAttribute('aria-pressed', String(reject));
     button.classList.toggle('pending', pending);
   }
-  const pendingCount = policyQueue.length + (activePolicyRequest ? 1 : 0);
+  const pendingCount = pendingPolicyIntents.size + (activePolicyRequest ? 1 : 0);
   $('policy-status').classList.toggle('error', Boolean(policyError));
   $('policy-status').textContent = policyError || (pendingCount ? `${pendingCount} pending` : pendingPolicyPresentation ? 'Applying' : 'Synced');
 }
@@ -587,6 +596,8 @@ function update() {
 // interpolates only between known poses from the same session and policy epoch.
 const snapshots = [];
 let displayFrame = {before: null, after: null, afterById: new Map(), alpha: 0, waiting: true};
+let indexedAfterPacket = null;
+let indexedAfterById = new Map();
 let lastEventId = -1;
 const puffs = [];
 const SUPPORTED_RENDER_SHAPES = new Set(['ellipsoid', 'half', 'box', 'capsule']);
@@ -612,6 +623,8 @@ function resetDisplayTimeline() {
   snapshots.length = 0;
   state = null;
   displayFrame = {before: null, after: null, afterById: new Map(), alpha: 0, waiting: true};
+  indexedAfterPacket = null;
+  indexedAfterById = new Map();
   lastEventId = -1;
   puffs.length = 0;
 }
@@ -648,6 +661,13 @@ function advanceDisplayTimeline(now) {
   if (before && before.arrivedAt <= target && state !== before.packet) presentSnapshot(before.packet, now);
   const after = state === before?.packet ? snapshots[1] : null;
   const canBlend = after && samePresentationTimeline(before.packet, after.packet);
+  if (canBlend && indexedAfterPacket !== after.packet) {
+    indexedAfterPacket = after.packet;
+    indexedAfterById = new Map((after.packet.objects || []).map(object => [object.object_id, object]));
+  } else if (!canBlend && indexedAfterPacket !== null) {
+    indexedAfterPacket = null;
+    indexedAfterById = new Map();
+  }
   const alpha = canBlend
     ? THREE.MathUtils.clamp((target - before.arrivedAt) / Math.max(1, after.arrivedAt - before.arrivedAt), 0, 1)
     : 0;
@@ -655,7 +675,7 @@ function advanceDisplayTimeline(now) {
   displayFrame = {
     before,
     after: canBlend ? after : null,
-    afterById: canBlend ? new Map((after.packet.objects || []).map(object => [object.object_id, object])) : new Map(),
+    afterById: indexedAfterById,
     alpha,
     waiting,
   };
@@ -941,6 +961,19 @@ function setRenderRow(text) {
 // axes can be applied directly as the instance scale, as RECORDING.md prescribes.
 const NOMINAL_REGULAR = [.0049, .00355, .00255], NOMINAL_BROKEN = [.005, .003591612, .001283763];
 const GOOD_MEAN_RGB = [.50, .60, .47];
+function disposeOwnedFallbackMachine(root) {
+  const geometries = new Set();
+  const materials = new Set();
+  root.traverse(object => {
+    if (object.geometry) geometries.add(object.geometry);
+    for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+      if (material) materials.add(material);
+    }
+  });
+  for (const geometry of geometries) geometry.dispose();
+  for (const material of materials) material.dispose();
+}
+
 async function loadBlenderAssets(L) {
   const loader = new GLTFLoader();
   const {scene} = three;
@@ -962,6 +995,7 @@ async function loadBlenderAssets(L) {
   }
   scene.add(machine.scene);
   scene.remove(three.machineGroup);
+  disposeOwnedFallbackMachine(three.machineGroup);
   clickTargets.length = 0; clickTargets.push(...meshes.filter(m => m.visible));
   loaded.push(`machine ${meshes.length} parts`);
   // The recorded floor slab is a dark 8 x 6 m box; the drawing keeps the paper grid instead.
