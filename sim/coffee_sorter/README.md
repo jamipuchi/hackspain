@@ -212,6 +212,30 @@ that split. Product configuration transfers; equivalent physical quality does no
 Reproduce with `python run_generalization.py all` in the environment above;
 the committed staged models preserve the measured run when resuming.
 
+**19 September — unseen objects and threshold cost**
+
+The unchanged green model flags new colours but misses oversized green objects:
+at its trained anomaly threshold, only 1/201 selected oversized objects is
+flagged. The conditional camera curve flags 319/519 unknown objects overall;
+coverage and raw repeated views are reported separately. Independent seed-42
+physics captures 81/216 unknowns (37.50%) with 9/444 good false ejects (2.03%).
+Lowering the threshold to 8.27 captures only four more unknowns while ejecting
+ten more good beans. Keep the trained threshold. Some plastic chips fall into
+reject without any jet hit; capture alone does not prove anomaly-driven ejection.
+
+[Camera threshold curve](runs/generalization/openset/threshold_sweep.png),
+[actual physical tradeoff](runs/generalization/physical-thresholds/physical_tradeoff.png)
+and [8× slow unknown-object demo](runs/generalization/openset/demo/unknown_8x_slow.mp4)
+are accompanied by counts, hashes, raw observations and limitations in
+[NIGHT_LOG.md](NIGHT_LOG.md). These are synthetic experiments, not hardware validation.
+For a fresh checkout, copy `runs/generalization/green_arabica/model/green_arabica.joblib`
+to `models/green_arabica.joblib` to use the exact tested model.
+Reproduce with `python openset.py sweep`, `python openset.py physics --output runs/generalization/openset/demo`, and
+`bash runs/generalization/physical-thresholds/run.sh` (set `COFFEE_PYTHON` for
+another virtual environment); `plot.py` in that directory regenerates the
+physical chart. `bash runs/generalization/publish.sh` uploads and byte-verifies
+the six visual outputs using an authenticated agent-fs CLI.
+
 **Next**
 
 - [x] foreground-only `vision.detect` with exact equivalence proof; train the classifier
@@ -222,6 +246,7 @@ the committed staged models preserve the measured run when resuming.
 - [ ] longer paired seeds for 0.06 N; improve merged-target jet intersection and capture
 - [ ] model camera backlog before claiming hardware timing margin
 - [x] `roasted` profile without touching the controller; matched quality measured
+- [x] unseen colour/material/size experiment, anomaly and physical threshold tradeoffs
 - [ ] UR5e (Menagerie + mink) picking oversize foreign matter off the infeed — the one thing the air jets cannot do
 - [ ] one-slide summary
 

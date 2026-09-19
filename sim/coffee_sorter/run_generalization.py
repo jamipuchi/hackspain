@@ -24,6 +24,7 @@ import assets
 import run
 from classifier import Model
 from controller import SPECIALTY
+from openset import UNKNOWN_NAMES, openset_profile
 from profiles import PROFILES
 from run_characterization import completed_metrics
 from sim import SorterSim
@@ -317,10 +318,69 @@ def camera_panel(profile_name: str) -> np.ndarray:
     return panel
 
 
+def openset_camera_panel() -> np.ndarray:
+    """Show never-trained objects through the unchanged green-arabica model."""
+    profile = openset_profile()
+    sim = SorterSim(profile, rate=0, seed=17)
+    beans = [sim.spawn(profile.by_name(name)) for name in UNKNOWN_NAMES]
+    if any(bean is None for bean in beans):
+        raise RuntimeError("could not stage every unseen class")
+    for y, bean in zip(np.linspace(-0.18, 0.18, len(beans)), beans):
+        qa, va = sim.body_qpos[bean.body], sim.body_qvel[bean.body]
+        sim.data.qpos[qa:qa + 3] = [sim.L.cam_x, y, sim.L.belt_z + bean.axes[2] + 0.001]
+        sim.data.qvel[va:va + 6] = 0
+    mujoco.mj_forward(sim.model, sim.data)
+    inspector = Inspector(sim)
+    frame, timestamp = inspector.capture()
+    blobs = inspector.detect(frame, timestamp)
+    members = inspector.component_members(blobs)
+    uid_to_class = {bean.uid: bean.cls for bean in beans}
+    truth = [uid_to_class[int(group[0])] if len(group) == 1 else None for group in members]
+    indices = [index for index, name in enumerate(truth) if name is not None]
+    if {truth[index] for index in indices} != set(UNKNOWN_NAMES) or len(indices) != len(UNKNOWN_NAMES):
+        raise RuntimeError(f"camera strip did not isolate all unseen classes: {truth}")
+    model = Model.load(ROOT / "green_arabica" / "model" / "green_arabica.joblib")
+    probabilities, anomalies = model.predict(blobs.X)
+    predicted = [model.classes[int(row.argmax())] for row in probabilities]
+    labels = [f"{actual}>{guess} a={score:.2f}" if actual is not None else ""
+              for actual, guess, score in zip(truth, predicted, anomalies)]
+    strip = draw_blobs(frame, blobs, labels)
+
+    width, tile_width, tile_height = frame.shape[1], 400, 145
+    panel = np.full((255 + tile_height, width, 3), 246, np.uint8)
+    cv2.putText(panel, "unseen truth | unchanged green model guess / anomaly score", (18, 32),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.72, (25, 25, 25), 2, cv2.LINE_AA)
+    panel[50:50 + frame.shape[0]] = strip
+    for tile, name in enumerate(UNKNOWN_NAMES):
+        index = truth.index(name)
+        x, y, w, h = map(int, blobs.bbox[index])
+        crop = frame[max(0, y - 6):min(frame.shape[0], y + h + 6),
+                     max(0, x - 6):min(frame.shape[1], x + w + 6)]
+        x0, y0 = tile * tile_width + 10, 250
+        scale = min(110 / crop.shape[1], 90 / crop.shape[0])
+        resized = cv2.resize(crop, (max(1, round(crop.shape[1] * scale)),
+                                    max(1, round(crop.shape[0] * scale))), interpolation=cv2.INTER_AREA)
+        crop_y = y0 + (90 - resized.shape[0]) // 2
+        crop_x = x0 + (110 - resized.shape[1]) // 2
+        panel[crop_y:crop_y + resized.shape[0], crop_x:crop_x + resized.shape[1]] = resized
+        cv2.putText(panel, name, (x0 + 120, y0 + 27), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.52, (25, 25, 25), 1, cv2.LINE_AA)
+        cv2.putText(panel, f"green guess {predicted[index]} {probabilities[index].max():.2f}",
+                    (x0 + 120, y0 + 53), cv2.FONT_HERSHEY_SIMPLEX, 0.43,
+                    (45, 45, 45), 1, cv2.LINE_AA)
+        cv2.putText(panel, f"anomaly {anomalies[index]:.2f} (threshold {model.anomaly_thresh:.2f})",
+                    (x0 + 120, y0 + 77), cv2.FONT_HERSHEY_SIMPLEX, 0.37,
+                    (45, 45, 45), 1, cv2.LINE_AA)
+    inspector.close()
+    return panel
+
+
 def contact_sheet() -> None:
     panels = [camera_panel(profile) for profile in ("green_arabica", "roasted")]
+    panels.append(openset_camera_panel())
     width = max(panel.shape[1] for panel in panels)
-    output = np.full((sum(panel.shape[0] for panel in panels) + 28, width, 3), 230, np.uint8)
+    output = np.full((sum(panel.shape[0] for panel in panels) + 28 * (len(panels) - 1), width, 3),
+                     230, np.uint8)
     y = 0
     for panel in panels:
         output[y:y + panel.shape[0], :panel.shape[1]] = panel
@@ -398,7 +458,7 @@ def summarize() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("stage", choices=("train", "run", "summarize", "all"), default="all", nargs="?")
+    parser.add_argument("stage", choices=("train", "run", "summarize", "contact-sheet", "all"), default="all", nargs="?")
     args = parser.parse_args()
     assets.build()
     stage_green()
@@ -406,6 +466,9 @@ def main() -> None:
         train_roasted()
     if args.stage in ("run", "all"):
         run_pair()
+    if args.stage == "contact-sheet":
+        COMPARISON.mkdir(parents=True, exist_ok=True)
+        contact_sheet()
     if args.stage in ("summarize", "all"):
         summarize()
 

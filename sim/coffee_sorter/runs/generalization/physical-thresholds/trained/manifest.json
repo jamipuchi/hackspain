@@ -1,0 +1,488 @@
+{
+ "command": "openset.py physics --output runs/generalization/physical-thresholds/trained --seed 41 --physics-seconds 8 --physics-rate 100 --fixed-latency-ms 60 --jet-force .06 --anomaly-threshold 18.48719999197408 --no-video",
+ "profile": {
+  "name": "openset_generalization",
+  "trained_model_classes": [
+   "good",
+   "faded",
+   "black",
+   "sour",
+   "insect",
+   "broken",
+   "shell",
+   "husk",
+   "stone",
+   "stick"
+  ],
+  "never_trained_classes": [
+   "plastic_chip",
+   "odd_colour",
+   "wrong_size"
+  ],
+  "classes": [
+   {
+    "name": "good",
+    "prior": 0.7,
+    "shape": "ellipsoid",
+    "size_mm": [
+     [
+      4.2,
+      5.6
+     ],
+     [
+      3.1,
+      4.0
+     ],
+     [
+      2.2,
+      2.9
+     ]
+    ],
+    "rgb": [
+     0.5,
+     0.6,
+     0.46
+    ],
+    "rgb_jitter": 0.06,
+    "density": 1150.0,
+    "texture": "good",
+    "defect": false,
+    "severity": "none"
+   },
+   {
+    "name": "faded",
+    "prior": 0.0,
+    "shape": "ellipsoid",
+    "size_mm": [
+     [
+      4.2,
+      5.6
+     ],
+     [
+      3.1,
+      4.0
+     ],
+     [
+      2.2,
+      2.9
+     ]
+    ],
+    "rgb": [
+     0.7,
+     0.66,
+     0.42
+    ],
+    "rgb_jitter": 0.05,
+    "density": 1150.0,
+    "texture": "faded",
+    "defect": true,
+    "severity": "minor"
+   },
+   {
+    "name": "black",
+    "prior": 0.0,
+    "shape": "ellipsoid",
+    "size_mm": [
+     [
+      4.2,
+      5.6
+     ],
+     [
+      3.1,
+      4.0
+     ],
+     [
+      2.2,
+      2.9
+     ]
+    ],
+    "rgb": [
+     0.13,
+     0.11,
+     0.09
+    ],
+    "rgb_jitter": 0.03,
+    "density": 1150.0,
+    "texture": "black",
+    "defect": true,
+    "severity": "major"
+   },
+   {
+    "name": "sour",
+    "prior": 0.0,
+    "shape": "ellipsoid",
+    "size_mm": [
+     [
+      4.2,
+      5.6
+     ],
+     [
+      3.1,
+      4.0
+     ],
+     [
+      2.2,
+      2.9
+     ]
+    ],
+    "rgb": [
+     0.5,
+     0.32,
+     0.18
+    ],
+    "rgb_jitter": 0.05,
+    "density": 1150.0,
+    "texture": "sour",
+    "defect": true,
+    "severity": "major"
+   },
+   {
+    "name": "insect",
+    "prior": 0.0,
+    "shape": "ellipsoid",
+    "size_mm": [
+     [
+      4.2,
+      5.6
+     ],
+     [
+      3.1,
+      4.0
+     ],
+     [
+      2.2,
+      2.9
+     ]
+    ],
+    "rgb": [
+     0.5,
+     0.6,
+     0.46
+    ],
+    "rgb_jitter": 0.06,
+    "density": 1150.0,
+    "texture": "insect",
+    "defect": true,
+    "severity": "major"
+   },
+   {
+    "name": "broken",
+    "prior": 0.0,
+    "shape": "half",
+    "size_mm": [
+     [
+      4.2,
+      5.6
+     ],
+     [
+      3.1,
+      4.0
+     ],
+     [
+      2.2,
+      2.9
+     ]
+    ],
+    "rgb": [
+     0.5,
+     0.6,
+     0.46
+    ],
+    "rgb_jitter": 0.06,
+    "density": 1150.0,
+    "texture": "good",
+    "defect": true,
+    "severity": "major"
+   },
+   {
+    "name": "shell",
+    "prior": 0.0,
+    "shape": "ellipsoid",
+    "size_mm": [
+     [
+      4.0,
+      5.2
+     ],
+     [
+      2.8,
+      3.6
+     ],
+     [
+      0.6,
+      1.0
+     ]
+    ],
+    "rgb": [
+     0.62,
+     0.7,
+     0.55
+    ],
+    "rgb_jitter": 0.05,
+    "density": 600,
+    "texture": "good",
+    "defect": true,
+    "severity": "major"
+   },
+   {
+    "name": "husk",
+    "prior": 0.0,
+    "shape": "ellipsoid",
+    "size_mm": [
+     [
+      4.5,
+      7.0
+     ],
+     [
+      3.0,
+      5.0
+     ],
+     [
+      0.3,
+      0.6
+     ]
+    ],
+    "rgb": [
+     0.85,
+     0.78,
+     0.6
+    ],
+    "rgb_jitter": 0.05,
+    "density": 300,
+    "texture": null,
+    "defect": true,
+    "severity": "foreign"
+   },
+   {
+    "name": "stone",
+    "prior": 0.0,
+    "shape": "box",
+    "size_mm": [
+     [
+      2.5,
+      5.0
+     ],
+     [
+      2.0,
+      4.0
+     ],
+     [
+      1.5,
+      3.5
+     ]
+    ],
+    "rgb": [
+     0.45,
+     0.44,
+     0.42
+    ],
+    "rgb_jitter": 0.08,
+    "density": 2600,
+    "texture": null,
+    "defect": true,
+    "severity": "foreign"
+   },
+   {
+    "name": "stick",
+    "prior": 0.0,
+    "shape": "capsule",
+    "size_mm": [
+     [
+      8.0,
+      16.0
+     ],
+     [
+      0.9,
+      1.4
+     ],
+     [
+      0.9,
+      1.4
+     ]
+    ],
+    "rgb": [
+     0.42,
+     0.3,
+     0.16
+    ],
+    "rgb_jitter": 0.06,
+    "density": 700,
+    "texture": null,
+    "defect": true,
+    "severity": "foreign"
+   },
+   {
+    "name": "plastic_chip",
+    "prior": 0.1,
+    "shape": "box",
+    "size_mm": [
+     [
+      6.0,
+      8.0
+     ],
+     [
+      4.0,
+      6.0
+     ],
+     [
+      0.8,
+      1.4
+     ]
+    ],
+    "rgb": [
+     0.05,
+     0.82,
+     0.95
+    ],
+    "rgb_jitter": 0.02,
+    "density": 1050,
+    "texture": null,
+    "defect": true,
+    "severity": "foreign"
+   },
+   {
+    "name": "odd_colour",
+    "prior": 0.1,
+    "shape": "ellipsoid",
+    "size_mm": [
+     [
+      4.2,
+      5.6
+     ],
+     [
+      3.1,
+      4.0
+     ],
+     [
+      2.2,
+      2.9
+     ]
+    ],
+    "rgb": [
+     0.92,
+     0.06,
+     0.68
+    ],
+    "rgb_jitter": 0.015,
+    "density": 1150,
+    "texture": null,
+    "defect": true,
+    "severity": "foreign"
+   },
+   {
+    "name": "wrong_size",
+    "prior": 0.1,
+    "shape": "ellipsoid",
+    "size_mm": [
+     [
+      7.2,
+      8.8
+     ],
+     [
+      5.0,
+      6.2
+     ],
+     [
+      3.4,
+      4.4
+     ]
+    ],
+    "rgb": [
+     0.5,
+     0.6,
+     0.46
+    ],
+    "rgb_jitter": 0.04,
+    "density": 1150,
+    "texture": "good",
+    "defect": true,
+    "severity": "foreign"
+   }
+  ],
+  "note": "Profile objects are constructed locally; profiles.py and the trained joblib are not modified."
+ },
+ "hashes": {
+  "model": {
+   "models/green_arabica.joblib": "0b9e164cbf4df18f904f30fde38e0b7ed352877653849cc55da25e6f143051c8"
+  },
+  "sources": {
+   "openset.py": "982b69bf9924d065679fe5c38fc637d90b20b80b406776e2da00e4d613e26db1",
+   "classifier.py": "d6257f348db6a82aa152f57de1ee0976228685f226000dfc62f3e82bf933325d",
+   "controller.py": "88bc0337ae5d90192b928581c6e33574b29a1b3631e2d2eacd30bf73ee089b32",
+   "profiles.py": "e47a848e1331d902bb1bd1eb7d29306529339100edfb8175f9918e1ab09d6948",
+   "render.py": "33a2b3047c7143b78861cfcb64d8538fedeb636f66258b356de7a63da8e65ac6",
+   "run.py": "6200c17d588ff73d80a175c52ab17d243d2c180769bc6da86a528113134dae9e",
+   "scene.py": "5fff8ea2b049fcf58556599c05e5d4585dd445dc4aa6615d9e1021b813982a27",
+   "sim.py": "25c01335c9d037d96a27e4a2d19c612a22919b052d2eee004a63fa6c8cb21d1b",
+   "vision.py": "04aa92dba238e4b342244a37bc91f7edfc09f8bd30416beb20b7528a103f54cf"
+  }
+ },
+ "ending_hashes": {
+  "model": {
+   "models/green_arabica.joblib": "0b9e164cbf4df18f904f30fde38e0b7ed352877653849cc55da25e6f143051c8"
+  },
+  "sources": {
+   "openset.py": "982b69bf9924d065679fe5c38fc637d90b20b80b406776e2da00e4d613e26db1",
+   "classifier.py": "d6257f348db6a82aa152f57de1ee0976228685f226000dfc62f3e82bf933325d",
+   "controller.py": "88bc0337ae5d90192b928581c6e33574b29a1b3631e2d2eacd30bf73ee089b32",
+   "profiles.py": "e47a848e1331d902bb1bd1eb7d29306529339100edfb8175f9918e1ab09d6948",
+   "render.py": "33a2b3047c7143b78861cfcb64d8538fedeb636f66258b356de7a63da8e65ac6",
+   "run.py": "6200c17d588ff73d80a175c52ab17d243d2c180769bc6da86a528113134dae9e",
+   "scene.py": "5fff8ea2b049fcf58556599c05e5d4585dd445dc4aa6615d9e1021b813982a27",
+   "sim.py": "25c01335c9d037d96a27e4a2d19c612a22919b052d2eee004a63fa6c8cb21d1b",
+   "vision.py": "04aa92dba238e4b342244a37bc91f7edfc09f8bd30416beb20b7528a103f54cf"
+  }
+ },
+ "source_changed_during_run": false,
+ "sweep_summary": null,
+ "physics_summary": {
+  "good": {
+   "eligible_physical_objects": 444,
+   "objects_with_linked_decision": 438,
+   "anomaly_detector_alone_flagged": 2,
+   "anomaly_detector_alone_rate": 0.0045045045045045045,
+   "classifier_alone_flagged": 11,
+   "classifier_alone_rate": 0.024774774774774775,
+   "classifier_and_anomaly_overlap": 1,
+   "anomaly_exclusive": 1,
+   "combined_command_criterion": 12,
+   "combined_command_rate": 0.02702702702702703,
+   "physically_targeted": 12,
+   "own_or_collateral_jet_hit": 10,
+   "actual_rejected": 9,
+   "actual_rejection_rate": 0.02027027027027027,
+   "spilled": 2,
+   "unresolved": 0
+  },
+  "unknown": {
+   "eligible_physical_objects": 216,
+   "objects_with_linked_decision": 197,
+   "anomaly_detector_alone_flagged": 124,
+   "anomaly_detector_alone_rate": 0.5740740740740741,
+   "classifier_alone_flagged": 82,
+   "classifier_alone_rate": 0.37962962962962965,
+   "classifier_and_anomaly_overlap": 79,
+   "anomaly_exclusive": 45,
+   "combined_command_criterion": 127,
+   "combined_command_rate": 0.5879629629629629,
+   "physically_targeted": 127,
+   "own_or_collateral_jet_hit": 71,
+   "actual_rejected": 81,
+   "actual_rejection_rate": 0.375,
+   "spilled": 16,
+   "unresolved": 0
+  },
+  "semantics": {
+   "anomaly_detector_alone": "Mahalanobis criterion evaluated without classifier probability",
+   "combined_command_criterion": "classifier probability >= 0.5 OR Mahalanobis score above threshold",
+   "actual_rejected": "ground-truth object crossed the physical reject side of the splitter",
+   "linkage_limit": "criterion rates use objects linked to decisions; unlinked eligible objects count as unflagged"
+  }
+ },
+ "limitations": [
+  "Synthetic camera and MuJoCo physics only; no real-camera or hardware claim.",
+  "Sweep excludes merged and partial blobs and aggregates repeated views by physical object UID.",
+  "Sweep curve is an offline whole-passage aggregation, not the controller decision rule; population coverage is separate.",
+  "The threshold was trained from green good objects; no open-set examples retrain or alter the model.",
+  "The physics video uses 0.06 N jet force and a 60 ms latency floor; plant defaults are unchanged."
+ ]
+}

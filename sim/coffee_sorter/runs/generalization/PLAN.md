@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: completed
 base_commit: 511f104
 branch: coffee-sorter-closed-loop
 pr: https://github.com/tarasyarema/hackspain/pull/1
@@ -15,17 +15,17 @@ Train the existing roasted profile with run.py train and run the same closed-loo
 
 - [x] Save training/model provenance and comparable physical metrics with denominators.
 - [x] Produce side-by-side confusion matrices and labelled camera-strip examples for every known class.
-- [ ] Verify protected source hashes, review both axes, commit and push result.
+- [x] Verify protected source hashes, review both axes, commit and push result.
 
 ## Phase 2: open set
 
 Test at least a novel foreign material, odd colour and wrong-size object absent from training. Sweep good-class Mahalanobis threshold on fixed held-out observations and distinguish anomaly-only decisions, combined controller decisions and actual reject-bin outcomes. Include good-bean false rejection cost, missed detections and repeated-observation limitations. Do not select a threshold on the final holdout without disclosure.
 
-- [ ] Save reproducible harness, raw scores, threshold sweep, denominators and model/source hashes.
-- [ ] Compare physical outcomes at the trained threshold, an exploratory lower threshold and anomaly disabled, using a separate seed from the offline sweep.
-- [ ] Save tradeoff plot and H.264 video showing a measured unseen-object ejection, with score HUD and ground-truth distinction.
-- [ ] Add targeted tests, perform visual/video QA and both review axes.
-- [ ] Upload viewable copies via agent-fs, link in NIGHT_LOG.md, update same PR, push.
+- [x] Save reproducible harness, raw scores, threshold sweep, denominators and model/source hashes.
+- [x] Compare physical outcomes at the trained threshold, an exploratory lower threshold and anomaly disabled, using a separate seed from the offline sweep.
+- [x] Save tradeoff plot and H.264 video showing a measured unseen-object ejection, with score HUD and ground-truth distinction.
+- [x] Add targeted tests, perform visual/video QA and both review axes.
+- [x] Upload viewable copies via agent-fs, link in NIGHT_LOG.md, update same PR, push.
 
 ## Carryover
 

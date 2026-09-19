@@ -507,3 +507,155 @@ Viewable copies: [confusion matrices](https://live.agent-fs.dev/file/~/9d0f4b46-
 and [camera contact sheet](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/generalization/comparison/camera_strip_contact_sheet.png).
 Durable viewer links require drive access. Roasted source and Spec reviews pass;
 34 regression tests pass ([output](runs/generalization/roasted-checks.log)).
+
+### Open-set physical threshold comparison
+
+**More anomaly commands did not translate into much more physical capture.**
+The green classifier and good-class covariance are unchanged. New test-only
+classes are a cyan plastic chip, a magenta bean-shaped object and an oversized
+object with normal good-bean colour and texture. The oversized long diameter is
+14.4–17.6 mm, compared with the trained good range of 8.4–11.2 mm. No examples of these classes
+were added to training.
+
+Three 8 s runs use seed 42, 100 objects/s, a 60 ms latency floor and 0.06 N jets.
+Each evaluates 660 objects: 444 good and 216 unknown, spawned in the conservative
+0.8–7.4 s window. All resolve, and all three runs have zero late decisions.
+The lower threshold 8.27 is exploratory, selected using camera data from seed 41.
+The high threshold 1e9 disables the anomaly criterion for all observed scores;
+the learned classifier still operates. The same seed does not imply identical
+trajectories after changing actuation.
+
+| Setting | Unknown reject criterion met | Unknown reaching reject bin | Good false ejects | Unknown / good spills |
+| --- | ---: | ---: | ---: | ---: |
+| Anomaly disabled | 84/216 = 38.89% | 71/216 = 32.87% | 11/444 = 2.48% | 15 / 6 |
+| Trained threshold 18.4872 | 127/216 = 58.80% | 81/216 = 37.50% | 9/444 = 2.03% | 16 / 2 |
+| Lower threshold 8.27 | 191/216 = 88.43% | 85/216 = 39.35% | 19/444 = 4.28% | 15 / 2 |
+
+The lower threshold adds four unknown captures while losing ten more good beans.
+Keep the trained threshold as the reference; this small, single-seed result does
+not support deploying the lower candidate. Physical unknown-recall Wilson 95%
+intervals overlap: disabled 26.95–39.39%, trained 31.32–44.12%, lower 33.08–46.00%.
+These intervals describe bean counts within a run, not lot-to-lot uncertainty.
+
+Oversize is the sharpest failure: at the trained threshold **0/73** reach reject;
+at 8.27 only **5/73**, despite 63 targeted and 58 intersecting a jet. Better anomaly
+flags alone do not solve this physical load. A separate oversize removal path
+remains the next experiment; the UR5e extension is not implemented by this task.
+
+Capture is not proof of a jet-caused ejection. With anomaly disabled, 26/77 plastic
+chips reach reject with **zero** jet hits; at the trained threshold the figure is
+27/77, of which only ten were both jet-hit and rejected. The chip shape already
+tends to fall into reject. The magenta class at the trained threshold has 54/66
+reject-bin captures, all 54 with recorded jet hits. The demo must identify its
+selected object's hit and outcome, not relabel a spontaneous fall as successful
+air-jet actuation.
+
+- [Measured physical tradeoff](runs/generalization/physical-thresholds/physical_tradeoff.png).
+- [Counts and confidence intervals](runs/generalization/physical-thresholds/summary.json).
+- [Exact run commands](runs/generalization/physical-thresholds/run.sh).
+- [Trained-threshold metrics](runs/generalization/physical-thresholds/trained/physics_metrics.json), [lower-threshold metrics](runs/generalization/physical-thresholds/low/physics_metrics.json), [classifier-only metrics](runs/generalization/physical-thresholds/disabled/physics_metrics.json).
+
+All three numerical runs executed source SHA-256 `982b69bf9924d065679fe5c38fc637d90b20b80b406776e2da00e4d613e26db1`,
+archived as [source_openset.py](runs/generalization/physical-thresholds/source_openset.py).
+Each manifest records matching start/end source and model hashes. Later fixes
+address video JSON serialization, trajectory lifetime and offline sweep coverage;
+they do not alter these completed no-video physical runs. The first video export
+hit a NumPy-boolean JSON error after encoding; that incomplete output is excluded
+from the final evidence and the corrected demo is rerun.
+
+### Open-set camera threshold curve
+
+The final offline sweep uses seed 41, 8 s and 300 objects/s. Its curve is
+conditional on **full, single-object detections**: 1,948 eligible objects
+(1,429 good and 519 unknown), represented by 6,208 preserved camera observations.
+A physical UID aggregates repeated views into the maximum anomaly score and mean
+classifier reject probability across its whole passage. The real controller
+finalizes earlier, near the camera centre or after missed observations; this
+curve is not a replay of its decisions. Eligibility excludes the last 0.6 s of
+spawns, so the curve and detection-coverage denominators refer to the same objects.
+
+At the unchanged threshold 18.4872:
+
+- Anomaly alone flags 319/519 unknowns (61.46%) and 0/1,429 good objects.
+  The good-flag Wilson 95% upper bound is 0.27%; zero observed is not zero risk.
+- Plastic: 100/100 flagged; magenta: 218/218; oversized green: **1/201 (0.50%)**.
+- Classifier alone flags 256/519 unknowns (49.33%) and 24/1,429 good objects (1.68%).
+- Classifier OR anomaly flags 327/519 unknowns (63.01%), with the same 24/1,429
+  good flags. Flags are not physical ejects.
+
+Detection coverage limits the colour result: only 100/221 eligible plastic chips
+produce a usable full singleton observation, versus 218/238 magenta objects and
+201/211 oversized objects. Of the plastic chips, 115/221 are never mapped into
+any detected component, four are merged-only and two partial-only. The good
+cohort has 1,429/1,542 usable singletons. No matched component does not establish
+that the object's pixels never entered the camera. The full per-class coverage
+ledger prevents a 100% conditional flag rate from becoming a 100% feed rejection claim.
+
+- [Anomaly threshold curve](runs/generalization/openset/threshold_sweep.png).
+- [All threshold rows and coverage](runs/generalization/openset/threshold_sweep.json).
+- [Object scores](runs/generalization/openset/camera_objects.csv) and [per-observation scores](runs/generalization/openset/camera_observations.csv).
+- [Model classes, test-only profiles and source hashes](runs/generalization/openset/manifest.json).
+
+This generalizes to conspicuous synthetic colour changes better than to size-only
+changes. Training contamination by repeated/merged views and the broad good-class
+covariance are possible causes, not isolated causal findings. No real-camera,
+real-coffee or hardware generalization is established by these experiments.
+
+### Verified unknown-object demo
+
+[Watch the 8× slow close-up](runs/generalization/openset/demo/unknown_8x_slow.mp4)
+or [the complete 8 s mixed-stream video](runs/generalization/openset/demo/overview_h264.mp4).
+The close-up uses the original frames from 1.18–1.42 s, crops the discharge region,
+keeps the HUD, repeats frames for 8× slow playback and holds the last frame.
+It adds no simulated event or interpolated motion. All 188 excerpt frames and
+all 400 original H.264 frames decode.
+
+The selected object is UID 88, a never-trained magenta bean-shaped object.
+Its anomaly score is **194.58** against threshold 18.4872, and its classifier
+reject probability is **0.958**. **Both criteria flag this example**; it is not
+an anomaly-exclusive success. The controller queues and activates its pulse;
+its own pulse intersects the object, and the object reaches the reject side.
+The 102-sample identity-preserving trajectory crosses the splitter at
+x=0.3417 m, z=0.4711 m at 1.338 s. Yellow is a display-only highlight restored
+before the next inspection; class/UID and outcome labels are evaluation truth,
+not controller inputs. This is a selected successful example, not a success-rate
+estimate; the mixed-stream and threshold results above supply the denominators.
+
+[Demo record](runs/generalization/openset/demo/demo_unknown.json),
+[trajectory](runs/generalization/openset/demo/demo_unknown_trajectory.csv),
+[source/video manifest](runs/generalization/openset/demo/manifest.json),
+[slow-excerpt provenance](runs/generalization/openset/demo/unknown_8x_slow.json)
+and [exact excerpt command](runs/generalization/openset/demo/make_slow_demo.sh)
+make the clip attributable. No shared controller/vision/physics changes were
+needed for either generalization experiment.
+
+Final Standards and Spec reviews pass. One minor future-seed display limitation
+remains: a merged decision with multiple unknown UIDs can nominate a different
+featured UID from its first linked UID. This does not affect the independently
+verified single-object UID 88 demo. Do not use a different-seed clip as evidence
+without checking its own trajectory and featured UID.
+
+### Published generalization evidence
+
+The single camera contact sheet now includes all **19** examples: ten green,
+six roasted and three unseen types. The added panel uses the same green model
+and labels true type, trained-class guess and anomaly score. Its wrong-size
+example scores 9.51, below the unchanged threshold 18.49; that failure remains
+visible. Regenerate only this image with `python run_generalization.py contact-sheet`.
+
+All six viewable files were uploaded with agent-fs, downloaded again and compared
+byte-for-byte ([upload verification](runs/generalization/upload-verification.log)):
+
+- [8× slow unknown ejection](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/generalization/openset/demo/unknown_8x_slow.mp4).
+- [Full unknown-object video](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/generalization/openset/demo/overview_h264.mp4).
+- [Green versus roasted confusion](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/generalization/comparison/confusion_matrices.png).
+- [All 19 camera examples](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/generalization/comparison/camera_strip_contact_sheet.png).
+- [Anomaly threshold curve](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/generalization/openset/threshold_sweep.png).
+- [Physical ejection tradeoff](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/generalization/physical-thresholds/physical_tradeoff.png).
+- [Complete raw evidence and scripts](https://live.agent-fs.dev/file/~/9d0f4b46-6113-49f7-8e8c-d315a64bd59d/ad84339c-9d70-462a-84cf-b58aba031ac5/hackspain/coffee-sorter/2026-09-19/generalization/evidence.tar.gz).
+
+Final validation: **36 tests pass**, syntax checks and diff checks pass, and
+independent Standards and Spec reviews pass. [Actual test output](runs/generalization/final-tests.log)
+is also included in the PR body. No CI workflows are configured; this is local
+verification. Human morning acceptance remains pending. Keep the existing
+[fork PR #1](https://github.com/tarasyarema/hackspain/pull/1) draft and unmerged.
