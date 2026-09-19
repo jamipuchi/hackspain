@@ -27,7 +27,6 @@ import json
 import math
 import os
 import re
-import shlex
 import time
 import urllib.error
 import urllib.request
@@ -49,14 +48,6 @@ USD_PER_INPUT_TOKEN = 0.042e-6  # output tokens are free
 def load_api_key() -> str:
     if os.environ.get("TYPESAFE_API_KEY"):
         return os.environ["TYPESAFE_API_KEY"].strip()
-    env_file = Path(__file__).resolve().parents[2] / ".env"
-    if env_file.exists():
-        for line in env_file.read_text().splitlines():
-            name, separator, raw = line.strip().removeprefix("export ").partition("=")
-            if separator and name.strip() == "TYPESAFE_API_KEY":
-                values = shlex.split(raw, comments=True)
-                if len(values) == 1 and values[0]:
-                    return values[0]
     if KEY_FILE.exists():
         key = KEY_FILE.read_text().strip()
         if key:

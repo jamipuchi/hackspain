@@ -7,6 +7,16 @@ REPO=~/hackspain
 SRC=~/robotics
 cd "$REPO"
 
+# GUARD (19 Sep 19:55): origin/main now carries Taras's coffee sorter under sim/coffee_sorter — the SAME path this
+# script mirrors ~/robotics/coffee_sorter into with --delete. If this clone is ever behind origin, syncing would
+# overwrite/delete his files and push that. Refuse to run until a human has rebased and re-pointed the coffee rsync.
+git fetch -q origin main 2>/dev/null || true
+behind=$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0)
+if [ "${behind:-0}" -gt 0 ]; then
+  echo "NOT SYNCING $(date '+%H:%M:%S'): local main is $behind commits behind origin/main (Taras's PR #3). See INTEGRATOR.md 19:55."
+  exit 0
+fi
+
 # code (no run artifacts, no caches, no generated scene xml)
 rsync -a --delete \
   --exclude '__pycache__' --exclude 'runs/' --exclude '*.raw.mp4' --exclude 'scene_generated*.xml' --exclude '.pixi' \

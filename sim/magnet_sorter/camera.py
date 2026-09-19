@@ -92,17 +92,13 @@ def phone_look(frame_bgr: np.ndarray, rng: np.random.Generator | None = None) ->
 class MujocoPhoneCamera:
     """Fast fallback: MuJoCo's own rasteriser for a phone view (camera name 'phone' = legacy top-down, or 'A'/'B')."""
 
-    def __init__(self, model, data, name: str = "phone", renderer=None):
+    def __init__(self, model, data, name: str = "phone"):
         import mujoco
 
         self.model, self.data = model, data
         cam = sd.CAMERAS.get(name, sd.PHONE_CAM)
         self.cam_name = f"cam_{name}" if name in sd.CAMERAS else "phone"
-        # Share a context for equal-sized views: multiple OSMesa contexts can
-        # leave an earlier Renderer writing into an uninitialised framebuffer.
-        self.renderer = renderer if renderer is not None else mujoco.Renderer(model, height=cam["height"], width=cam["width"])
-        if (self.renderer.height, self.renderer.width) != (cam["height"], cam["width"]):
-            raise ValueError("shared renderer dimensions must match the camera")
+        self.renderer = mujoco.Renderer(model, height=cam["height"], width=cam["width"])
         self.rng = np.random.default_rng(0)
         self.last_render_s = 0.0
 
@@ -128,15 +124,6 @@ def draw_metric_grid(frame: np.ndarray, cal: "TableCalibration", step_cm: float 
     def inside(p):
         return -50 <= p[0] < w + 50 and -50 <= p[1] < h + 50
 
-    def label(text, points, dx, dy):
-        (tw, th), base = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.45, 1)
-        for p in points:
-            x, y = p[0] + dx, p[1] + dy
-            if 2 <= x and x + tw + 2 < w and th + 2 <= y and y + base + 2 < h:
-                cv2.putText(out, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 0), 3, cv2.LINE_AA)
-                cv2.putText(out, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 0), 1, cv2.LINE_AA)
-                return
-
     for x in xs:
         pts = [px(x, y) for y in np.linspace(ys[0], ys[-1], 24)]
         for a, b in zip(pts[:-1], pts[1:]):
@@ -148,9 +135,15 @@ def draw_metric_grid(frame: np.ndarray, cal: "TableCalibration", step_cm: float 
             if inside(a) and inside(b):
                 cv2.line(out, a, b, (255, 255, 255), 1, cv2.LINE_AA)
     for x in xs[::label_every]:
-        label(f"x{x:+.0f}", [px(x, y) for y in np.linspace(ys[-1], ys[0], 24)], -12, -4)
+        p = px(x, ys[-1])
+        if inside(p):
+            cv2.putText(out, f"x{x:+.0f}", (p[0] - 12, p[1] - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 0), 3, cv2.LINE_AA)
+            cv2.putText(out, f"x{x:+.0f}", (p[0] - 12, p[1] - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 0), 1, cv2.LINE_AA)
     for y in ys[::label_every]:
-        label(f"y{y:+.0f}", [px(x, y) for x in np.linspace(xs[-1], xs[0], 24)], 4, 4)
+        p = px(xs[-1], y)
+        if inside(p):
+            cv2.putText(out, f"y{y:+.0f}", (p[0] + 4, p[1] + 4), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 0), 3, cv2.LINE_AA)
+            cv2.putText(out, f"y{y:+.0f}", (p[0] + 4, p[1] + 4), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 0), 1, cv2.LINE_AA)
     out = cv2.addWeighted(out, 0.45, base, 0.55, 0)  # semi-transparent grid
     o = px(0, 0)
     if inside(o):
