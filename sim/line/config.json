@@ -38,10 +38,10 @@
     "fps": 60,
     "file_paths": [],
     "zone": [
-      746,
-      314,
-      1278,
-      485
+      480,
+      470,
+      1190,
+      650
     ],
     "px_per_mm": 4.3,
     "flow_axis": "-x",
@@ -49,7 +49,7 @@
   },
   "vision": {
     "paper_gray_min": 150,
-    "bean_gray_max": 84,
+    "bean_gray_max": 150,
     "min_area_px": 400,
     "max_area_px": 40000,
     "dark_spot_gray": 45,
@@ -71,7 +71,9 @@
       "max_n_dark_spots": 99,
       "min_minor_mm": 2.0,
       "max_minor_mm": 30.0
-    }
+    },
+    "color_dark_gray": 110,
+    "color_white_max_dark_frac": 0.05
   },
   "timing": {
     "slope_deg": 15.0,
