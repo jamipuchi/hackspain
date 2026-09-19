@@ -86,7 +86,8 @@ class TimingCfg:  # owner: coffee-sim agent (kinematics) with as-built numbers f
     drag_accel_cm_s2_at_15deg: float = 64.0  # net drive at 15°; a(θ) = (a15 + f)·sinθ/sin15° − f (48/64/80/96 at 12/15/18/21°)
     drag_friction_cm_s2: float = 19.2  # f: constant friction term of the drive (bean stalls below ~3.4°)
     drag_k_per_s: float = 1.6  # linear drag -> terminal speed a/k = 40 cm/s at 15°
-    door_lead_s: float = 0.0  # extra margin on top of the door swing (gate.settle_ms): photo age + jitter. Total lead = settle + this
+    lead_margin_s: float = 0.0  # extra margin on top of the door swing (gate.settle_ms): photo age + jitter
+    door_lead_s: float = 0.40  # DERIVED (timing.refresh): gate.settle_ms/1000 + lead_margin_s. 0.40 stock ramp, 0.12 with ramp_override
 
 
 @dataclass

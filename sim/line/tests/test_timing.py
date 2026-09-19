@@ -12,7 +12,7 @@ from line.config import LineConfig
 def cfg():
     c = LineConfig()
     c.gate.settle_ms = 400          # stock firmware ramp; the arduino agent flips this to 120 with ramp_override
-    c.timing.door_lead_s = 0.0
+    c.timing.lead_margin_s = 0.0
     c.timing.speed_model = "drag"
     return c
 
@@ -111,8 +111,12 @@ def test_lead_comes_from_gate_settle(cfg):
     assert timing.door_lead_s(cfg) == pytest.approx(0.40)
     cfg.gate.settle_ms = 120
     assert timing.door_lead_s(cfg) == pytest.approx(0.12)
-    cfg.timing.door_lead_s = 0.05
+    cfg.timing.lead_margin_s = 0.05
     assert timing.door_lead_s(cfg) == pytest.approx(0.17)
+    cfg.timing.door_lead_s = 99.0                     # the stored copy is never read...
+    assert timing.door_lead_s(cfg) == pytest.approx(0.17)
+    timing.refresh(cfg)                               # ...only written
+    assert cfg.timing.door_lead_s == pytest.approx(0.17)
 
 
 def test_gate_schedule_centre_of_zone(cfg):

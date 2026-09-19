@@ -73,11 +73,12 @@
     ],
     "bean_speed_cm_s": 35.0,
     "zone_to_door_s": 0.567,
-    "door_lead_s": 0.0,
+    "door_lead_s": 0.4,
     "speed_model": "drag",
     "drag_accel_cm_s2_at_15deg": 64.0,
     "drag_k_per_s": 1.6,
-    "drag_friction_cm_s2": 19.2
+    "drag_friction_cm_s2": 19.2,
+    "lead_margin_s": 0.0
   },
   "panel_port": 8800,
   "dry_run": true

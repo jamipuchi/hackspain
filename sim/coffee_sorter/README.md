@@ -76,9 +76,25 @@ Environment: the `../.venv` from the parent folder (MuJoCo 3.13, numpy, OpenCV, 
 - The renderer draws the kinematics of the *previous* step: frames are timestamped `t - dt` and training labels use the rendered poses. Calibration error after that: 0.02 mm median.
 - Status: physics stable for 5+ simulated seconds at 2000 beans/s (≈1.5–3 s wall per simulated second, no viewer), camera strip segments beans against the blue belt, 23/23 blobs matched to ground truth in the check frame.
 
+**Day 1, afternoon — physical line integration (`~/robotics/line/`, THEKER bench)**
+
+- Five Claude sessions (arduino, camera, coffee-sim = this project, build, integrator) wired a physical line through
+  `~/robotics/INTEGRATOR.md`: iPhone camera → bean detector on white paper → classifier → SG90 gate on an Arduino Uno.
+- This project's contribution, coded against the line's frozen `contracts.py`: `line/classifier.py` (RuleClassifier with
+  soft-margin thresholds, SklearnClassifier over named features with an anomaly gate, `train_from_dataset`/`evaluate`,
+  and `train_from_sim`: a MuJoCo bootstrap model rendered on white paper, 5939 blobs, 99.5 % CV accuracy, 10 ms/bean) and
+  `line/timing.py` (chute kinematics: build agent's drag model reproducing 0.71/0.57/0.48/0.42 s zone→door at 12/15/18/21°,
+  gate scheduling from ROI position, lead derived from the servo swing time). 53 tests, all hardware-free.
+- `vision.detect` now computes all per-blob statistics over foreground pixels only (identical outputs, 115 → 22 ms per
+  2080×192 frame). `vision_paper.PaperInspector` is the white-background variant (segmentation is an overridable method).
+- Lessons: sklearn HistGradientBoosting has ~90 ms fixed cost per single-row predict here (ExtraTrees 2–10 ms, MLP 0.2 ms);
+  its OpenMP team turns a 120-row fit into 86 s when several processes fit at once — pin to one thread; models trained from
+  a `python -m` entry point pickle their class under `__main__` — import the module first.
+
 **Next**
 
-- [ ] speed up `vision.detect` (statistics over foreground pixels only) and train the classifier
+- [x] speed up `vision.detect` (statistics over foreground pixels only)
+- [ ] train the belt-sorter classifier (`run.py train`) — now ~1 min
 - [ ] first closed-loop run with metrics + video
 - [ ] rate sweep 500 → 3000 beans/s, latency vs the 73 ms camera-to-jet budget
 - [ ] `roasted` profile without touching the controller (generalisation)

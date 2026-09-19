@@ -21,7 +21,7 @@ Speed models (`cfg.timing.speed_model`):
 
 `gate_schedule` turns a verdict into (delay_s, dwell_s) for `GateDriver.pulse`. The door swing time is
 `cfg.gate.settle_ms` (≈400 ms with the stock firmware ramp, ≈120 ms with the arduino agent's `R` override), so the
-open command leads the bean by `settle_ms/1000 + door_lead_s`.
+open command leads the bean by `settle_ms/1000 + lead_margin_s`; `refresh()` stores that as `cfg.timing.door_lead_s`.
 """
 from __future__ import annotations
 
@@ -170,8 +170,10 @@ def zone_to_door_s(cfg, model: str | None = None) -> float:
 
 
 def refresh(cfg, model: str | None = None) -> float:
-    """Recompute and store cfg.timing.zone_to_door_s with the active model. Returns the value."""
+    """Recompute and store the derived config values: cfg.timing.zone_to_door_s (active speed model) and
+    cfg.timing.door_lead_s (gate.settle_ms/1000 + lead_margin_s). Returns zone_to_door_s."""
     cfg.timing.zone_to_door_s = round(zone_to_door_s(cfg, model), 4)
+    cfg.timing.door_lead_s = round(door_lead_s(cfg), 4)
     return cfg.timing.zone_to_door_s
 
 
@@ -195,8 +197,9 @@ def bean_position_cm(blob_pos_px: float, cfg) -> float:
 
 # ------------------------------------------------------------------ the schedule
 def door_lead_s(cfg) -> float:
-    """How early the OPEN command must go out: the swing time (gate.settle_ms) plus the configured margin."""
-    return float(cfg.gate.settle_ms) / 1000.0 + float(cfg.timing.door_lead_s)
+    """How early the OPEN command must go out: the swing time (gate.settle_ms) plus `lead_margin_s`.
+    (cfg.timing.door_lead_s is the stored copy of this, written by refresh(); never read it here.)"""
+    return float(cfg.gate.settle_ms) / 1000.0 + float(getattr(cfg.timing, "lead_margin_s", 0.0))
 
 
 def gate_schedule(verdict_t: float, blob_v_px: float, cfg, now_t: float | None = None,
@@ -216,7 +219,7 @@ def gate_schedule(verdict_t: float, blob_v_px: float, cfg, now_t: float | None =
     lead = door_lead_s(cfg)
     delay = max(0.0, verdict_t + t_to_door - lead - now_t)
     v_door = max(speed_at_cm(door_start_cm(cfg), cfg, model), 1e-6)
-    dwell = lead + door_length_cm(cfg) / v_door + float(cfg.timing.door_lead_s)
+    dwell = lead + door_length_cm(cfg) / v_door + float(getattr(cfg.timing, "lead_margin_s", 0.0))
     return delay, max(dwell, float(cfg.gate.default_dwell_s))
 
 
