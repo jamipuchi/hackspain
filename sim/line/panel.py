@@ -83,6 +83,15 @@ class DoorOnD6:
         log(f"door→D6 {what}: C {sp} for {ms} ms, stop → {stop.strip()} ({(time.monotonic() - t0) * 1000:.0f} ms)")
         return reply
 
+    def go(self, pos: str, force: bool = False) -> str:
+        """Operator action: move the door to 'OPEN' or 'CLOSED' with the configured pulse (ignores dry_run: a human pressed it)."""
+        pos = "CLOSED" if pos.upper().startswith("CLOSE") else "OPEN"
+        if self.pos == pos and not force:
+            return "already " + pos
+        self.pos = pos
+        self.angle = self.cfg.gate.flush_deg if pos == "CLOSED" else self.cfg.gate.open_deg
+        return self._pulse(-1 if pos == "CLOSED" else +1, self.cfg.door_d6_close_ms if pos == "CLOSED" else self.cfg.door_d6_open_ms, pos)
+
     def cmd(self, line: str) -> str:
         p = line.strip().split()
         if p and p[0] == "S" and len(p) == 4:
@@ -373,6 +382,19 @@ def make_handler(panel: Panel):
                     return self._json({"ok": True, "reply": panel.cmd(b.get("line", ""))})
                 if p == "/api/conveyor":
                     return self._json({"ok": True, "reply": panel.conveyor(int(b.get("speed", 0)))})
+                if p == "/api/door":
+                    ard = panel.modules["arduino"]
+                    act = str(b.get("action", "")).lower()
+                    if act == "assume" and hasattr(ard, "pos"):
+                        ard.pos = "CLOSED" if str(b.get("pos", "")).lower().startswith("close") else "OPEN"
+                        log(f"door position assumed {ard.pos} (operator)")
+                        return self._json({"ok": True, "door_pos": ard.pos})
+                    if act == "stop":
+                        return self._json({"ok": True, "reply": ard.cmd("STOP") if hasattr(ard, "go") else panel.cmd("C 0")})
+                    if not hasattr(ard, "go"):
+                        return self._json({"ok": False, "error": "door_on_d6 is off: use the gate buttons"}, 400)
+                    log(f"door {act} (operator)")
+                    return self._json({"ok": True, "reply": ard.go(act, force=bool(b.get("force", False))), "door_pos": ard.pos})
                 if p == "/api/gate":
                     return self._json({"ok": True, "gate": panel.gate(b.get("action", ""), float(b.get("delay", 0) or 0), b.get("dwell"))})
                 if p == "/api/line":
