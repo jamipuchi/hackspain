@@ -37,15 +37,52 @@ def uno(line: str) -> None:
 import urllib.parse  # noqa: E402
 
 
-def frame(box):
+def full_frame():
     b = urllib.request.urlopen(PANEL + "/snapshot.jpg", timeout=5).read()
-    img = cv2.imdecode(np.frombuffer(b, np.uint8), cv2.IMREAD_COLOR)
+    return cv2.imdecode(np.frombuffer(b, np.uint8), cv2.IMREAD_COLOR)
+
+
+def find_servo(img) -> tuple[int, int] | None:
+    """Centroid of the blue SG90 body: saturated blue, compact (not text strokes, not the teal PCB)."""
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    m = cv2.inRange(hsv, (100, 120, 60), (125, 255, 255))
+    m = cv2.morphologyEx(m, cv2.MORPH_OPEN, np.ones((7, 7), np.uint8))
+    n, lab, st, cen = cv2.connectedComponentsWithStats(m)
+    best = None
+    for i in range(1, n):
+        x, y, w, h, area = st[i]
+        if not (300 <= area <= 8000):
+            continue
+        fill = area / max(w * h, 1)
+        aspect = max(w, h) / max(min(w, h), 1)
+        if fill < 0.55 or aspect > 3.0:
+            continue  # text, wires, PCB traces
+        score = area * fill
+        if best is None or score > best[0]:
+            best = (score, int(cen[i][0]), int(cen[i][1]), (int(x), int(y), int(w), int(h), int(area), round(fill, 2)))
+    if best is None:
+        return None
+    print(f"servo candidate bbox x,y,w,h,area,fill = {best[3]}")
+    return best[1], best[2]
+
+
+def auto_box(img, reach: int = 230) -> tuple[int, int, int, int]:
+    hub = find_servo(img)
+    if hub is None:
+        raise SystemExit("blue servo body not found in the frame: cannot place the calibration box")
+    h, w = img.shape[:2]
+    return max(0, hub[0] - reach), max(40, hub[1] - reach), min(w, hub[0] + reach), min(h, hub[1] + reach)
+
+
+def frame(box):
+    img = full_frame()
     x0, y0, x1, y1 = box
     return cv2.GaussianBlur(img[y0:y1, x0:x1], (7, 7), 0).astype(np.int16)
 
 
 def diff(a, b) -> float:
-    return float(np.abs(a - b).mean())
+    """Number of pixels that changed by more than 20 levels: a thin white paddle moving is thousands, noise is tens."""
+    return float((np.abs(a - b).max(axis=2) > 20).sum())
 
 
 def spin(sp: int, ms: int) -> None:
@@ -94,12 +131,19 @@ def main() -> None:
     os.makedirs(DEBUG, exist_ok=True)
     ap = argparse.ArgumentParser()
     ap.add_argument("--speeds", default="25,40,60,80,100")
-    ap.add_argument("--box", default="420,120,720,330", help="x0,y0,x1,y1 pixel box that contains the whole paddle sweep")
+    ap.add_argument("--box", default="auto", help="auto = around the blue servo body; or x0,y0,x1,y1")
+    ap.add_argument("--hub", default=None, help="override the servo position as x,y pixels")
     ap.add_argument("--margin", type=float, default=0.30, help="extra fraction of the converged time so the door always reaches its stop")
     ap.add_argument("--cycles", type=int, default=3)
     a = ap.parse_args()
-    box = tuple(int(v) for v in a.box.split(","))
     st = api("/api/state")
+    img0 = full_frame()
+    box = auto_box(img0) if a.box == "auto" else tuple(int(v) for v in a.box.split(","))
+    hub = tuple(int(v) for v in a.hub.split(',')) if a.hub else find_servo(img0)
+    if a.hub:
+        box = (max(0, hub[0] - 230), max(40, hub[1] - 230), min(img0.shape[1], hub[0] + 230), min(img0.shape[0], hub[1] + 230))
+    print(f"servo body at {hub}, calibration box {box}")
+    cv2.imwrite(f"{DEBUG}/box.jpg", cv2.rectangle(img0.copy(), box[:2], box[2:], (0, 0, 255), 3))
     cfg = st["cfg"]
     assert not st["line"]["enabled"], "stop the sorting loop first (Line tab → stop)"
     d6dir = 1 if int(cfg["door_d6_dir"]) >= 0 else -1
@@ -109,7 +153,7 @@ def main() -> None:
     f0 = frame(box)
     time.sleep(0.4)
     noise = diff(f0, frame(box))
-    thr = max(1.2, noise * 2.5)
+    thr = max(150.0, noise * 4 + 100)
     print(f"camera noise in box {box}: {noise:.2f} → motion threshold {thr:.2f}")
     results = {}
     door_pos = api("/api/state")["modules"]["arduino"].get("door_pos")

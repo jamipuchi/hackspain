@@ -86,6 +86,20 @@ td.mono{font-family:var(--mono);font-size:.8rem}
    <label>time the door stays CLOSED after a bean (s) <input class="num" id="dDwell" type="number" step="0.1" min="0.1" onchange="setCfg('gate.default_dwell_s',+this.value)"></label>
    <div class="kv" id="doorKv"></div></div>
  </div>
+ <div class="card"><h2>Calibrate by hand · watch the paddle, nudge, then save the total as the pulse</h2>
+  <div class="grid" style="grid-template-columns:minmax(360px,1.2fr) 1fr;align-items:start">
+   <div class="viewer"><img src="/stream.mjpg" alt="camera"></div>
+   <div style="display:grid;gap:14px">
+    <label>nudge length<select id="nudgeMs"><option>30</option><option>45</option><option selected>60</option><option>90</option><option>120</option><option>200</option></select></label>
+    <div class="card" style="background:#0f1317;border-color:var(--ok)"><h2>towards OPEN <span class="hint">total <b id="totOpen">0</b> ms</span></h2>
+     <div class="row"><button class="go" onclick="nudge('open')">nudge → OPEN</button><button class="sm" onclick="useTotal('open')">use total as OPEN pulse</button><button class="sm" onclick="tot.open=0;paintTot()">reset</button></div></div>
+    <div class="card" style="background:#0f1317;border-color:var(--bad)"><h2>towards CLOSE <span class="hint">total <b id="totClose">0</b> ms</span></h2>
+     <div class="row"><button class="stop" onclick="nudge('close')">nudge → CLOSE</button><button class="sm" onclick="useTotal('close')">use total as CLOSE pulse</button><button class="sm" onclick="tot.close=0;paintTot()">reset</button></div></div>
+    <div class="row"><button class="sm" onclick="door('stop')">■ stop spinning</button><button class="sm" onclick="postJSON('/api/door',{action:'assume',pos:'open'}).then(refresh)">it is OPEN now</button><button class="sm" onclick="postJSON('/api/door',{action:'assume',pos:'closed'}).then(refresh)">it is CLOSED now</button></div>
+    <p class="hint">Recipe: put the paddle on one stop by hand or with nudges, press "it is CLOSED now", reset the OPEN total, nudge → OPEN until it rests on the other wall, then "use total as OPEN pulse" (adds 20 % so it always reaches the stop). Repeat the other way. Then test with the big buttons. Raise the speed and repeat when it is reliable.</p>
+   </div>
+  </div>
+ </div>
  <details class="card"><summary class="hint" style="cursor:pointer">Advanced: raw protocol, conveyor, gate driver (not needed for the demo)</summary>
   <div class="grid">
   <div class="card"><h2>Conveyor · D6 (continuous servo)</h2>
@@ -211,6 +225,9 @@ function sw(k){swT[k]=performance.now()/1000;const T=S?.cfg?.timing||{};let out=
 document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;if(e.code==='Space'||e.key==='Escape'){e.preventDefault();door('stop');}else if(e.key==='o'){door('open');}else if(e.key==='c'){door('close');}
  else if(e.key==='g')sample('good');else if(e.key==='d')sample('defect');else if(e.key==='f')sample('foreign');});
 // door: two concepts
+const tot={open:0,close:0};function paintTot(){$('totOpen').textContent=tot.open;$('totClose').textContent=tot.close;}
+async function nudge(t){const ms=+$('nudgeMs').value;const j=await postJSON('/api/door',{action:'nudge',towards:t,ms});if(j.ok){tot[t]+=ms;paintTot();refresh();}}
+function useTotal(t){const ms=Math.max(20,Math.round(tot[t]*1.2/5)*5);setCfg(t==='open'?'door_d6_open_ms':'door_d6_close_ms',ms);}
 async function door(a,force){const j=await postJSON('/api/door',{action:a,force:!!force});if(j.ok)refresh();}
 async function demoCycle(){await door('open',true);await new Promise(r=>setTimeout(r,900));await door('close',true);await new Promise(r=>setTimeout(r,Math.max(900,(S?.cfg?.gate?.default_dwell_s||1)*1000)));await door('open',true);}
 function nudgeCfg(path,d){const cur=path.split('.').reduce((o,k)=>o[k],S.cfg);setCfg(path,Math.max(10,cur+d));}

@@ -96,6 +96,12 @@ class DoorOnD6:
         self.angle = self.cfg.gate.flush_deg if pos == "CLOSED" else self.cfg.gate.open_deg
         return self._pulse(-1 if pos == "CLOSED" else +1, self.cfg.door_d6_close_ms if pos == "CLOSED" else self.cfg.door_d6_open_ms, pos)
 
+    def nudge(self, towards: str, ms: int) -> str:
+        """Operator calibration: spin towards OPEN or CLOSED for `ms` (position becomes unknown until set)."""
+        closed = towards.upper().startswith("CLOSE")
+        self.pos = None
+        return self._pulse(-1 if closed else +1, max(10, min(600, int(ms))), f"nudge→{'CLOSED' if closed else 'OPEN'}")
+
     def cmd(self, line: str) -> str:
         p = line.strip().split()
         if p and p[0] == "S" and len(p) == 4:
@@ -393,6 +399,8 @@ def make_handler(panel: Panel):
                         ard.pos = "CLOSED" if str(b.get("pos", "")).lower().startswith("close") else "OPEN"
                         log(f"door position assumed {ard.pos} (operator)")
                         return self._json({"ok": True, "door_pos": ard.pos})
+                    if act == "nudge" and hasattr(ard, "nudge"):
+                        return self._json({"ok": True, "reply": ard.nudge(str(b.get("towards", "open")), int(b.get("ms", 60))), "door_pos": ard.pos})
                     if act == "stop":
                         return self._json({"ok": True, "reply": ard.cmd("STOP") if hasattr(ard, "go") else panel.cmd("C 0")})
                     if not hasattr(ard, "go"):
