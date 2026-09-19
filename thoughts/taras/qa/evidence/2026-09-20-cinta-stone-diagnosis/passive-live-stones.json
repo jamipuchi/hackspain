@@ -1,0 +1,327 @@
+{
+  "injection_acknowledgements": [
+    {
+      "class_name": "stone",
+      "command_epoch": "8f8079e8-dc6a-4fe6-aaff-d0d11505a6dc",
+      "command_id": "d807a4fc-0aed-4249-934c-f74ff2d32994",
+      "command_type": "inject",
+      "expectation_policy_version": "77ffd68b1915bca56b4bb65e081d0fbd093253ac00f5f8594ed191f0a0a5d2d7",
+      "expected_outcome": "accept",
+      "object_id": 36525,
+      "ok": true,
+      "session_id": "d2be6eae-5cda-4e79-9642-c4c6555c03a5",
+      "sim_time_s": 72.94799999998426,
+      "spawn_position": [
+        -1.0148667957685777,
+        0.0006130451240783334,
+        0.6083120495843095
+      ],
+      "type": "ack"
+    },
+    {
+      "class_name": "stone",
+      "command_epoch": "8f8079e8-dc6a-4fe6-aaff-d0d11505a6dc",
+      "command_id": "9c382738-7b43-4601-9b19-727927609a9b",
+      "command_type": "inject",
+      "expectation_policy_version": "77ffd68b1915bca56b4bb65e081d0fbd093253ac00f5f8594ed191f0a0a5d2d7",
+      "expected_outcome": "accept",
+      "object_id": 36543,
+      "ok": true,
+      "session_id": "d2be6eae-5cda-4e79-9642-c4c6555c03a5",
+      "sim_time_s": 72.98399999998443,
+      "spawn_position": [
+        -0.9622762329214645,
+        0.20358287554618087,
+        0.60779477556203
+      ],
+      "type": "ack"
+    },
+    {
+      "class_name": "stone",
+      "command_epoch": "8f8079e8-dc6a-4fe6-aaff-d0d11505a6dc",
+      "command_id": "db223a3b-35b7-4436-b1fa-4d5cccad1ac7",
+      "command_type": "inject",
+      "expectation_policy_version": "77ffd68b1915bca56b4bb65e081d0fbd093253ac00f5f8594ed191f0a0a5d2d7",
+      "expected_outcome": "accept",
+      "object_id": 36583,
+      "ok": true,
+      "session_id": "d2be6eae-5cda-4e79-9642-c4c6555c03a5",
+      "sim_time_s": 73.0609999999848,
+      "spawn_position": [
+        -1.0112259794268712,
+        -0.21847376693868195,
+        0.6079256847183018
+      ],
+      "type": "ack"
+    },
+    {
+      "class_name": "stone",
+      "command_epoch": "8f8079e8-dc6a-4fe6-aaff-d0d11505a6dc",
+      "command_id": "921fdde7-3a34-4b36-82db-d742721ab616",
+      "command_type": "inject",
+      "expectation_policy_version": "77ffd68b1915bca56b4bb65e081d0fbd093253ac00f5f8594ed191f0a0a5d2d7",
+      "expected_outcome": "accept",
+      "object_id": 36713,
+      "ok": true,
+      "session_id": "d2be6eae-5cda-4e79-9642-c4c6555c03a5",
+      "sim_time_s": 73.30499999998597,
+      "spawn_position": [
+        -0.9597335449538238,
+        0.2065674147479444,
+        0.60855292537327
+      ],
+      "type": "ack"
+    },
+    {
+      "class_name": "stone",
+      "command_epoch": "8f8079e8-dc6a-4fe6-aaff-d0d11505a6dc",
+      "command_id": "ed0267bd-02ed-4dcc-95d7-ab3b12d912c4",
+      "command_type": "inject",
+      "expectation_policy_version": "77ffd68b1915bca56b4bb65e081d0fbd093253ac00f5f8594ed191f0a0a5d2d7",
+      "expected_outcome": "accept",
+      "object_id": 36783,
+      "ok": true,
+      "session_id": "d2be6eae-5cda-4e79-9642-c4c6555c03a5",
+      "sim_time_s": 73.4369999999866,
+      "spawn_position": [
+        -0.9531235167350982,
+        0.1787505233039412,
+        0.6084400096038739
+      ],
+      "type": "ack"
+    }
+  ],
+  "objects": [
+    {
+      "active": false,
+      "appearance_key": "142a9f9aecd06099ae1e",
+      "axes": [
+        0.004943412690977442,
+        0.0025631524195470112,
+        0.0023120495843095396
+      ],
+      "decision": {
+        "association": "current_component",
+        "association_approximate": true,
+        "late": false,
+        "predicted_class": "stone",
+        "reject": true,
+        "scheduled": true,
+        "track_id": 35972
+      },
+      "expectation_policy_version": "77ffd68b1915bca56b4bb65e081d0fbd093253ac00f5f8594ed191f0a0a5d2d7",
+      "expected_outcome": "accept",
+      "jet_hits": 0,
+      "object_id": 36525,
+      "outcome": "reject",
+      "overdue": false,
+      "own_pulse_hit": false,
+      "pos": [
+        0.5011051765662424,
+        -0.01838563184607675,
+        0.27788836744817313
+      ],
+      "quat": [
+        0.6487885303188787,
+        -0.10670665015780773,
+        -0.38392979864625926,
+        0.648293948336873
+      ],
+      "rgb": [
+        0.41857486963272095,
+        0.43481719493865967,
+        0.4561215937137604
+      ],
+      "shape": "box",
+      "spawn_to_outcome_wall_s": 2.085695791989565
+    },
+    {
+      "active": false,
+      "appearance_key": "d5af2e81cbaecb750ec2",
+      "axes": [
+        0.0033436056873356753,
+        0.0031806850529194916,
+        0.0017947755620299594
+      ],
+      "decision": {
+        "association": "current_component",
+        "association_approximate": true,
+        "late": false,
+        "predicted_class": "stone",
+        "reject": true,
+        "scheduled": true,
+        "track_id": 36027
+      },
+      "expectation_policy_version": "77ffd68b1915bca56b4bb65e081d0fbd093253ac00f5f8594ed191f0a0a5d2d7",
+      "expected_outcome": "accept",
+      "jet_hits": 0,
+      "object_id": 36543,
+      "outcome": "reject",
+      "overdue": false,
+      "own_pulse_hit": false,
+      "pos": [
+        0.5017543311953596,
+        0.11084801426523025,
+        0.19474448604450698
+      ],
+      "quat": [
+        0.6050816171330997,
+        -0.09765458457061733,
+        0.043614038168372865,
+        -0.7889471683164726
+      ],
+      "rgb": [
+        0.4840635359287262,
+        0.42502787709236145,
+        0.41005727648735046
+      ],
+      "shape": "box",
+      "spawn_to_outcome_wall_s": 2.925721332896501
+    },
+    {
+      "active": false,
+      "appearance_key": "08390df20cfc4dae92cd",
+      "axes": [
+        0.0031310184974135446,
+        0.0033970418770522502,
+        0.0019256847183017596
+      ],
+      "decision": {
+        "association": "current_component",
+        "association_approximate": true,
+        "late": false,
+        "predicted_class": "stone",
+        "reject": true,
+        "scheduled": true,
+        "track_id": 36074
+      },
+      "expectation_policy_version": "77ffd68b1915bca56b4bb65e081d0fbd093253ac00f5f8594ed191f0a0a5d2d7",
+      "expected_outcome": "accept",
+      "jet_hits": 0,
+      "object_id": 36583,
+      "outcome": "reject",
+      "overdue": false,
+      "own_pulse_hit": false,
+      "pos": [
+        0.3942885261402089,
+        -0.1382424947246116,
+        0.15963963355247776
+      ],
+      "quat": [
+        0.22770170229843492,
+        0.21183790168985447,
+        -0.6101403248411635,
+        0.7287011885407861
+      ],
+      "rgb": [
+        0.46351924538612366,
+        0.491567999124527,
+        0.3242131471633911
+      ],
+      "shape": "box",
+      "spawn_to_outcome_wall_s": 3.19694820814766
+    },
+    {
+      "active": false,
+      "appearance_key": "155b1160494407cc43e2",
+      "axes": [
+        0.003503814792752744,
+        0.003977632182681897,
+        0.0025529253732699876
+      ],
+      "decision": null,
+      "expectation_policy_version": "77ffd68b1915bca56b4bb65e081d0fbd093253ac00f5f8594ed191f0a0a5d2d7",
+      "expected_outcome": "accept",
+      "jet_hits": 0,
+      "object_id": 36713,
+      "outcome": "reject",
+      "overdue": false,
+      "own_pulse_hit": false,
+      "pos": [
+        0.45719746470674083,
+        0.20865734368712605,
+        0.15884811258373882
+      ],
+      "quat": [
+        0.3584098403821198,
+        0.05333100751153212,
+        -0.040603547557528374,
+        -0.9311549505215625
+      ],
+      "rgb": [
+        0.36247488856315613,
+        0.3590017557144165,
+        0.5180965065956116
+      ],
+      "shape": "box",
+      "spawn_to_outcome_wall_s": 2.277392832795158
+    },
+    {
+      "active": false,
+      "appearance_key": "b4cfafc4cf8f102ecac5",
+      "axes": [
+        0.0045357875630371094,
+        0.002103725221427287,
+        0.0024400096038738727
+      ],
+      "decision": {
+        "association": "current_component",
+        "association_approximate": true,
+        "late": false,
+        "predicted_class": "stone",
+        "reject": true,
+        "scheduled": true,
+        "track_id": 36263
+      },
+      "expectation_policy_version": "77ffd68b1915bca56b4bb65e081d0fbd093253ac00f5f8594ed191f0a0a5d2d7",
+      "expected_outcome": "accept",
+      "jet_hits": 0,
+      "object_id": 36783,
+      "outcome": "reject",
+      "overdue": false,
+      "own_pulse_hit": false,
+      "pos": [
+        0.46732530886049795,
+        0.09185463371837561,
+        0.156937634104196
+      ],
+      "quat": [
+        0.30349270626854935,
+        0.002457201400543563,
+        0.07851122066877848,
+        0.9495905052348445
+      ],
+      "rgb": [
+        0.40259721875190735,
+        0.4425220787525177,
+        0.4179341793060303
+      ],
+      "shape": "box",
+      "spawn_to_outcome_wall_s": 2.547097082948312
+    }
+  ],
+  "provenance": {
+    "policy": {
+      "applied_sim_time_s": 70.15699999997094,
+      "policy_version": "77ffd68b1915bca56b4bb65e081d0fbd093253ac00f5f8594ed191f0a0a5d2d7",
+      "reject_classes": [
+        "good",
+        "faded",
+        "black",
+        "sour",
+        "insect",
+        "broken",
+        "shell",
+        "husk",
+        "stick"
+      ],
+      "score_epoch_id": "77b91bbc-cd89-4677-8185-26dc143e7891",
+      "score_epoch_started_sim_time_s": 70.15699999997094
+    },
+    "seq": 3965,
+    "session_id": "d2be6eae-5cda-4e79-9642-c4c6555c03a5",
+    "sim_time_s": 73.97299999998916,
+    "source": "/tmp/cinta-state-now.json",
+    "source_revision": "c226ec938410326da59cf80c07c89f9d26032287"
+  }
+}

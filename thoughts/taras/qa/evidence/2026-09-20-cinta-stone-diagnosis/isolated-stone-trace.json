@@ -1,0 +1,51 @@
+{
+  "anomaly_enabled": true,
+  "anomaly_score": 412.9916849535655,
+  "anomaly_threshold": 15.652913570562884,
+  "anomaly_triggered": true,
+  "axes_m": [
+    0.004612686981994754,
+    0.002321946182338214,
+    0.002615489094731384
+  ],
+  "class_probabilities": {
+    "black": 2.753406582813069e-08,
+    "broken": 2.84621987486488e-07,
+    "faded": 7.415363595993552e-08,
+    "good": 2.480648726200028e-06,
+    "husk": 2.688718452978568e-08,
+    "insect": 1.0199839563621356e-06,
+    "shell": 1.1020821071531406e-06,
+    "sour": 1.060294065478318e-07,
+    "stick": 1.7466843087653e-08,
+    "stone": 0.999994860592087
+  },
+  "decision_sim_time_s": 0.3040000000000002,
+  "jet_hits": 5,
+  "late": false,
+  "object_id": 0,
+  "outcome": "reject",
+  "own_pulse_hit": true,
+  "policy_version": "77ffd68b1915bca56b4bb65e081d0fbd093253ac00f5f8594ed191f0a0a5d2d7",
+  "predicted_class": "stone",
+  "predicted_confidence": 0.999994860592087,
+  "reject": true,
+  "reject_classes": [
+    "good",
+    "faded",
+    "black",
+    "sour",
+    "insect",
+    "broken",
+    "shell",
+    "husk",
+    "stick"
+  ],
+  "reject_probability": 5.139407913155129e-06,
+  "resolved_sim_time_s": 0.45800000000000035,
+  "scheduled": true,
+  "session_id": "64df86a2-4069-4e25-ab28-b249a9a560ef",
+  "shape": "box",
+  "threshold": 0.8,
+  "truth_class": "stone"
+}
