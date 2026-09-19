@@ -87,11 +87,6 @@ def main() -> None:
     camera.keyframe_insert(data_path="location", frame=1)
     camera.location = end_location
     camera.keyframe_insert(data_path="location", frame=FRAME_COUNT)
-    for curve in camera.animation_data.action.fcurves:
-        for point in curve.keyframe_points:
-            point.interpolation = "BEZIER"
-            point.handle_left_type = "AUTO_CLAMPED"
-            point.handle_right_type = "AUTO_CLAMPED"
     scene.frame_set(1)
 
     record = {
@@ -134,7 +129,7 @@ def main() -> None:
             "end_location": list(end_location),
             "travel_metres": CAMERA_TRAVEL_METRES,
             "rotation_is_fixed": True,
-            "interpolation": "BEZIER_AUTO_CLAMPED",
+            "interpolation": "BLENDER_DEFAULT_BEZIER",
         },
         "direction": direction,
         "render": {
