@@ -13,37 +13,57 @@
   p { margin: 0; color: #a6b4b1; }
   header p { max-width: 750px; }
   label { color: #c8d4ce; white-space: nowrap; font-size: 12px; }
-  .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px 16px; }
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 16px; }
   figure { margin: 0; min-width: 0; }
-  figure.wide { grid-column: span 2; }
   .frame { position: relative; display: block; aspect-ratio: 16/9; overflow: hidden; background: #070b0e; }
   img { display: block; width: 100%; height: 100%; object-fit: contain; }
   figcaption { padding: 10px 0 0; }
   h2 { font-size: 14px; font-weight: 550; margin: 0 0 3px; }
   figcaption p { font-size: 11px; }
+  .transitions { margin-top: 32px; }
+  .transitions > h2 { font-size: 24px; letter-spacing: -.025em; }
+  .transitions > p { margin-bottom: 16px; }
+  .comparisons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+  .comparison { position: relative; aspect-ratio: 16/9; background: #070b0e; }
+  .comparison img { position: absolute; inset: 0; }
+  .comparison .overlay { clip-path: inset(0 50% 0 0); }
+  .comparison .divider { position: absolute; left: 50%; top: 0; bottom: 0; border-left: 1px solid white; }
+  .comparison .tag { position: absolute; top: 12px; padding: 4px 8px; background: #0c171ad9; font-size: 11px; }
+  .comparison .from { left: 12px; }
+  .comparison .to { right: 12px; }
+  .compare-controls { display: flex; align-items: center; gap: 14px; margin: 12px 0; }
+  .compare-controls input { flex: 1; accent-color: #b4d4c5; min-width: 60px; }
+  button { background: #263533; color: #dbe8e1; border: 1px solid #536860; padding: 5px 9px; cursor: pointer; }
+  .downloads { display: flex; gap: 14px; margin-top: 8px; }
+  .downloads a { color: #b4d4c5; font-size: 11px; }
   .marker { position: absolute; width: 14px; height: 14px; border: 1px solid #ffca94; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
   .marker::after { content: attr(data-label); position: absolute; left: 17px; top: -2px; padding: 1px 4px; background: #0d171bdd; color: #ffca94; font: 10px/1.4 system-ui; white-space: nowrap; }
   .marker.good { border-color: #bde9db; }
   .marker.good::after { color: #bde9db; right: 17px; left: auto; }
   .hide-markers .marker { display: none; }
   footer { margin-top: 24px; border-top: 1px solid #33403e; padding-top: 15px; color: #9caeaa; font-size: 11px; }
-  @media (max-width: 850px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } header { display: block; } label { display: block; margin-top: 14px; } }
-  @media (max-width: 480px) { main { padding: 20px; } .grid { grid-template-columns: 1fr; } figure.wide { grid-column: auto; } }
+  @media (max-width: 850px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .comparisons { grid-template-columns: 1fr; } header { display: block; } label { display: block; margin-top: 14px; } }
+  @media (max-width: 480px) { main { padding: 20px; } .grid { grid-template-columns: 1fr; } }
 </style>
 <main>
   <header>
     <div>
       <div class="eyebrow">Coffee sorter / 19 September 2026 / Draft stills</div>
       <h1>From bean detail to the air-jet moment.</h1>
-      <p>Nine Blender renders and one real UI capture. Select an image for its original. No animation is included yet.</p>
+      <p>Nine scene studies plus three matched mode variants. UI recording stays separate. Select an image for its original.</p>
     </div>
     <label><input id="markers" type="checkbox" checked> Show the tracked pair</label>
   </header>
   <div class="grid" id="scenes"></div>
+  <section class="transitions">
+    <h2>Same camera. Different rendering modes.</h2>
+    <p>Drag the controls to preview a wipe. The camera, geometry, and recorded bean poses stay fixed. These are stills, not animated scenes.</p>
+    <div class="comparisons" id="comparisons"></div>
+  </section>
   <footer>
     Ultra slow motion: the three studies retain exact poses at 1.800, 1.834, and 1.900 simulated seconds.
     Review markers identify good bean 1480 and black bean 1470. Cutaways omit chute walls and trim, not beans.
-    The final slow-motion clip needs denser capture and verified pulse contact. The UI uses a different, current engine source.
+    The final slow-motion clip needs denser capture and verified pulse contact.
   </footer>
 </main>
 <script>
@@ -57,16 +77,14 @@
     ['05a-slowmo-belt-edge', '05A / Ultra slow motion: release', '1.800 s. The same black and good bean approach the edge.'],
     ['05b-slowmo-valve-on', '05B / Ultra slow motion: valve ON', '1.834 s. Recorded valve state, not verified bean contact.'],
     ['05c-slowmo-splitter', '05C / Ultra slow motion: separation', '1.900 s. The black bean falls below its good neighbour.'],
-    ['06-ui-reference.png', '06 / Actual continuous UI', 'Real rolling scores. No injection performed. The view remains 2D.', true],
-    ['07-warm-closing', '07 / Warm closing view', 'Whole-machine form study with a uniform clay material.', true],
+    ['07-warm-closing', '07 / Warm closing view', 'Whole-machine form study with a uniform clay material.'],
   ];
   const gallery = document.querySelector('#scenes');
-  for (const [id, title, note, wide] of shots) {
+  for (const [id, title, note] of shots) {
     const figure = document.createElement('figure');
-    if (wide) figure.className = 'wide';
     const frame = document.createElement('a');
     frame.className = 'frame';
-    frame.href = root + (id.endsWith('.png') ? id : `${id}/scene.png`);
+    frame.href = `${root}${id}/scene.png`;
     const image = document.createElement('img');
     image.src = frame.href;
     image.alt = title;
@@ -95,5 +113,65 @@
   document.querySelector('#markers').addEventListener('change', event => {
     document.body.classList.toggle('hide-markers', !event.target.checked);
   });
+  const comparisons = [
+    { title: 'Discharge: blueprint to normal', normal: '04b-normal-discharge', modes: [['04-blueprint-discharge', 'Blueprint']] },
+    { title: 'Closing: blueprint or clay to normal', normal: '07c-normal-closing', modes: [['07b-blueprint-closing', 'Blueprint'], ['07-warm-closing', 'Clay']] },
+  ];
+  for (const spec of comparisons) {
+    const figure = document.createElement('figure');
+    const view = document.createElement('div');
+    view.className = 'comparison';
+    const normal = document.createElement('img');
+    normal.src = `${root}${spec.normal}/scene.png`;
+    normal.alt = `${spec.title}: normal`;
+    const overlay = document.createElement('img');
+    overlay.src = `${root}${spec.modes[0][0]}/scene.png`;
+    overlay.alt = `${spec.title}: blueprint`;
+    overlay.className = 'overlay';
+    const divider = document.createElement('div');
+    divider.className = 'divider';
+    const from = document.createElement('span');
+    from.className = 'tag from';
+    from.textContent = spec.modes[0][1];
+    const to = document.createElement('span');
+    to.className = 'tag to';
+    to.textContent = 'Normal';
+    view.append(normal, overlay, divider, from, to);
+    const controls = document.createElement('div');
+    controls.className = 'compare-controls';
+    const range = document.createElement('input');
+    range.type = 'range';
+    range.min = '0'; range.max = '100'; range.value = '50';
+    range.setAttribute('aria-label', spec.title);
+    range.addEventListener('input', () => {
+      overlay.style.clipPath = `inset(0 ${100 - Number(range.value)}% 0 0)`;
+      divider.style.left = `${range.value}%`;
+    });
+    controls.append(range);
+    if (spec.modes.length > 1) {
+      for (const [id, name] of spec.modes) {
+        const button = document.createElement('button');
+        button.textContent = name;
+        button.addEventListener('click', () => {
+          overlay.src = `${root}${id}/scene.png`;
+          overlay.alt = `${spec.title}: ${name.toLowerCase()}`;
+          from.textContent = name;
+        });
+        controls.append(button);
+      }
+    }
+    const heading = document.createElement('h2');
+    heading.textContent = spec.title;
+    const downloads = document.createElement('div');
+    downloads.className = 'downloads';
+    for (const [id, name] of [...spec.modes, [spec.normal, 'Normal']]) {
+      const link = document.createElement('a');
+      link.href = `${root}${id}/scene.png`;
+      link.textContent = `${name} PNG`;
+      downloads.append(link);
+    }
+    figure.append(view, controls, heading, downloads);
+    document.querySelector('#comparisons').append(figure);
+  }
 </script>
 </html>

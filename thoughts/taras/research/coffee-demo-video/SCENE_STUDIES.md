@@ -57,5 +57,8 @@ Taras approved the board. These stills now provide the next composition review b
 ## Completed concrete preview
 
 The current pass includes the macro, both reveal positions, overhead, blueprint, three slow-motion moments, and warm closing.
-A screenshot of the actual continuous UI completes the scene set.
+Taras will record the UI separately. It is outside this render set.
 Every rendered bean retains its source pose. No new animation or simulation ran for this pass.
+The discharge now has matched blueprint and normal versions.
+The closing view has matched clay, blueprint, and normal versions.
+The gallery provides wipe controls so Taras can inspect their transition alignment.
