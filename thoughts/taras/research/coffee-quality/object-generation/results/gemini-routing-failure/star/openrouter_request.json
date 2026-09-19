@@ -1,0 +1,126 @@
+{
+  "model": "google/gemini-3.8-flash",
+  "temperature": 0,
+  "max_tokens": 10000,
+  "provider": {
+    "require_parameters": true
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": "Design a small object as a JSON geometry recipe for a trusted Blender renderer.\nReturn only schema-compliant JSON. Do not return Python, URLs, file paths, or executable code.\nChoose the parts, geometry, materials, and placement yourself. Use at most 12 parts.\nAll dimensions and positions use millimeters. Every part has its origin at its geometric center.\nrotation_deg is XYZ Euler rotation. size_mm specifies the local bounding dimensions.\nring: lies in local XY with its hole along Z. tube_mm is the tube radius, positive and smaller\nthan one quarter of the minimum XY dimension. size_mm Z must equal twice tube_mm.\nellipsoid: size_mm gives the three full diameters. cylinder: axis is local Z.\npolygon: outline is a simple non-self-intersecting boundary of XY pairs in [-0.5,0.5].\nThe renderer multiplies each coordinate by size_mm X/Y, without normalizing its bounds.\nIt extrudes the boundary symmetrically to the requested size_mm Z. List points in boundary order.\ntext: text uses Blender's default font, fitted to size_mm X/Y, with thickness size_mm Z.\nbox: rectangular solid. Use outline=[] except for polygons, text='' except for text,\nand tube_mm=0 except for rings. color is sRGB, three values between 0 and 1.\nUse plausible metallic and roughness values. Ensure attached parts intersect slightly.\nAvoid coplanar surfaces. Raised elements must touch their base, with visible thickness.\nAll parts must form the requested assembly. Do not include a floor, camera, lights, or labels.\n"
+    },
+    {
+      "role": "user",
+      "content": "A small five-point gold star token, about 18 mm wide and 2 mm thick. Make one continuous solid with five clear points and five concave valleys. Lay the silhouette in the XY plane.\nPreliminary text classification from Jev: {\"geometry_family\": {\"type\": \"choice\", \"choice\": \"flat_silhouette\", \"confidence\": 0.99, \"probabilities\": {\"flat_silhouette\": 1.0, \"layered_badge\": 0.0, \"open_ring\": 0.0, \"defer\": 0.0}}}"
+    }
+  ],
+  "response_format": {
+    "type": "json_schema",
+    "json_schema": {
+      "name": "blender_object_recipe",
+      "strict": true,
+      "schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "design_notes": {
+            "type": "string"
+          },
+          "parts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "ring",
+                    "ellipsoid",
+                    "box",
+                    "cylinder",
+                    "polygon",
+                    "text"
+                  ]
+                },
+                "position_mm": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "rotation_deg": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "size_mm": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "color": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "metallic": {
+                  "type": "number"
+                },
+                "roughness": {
+                  "type": "number"
+                },
+                "tube_mm": {
+                  "type": "number"
+                },
+                "outline": {
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    }
+                  }
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "kind",
+                "position_mm",
+                "rotation_deg",
+                "size_mm",
+                "color",
+                "metallic",
+                "roughness",
+                "tube_mm",
+                "outline",
+                "text"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "name",
+          "design_notes",
+          "parts"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "reasoning": {
+    "effort": "low"
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "recipe_name": "Gold Hoop Earring with Turquoise Pendant",
+  "engine": "CYCLES",
+  "samples": 24,
+  "blender_version": "5.2.2 LTS",
+  "blender_build_hash": "d13f752e3b9c",
+  "seed": 20260919,
+  "recipe_sha256": "5c58625c4df23c41a41b3eff7042071da254d26418fe9e4949d6e1074c4cf2d7",
+  "renderer_sha256": "42924fc046d5fd500c55e4517089bc138ca9c880f12cb18d8389a4290320499b",
+  "scene_threads": {
+    "mode": "FIXED",
+    "threads": 1
+  },
+  "mesh_counts": {
+    "objects": 3,
+    "vertices": 2258,
+    "polygons": 2242
+  },
+  "bounding_dimensions_mm": [
+    24.0,
+    24.0,
+    19.0
+  ],
+  "part_bounds_mm": [
+    {
+      "name": "Hoop",
+      "minimum_mm": [
+        -12.0,
+        -12.0,
+        16.0
+      ],
+      "maximum_mm": [
+        12.0,
+        12.0,
+        19.0
+      ],
+      "dimensions_mm": [
+        24.0,
+        24.0,
+        3.0
+      ]
+    },
+    {
+      "name": "Turquoise Pendant",
+      "minimum_mm": [
+        -4.000004291534424,
+        -4.000003337860107,
+        0.0
+      ],
+      "maximum_mm": [
+        4.000001430511475,
+        4.00000524520874,
+        8.0
+      ],
+      "dimensions_mm": [
+        8.000005722045898,
+        8.000008583068848,
+        8.0
+      ]
+    },
+    {
+      "name": "Pendant Attachment",
+      "minimum_mm": [
+        -1.0,
+        -1.0,
+        4.5
+      ],
+      "maximum_mm": [
+        1.0,
+        1.0,
+        6.5
+      ],
+      "dimensions_mm": [
+        2.0,
+        2.0,
+        2.0
+      ]
+    }
+  ],
+  "glb_units": "meters",
+  "glb_scale_from_recipe_mm": 0.001,
+  "render_timings_seconds": {
+    "perspective": 20.895614083157852,
+    "top": 22.162521542049944,
+    "total": 43.0581356252078
+  }
+}

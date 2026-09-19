@@ -1,0 +1,8 @@
+{
+  "kind": "mechanical_closure_normalization",
+  "source_response": "results/qwen/star/openrouter_response.json",
+  "source_sha256": "742b1214af3f661c69ff650ab914955afb442d5cfc5d03a1e55c8deb3d552428",
+  "removed_repeated_closing_vertices": 1,
+  "new_provider_call": false,
+  "explanation": "Remove a redundant last vertex identical to the first. Keep every other field and vertex unchanged. This changes representation without changing the intended closed boundary."
+}

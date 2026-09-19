@@ -1,0 +1,250 @@
+{
+  "name": "nova_company_logo_badge",
+  "design_notes": "A 26mm midnight-blue badge featuring a raised geometric N emblem, a gold five-pointed star accent, and crisp NOVA typography on its front face.",
+  "parts": [
+    {
+      "name": "base_disk",
+      "kind": "cylinder",
+      "position_mm": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        26.0,
+        26.0,
+        2.0
+      ],
+      "color": [
+        0.02,
+        0.04,
+        0.12
+      ],
+      "metallic": 0.1,
+      "roughness": 0.35,
+      "tube_mm": 0.0,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "outer_rim",
+      "kind": "ring",
+      "position_mm": [
+        0.0,
+        0.0,
+        2.0
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        25.4,
+        25.4,
+        0.8
+      ],
+      "color": [
+        0.85,
+        0.7,
+        0.25
+      ],
+      "metallic": 0.9,
+      "roughness": 0.25,
+      "tube_mm": 0.4,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "logo_n_left_stem",
+      "kind": "box",
+      "position_mm": [
+        -3.5,
+        2.8,
+        2.3
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        1.4,
+        7.5,
+        0.8
+      ],
+      "color": [
+        0.95,
+        0.96,
+        0.98
+      ],
+      "metallic": 0.15,
+      "roughness": 0.2,
+      "tube_mm": 0.0,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "logo_n_right_stem",
+      "kind": "box",
+      "position_mm": [
+        3.5,
+        2.8,
+        2.3
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        1.4,
+        7.5,
+        0.8
+      ],
+      "color": [
+        0.95,
+        0.96,
+        0.98
+      ],
+      "metallic": 0.15,
+      "roughness": 0.2,
+      "tube_mm": 0.0,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "logo_n_diagonal",
+      "kind": "box",
+      "position_mm": [
+        0.0,
+        2.8,
+        2.3
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        -43.0
+      ],
+      "size_mm": [
+        1.4,
+        9.8,
+        0.8
+      ],
+      "color": [
+        0.95,
+        0.96,
+        0.98
+      ],
+      "metallic": 0.15,
+      "roughness": 0.2,
+      "tube_mm": 0.0,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "gold_star_accent",
+      "kind": "polygon",
+      "position_mm": [
+        4.8,
+        6.8,
+        2.35
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        3.2,
+        3.2,
+        0.9
+      ],
+      "color": [
+        0.95,
+        0.78,
+        0.22
+      ],
+      "metallic": 0.85,
+      "roughness": 0.22,
+      "tube_mm": 0.0,
+      "outline": [
+        [
+          0.0,
+          0.5
+        ],
+        [
+          0.118,
+          0.162
+        ],
+        [
+          0.476,
+          0.155
+        ],
+        [
+          0.19,
+          -0.062
+        ],
+        [
+          0.294,
+          -0.405
+        ],
+        [
+          0.0,
+          -0.2
+        ],
+        [
+          -0.294,
+          -0.405
+        ],
+        [
+          -0.19,
+          -0.062
+        ],
+        [
+          -0.476,
+          0.155
+        ],
+        [
+          -0.118,
+          0.162
+        ]
+      ],
+      "text": ""
+    },
+    {
+      "name": "nova_text",
+      "kind": "text",
+      "position_mm": [
+        0.0,
+        -4.5,
+        2.3
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        12.0,
+        3.0,
+        0.8
+      ],
+      "color": [
+        0.95,
+        0.96,
+        0.98
+      ],
+      "metallic": 0.15,
+      "roughness": 0.2,
+      "tube_mm": 0.0,
+      "outline": [],
+      "text": "NOVA"
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "name": "Five-Point Star Token",
+  "design_notes": "A small, continuous, five-point gold star token, approximately 18 mm wide and 2 mm thick, with clear points and concave valleys, lying in the XY plane.",
+  "parts": [
+    {
+      "name": "Star Body",
+      "kind": "polygon",
+      "position_mm": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        18.0,
+        18.0,
+        2.0
+      ],
+      "color": [
+        0.8,
+        0.6,
+        0.1
+      ],
+      "metallic": 0.9,
+      "roughness": 0.2,
+      "tube_mm": 0.0,
+      "outline": [
+        [
+          0.0,
+          0.5
+        ],
+        [
+          0.22,
+          0.15
+        ],
+        [
+          0.4,
+          0.15
+        ],
+        [
+          0.28,
+          -0.05
+        ],
+        [
+          0.35,
+          -0.4
+        ],
+        [
+          0.0,
+          -0.18
+        ],
+        [
+          -0.35,
+          -0.4
+        ],
+        [
+          -0.28,
+          -0.05
+        ],
+        [
+          -0.4,
+          0.15
+        ],
+        [
+          -0.22,
+          0.15
+        ]
+      ],
+      "text": ""
+    }
+  ]
+}

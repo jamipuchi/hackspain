@@ -1,0 +1,60 @@
+{
+  "response": {
+    "id": "gen-1789837256-6z4sKfRSPnXWCrX7YTRz",
+    "object": "chat.completion",
+    "created": 1789837256,
+    "model": "google/gemini-3.8-flash",
+    "provider": "Google",
+    "system_fingerprint": null,
+    "service_tier": "default",
+    "choices": [
+      {
+        "index": 0,
+        "logprobs": null,
+        "finish_reason": "stop",
+        "native_finish_reason": "STOP",
+        "message": {
+          "role": "assistant",
+          "content": "{\n  \"name\": \"gold_hoop_with_turquoise_pendant\",\n  \"design_notes\": \"Small gold hoop earring lying in the XY plane with an open gap (modeled via segmented curved cylinders/arc segments and end caps) and an attached lower bail ring holding a polished turquoise spherical bead pendant. The overall assembly fits neatly within a 28 mm bounding box.\",\n  \"parts\": [\n    {\n      \"name\": \"hoop_main_body\",\n      \"kind\": \"ring\",\n      \"position_mm\": [0.0, 3.5, 0.0],\n      \"rotation_deg\": [0.0, 0.0, 0.0],\n      \"size_mm\": [14.0, 14.0, 1.4],\n      \"color\": [0.95, 0.75, 0.25],\n      \"metallic\": 0.95,\n      \"roughness\": 0.18,\n      \"tube_mm\": 0.7,\n      \"outline\": [],\n      \"text\": \"\"\n    },\n    {\n      \"name\": \"opening_gap_cutout_visualizer\",\n      \"kind\": \"cylinder\",\n      \"position_mm\": [0.0, 10.5, 0.0],\n      \"rotation_deg\": [0.0, 0.0, 90.0],\n      \"size_mm\": [1.8, 1.8, 0.4],\n      \"color\": [0.95, 0.75, 0.25],\n      \"metallic\": 0.95,\n      \"roughness\": 0.2,\n      \"tube_mm\": 0.0,\n      \"outline\": [],\n      \"text\": \"\"\n    },\n    {\n      \"name\": \"earring_post_wire\",\n      \"kind\": \"cylinder\",\n      \"position_mm\": [1.4, 9.8, 0.0],\n      \"rotation_deg\": [0.0, 0.0, 50.0],\n      \"size_mm\": [0.65, 0.65, 3.2],\n      \"color\": [0.92, 0.72, 0.24],\n      \"metallic\": 0.95,\n      \"roughness\": 0.2,\n      \"tube_mm\": 0.0,\n      \"outline\": [],\n      \"text\": \"\"\n    },\n    {\n      \"name\": \"post_closure_notch\",\n      \"kind\": \"ellipsoid\",\n      \"position_mm\": [-2.2, 9.8, 0.0],\n      \"rotation_deg\": [0.0, 0.0, 0.0],\n      \"size_mm\": [1.2, 1.2, 1.2],\n      \"color\": [0.95, 0.75, 0.25],\n      \"metallic\": 0.95,\n      \"roughness\": 0.25,\n      \"tube_mm\": 0.0,\n      \"outline\": [],\n      \"text\": \"\"\n    },\n    {\n      \"name\": \"bail_ring\",\n      \"kind\": \"ring\",\n      \"position_mm\": [0.0, -3.8, 0.0],\n      \"rotation_deg\": [90.0, 0.0, 0.0],\n      \"size_mm\": [3.2, 3.2, 0.6],\n      \"color\": [0.95, 0.75, 0.25],\n      \"metallic\": 0.95,\n      \"roughness\": 0.2,\n      \"tube_mm\": 0.3,\n      \"outline\": [],\n      \"text\": \"\"\n    },\n    {\n      \"name\": \"pendant_cap_top\",\n      \"kind\": \"cylinder\",\n      \"position_mm\": [0.0, -5.6, 0.0],\n      \"rotation_deg\": [0.0, 0.0, 0.0],\n      \"size_mm\": [2.6, 2.6, 0.6],\n      \"color\": [0.95, 0.75, 0.25],\n      \"metallic\": 0.95,\n      \"roughness\": 0.2,\n      \"tube_mm\": 0.0,\n      \"outline\": [],\n      \"text\": \"\"\n    },\n    {\n      \"name\": \"turquoise_bead\",\n      \"kind\": \"ellipsoid\",\n      \"position_mm\": [0.0, -8.6, 0.0],\n      \"rotation_deg\": [0.0, 0.0, 0.0],\n      \"size_mm\": [6.0, 6.0, 6.0],\n      \"color\": [0.08, 0.65, 0.62],\n      \"metallic\": 0.05,\n      \"roughness\": 0.3,\n      \"tube_mm\": 0.0,\n      \"outline\": [],\n      \"text\": \"\"\n    },\n    {\n      \"name\": \"pendant_pin_end\",\n      \"kind\": \"ellipsoid\",\n      \"position_mm\": [0.0, -11.7, 0.0],\n      \"rotation_deg\": [0.0, 0.0, 0.0],\n      \"size_mm\": [1.4, 1.4, 1.4],\n      \"color\": [0.95, 0.75, 0.25],\n      \"metallic\": 0.95,\n      \"roughness\": 0.2,\n      \"tube_mm\": 0.0,\n      \"outline\": [],\n      \"text\": \"\"\n    }\n  ]\n}",
+          "refusal": null,
+          "reasoning": null,
+          "reasoning_details": [
+            {
+              "type": "reasoning.text",
+              "signature": "AY89a19ke9LoTkYS/AYR1ux5I06Y0RNUfeZguEYUFvRo7QyrPYNy0kJfI6bf+aa0Ogv/Zi89VwpUNKQkqWQzoNa5I3OdWbzQPjt5+snX",
+              "format": "google-gemini-v1",
+              "index": 0
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 968,
+      "completion_tokens": 1403,
+      "total_tokens": 2371,
+      "cost": 0.00598725,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.00598725,
+        "upstream_inference_prompt_cost": 0.000726,
+        "upstream_inference_completions_cost": 0.00526125
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    }
+  },
+  "latency_s": 8.168534124968573,
+  "request_sha256": "aedd782062cabd2c5e4e7c7f1fef41b7171f42624a788e680c06fd85fa41b03b",
+  "endpoint": "https://openrouter.ai/api/v1/chat/completions",
+  "cached": true
+}

@@ -154,6 +154,7 @@ def main():
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--case", choices=list(CASES) + ["all"], default="all")
     parser.add_argument("--model", default="google/gemini-2.5-flash-lite")
+    parser.add_argument("--max-tokens", type=int, default=10000)
     parser.add_argument("--live", action="store_true", help="Permit new billable requests. Cached requests never repeat.")
     args = parser.parse_args()
     keys = credentials(args.env_file)
@@ -197,7 +198,7 @@ def main():
         context = classification.get("response", {}).get("answers", classification)
         prompt = CASES[case] + "\nPreliminary text classification from Jev: " + json.dumps(context)
         payload = {
-            "model": args.model, "temperature": 0, "max_tokens": 10000,
+            "model": args.model, "temperature": 0, "max_tokens": args.max_tokens,
             "provider": {"require_parameters": True},
             "messages": [{"role": "system", "content": SYSTEM}, {"role": "user", "content": prompt}],
             "response_format": {"type": "json_schema", "json_schema": {
@@ -206,6 +207,9 @@ def main():
         }
         if args.model != "google/gemini-2.5-flash-lite":
             payload["reasoning"] = {"effort": "low"}
+        if args.model == "google/gemini-3.8-flash":
+            # The available Vertex endpoint does not advertise temperature support.
+            payload.pop("temperature")
         save(folder / "openrouter_request.json", payload)
         result = call(OPENROUTER_URL, keys["OPENROUTER_API_KEY"], payload, args.out, args.live)
         save(folder / "openrouter_response.json", result)

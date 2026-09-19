@@ -1,0 +1,221 @@
+{
+  "name": "NOVA company logo badge",
+  "design_notes": "Midnight-blue disk with raised white geometric N, NOVA lettering, and gold star accent",
+  "parts": [
+    {
+      "name": "disk",
+      "kind": "cylinder",
+      "position_mm": [
+        0,
+        0,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "size_mm": [
+        26,
+        26,
+        2.0
+      ],
+      "color": [
+        0.06,
+        0.08,
+        0.22
+      ],
+      "metallic": 0.3,
+      "roughness": 0.4,
+      "tube_mm": 0,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "n_left_stroke",
+      "kind": "box",
+      "position_mm": [
+        -2.2,
+        1.5,
+        1.3
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "size_mm": [
+        1.6,
+        7.0,
+        0.8
+      ],
+      "color": [
+        0.95,
+        0.95,
+        0.95
+      ],
+      "metallic": 0.1,
+      "roughness": 0.3,
+      "tube_mm": 0,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "n_diagonal",
+      "kind": "box",
+      "position_mm": [
+        0,
+        1.5,
+        1.3
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        -32
+      ],
+      "size_mm": [
+        1.6,
+        8.2,
+        0.8
+      ],
+      "color": [
+        0.95,
+        0.95,
+        0.95
+      ],
+      "metallic": 0.1,
+      "roughness": 0.3,
+      "tube_mm": 0,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "n_right_stroke",
+      "kind": "box",
+      "position_mm": [
+        2.2,
+        1.5,
+        1.3
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "size_mm": [
+        1.6,
+        7.0,
+        0.8
+      ],
+      "color": [
+        0.95,
+        0.95,
+        0.95
+      ],
+      "metallic": 0.1,
+      "roughness": 0.3,
+      "tube_mm": 0,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "nova_text",
+      "kind": "text",
+      "position_mm": [
+        0,
+        -4.5,
+        1.2
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "size_mm": [
+        10,
+        2.8,
+        0.6
+      ],
+      "color": [
+        0.95,
+        0.95,
+        0.95
+      ],
+      "metallic": 0.1,
+      "roughness": 0.3,
+      "tube_mm": 0,
+      "outline": [],
+      "text": "NOVA"
+    },
+    {
+      "name": "star",
+      "kind": "polygon",
+      "position_mm": [
+        7.5,
+        6.0,
+        1.3
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "size_mm": [
+        4.0,
+        4.0,
+        0.8
+      ],
+      "color": [
+        0.85,
+        0.65,
+        0.13
+      ],
+      "metallic": 0.8,
+      "roughness": 0.25,
+      "tube_mm": 0,
+      "outline": [
+        [
+          0.0,
+          0.5
+        ],
+        [
+          0.118,
+          0.162
+        ],
+        [
+          0.476,
+          0.155
+        ],
+        [
+          0.19,
+          0.062
+        ],
+        [
+          0.294,
+          -0.405
+        ],
+        [
+          0.0,
+          -0.162
+        ],
+        [
+          -0.294,
+          -0.405
+        ],
+        [
+          -0.19,
+          0.062
+        ],
+        [
+          -0.476,
+          0.155
+        ],
+        [
+          -0.118,
+          0.162
+        ]
+      ],
+      "text": ""
+    }
+  ]
+}
