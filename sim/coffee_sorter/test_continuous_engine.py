@@ -161,6 +161,35 @@ class ContinuousRetentionTest(unittest.TestCase):
         engine._event = lambda *args, **kwargs: None
         return engine
 
+    def test_class_catalog_previews_use_profile_midpoints_and_shape_axes(self):
+        engine = Engine.__new__(Engine)
+        engine.profile = PROFILES["green_arabica"]
+
+        catalog = {item["name"]: item for item in engine.class_catalog()}
+
+        self.assertEqual(catalog["good"]["preview"], {
+            "schema_version": 1,
+            "source": "profile",
+            "shape": "ellipsoid",
+            "axes_m": [0.0049, 0.00355, 0.00255],
+            "rgb": [0.5, 0.6, 0.46],
+        })
+        self.assertEqual(catalog["broken"]["preview"]["shape"], "half")
+        self.assertEqual(catalog["broken"]["preview"]["axes_m"], [
+            0.0049, 0.00355, 0.00255,
+        ])
+        self.assertEqual(catalog["stone"]["preview"]["shape"], "box")
+        self.assertEqual(catalog["stone"]["preview"]["axes_m"], [
+            0.00375, 0.003, 0.0025,
+        ])
+        self.assertEqual(catalog["stick"]["preview"], {
+            "schema_version": 1,
+            "source": "profile",
+            "shape": "capsule",
+            "axes_m": [0.012, 0.00115, 0.00115],
+            "rgb": [0.42, 0.3, 0.16],
+        })
+
     def test_policy_change_starts_isolated_score_epoch_and_excludes_in_flight(self):
         engine = self.policy_engine()
 

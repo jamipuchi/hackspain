@@ -189,10 +189,22 @@ class Engine:
         return _json_hash({"base": asdict(self.policy), "reject_classes": self.reject_classes})
 
     def class_catalog(self):
-        return [
-            {"name": item.name, "defect": bool(item.defect), "severity": item.severity}
-            for item in self.profile.classes
-        ]
+        catalog = []
+        for item in self.profile.classes:
+            axes_m = [round((low + high) * 0.5e-3, 9) for low, high in item.size_mm]
+            catalog.append({
+                "name": item.name,
+                "defect": bool(item.defect),
+                "severity": item.severity,
+                "preview": {
+                    "schema_version": 1,
+                    "source": "profile",
+                    "shape": item.shape,
+                    "axes_m": axes_m,
+                    "rgb": [float(channel) for channel in item.rgb],
+                },
+            })
+        return catalog
 
     def reject_policy(self):
         return {
