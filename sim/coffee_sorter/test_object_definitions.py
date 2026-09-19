@@ -137,6 +137,10 @@ class ObjectDefinitionTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "shape is unsupported"):
             self.build_star(physics_proposal=proposal)
 
+        proposal["shape"] = "ellipsoid"
+        with self.assertRaisesRegex(ValueError, "shape is unsupported"):
+            self.build_star(physics_proposal=proposal)
+
         value = self.build_star()
         value["lifecycle_state"] = "active"
         with self.assertRaisesRegex(ValueError, "draft and unreviewed"):

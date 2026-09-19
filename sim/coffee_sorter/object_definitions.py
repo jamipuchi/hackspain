@@ -16,7 +16,7 @@ from typing import Any, Mapping, Sequence
 
 
 SCHEMA_VERSION = 1
-SUPPORTED_PROXY_SHAPES = frozenset({"ellipsoid", "box", "capsule"})
+SUPPORTED_PROXY_SHAPES = frozenset({"box", "capsule"})
 SIM_FROM_ASSET_QUATERNION_WXYZ = (
     0.7071067811865476,
     0.7071067811865476,
@@ -28,7 +28,7 @@ _OBJECT_KEY_RE = re.compile(r"^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
 PHYSICS_PROPOSAL_SCHEMA = {
     "type": "object",
     "properties": {
-        "shape": {"type": "string", "enum": ["ellipsoid", "box", "capsule", "unsupported"]},
+        "shape": {"type": "string", "enum": ["box", "capsule", "unsupported"]},
         "dimensions_m": {
             "type": "array",
             "items": {"type": "number", "minimum": 0.000001, "maximum": 1.0},
@@ -48,7 +48,7 @@ PHYSICS_PROPOSAL_SCHEMA = {
 }
 PHYSICS_SYSTEM_PROMPT = """Propose a draft collision proxy for a generated small object.
 Return only schema-compliant JSON. Use dimensions in meters.
-Choose ellipsoid, box, or capsule only when that primitive meaningfully represents collisions.
+Choose box or capsule only when that primitive meaningfully represents collisions.
 For a capsule, dimensions are total length, diameter, diameter. Its local axis is +Z.
 Use unsupported for rings, multipart objects, or meaningful openings that primitives cannot preserve.
 Density is an explicit material assumption. It is not a measurement.
@@ -73,7 +73,7 @@ def build_object_definition(
 ) -> dict[str, Any]:
     """Build one validated draft definition from existing generator artifacts.
 
-    ``physics_proposal`` may select ellipsoid, box, capsule, or unsupported.
+    ``physics_proposal`` may select box, capsule, or unsupported.
     Supported proposals use full dimensions in meters and a positive density.
     """
     recipe_file = Path(recipe_path)
@@ -458,10 +458,7 @@ def _validate_physics(physics: Mapping[str, Any]) -> None:
 
     proxy = _mapping(physics["proxy"], "physics.proxy")
     shape = proxy.get("shape")
-    if shape == "ellipsoid":
-        _exact_fields(proxy, {"shape", "semi_axes_m"}, "physics.proxy")
-        dimensions = [2 * value for value in _positive_vector(proxy["semi_axes_m"], "physics.proxy.semi_axes_m")]
-    elif shape == "box":
+    if shape == "box":
         _exact_fields(proxy, {"shape", "half_extents_m"}, "physics.proxy")
         dimensions = [2 * value for value in _positive_vector(proxy["half_extents_m"], "physics.proxy.half_extents_m")]
     elif shape == "capsule":
@@ -490,9 +487,6 @@ def _validate_physics(physics: Mapping[str, Any]) -> None:
 
 def _proxy_and_volume(shape: str, dimensions: Sequence[float]) -> tuple[dict[str, Any], float]:
     x, y, z = dimensions
-    if shape == "ellipsoid":
-        semi_axes = [x / 2, y / 2, z / 2]
-        return {"shape": shape, "semi_axes_m": semi_axes}, 4 / 3 * math.pi * math.prod(semi_axes)
     if shape == "box":
         half_extents = [x / 2, y / 2, z / 2]
         return {"shape": shape, "half_extents_m": half_extents}, 8 * math.prod(half_extents)

@@ -26,11 +26,12 @@ The current engine supports these reusable proxy primitives.
 
 | Shape | Input dimensions | Stored proxy fields |
 | --- | --- | --- |
-| Ellipsoid | Three full diameters in meters | `semi_axes_m` |
 | Box | Three full dimensions in meters | `half_extents_m` |
 | Capsule | Total length, diameter, diameter in meters | `radius_m`, `half_length_m`, local `+Z` axis |
 
 Use `unsupported` when these primitives do not preserve meaningful geometry. Rings and multipart objects usually need that result.
+
+The engine's visible ellipsoid uses a separate hidden capsule collider. This API does not treat the visual ellipsoid as a collision proxy.
 
 The API computes `mass_kg` as density times collision-proxy volume. This is a proxy-based estimate.
 
@@ -88,7 +89,7 @@ The evidence directory stores an immutable request and normalized proposal. Neit
 proposal = propose_physics(
     description="A small five-point gold star token.",
     visual_dimensions_m=[0.0169496, 0.0161209, 0.002],
-    evidence_dir="/private/tmp/coffee-object-definition-physics-smoke",
+    evidence_dir="/private/tmp/coffee-object-definition-physics-smoke-v2",
     env_file=".env",
     live=False,
 )
@@ -96,11 +97,11 @@ proposal = propose_physics(
 
 The bounded live smoke used Gemini 3.8 Flash. It returned a schema-valid box proposal.
 
-The request SHA-256 is `cb64ef8da96955228b4e7086e3b239d2f44889d15517df2b9b8fdad1cdaddf0d`.
+The request SHA-256 is `0778635c802a96bd0bca95805dec15812fb4bd239ad777aa41f45a1177e7d5dc`.
 
 The proposal assumed solid gold density and produced a 0.010502674 kg proxy mass. That physical assumption is not validated.
 
-Smoke evidence remains at `/private/tmp/coffee-object-definition-physics-smoke`. The cached replay completed without another provider request.
+Smoke evidence remains at `/private/tmp/coffee-object-definition-physics-smoke-v2`. The cached replay completed without another provider request.
 
 ## Jaume integration handoff
 
