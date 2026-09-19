@@ -29,12 +29,12 @@
     "fps": 60,
     "file_paths": [],
     "zone": [
-      936,
-      272,
-      1157,
-      385
+      984,
+      263,
+      1162,
+      391
     ],
-    "px_per_mm": 6.0,
+    "px_per_mm": 4.3,
     "flow_axis": "-x",
     "trigger_frac": 0.5
   },
