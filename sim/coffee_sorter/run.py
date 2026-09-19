@@ -206,7 +206,8 @@ def cmd_run(a, return_metrics=False):
                   base_pulse=a.base_pulse_ms / 1000,
                   induced_delay=a.controller_delay_ms / 1000,
                   fixed_latency=(a.fixed_controller_latency_ms / 1000
-                                 if a.fixed_controller_latency_ms is not None else None))
+                                 if a.fixed_controller_latency_ms is not None else None),
+                  target_nozzles=a.target_nozzles)
     sim = SorterSim(P, L, rate=a.rate, seed=a.seed)
     insp = Inspector(sim)
     ctrl = Controller(sim, insp, model, pol, jet_force=a.jet_force)
@@ -336,6 +337,7 @@ def cmd_run(a, return_metrics=False):
                    availability="fixed minimum total latency" if pol.fixed_latency is not None else
                                 "4 ms exposure/transfer + measured controller CPU + induced delay",
                    pulse_queue="t_on=max(nominal_on,t_available)", camera_backlog_modeled=False,
+                   late_definition="reject result available more than 2 ms after predicted t_fire",
                    rendering_in_measured_latency=False, ground_truth_evaluation_in_measured_latency=False),
                decision_scope="all camera frames; bean outcome metrics use the explicit eligible cohort")
     (out / "metrics.json").write_text(json.dumps(res, indent=1, default=float))
@@ -439,6 +441,8 @@ def main():
                        help="minimum total exposure-to-availability latency (real measured compute still wins)")
         p.add_argument("--jet-force", type=float, default=JET_FORCE)
         p.add_argument("--base-pulse-ms", type=float, default=3.0)
+        p.add_argument("--target-nozzles", type=int, choices=(1, 2, 3),
+                       help="override adaptive 1-3 valves opened per reject target")
         p.add_argument("--split-z-drop", type=float, default=Layout.split_z_drop)
         p.add_argument("--nozzles", type=int, default=Layout.n_nozzles)
         p.add_argument("--pool-ellipsoid", type=int, default=Layout.n_ellipsoid)

@@ -73,6 +73,24 @@ when the host provides a working EGL driver. The detector check compares every
 feature and blob coordinate exactly against `cad5f9b`, then reports timing on a
 camera frame when available. The timing target is hardware dependent.
 
+Reproduce the overnight experiments in the same environment:
+
+```bash
+.venv/bin/python run.py bench --rates 500,1000,2000,3000 --seconds 4 --name rate-sweep
+.venv/bin/python run_characterization.py latency
+.venv/bin/python run_characterization.py tuning
+.venv/bin/python plot_characterization.py rate --group-dir runs/rate-sweep --output runs/rate-sweep/rate_summary.png
+.venv/bin/python plot_characterization.py latency --group-dir runs/latency-sweep --output runs/latency-sweep/latency_summary.png
+```
+
+The batch runner resumes only after validating a complete run's metrics,
+decisions, evidence and six images. It reruns incomplete experiment directories.
+Use a process supervisor with automatic restart disabled for long batches.
+`--controller-delay-ms` adds simulated availability delay; the
+`--fixed-controller-latency-ms` option imposes a minimum total latency and never
+hides slower measured CPU work. `--target-nozzles` fixes valves per target;
+`--nozzles` changes the physical bank size. They are different experiments.
+
 ## What the system handles (variability)
 
 - 10 classes in the feed, with continuous variation in size (screen 14–18), colour, texture, orientation (random yaw + tilt), and position on a 0.5 m wide belt.

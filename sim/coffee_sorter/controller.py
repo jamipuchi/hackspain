@@ -26,7 +26,8 @@ class Policy:
     lead: float = 0.0015             # open the valve this early (jet rise time)
     latency_floor: float = 0.004     # s: camera exposure + transfer, even if compute is instant
     induced_delay: float = 0.0       # s: controlled extra availability delay for deadline experiments
-    fixed_latency: float | None = None  # s: imposed total exposure-to-availability latency
+    fixed_latency: float | None = None  # s: minimum total exposure-to-availability latency
+    target_nozzles: int | None = None   # experiment override; default adapts 1-3 to position/mass
 
 
 COMMERCIAL = Policy("commercial", ("major", "foreign"))
@@ -183,6 +184,10 @@ class Controller:
                     nozzles.append(j + (1 if off > 0 else -1))
                 if mass > 0.0005:
                     nozzles.append(j - (1 if off > 0 else -1))
+                if pol.target_nozzles is not None:
+                    direction = 1 if off > 0 else -1
+                    candidates = [j, j + direction, j - direction, j + 2 * direction, j - 2 * direction]
+                    nozzles = [nz for nz in candidates if 0 <= nz < L.n_nozzles][:pol.target_nozzles]
                 t_on = t_fire - pol.lead
                 if t_available > t_fire + 0.002:
                     late = True                                   # bean already past the jets

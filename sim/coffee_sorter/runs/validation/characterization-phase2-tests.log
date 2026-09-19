@@ -6,6 +6,7 @@ test_fixed_latency_is_a_minimum_and_never_hides_slower_compute (test_controller.
 test_induced_delay_changes_availability_and_prevents_late_pulse (test_controller.ControllerTest.test_induced_delay_changes_availability_and_prevents_late_pulse) ... ok
 test_latency_adds_capture_delay_and_includes_finalize (test_controller.ControllerTest.test_latency_adds_capture_delay_and_includes_finalize) ... ok
 test_target_nozzle_override_opens_exact_requested_count (test_controller.ControllerTest.test_target_nozzle_override_opens_exact_requested_count) ... ok
+test_target_nozzle_override_stays_in_range_at_both_bank_edges (test_controller.ControllerTest.test_target_nozzle_override_stays_in_range_at_both_bank_edges) ... ok
 test_explicit_activation_flag_overrides_window_inference (test_evidence.ValveEvidenceTest.test_explicit_activation_flag_overrides_window_inference) ... ok
 test_keep_and_unclassified_have_no_fire (test_evidence.ValveEvidenceTest.test_keep_and_unclassified_have_no_fire) ... ok
 test_late_reject_is_not_claimed_as_fired (test_evidence.ValveEvidenceTest.test_late_reject_is_not_claimed_as_fired) ... ok
@@ -25,6 +26,6 @@ test_inspector_keeps_off_strip_skins_culled (test_render.RenderGroupsTest.test_i
 test_overview_shows_inspection_culled_skins (test_render.RenderGroupsTest.test_overview_shows_inspection_culled_skins) ... ok
 
 ----------------------------------------------------------------------
-Ran 25 tests in 0.116s
+Ran 26 tests in 0.132s
 
 OK
