@@ -93,6 +93,12 @@ The physics section accepts only contact-enabled shapes that the engine supports
 
 Physics dimensions and mass remain unmeasured estimates. The UI and stored definition label their proxy-based basis.
 
+Before training, validate dimensions, density, mass, contact geometry, and finite numeric bounds together.
+
+A seeded no-air route must reach `Accept` in the defined isolated machine fixture. This is a minimum compatibility gate, not a guarantee under every collision.
+
+Representative load tests use the reviewed continuous preset. Their results do not guarantee acceptance for every feed interaction.
+
 The existing draft builder can populate a draft definition. Only the shared loader can create an active `ClassSpec` adapter.
 
 Migrate existing built-ins into data files without changing their values. Loader tests compare every derived field with the current Python definitions.
@@ -182,9 +188,45 @@ activation_conflict
 failed
 ```
 
+```mermaid
+stateDiagram-v2
+    [*] --> queued
+    queued --> generating_recipe
+    generating_recipe --> interrupted_uncertain: provider result uncertain
+    interrupted_uncertain --> generating_recipe: exact cache or explicit resolution
+    generating_recipe --> waiting_for_render
+    waiting_for_render --> rendering_previews
+    rendering_previews --> preview_ready
+    preview_ready --> proposing_physics
+    proposing_physics --> validating_physics
+    validating_physics --> physics_blocked: unsupported proxy
+    validating_physics --> queued_for_training: validation passed
+    queued_for_training --> training
+    training --> validating_candidate
+    validating_candidate --> waiting_for_replacement: no current Keep victim
+    waiting_for_replacement --> queued_for_training: victim selected
+    validating_candidate --> draining_for_activation: candidate passed
+    validating_candidate --> activation_conflict: stale model or catalog
+    draining_for_activation --> replacement_conflict: victim changed
+    draining_for_activation --> activating
+    activating --> active
+    generating_recipe --> failed: safe retry exhausted
+    rendering_previews --> failed: safe retry exhausted
+    training --> failed: safe retry exhausted
+    activating --> failed: rollback completed
+```
+
 The service never auto-retries a provider request after an interrupted or uncertain call. A user must resolve that state.
 
 Cached exact-request evidence can resume without billing. A new provider request requires a new explicit action.
+
+Retry a safe transient failure once. Safe failures include a renderer or trainer process failure, or a generator failure before any provider submission.
+
+Never auto-retry when provider submission or billing is uncertain. Preserve `interrupted_uncertain` until exact cached evidence or an explicit new request resolves it.
+
+Persist the attempt number, lease deadline, provider submission status, timestamps, and terminal error. Release an expired worker lease and continue later jobs.
+
+A stalled job cannot block the queue indefinitely. Retain every failed job visibly after the single safe retry is exhausted.
 
 Expose these errors without hiding the retained job:
 
@@ -227,6 +269,16 @@ Collapsed details show:
 The existing class rows show only name, `Keep` or `Reject`, and pending or error cues.
 
 IDs, severity, dimensions, evidence, and policy versions stay inside collapsed details.
+
+The modal uses three item views:
+
+- **Active**: current types with compact `Keep` or `Reject` controls
+- **Queue**: generated-item jobs, previews, requester, progress, timestamps, failures, and recovery actions
+- **Wall of Fame**: immutable inactive assets and provenance, loaded through bounded pages
+
+The Wall of Fame shows newest entries first. It uses thumbnails and one selected rotating preview, not one WebGL context per card.
+
+Inactive definitions remain read-only. Startup never promotes Wall of Fame entries into the active catalog.
 
 ## Replacement and activation rules
 
@@ -275,10 +327,17 @@ Prior score rows remain historical evidence. The service does not claim score co
 ### Changes
 
 1. Add a small schema and loader module under `sim/coffee_sorter/`.
-2. Store built-in definitions and active ordering as validated JSON data.
-3. Derive the existing `Profile` and `ClassSpec` adapters from loaded definitions.
-4. Keep the draft generator separate from activation.
-5. Reject unsupported proxies, duplicate IDs, duplicate labels, invalid units, and mismatched hashes.
+2. Use `sim/coffee_sorter/object_catalog/` as the default configurable catalog root.
+3. Load exactly one validated active manifest from `<object_catalog_root>/active/catalog.json`.
+4. Resolve active definitions only from `<object_catalog_root>/definitions/<object_type_id>.json` and their declared hashes.
+5. Store inactive immutable assets under `<object_catalog_root>/wall-of-fame/<object_type_id>/`.
+6. Store built-in definitions and active ordering as validated JSON data.
+7. Archive each replaced type with its definition, GLB, previews, provenance, model evidence, and retirement timestamp.
+8. Derive the existing `Profile` and `ClassSpec` adapters from loaded definitions.
+9. Keep the draft generator separate from activation.
+10. Reject unsupported proxies, duplicate IDs, duplicate labels, invalid units, and mismatched hashes.
+
+The loader never scans arbitrary JSON for activation. Only the active manifest can select active definitions.
 
 ### Acceptance criteria
 
@@ -288,6 +347,8 @@ Prior score rows remain historical evidence. The service does not claim score co
 - Catalog length equals `max_active_types`.
 - Model label order must equal active catalog label order.
 - No definition file can execute Python.
+- Replaced types remain available in bounded Wall of Fame pages without increasing the active type count.
+- Restart loads only the validated active manifest. It never activates archived definitions.
 
 ### Verification
 
@@ -341,14 +402,19 @@ Use fake provider and renderer adapters for retries, crashes, and queue limits. 
 
 ### Changes
 
-1. Validate the proposed contact proxy against supported engine shapes and numeric bounds.
-2. Mark unsupported or invalid definitions as `physics_blocked` with actionable evidence.
-3. Queue training automatically after physics validation succeeds.
-4. Hold one filesystem training lease across all jobs.
-5. Bind the latest catalog and last current `Keep` victim when the training turn begins.
-6. Train labels in the exact final newest-first catalog order.
-7. Validate holdout coverage, manifest hashes, preset compatibility, and source provenance.
-8. Publish training progress and failures to the Items modal.
+1. Validate dimensions, density, mass, contact geometry, supported shapes, and finite numeric bounds together.
+2. Run a seeded no-air route in the defined isolated machine fixture before training.
+3. Run representative load checks under the reviewed continuous preset after the isolated route passes.
+4. Mark unsupported or invalid definitions as `physics_blocked` with actionable evidence.
+5. Use a tracked ring fixture based on the existing Gemini earring visual asset.
+6. Require `physics_unsupported` while the engine lacks an honest contact proxy for the ring opening.
+7. Never describe a solid box or capsule approximation as measured ring physics.
+8. Queue training automatically after physics validation succeeds.
+9. Hold one filesystem training lease across all jobs.
+10. Bind the latest catalog and last current `Keep` victim when the training turn begins.
+11. Train labels in the exact final newest-first catalog order.
+12. Validate holdout coverage, manifest hashes, preset compatibility, source provenance, and anomaly behavior.
+13. Publish training progress and failures to the Items modal.
 
 ### Acceptance criteria
 
@@ -361,13 +427,29 @@ Use fake provider and renderer adapters for retries, crashes, and queue limits. 
 - Generated beauty renders never count as classifier evidence.
 - A later stale baseline blocks activation and requires retraining against the new baseline.
 - Failed training leaves the active bundle untouched.
+- The isolated no-air fixture reaches `Accept` without a jet before a supported definition becomes training-ready.
+- The ring fixture stays blocked until a reviewed contact proxy represents its meaningful geometry.
+- A newly allowed class must pass the active anomaly threshold as well as classifier-label checks.
+- Candidate validation blocks routine anomaly rejection. It never hides the problem through an unreviewed threshold change.
+
+A recognized Stone reached 99.9995% classifier confidence but still rejected because its anomaly score was `412.9917` above `15.6529`.
+
+This result proves label compatibility alone is insufficient. Candidate validation must exercise both classifier and anomaly paths.
 
 ### Verification
 
 ```sh
 cd sim/coffee_sorter
 /Users/taras/Documents/code/hackspain/.venv-coffee/bin/python -m unittest \
-  test_item_jobs.py test_object_catalog.py test_generalization.py test_live.py -v
+  test_item_jobs.py test_object_catalog.py test_generated_physics.py \
+  test_generalization.py test_live.py -v
+/Users/taras/Documents/code/hackspain/.venv-coffee/bin/python validate_object_route.py \
+  --definition tests/fixtures/generated_ring/definition.json \
+  --expect physics_unsupported
+/Users/taras/Documents/code/hackspain/.venv-coffee/bin/python validate_object_route.py \
+  --definition tests/fixtures/generated_box/definition.json \
+  --preset configs/continuous_demo.json \
+  --seed 8 --no-air --background-rate 0 --expect accept
 /Users/taras/Documents/code/hackspain/.venv-coffee/bin/python bootstrap_model.py --help
 cd ../..
 git diff --check
@@ -376,6 +458,10 @@ git diff --check
 Record independent holdout results, per-label coverage, and artifact hashes before candidate validation succeeds.
 
 ## Phase 4: Activate one compatible candidate
+
+Activation makes one validated type available to the running sorter. It replaces one current `Keep` type and starts a matching catalog, model, policy, and score epoch.
+
+Activation does not rewrite objects already on the belt. It does not activate failed, archived, or unsupported definitions.
 
 ### Changes
 
@@ -444,6 +530,30 @@ curl --fail http://127.0.0.1:8899/health
 curl --fail http://127.0.0.1:8899/state
 ```
 
+### Items modal checks
+
+1. Open `http://127.0.0.1:8899` and open the existing Items modal.
+2. Confirm **Active** shows every active type with `Keep` or `Reject` and a pending or error cue.
+3. Confirm **Queue** shows the request, requester, preview, state, progress, timestamps, failure, and one primary action.
+4. Confirm a selected item uses one rotating preview while cards use thumbnails.
+5. Confirm **Wall of Fame** loads inactive entries in bounded pages and never changes the active count.
+6. Submit the ring fixture and confirm it becomes `physics_blocked` with `physics_unsupported`.
+7. Force one safe renderer failure and confirm one retry occurs before the retained terminal failure.
+8. Simulate an uncertain provider result and confirm no automatic retry or second billable request occurs.
+9. Confirm later queued jobs continue after either terminal failure.
+
+### Deployment implications
+
+The implementation updates `thoughts/taras/deployment/hack-growth.dev/README.md` before deployment.
+
+The host needs a persistent writable catalog and job root. It also needs immutable active bundles, provider secrets, and bounded worker resources.
+
+Generation, rendering, and training workers remain separate from the live engine worker. Paid Add item controls require the existing access and Origin checks.
+
+Activation uses one coordinated replacement of the canonical `8899` service. Deployment never starts a duplicate listener.
+
+The active manifest and Wall of Fame require backup and restore checks. Archived definitions remain inactive after restart.
+
 Taras verifies these points:
 
 1. The Items modal shows the shared queue, requester, timestamp, progress, and early previews.
@@ -461,5 +571,8 @@ Taras verifies these points:
 13. A pre-stop failure preserves the previous running session and score epoch.
 14. A post-stop failure restores the prior bundle with a fresh session and score epoch.
 15. The activated session starts a fresh score epoch with matching model and policy versions.
+16. The Active, Queue, and Wall of Fame views match the same server state.
+17. A supported candidate passes the seeded no-air route and records representative load evidence.
+18. Candidate evidence includes classifier-label and anomaly validation.
 
 Taras owns final functional acceptance.
