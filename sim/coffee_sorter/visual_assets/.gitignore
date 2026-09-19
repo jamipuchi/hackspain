@@ -1,2 +1,5 @@
 __pycache__/
 *.blend1
+recording/frame_*.png
+!recording/frame_001.png
+!recording/coffee-one-second.mp4

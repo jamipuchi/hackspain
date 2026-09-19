@@ -1,0 +1,8 @@
+test_glbs_have_one_draw_and_embedded_pbr_maps (test_delivery.DeliveryTests.test_glbs_have_one_draw_and_embedded_pbr_maps) ... ok
+test_movie_and_poster (test_delivery.DeliveryTests.test_movie_and_poster) ... ok
+test_native_recording_and_events (test_delivery.DeliveryTests.test_native_recording_and_events) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.067s
+
+OK

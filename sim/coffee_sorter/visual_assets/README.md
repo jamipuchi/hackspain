@@ -2,6 +2,8 @@
 
 Four original presentation meshes for green arabica, black, insect-damaged and broken beans. This package is separate from the simulator and inspection-camera pipeline. Taras owns visual acceptance; these stills are review material, not classifier validation or a cinematic film.
 
+Deliverable B adds a [one-second recorded-motion proof, GLB browser LODs, mapping and recording recipe](RECORDING.md). The stills and hero library below remain unchanged.
+
 ## Reproduce
 
 Use Blender 4.5.4 LTS. No Python pip dependencies or external textures are required by the asset scripts. All materials are procedural and saved in the `.blend` files.
@@ -81,7 +83,7 @@ Delivered on the explicitly requested base `4dbc350d6586f33c3030de44a346c3d7caa0
 
 References and reuse decisions: [REFERENCES.md](REFERENCES.md). No reference imagery is included or used as a texture.
 
-No existing simulation, classifier, inspection-camera material, controller, exporter or viewer file is modified. Integration into the replay viewer is a later visual-only step. No app deployment or movie is included.
+No existing simulation, classifier, inspection-camera material, controller, exporter or viewer file is modified. Integration into the replay viewer is a later visual-only step. Deliverable B includes only a one-second movie proof; no app deployment or full film is included.
 
 ## Measured delivery
 

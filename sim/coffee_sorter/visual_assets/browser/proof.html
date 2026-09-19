@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Coffee GLB instancing proof</title>
+<style>body{margin:0;background:#e8e5de;color:#272723;font:16px system-ui}main{padding:20px}h1{font-size:24px;margin:0 0 8px}button{padding:8px 16px;margin:8px 8px 8px 0}canvas{display:block;width:100%;height:70vh}pre{white-space:pre-wrap}p{max-width:850px}</style>
+<script type="importmap">{"imports":{"three":"../../web/vendor/three.module.js"}}</script>
+<main><h1>Baked GLB prototypes</h1>
+<p>Good, black, insect-damaged, broken (left to right). Separate browser LODs; hero meshes stay unchanged. This synthetic asset benchmark uses four InstancedMesh draws, not simulation trajectories.</p>
+<button id="inspect">Inspect four beans</button><button id="stress">552 instances</button>
+<div id="stage"></div><pre id="stats">Loading local GLBs…</pre></main>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from './vendor/loaders/GLTFLoader.js';
+const stats = document.querySelector('#stats');
+try {
+  const renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(1);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1;
+  document.querySelector('#stage').append(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color('#e8e5de');
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x636051, 2.5));
+  const key = new THREE.DirectionalLight(0xffeed5, 3);
+  key.position.set(-1, -2, 4); scene.add(key);
+  const camera = new THREE.PerspectiveCamera(35, 1, .0001, 10);
+  camera.up.set(0,0,1);
+  const loader = new GLTFLoader(), meshes = [], assets = [];
+  for (const kind of ['good','black','insect','broken']) {
+    const gltf = await loader.loadAsync(`./bean_${kind}_lod.glb`);
+    gltf.scene.updateMatrixWorld(true);
+    const parts = []; gltf.scene.traverse(obj => {if (obj.isMesh) parts.push(obj);});
+    if(parts.length !== 1 || Array.isArray(parts[0].material)) throw Error(`${kind}: expected one primitive/material`);
+    const part = parts[0];
+    // Flatten any GLB node transform, then undo Blender's Z-up -> glTF Y-up conversion.
+    const geometry = part.geometry.clone().applyMatrix4(part.matrixWorld).rotateX(Math.PI/2);
+    geometry.computeBoundingBox();
+    assets.push({kind,triangles:geometry.index.count/3,bounds:geometry.boundingBox,
+      basecolor:!!part.material.map,normal:!!part.material.normalMap,roughness:!!part.material.roughnessMap});
+    const mesh = new THREE.InstancedMesh(geometry, part.material, 138);
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    mesh.frustumCulled = false; scene.add(mesh); meshes.push(mesh);
+  }
+  const dummy = new THREE.Object3D();
+  let count = 1, samples = [], previous;
+  function setCount(value) {
+    count = value; samples = []; previous = undefined;
+    camera.position.set(0, value === 1 ? -.034 : -.25, value === 1 ? .045 : .34);
+    camera.lookAt(0,0,0);
+    for(let c=0;c<4;c++) {
+      const mesh=meshes[c]; mesh.count=count;
+      for(let i=0;i<count;i++) {
+        dummy.position.set((c-1.5)*(count===1?.013:.06)+(count===1?0:(i%6-2.5)*.009), count===1?0:(Math.floor(i/6)-11)*.009, 0);
+        dummy.rotation.set(count===1&&c===3?2.9:0,0, count===1?-.25:(i%5)*.5);
+        dummy.scale.set(1,1,1); dummy.updateMatrix(); mesh.setMatrixAt(i,dummy.matrix);
+      }
+      mesh.instanceMatrix.needsUpdate=true;
+    }
+  }
+  document.querySelector('#inspect').onclick=()=>setCount(1);
+  document.querySelector('#stress').onclick=()=>setCount(138);
+  setCount(1);
+  const gl=renderer.getContext(), debug=gl.getExtension('WEBGL_debug_renderer_info');
+  const gpu=debug?gl.getParameter(debug.UNMASKED_RENDERER_WEBGL):'unknown';
+  function render(now) {
+    const width=document.querySelector('#stage').clientWidth, height=Math.round(innerHeight*.7);
+    if(renderer.domElement.width!==width||renderer.domElement.height!==height)renderer.setSize(width,height,false);
+    camera.aspect=width/height; camera.updateProjectionMatrix();
+    renderer.render(scene,camera);
+    if(previous!==undefined && samples.length<180)samples.push(now-previous);
+    previous=now;
+    const sorted=[...samples].sort((a,b)=>a-b);
+    window.proof={ready:true,instances:4*count,calls:renderer.info.render.calls,
+      triangles:renderer.info.render.triangles,samples:samples.length,
+      medianFrameMs:sorted[Math.floor(sorted.length/2)]??null,p95FrameMs:sorted[Math.floor(sorted.length*.95)]??null,
+      viewport:[width,height],gpu,assets};
+    stats.textContent=JSON.stringify(window.proof,null,2);
+    requestAnimationFrame(render);
+  }
+  requestAnimationFrame(render);
+} catch(error) {stats.textContent=error.stack; window.proof={error:String(error)}; throw error;}
+</script></html>
