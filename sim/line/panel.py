@@ -115,13 +115,30 @@ class DoorOnD6:
         if self.pos == pos and not force:
             return "already " + pos
         self.pos = pos
+        if self.positional():
+            return self.hold(self.cfg.gate.flush_deg if pos == "CLOSED" else self.cfg.gate.open_deg, pos)
         self.angle = self.cfg.gate.flush_deg if pos == "CLOSED" else self.cfg.gate.open_deg
         return self._pulse(-1 if pos == "CLOSED" else +1, self.cfg.door_d6_close_ms if pos == "CLOSED" else self.cfg.door_d6_open_ms, pos)
 
+    def positional(self) -> bool:
+        return getattr(self.cfg, "door_d6_mode", "continuous") == "positional"
+
+    def hold(self, deg: int, what: str) -> str:
+        """Positional servo on D6: command the angle through the C mapping (deg = 90 + 0.9*sp) and KEEP it attached."""
+        deg = max(0, min(180, int(deg)))
+        self.angle = deg
+        self.n_translated += 1
+        reply = self.inner.cmd(f"C {self.deg_to_speed(deg)}")
+        log(f"door→D6 {what}: hold {deg}° as C {self.deg_to_speed(deg)} → {reply.strip()}")
+        return reply
+
     def nudge(self, towards: str, ms: int) -> str:
-        """Operator calibration: spin towards OPEN or CLOSED for `ms` (position becomes unknown until set)."""
+        """Operator calibration. Continuous: spin towards OPEN/CLOSED for `ms`. Positional: step the held angle by `ms` degrees."""
         closed = towards.upper().startswith("CLOSE")
         self.pos = None
+        if self.positional():
+            step = max(1, min(30, int(ms)))
+            return self.hold(self.angle + (-step if closed else step), f"nudge→{'CLOSED' if closed else 'OPEN'}")
         return self._pulse(-1 if closed else +1, max(10, min(600, int(ms))), f"nudge→{'CLOSED' if closed else 'OPEN'}")
 
     def cmd(self, line: str) -> str:
@@ -129,8 +146,12 @@ class DoorOnD6:
         if p and p[0] == "S" and len(p) == 4:
             deg = max(0, min(180, int(float(p[self.IDX.get(self.cfg.gate.channel, 1)]))))
             self.n_translated += 1
+            gate_open = abs(deg - self.cfg.gate.open_deg) < abs(deg - self.cfg.gate.flush_deg)  # what the gate driver asked for
+            if self.positional():
+                go_closed = gate_open if getattr(self.cfg, "action_position", "closed") == "closed" else not gate_open
+                self.pos = "CLOSED" if go_closed else "OPEN"
+                return self.hold(self.cfg.gate.flush_deg if go_closed else self.cfg.gate.open_deg, self.pos)
             if getattr(self.cfg, "door_d6_mode", "continuous") == "continuous":
-                gate_open = abs(deg - self.cfg.gate.open_deg) < abs(deg - self.cfg.gate.flush_deg)  # what the gate driver asked for
                 # the gate driver "opens" to act on a bean; the operator chooses which physical position that is
                 go_closed = gate_open if getattr(self.cfg, "action_position", "closed") == "closed" else not gate_open
                 if self.pos == ("CLOSED" if go_closed else "OPEN"):
@@ -172,7 +193,7 @@ class DoorOnD6:
 
     def status(self) -> dict:
         d = dict(self.inner.status())
-        d.update({"name": f"{d.get('name', '?')} +door-on-D6", "door_pos": self.pos or "unknown", "pulse_timing": "MCU (T)" if self._t_support else ("host (C/sleep/C 0)" if self._t_support is False else "unknown"), "door_deg": self.angle, "door_speed_cmd": self.deg_to_speed(self.angle), "translated": self.n_translated})
+        d.update({"name": f"{d.get('name', '?')} +door-on-D6", "door_pos": self.pos or "unknown", "mode": getattr(self.cfg, "door_d6_mode", "continuous"), "pulse_timing": "MCU (T)" if self._t_support else ("host (C/sleep/C 0)" if self._t_support is False else "unknown"), "door_deg": self.angle, "door_speed_cmd": self.deg_to_speed(self.angle), "translated": self.n_translated})
         if isinstance(d.get("pos"), list) and len(d["pos"]) == 3:
             d["pos"][self.IDX.get(self.cfg.gate.channel, 1) - 1] = self.angle
         return d
@@ -183,7 +204,8 @@ class DoorOnD6:
 
     def close(self) -> None:
         try:
-            self.inner.cmd("C 0")  # continuous servo: make sure it is not spinning when we leave
+            if not self.positional():
+                self.inner.cmd("C 0")  # continuous servo: make sure it is not spinning when we leave (positional: keep holding)
         finally:
             self.inner.close()
 
