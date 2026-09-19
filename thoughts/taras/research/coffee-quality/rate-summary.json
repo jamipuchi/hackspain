@@ -1,0 +1,469 @@
+{
+  "all_rates_completed": true,
+  "finished_at_utc": "2026-09-19T15:28:21.005958+00:00",
+  "initial_activity": {
+    "active": false,
+    "health": {
+      "error": null,
+      "reachable": true,
+      "session_id": "6eec7354-d53a-402c-a613-99174a4ce818",
+      "status": "completed"
+    },
+    "processes": []
+  },
+  "kind": "development_feed_rate_comparison",
+  "manifest": "/private/tmp/hackspain-coffee-quality/thoughts/taras/research/coffee-quality/freeze.json",
+  "manifest_sha256": "6ea14b673f0481241e7afab68f2cb89d8ef93fff1206e2f37e26d87a3b7610bc",
+  "max_wall_seconds_per_rate": 300.0,
+  "not_acceptance": true,
+  "rate_results": [
+    {
+      "metrics": {
+        "admitted_rate": 9.999999999999437,
+        "capture": {
+          "count": [
+            7,
+            7
+          ],
+          "interval_95": [
+            0.6456611570247934,
+            1.0
+          ]
+        },
+        "cohort": {
+          "captured_required_defects": 7,
+          "eligible_objects": 46,
+          "good_objects_lost": 0,
+          "inclusive": true,
+          "keep_objects": 39,
+          "required_defects": 7,
+          "spawn_window_s": [
+            0.8,
+            5.400000000000339
+          ],
+          "spills_in_denominators": true,
+          "unresolved_in_denominators": true,
+          "unresolved_objects": 0
+        },
+        "engine_rate": 0.5026461422102961,
+        "good_loss": {
+          "count": [
+            0,
+            39
+          ],
+          "interval_95": [
+            0.0,
+            0.08966985360023902
+          ]
+        },
+        "late_decisions": 0,
+        "max_control_compute_ms": 40.870499797165394,
+        "max_control_compute_note": "This is measured detection, inference, and control compute time. It excludes the policy 4 ms availability floor. Decision evidence does not record availability timestamps.",
+        "object_classification": {
+          "accuracy": 0.9782608695652174,
+          "association_note": "Approximate associated predictions only. Objects with no associated prediction or multiple predicted classes are excluded.",
+          "correct": 45,
+          "coverage": 1.0,
+          "evaluated": 46
+        },
+        "physical_sorting": {
+          "accuracy": 1.0,
+          "correct": 46,
+          "definition": "Required defects captured plus keep objects accepted, divided by eligible objects.",
+          "eligible": 46
+        },
+        "wall_seconds": 11.93682691687718
+      },
+      "report": "rate-10/report.json",
+      "requested_rate": 10,
+      "simulation_seconds": 6.000000000000338,
+      "stop_reason": null
+    },
+    {
+      "metrics": {
+        "admitted_rate": 49.99999999999718,
+        "capture": {
+          "count": [
+            34,
+            35
+          ],
+          "interval_95": [
+            0.8546659090672868,
+            0.9949386386341466
+          ]
+        },
+        "cohort": {
+          "captured_required_defects": 34,
+          "eligible_objects": 230,
+          "good_objects_lost": 3,
+          "inclusive": true,
+          "keep_objects": 195,
+          "required_defects": 35,
+          "spawn_window_s": [
+            0.8,
+            5.400000000000339
+          ],
+          "spills_in_denominators": true,
+          "unresolved_in_denominators": true,
+          "unresolved_objects": 0
+        },
+        "engine_rate": 0.4746767439961884,
+        "good_loss": {
+          "count": [
+            3,
+            195
+          ],
+          "interval_95": [
+            0.005245617814625864,
+            0.044249055332240786
+          ]
+        },
+        "late_decisions": 0,
+        "max_control_compute_ms": 33.149251248687506,
+        "max_control_compute_note": "This is measured detection, inference, and control compute time. It excludes the policy 4 ms availability floor. Decision evidence does not record availability timestamps.",
+        "object_classification": {
+          "accuracy": 0.9782608695652174,
+          "association_note": "Approximate associated predictions only. Objects with no associated prediction or multiple predicted classes are excluded.",
+          "correct": 225,
+          "coverage": 1.0,
+          "evaluated": 230
+        },
+        "physical_sorting": {
+          "accuracy": 0.9826086956521739,
+          "correct": 226,
+          "definition": "Required defects captured plus keep objects accepted, divided by eligible objects.",
+          "eligible": 230
+        },
+        "wall_seconds": 12.640181082999334
+      },
+      "report": "rate-50/report.json",
+      "requested_rate": 50,
+      "simulation_seconds": 6.000000000000338,
+      "stop_reason": null
+    },
+    {
+      "metrics": {
+        "admitted_rate": 99.8333333333277,
+        "capture": {
+          "count": [
+            45,
+            51
+          ],
+          "interval_95": [
+            0.766188977022052,
+            0.9449500123582724
+          ]
+        },
+        "cohort": {
+          "captured_required_defects": 45,
+          "eligible_objects": 461,
+          "good_objects_lost": 9,
+          "inclusive": true,
+          "keep_objects": 410,
+          "required_defects": 51,
+          "spawn_window_s": [
+            0.8,
+            5.400000000000339
+          ],
+          "spills_in_denominators": true,
+          "unresolved_in_denominators": true,
+          "unresolved_objects": 0
+        },
+        "engine_rate": 0.41663860744745607,
+        "good_loss": {
+          "count": [
+            9,
+            410
+          ],
+          "interval_95": [
+            0.011590603129970399,
+            0.041187077992468714
+          ]
+        },
+        "late_decisions": 0,
+        "max_control_compute_ms": 35.14491696842015,
+        "max_control_compute_note": "This is measured detection, inference, and control compute time. It excludes the policy 4 ms availability floor. Decision evidence does not record availability timestamps.",
+        "object_classification": {
+          "accuracy": 0.9606986899563319,
+          "association_note": "Approximate associated predictions only. Objects with no associated prediction or multiple predicted classes are excluded.",
+          "correct": 440,
+          "coverage": 0.9934924078091106,
+          "evaluated": 458
+        },
+        "physical_sorting": {
+          "accuracy": 0.9674620390455532,
+          "correct": 446,
+          "definition": "Required defects captured plus keep objects accepted, divided by eligible objects.",
+          "eligible": 461
+        },
+        "wall_seconds": 14.400969791924581
+      },
+      "report": "rate-100/report.json",
+      "requested_rate": 100,
+      "simulation_seconds": 6.000000000000338,
+      "stop_reason": null
+    },
+    {
+      "metrics": {
+        "admitted_rate": 199.99999999998872,
+        "capture": {
+          "count": [
+            126,
+            135
+          ],
+          "interval_95": [
+            0.8781534131281653,
+            0.9645335049136897
+          ]
+        },
+        "cohort": {
+          "captured_required_defects": 126,
+          "eligible_objects": 920,
+          "good_objects_lost": 22,
+          "inclusive": true,
+          "keep_objects": 785,
+          "required_defects": 135,
+          "spawn_window_s": [
+            0.8,
+            5.400000000000339
+          ],
+          "spills_in_denominators": true,
+          "unresolved_in_denominators": true,
+          "unresolved_objects": 0
+        },
+        "engine_rate": 0.33411692723750924,
+        "good_loss": {
+          "count": [
+            22,
+            785
+          ],
+          "interval_95": [
+            0.018579170964087524,
+            0.042068746184298164
+          ]
+        },
+        "late_decisions": 0,
+        "max_control_compute_ms": 37.16362500563264,
+        "max_control_compute_note": "This is measured detection, inference, and control compute time. It excludes the policy 4 ms availability floor. Decision evidence does not record availability timestamps.",
+        "object_classification": {
+          "accuracy": 0.9780941949616648,
+          "association_note": "Approximate associated predictions only. Objects with no associated prediction or multiple predicted classes are excluded.",
+          "correct": 893,
+          "coverage": 0.9923913043478261,
+          "evaluated": 913
+        },
+        "physical_sorting": {
+          "accuracy": 0.966304347826087,
+          "correct": 889,
+          "definition": "Required defects captured plus keep objects accepted, divided by eligible objects.",
+          "eligible": 920
+        },
+        "wall_seconds": 17.957785167032853
+      },
+      "report": "rate-200/report.json",
+      "requested_rate": 200,
+      "simulation_seconds": 6.000000000000338,
+      "stop_reason": null
+    },
+    {
+      "metrics": {
+        "admitted_rate": 249.9999999999859,
+        "capture": {
+          "count": [
+            145,
+            157
+          ],
+          "interval_95": [
+            0.871161128363673,
+            0.9557393749886937
+          ]
+        },
+        "cohort": {
+          "captured_required_defects": 145,
+          "eligible_objects": 1150,
+          "good_objects_lost": 42,
+          "inclusive": true,
+          "keep_objects": 993,
+          "required_defects": 157,
+          "spawn_window_s": [
+            0.8,
+            5.400000000000339
+          ],
+          "spills_in_denominators": true,
+          "unresolved_in_denominators": true,
+          "unresolved_objects": 0
+        },
+        "engine_rate": 0.3037792653178376,
+        "good_loss": {
+          "count": [
+            42,
+            993
+          ],
+          "interval_95": [
+            0.031441858083011746,
+            0.05667805986583791
+          ]
+        },
+        "late_decisions": 0,
+        "max_control_compute_ms": 35.91812518425286,
+        "max_control_compute_note": "This is measured detection, inference, and control compute time. It excludes the policy 4 ms availability floor. Decision evidence does not record availability timestamps.",
+        "object_classification": {
+          "accuracy": 0.9458515283842794,
+          "association_note": "Approximate associated predictions only. Objects with no associated prediction or multiple predicted classes are excluded.",
+          "correct": 1083,
+          "coverage": 0.9956521739130435,
+          "evaluated": 1145
+        },
+        "physical_sorting": {
+          "accuracy": 0.9530434782608695,
+          "correct": 1096,
+          "definition": "Required defects captured plus keep objects accepted, divided by eligible objects.",
+          "eligible": 1150
+        },
+        "wall_seconds": 19.751183457905427
+      },
+      "report": "rate-250/report.json",
+      "requested_rate": 250,
+      "simulation_seconds": 6.000000000000338,
+      "stop_reason": null
+    },
+    {
+      "metrics": {
+        "admitted_rate": 399.99999999997743,
+        "capture": {
+          "count": [
+            237,
+            266
+          ],
+          "interval_95": [
+            0.8478098595481891,
+            0.9230127267394701
+          ]
+        },
+        "cohort": {
+          "captured_required_defects": 237,
+          "eligible_objects": 1840,
+          "good_objects_lost": 82,
+          "inclusive": true,
+          "keep_objects": 1574,
+          "required_defects": 266,
+          "spawn_window_s": [
+            0.8,
+            5.400000000000339
+          ],
+          "spills_in_denominators": true,
+          "unresolved_in_denominators": true,
+          "unresolved_objects": 0
+        },
+        "engine_rate": 0.24088468151144693,
+        "good_loss": {
+          "count": [
+            82,
+            1574
+          ],
+          "interval_95": [
+            0.042167934022862424,
+            0.06420624194004793
+          ]
+        },
+        "late_decisions": 0,
+        "max_control_compute_ms": 36.14291804842651,
+        "max_control_compute_note": "This is measured detection, inference, and control compute time. It excludes the policy 4 ms availability floor. Decision evidence does not record availability timestamps.",
+        "object_classification": {
+          "accuracy": 0.9399563318777293,
+          "association_note": "Approximate associated predictions only. Objects with no associated prediction or multiple predicted classes are excluded.",
+          "correct": 1722,
+          "coverage": 0.9956521739130435,
+          "evaluated": 1832
+        },
+        "physical_sorting": {
+          "accuracy": 0.9396739130434782,
+          "correct": 1729,
+          "definition": "Required defects captured plus keep objects accepted, divided by eligible objects.",
+          "eligible": 1840
+        },
+        "wall_seconds": 24.908184125088155
+      },
+      "report": "rate-400/report.json",
+      "requested_rate": 400,
+      "simulation_seconds": 6.000000000000338,
+      "stop_reason": null
+    },
+    {
+      "metrics": {
+        "admitted_rate": 499.9999999999718,
+        "capture": {
+          "count": [
+            293,
+            346
+          ],
+          "interval_95": [
+            0.8050794898008737,
+            0.8809452711194972
+          ]
+        },
+        "cohort": {
+          "captured_required_defects": 293,
+          "eligible_objects": 2300,
+          "good_objects_lost": 99,
+          "inclusive": true,
+          "keep_objects": 1954,
+          "required_defects": 346,
+          "spawn_window_s": [
+            0.8,
+            5.400000000000339
+          ],
+          "spills_in_denominators": true,
+          "unresolved_in_denominators": true,
+          "unresolved_objects": 0
+        },
+        "engine_rate": 0.21291550731339765,
+        "good_loss": {
+          "count": [
+            99,
+            1954
+          ],
+          "interval_95": [
+            0.04179227812134736,
+            0.061301659610898195
+          ]
+        },
+        "late_decisions": 0,
+        "max_control_compute_ms": 48.560041934251785,
+        "max_control_compute_note": "This is measured detection, inference, and control compute time. It excludes the policy 4 ms availability floor. Decision evidence does not record availability timestamps.",
+        "object_classification": {
+          "accuracy": 0.9444687363358111,
+          "association_note": "Approximate associated predictions only. Objects with no associated prediction or multiple predicted classes are excluded.",
+          "correct": 2160,
+          "coverage": 0.9943478260869565,
+          "evaluated": 2287
+        },
+        "physical_sorting": {
+          "accuracy": 0.9339130434782609,
+          "correct": 2148,
+          "definition": "Required defects captured plus keep objects accepted, divided by eligible objects.",
+          "eligible": 2300
+        },
+        "wall_seconds": 28.180192583007738
+      },
+      "report": "rate-500/report.json",
+      "requested_rate": 500,
+      "simulation_seconds": 6.000000000000338,
+      "stop_reason": null
+    }
+  ],
+  "requested_rates": [
+    10,
+    50,
+    100,
+    200,
+    250,
+    400,
+    500
+  ],
+  "schema_version": 1,
+  "seed": 8,
+  "simulation_seconds": 6.0,
+  "started_at_utc": "2026-09-19T15:26:07.109443+00:00",
+  "status": "complete"
+}

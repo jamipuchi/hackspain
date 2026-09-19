@@ -78,6 +78,34 @@ Failed seeds become exposed. Do not tune on them and claim untouched acceptance.
 .venv-coffee/bin/python thoughts/taras/research/coffee-quality/evaluate_frozen.py --help
 ```
 
+## 6. Requested rate comparison and architecture
+
+After the frozen evaluation, measure seed 8 at 10, 50, 100, 200, 250, 400, and 500 objects/s.
+Hold the selected source, model, policy, physics, and camera fixed. Change only feed rate.
+Report physical sorting accuracy, capture, good loss, classification coverage, runtime, and confidence intervals.
+Explain the camera, model, controller, physical outcome, evaluator, and browser boundaries with a source-based diagram.
+
+### Verification
+
+```bash
+.venv-coffee/bin/python thoughts/taras/research/coffee-quality/measure_rates.py --manifest thoughts/taras/research/coffee-quality/freeze.json --out /tmp/coffee-quality-rates
+.venv-coffee/bin/python -m py_compile thoughts/taras/research/coffee-quality/measure_rates.py
+```
+
+## Execution status
+
+All planned measurements and implementation increments are complete.
+Reserved acceptance failed good loss on every seed. Capture, cohort size, resolution, and throughput passed.
+No tuning followed the reserved evaluation. The rate comparison and architecture are delivered separately.
+The browser demonstration captured its injected stone and preserved separate engine, pose, and browser measurements.
+
+## Production capacity note
+
+Taras reports approximately 16 vCPUs and 128 GB RAM for production.
+Parallel inference can use that capacity after a measured comparison.
+Local speed measurements do not establish production speed.
+This task retains its restriction against shared-host jobs and public deployment.
+
 ## Manual E2E
 
 ```bash
@@ -89,10 +117,3 @@ agent-browser snapshot
 ```
 
 Taras reviews motion and sorting behavior. Browser FPS, pose frequency, engine speed, and admitted throughput remain separate measurements.
-
-## Production capacity note
-
-Taras reports approximately 16 vCPUs and 128 GB RAM for production.
-Parallel inference can use that capacity after a measured comparison.
-Local speed measurements do not establish production speed.
-This task retains its restriction against shared-host jobs and public deployment.
