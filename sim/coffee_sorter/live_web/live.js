@@ -634,7 +634,7 @@ function updateLatestEvidence() {
   }
   $('card-expected').textContent = comparison.expectedLabel;
   $('card-actual').textContent = comparison.actualLabel;
-  $('card-comparison').textContent = comparison.verdict;
+  $('card-decision-summary').textContent = decision ? `${decision.predicted_class} · ${values.decision}` : 'Waiting';
   $('card-empty').hidden = Boolean(request);
   $('card-content').hidden = !request;
   const stateLabel = request?.error || request?.invalidated ? '[!] Command failed'
@@ -907,8 +907,8 @@ const annotations = [];
 const clickTargets = [];
 const presets = {
   overview: {position: [1.82, -2.62, 1.98], target: [-.22, 0, .47]},
-  sorting: {position: [.20, -1.75, .58], target: [.12, 0, .48]},
-  inspection: {position: [1.15, 0, 1.72], target: [-.42, 0, .50]},
+  sorting: {position: [.20, 1.75, .58], target: [.12, 0, .48]},
+  inspection: {position: [-1.55, 0, 1.55], target: [-.55, 0, .52]},
 };
 const INK = '#25342d', EDGE = '#34463d', EDGE_SOFT = '#829188', PAPER = '#eef0ea';
 const REJECT_COLOR = new THREE.Color('#d26045'), SPILL_COLOR = new THREE.Color('#d49a27'), SELECT_COLOR = new THREE.Color('#d8781c');
@@ -1301,6 +1301,7 @@ function render3d(now) {
     a.el.style.display = show ? 'block' : 'none';
     if (show) { a.el.style.left = `${(_proj.x * .5 + .5) * stage.clientWidth}px`; a.el.style.top = `${(-_proj.y * .5 + .5) * stage.clientHeight}px`; }
   }
+  measurements.render3d_frames = (measurements.render3d_frames || 0) + 1;
   renderer.render(scene, camera);
 }
 
@@ -1322,20 +1323,29 @@ function drawInset() {
   const width = rect.width, height = rect.height;
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = '#f8f8f4'; ctx.fillRect(0, 0, width, height);
-  const sideClearance = width > 760 ? Math.min(372, width * .27) : Math.max(42, width * .08);
-  const left = sideClearance, usable = width - sideClearance * 2;
+  const left = Math.max(42, width * .04), usable = width - left * 2;
+  const expandedPanelBottom = ['panel-left', 'panel-right']
+    .map(id => $(id))
+    .filter(panel => panel && !panel.classList.contains('collapsed'))
+    .reduce((bottom, panel) => Math.max(bottom, panel.getBoundingClientRect().bottom), 0);
+  const contentTop = Math.max(52, expandedPanelBottom + 18);
+  const availableHeight = Math.max(220, height - contentTop - 22);
+  const topCenter = contentTop + availableHeight * .20;
+  const topHalfHeight = availableHeight * .12;
+  const sideTop = contentTop + availableHeight * .48;
+  const sideBottom = height - 26;
   const X = x => left + (x + 1.1) / 1.6 * usable;
-  const Y = y => height * .28 + y / .5 * height * .18;
-  const Z = z => height * .90 - (z - .30) / .65 * height * .42;
+  const Y = y => topCenter + y / .25 * topHalfHeight;
+  const Z = z => sideBottom - (z - .30) / .65 * (sideBottom - sideTop);
   const topY = Y(-.25), topHeight = Y(.25) - topY;
   ctx.font = '12px ui-monospace, monospace';
   ctx.fillStyle = '#586b7c';
-  ctx.fillText('TOP', 18, 25);
-  ctx.fillText('SIDE', 18, height * .54);
-  ctx.fillText('DROP ZONE', X(-1.05), 25);
-  ctx.fillText('INSPECT', X(-.18), 25);
-  ctx.fillText('AIR', X(.045), 25);
-  ctx.fillText('PHYSICAL OUTCOME', X(.28), 25);
+  ctx.fillText('TOP', 18, contentTop);
+  ctx.fillText('SIDE', 18, sideTop - 10);
+  ctx.fillText('DROP ZONE', X(-1.05), contentTop);
+  ctx.fillText('INSPECT', X(-.18), contentTop);
+  ctx.fillText('AIR', X(.045), contentTop);
+  ctx.fillText('PHYSICAL OUTCOME', X(.28), contentTop);
   ctx.fillStyle = '#24548b';
   ctx.fillRect(X(-1.1), topY, X(0) - X(-1.1), topHeight);
   ctx.fillStyle = '#dfe8ed';
