@@ -88,12 +88,12 @@
   "panel_port": 8800,
   "door_on_d6": true,
   "door_d6_mode": "continuous",
-  "door_d6_speed": 100,
-  "door_d6_open_ms": 160,
-  "door_d6_close_ms": 160,
+  "door_d6_speed": 71,
+  "door_d6_open_ms": 120,
+  "door_d6_close_ms": 120,
   "door_d6_dir": -1,
   "act_on": "all",
   "lost_after_s": 0.4,
   "dry_run": true,
-  "door_d6_trim": 0
+  "door_d6_trim": 7
 }
