@@ -252,7 +252,7 @@ def configure_scene(preview, samples):
     scene.render.fps = 24
     scene.view_settings.look = "AgX - Medium High Contrast"
     scene.view_settings.exposure = 0.8
-    if preview:
+    if preview and scene.camera is not None:
         scene.camera.data.dof.use_dof = False
     return scene
 

@@ -33,6 +33,79 @@ def instance_scale(spec, metadata):
     return [a / d for a, d in zip(axes, REGULAR_SEMI_AXES)]
 
 
+def create_recorded_beans(payload, frames, prototypes, beans):
+    """Create linked assets for the UIDs in the selected source frames."""
+    classes = payload['classes']
+    metadata = {b[0]: b for b in payload['beans']}
+    uids = sorted({f['beans'][i] for f in frames for i in range(0, len(f['beans']), 9)})
+    objects = {}
+    fallback_materials = {c['name']: material('fallback_' + c['name'], c['rgb'], .85) for c in classes if c['name'] not in prototypes}
+    for uid in uids:
+        meta = metadata[uid]
+        spec = classes[meta[1]]
+        if spec['shape'] == 'box':
+            bpy.ops.mesh.primitive_cube_add(size=2)
+            obj = bpy.context.object
+            obj.data.materials.append(fallback_materials[spec['name']])
+        elif spec['shape'] == 'capsule':
+            # MuJoCo capsule is local Z; metadata stores half-cylinder length, radius.
+            hl, radius = meta[2]/100000, meta[3]/100000
+            bpy.ops.mesh.primitive_uv_sphere_add(segments=16, ring_count=12, radius=radius)
+            obj = bpy.context.object
+            for v in obj.data.vertices:
+                v.co.z += hl if v.co.z >= 0 else -hl
+            obj.data.materials.append(fallback_materials[spec['name']])
+        else:
+            obj = prototypes.get(spec['name'], prototypes['good']).copy()
+            beans.objects.link(obj)
+            if spec['name'] not in prototypes:
+                # Other classes remain explicitly labelled appearance stand-ins.
+                obj.data = obj.data.copy()
+                obj.data.materials.clear()
+                obj.data.materials.append(fallback_materials[spec['name']])
+                for face in obj.data.polygons:
+                    face.material_index = 0
+        obj.name = f"uid_{uid}_{spec['name']}"
+        if obj.name not in beans.objects:
+            for collection in tuple(obj.users_collection):
+                collection.objects.unlink(obj)
+            beans.objects.link(obj)
+        obj['uid'], obj['recorded_class'], obj['recorded_outcome'] = uid, spec['name'], meta[6] or ''
+        obj.rotation_mode = 'QUATERNION'
+        obj.scale = (1, 1, 1) if spec['shape'] == 'capsule' else instance_scale(spec, meta)
+        objects[uid] = obj
+
+    return objects, metadata
+
+
+def apply_recorded_frame(frame, objects):
+    """Apply recorded poses and check the resulting world transforms."""
+    for obj in objects.values():
+        obj.hide_render = True
+        obj.hide_viewport = True
+    rows = frame['beans']
+    for offset in range(0, len(rows), 9):
+        uid, x, y, z, qw, qx, qy, qz, decision = rows[offset:offset+9]
+        obj = objects[uid]
+        obj.hide_render = False
+        obj.hide_viewport = False
+        obj.location = (x/10000, y/10000, z/10000)
+        obj.rotation_quaternion = Quaternion((qw/10000, qx/10000, qy/10000, qz/10000)).normalized()
+        obj['recorded_decision'] = decision
+    bpy.context.view_layer.update()
+    max_position_error = max_rotation_error = 0.0
+    for offset in range(0, len(rows), 9):
+        obj = objects[rows[offset]]
+        expected = Vector([v/10000 for v in rows[offset+1:offset+4]])
+        max_position_error = max(max_position_error, (obj.matrix_world.translation-expected).length)
+        expected_q = Quaternion([v/10000 for v in rows[offset+4:offset+8]]).normalized()
+        q = obj.matrix_world.to_quaternion()
+        max_rotation_error = max(max_rotation_error, min((q-expected_q).magnitude, (q+expected_q).magnitude))
+    assert max_position_error < 1e-6 and max_rotation_error < 1e-5
+    assert sum(not o.hide_render for o in objects.values()) == len(rows)//9
+    return max_position_error, max_rotation_error
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--replay', type=Path, default=HERE.parent / 'web/replay.json')
@@ -76,41 +149,8 @@ def main():
         obj.rotation_mode = 'QUATERNION'
         obj.rotation_quaternion = Quaternion(g['quat'])
 
-    classes = payload['classes']
-    metadata = {b[0]: b for b in payload['beans']}
-    uids = sorted({f['beans'][i] for _, f in frames for i in range(0, len(f['beans']), 9)})
-    objects = {}
-    fallback_materials = {c['name']: material('fallback_' + c['name'], c['rgb'], .85) for c in classes if c['name'] not in prototypes}
-    for uid in uids:
-        meta = metadata[uid]
-        spec = classes[meta[1]]
-        if spec['shape'] == 'box':
-            bpy.ops.mesh.primitive_cube_add(size=2)
-            obj = bpy.context.object
-            obj.data.materials.append(fallback_materials[spec['name']])
-        elif spec['shape'] == 'capsule':
-            # MuJoCo capsule is local Z; metadata stores half-cylinder length, radius.
-            hl, radius = meta[2]/100000, meta[3]/100000
-            bpy.ops.mesh.primitive_uv_sphere_add(segments=16, ring_count=12, radius=radius)
-            obj = bpy.context.object
-            for v in obj.data.vertices:
-                v.co.z += hl if v.co.z >= 0 else -hl
-            obj.data.materials.append(fallback_materials[spec['name']])
-        else:
-            obj = prototypes.get(spec['name'], prototypes['good']).copy()
-            beans.objects.link(obj)
-            if spec['name'] not in prototypes:
-                # Other classes remain explicitly labelled appearance stand-ins.
-                obj.data = obj.data.copy()
-                obj.data.materials.clear()
-                obj.data.materials.append(fallback_materials[spec['name']])
-                for face in obj.data.polygons:
-                    face.material_index = 0
-        obj.name = f"uid_{uid}_{spec['name']}"
-        obj['uid'], obj['recorded_class'], obj['recorded_outcome'] = uid, spec['name'], meta[6] or ''
-        obj.rotation_mode = 'QUATERNION'
-        obj.scale = (1, 1, 1) if spec['shape'] == 'capsule' else instance_scale(spec, meta)
-        objects[uid] = obj
+    objects, metadata = create_recorded_beans(payload, [f for _, f in frames], prototypes, beans)
+    uids = sorted(objects)
 
     L = payload['layout']
     indicators = []
@@ -160,31 +200,11 @@ def main():
     total = time.perf_counter()
     for number, (source_index, frame) in enumerate(frames, 1):
         scene.frame_set(number)
-        for obj in objects.values():
-            obj.hide_render = True
         rows = frame['beans']
-        max_position_error = max_rotation_error = 0.0
-        for offset in range(0, len(rows), 9):
-            uid, x, y, z, qw, qx, qy, qz, decision = rows[offset:offset+9]
-            obj = objects[uid]
-            obj.hide_render = False
-            obj.location = (x/10000, y/10000, z/10000)
-            obj.rotation_quaternion = Quaternion((qw/10000, qx/10000, qy/10000, qz/10000)).normalized()
-            obj['recorded_decision'] = decision
+        max_position_error, max_rotation_error = apply_recorded_frame(frame, objects)
         active = sorted({f[2] for f in payload['fires'] if f[0] <= frame['t'] < f[1]})
         for n, obj in enumerate(indicators):
             obj.hide_render = n not in active
-        bpy.context.view_layer.update()
-        # Audit evaluated transforms, not only values assigned to properties.
-        for offset in range(0, len(rows), 9):
-            obj = objects[rows[offset]]
-            expected = Vector([v/10000 for v in rows[offset+1:offset+4]])
-            max_position_error = max(max_position_error, (obj.matrix_world.translation-expected).length)
-            expected_q = Quaternion([v/10000 for v in rows[offset+4:offset+8]]).normalized()
-            q = obj.matrix_world.to_quaternion()
-            max_rotation_error = max(max_rotation_error, min((q-expected_q).magnitude, (q+expected_q).magnitude))
-        assert max_position_error < 1e-6 and max_rotation_error < 1e-5
-        assert sum(not o.hide_render for o in objects.values()) == len(rows)//9
         scene.render.filepath = str((args.output_dir / f'frame_{number:03d}.png').resolve())
         tick = time.perf_counter()
         bpy.ops.render.render(write_still=True)
