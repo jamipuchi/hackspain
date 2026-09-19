@@ -4,9 +4,8 @@ const ctx = canvas.getContext('2d');
 let state = null;
 let socket;
 let selected = null;
-let request = null;
-let spawnWall = null;
-let outcomeWall = null;
+const requests = new Map();
+let latestCommandId = null;
 let shownSession = null;
 let frames = 0;
 let fpsStart = performance.now();
@@ -20,9 +19,13 @@ const selectedEvents = new Map();
 const measurements = {fps: null, acknowledgment_ms: null, outcome_wall_s: null, pose_hz: null};
 window.coffeeMeasurements = measurements;
 const HEARTBEAT_IDLE_MS = 4500;
+const MAX_CLIENT_REQUESTS = 64;
+const MAX_CLIENT_PENDING_REQUESTS = 16;
 
 const continuousMode = () => state?.mode === 'continuous';
-const pendingRequest = () => request && !request.acknowledged;
+const latestRequest = () => latestCommandId ? requests.get(latestCommandId) : null;
+const pendingRequests = () => [...requests.values()].filter(request => !request.acknowledged && !request.invalidated);
+const pendingRequest = () => pendingRequests().length > 0;
 
 function scheduleReconnect() {
   clearTimeout(reconnectTimer);
@@ -31,14 +34,17 @@ function scheduleReconnect() {
 
 function retryPending() {
   if (!pendingRequest() || !state || socket?.readyState !== WebSocket.OPEN) return;
-  if (state.session_id !== request.payload.session_id) {
-    clearSelection('Engine session changed. The pending injection was not retried.');
-    return;
+  for (const request of pendingRequests()) {
+    if (state.session_id !== request.payload.session_id) {
+      request.invalidated = true;
+      request.error = 'Engine session changed. The original request was not retried.';
+      continue;
+    }
+    socket.send(JSON.stringify(request.payload));
+    request.lastSend = performance.now();
+    request.retryPending = false;
   }
-  socket.send(JSON.stringify(request.payload));
-  request.lastSend = performance.now();
-  request.retryPending = false;
-  $('ack').textContent = 'Retrying the original injection request';
+  updateLatestEvidence();
 }
 
 function connect() {
@@ -52,7 +58,7 @@ function connect() {
   };
   ws.onclose = () => {
     if (socket !== ws) return;
-    if (pendingRequest()) request.retryPending = true;
+    for (const request of pendingRequests()) request.retryPending = true;
     $('status').textContent = 'Disconnected';
     $('inject').disabled = true;
     $('restart').disabled = true;
@@ -65,7 +71,7 @@ function connect() {
     if (packet.type === 'state') {
       if (shownSession && packet.session_id && shownSession !== packet.session_id) {
         heartbeatSeq = heartbeatSeenAt = null;
-        clearSelection(pendingRequest() ? 'Engine session changed. The pending injection was not retried.' : '');
+        invalidatePendingRequests();
       }
       if (packet.session_id) shownSession = packet.session_id;
       const nextHeartbeat = Number(packet.heartbeat_seq);
@@ -80,27 +86,27 @@ function connect() {
       state = packet;
       window.coffeeState = state;
       update();
-      // Retry only the saved command after a new connection or an acknowledgment timeout.
-      if (pendingRequest() && ['ready', 'running'].includes(state.status) && state.session_id === request.payload.session_id) {
-        if (request.retryPending || performance.now() - request.lastSend > 2000) retryPending();
+      // Retry each retained command after a new connection or an acknowledgment timeout.
+      if (pendingRequest() && ['ready', 'running'].includes(state.status)) {
+        if (pendingRequests().some(request => request.retryPending || performance.now() - request.lastSend > 2000)) retryPending();
       }
-    } else if (packet.type === 'ack' && request && packet.command_id === request.payload.command_id) {
+    } else if (packet.type === 'ack' && requests.has(packet.command_id)) {
+      const request = requests.get(packet.command_id);
       if (request.acknowledged) return;
       request.acknowledged = true;
+      request.ack = packet;
       if (!packet.ok) {
-        $('error').textContent = packet.error || packet.error_code || 'Injection failed';
-        $('ack').textContent = 'Injection failed';
+        request.error = packet.error || packet.error_code || 'Injection failed';
+        $('error').textContent = `Injection ${packet.command_id.slice(0, 8)} failed: ${request.error}`;
       } else {
-        selected = packet.object_id;
-        spawnWall = performance.now();
-        measurements.acknowledgment_ms = spawnWall - request.sent;
-        $('ack').textContent = `${measurements.acknowledgment_ms.toFixed(0)} ms on this connection`;
-        $('object-title').textContent = `Your stone, object ${selected}`;
-        $('command').textContent = request.payload.command_id;
+        request.object_id = packet.object_id;
+        request.spawnWall = performance.now();
+        request.acknowledgment_ms = request.spawnWall - request.sent;
       }
       update();
-    } else if (packet.type === 'pending' && pendingRequest() && packet.command_id === request.payload.command_id) {
-      $('ack').textContent = 'Server still has the original injection request';
+    } else if (packet.type === 'pending' && requests.has(packet.command_id)) {
+      requests.get(packet.command_id).serverPending = true;
+      updateLatestEvidence();
     }
   };
 }
@@ -109,23 +115,27 @@ setInterval(() => {
   if (!continuousMode() || !state || socket?.readyState !== WebSocket.OPEN || heartbeatSeenAt === null) return;
   if (performance.now() - heartbeatSeenAt < HEARTBEAT_IDLE_MS || staleConnection) return;
   staleConnection = true;
-  if (pendingRequest()) request.retryPending = true;
+  for (const request of pendingRequests()) request.retryPending = true;
   $('error').textContent = 'No application heartbeat arrived. Reconnecting before retrying the original request.';
   $('notice').textContent = 'Connection became stale. Reconnecting to the engine.';
   socket.close(4000, 'application heartbeat timed out');
 }, 1000);
 
-function clearSelection(error = '') {
-  selected = request = spawnWall = outcomeWall = null;
+function invalidatePendingRequests() {
+  const invalidatedPending = pendingRequests().length;
+  requests.clear();
+  latestCommandId = null;
+  selected = null;
   selectedEvents.clear();
-  previousPacket = null;
-  measurements.acknowledgment_ms = measurements.outcome_wall_s = measurements.pose_hz = null;
-  $('object-title').textContent = 'Follow your stone';
-  $('command').textContent = 'No injection yet';
-  $('ack').textContent = 'Waiting';
-  $('error').textContent = error;
-  for (const [id, text] of Object.entries({prediction:'Not observed', decision:'Not decided', hit:'Not recorded', outcome:'Unresolved', 'outcome-time':'Waiting'})) $(id).textContent = text;
+  measurements.acknowledgment_ms = measurements.outcome_wall_s = null;
+  if (invalidatedPending) {
+    $('error').textContent = 'Engine session changed. Pending injections were not retried.';
+  }
+  updateLatestEvidence();
 }
+
+$('details-toggle').onclick = () => $('diagnostics').showModal();
+$('details-close').onclick = () => $('diagnostics').close();
 
 $('restart').onclick = async () => {
   if (!state?.session_id || !state.restart_supported || restartPending || socket.readyState !== WebSocket.OPEN) return;
@@ -153,24 +163,90 @@ $('restart').onclick = async () => {
 
 $('inject').onclick = () => {
   if (!state || restartPending || socket?.readyState !== WebSocket.OPEN) return;
+  for (const [commandId, request] of requests) {
+    if (requests.size < MAX_CLIENT_REQUESTS) break;
+    if (request.acknowledged || request.invalidated) requests.delete(commandId);
+  }
+  if (requests.size >= MAX_CLIENT_REQUESTS) {
+    $('error').textContent = `Client request storage is full (${MAX_CLIENT_REQUESTS} active records). Wait for an injection result.`;
+    update();
+    return;
+  }
   const payload = {type: 'inject', command_id: crypto.randomUUID(), session_id: state.session_id, class_name: 'stone'};
+  if (requests.has(payload.command_id)) {
+    $('error').textContent = 'The browser could not create a distinct command ID. Try again.';
+    return;
+  }
   if (continuousMode()) {
     if (!state.command_epoch) return;
     payload.command_epoch = state.command_epoch;
   }
-  request = {payload, sent: performance.now(), lastSend: performance.now(), acknowledged: false, retryPending: false};
+  const request = {payload, sent: performance.now(), lastSend: performance.now(), acknowledged: false, retryPending: false};
+  requests.set(payload.command_id, request);
+  latestCommandId = payload.command_id;
   selected = null;
   selectedEvents.clear();
-  spawnWall = outcomeWall = null;
   measurements.acknowledgment_ms = measurements.outcome_wall_s = null;
   $('error').textContent = '';
-  $('ack').textContent = 'Waiting for physical spawn';
-  $('object-title').textContent = 'Following your stone';
-  $('command').textContent = payload.command_id;
-  for (const [id, text] of Object.entries({prediction:'Not observed', decision:'Not decided', hit:'Not recorded', outcome:'Unresolved', 'outcome-time':'Waiting'})) $(id).textContent = text;
+  if (pendingRequests().length > MAX_CLIENT_PENDING_REQUESTS) {
+    request.acknowledged = true;
+    request.error = `The browser already has ${MAX_CLIENT_PENDING_REQUESTS} pending injections. Wait for a result.`;
+    $('error').textContent = request.error;
+    update();
+    return;
+  }
+  updateLatestEvidence();
   socket.send(JSON.stringify(payload));
-  $('inject').disabled = true;
+  update();
 };
+
+function updateLatestEvidence() {
+  const request = latestRequest();
+  const object = request?.object_id == null ? null
+    : (state?.objects || []).find(item => item.object_id === request.object_id)
+      || (state?.injected_objects || []).find(item => item.object_id === request.object_id);
+  selected = request?.object_id ?? null;
+  const decision = object?.decision;
+  const values = {
+    prediction: decision ? `${decision.predicted_class}${decision.association_approximate ? ' (approximate object match)' : ''}` : 'Not observed',
+    decision: decision ? `${decision.reject ? 'Reject' : 'Keep'}${decision.scheduled ? ', valves scheduled' : ''}${decision.late ? ', late' : ''}` : 'Not decided',
+    hit: object?.jet_hits ? `${object.own_pulse_hit ? 'Own pulse' : 'Other or unassociated pulse'}, ${object.jet_hits} nozzle contact steps` : 'No contact recorded',
+    outcome: object?.outcome ? ({accept:'Accept path', reject:'Reject path', spilled:'Spilled'})[object.outcome] : 'Unresolved',
+    'outcome-time': 'Waiting',
+  };
+  if (object?.outcome && request && request.outcomeWall === undefined && request.spawnWall !== undefined) {
+    request.outcomeWall = performance.now();
+    request.outcome_wall_s = (request.outcomeWall - request.spawnWall) / 1000;
+  }
+  if (object?.spawn_to_outcome_wall_s != null) values['outcome-time'] = `${object.spawn_to_outcome_wall_s.toFixed(2)} wall seconds from physical spawn`;
+  else if (request?.outcome_wall_s != null) values['outcome-time'] = `${request.outcome_wall_s.toFixed(2)} wall seconds from physical spawn`;
+  for (const [id, text] of Object.entries(values)) {
+    $(id).textContent = text;
+    $(`card-${id}`).textContent = text;
+  }
+  const stateLabel = request?.error || request?.invalidated ? 'Command failed'
+    : object?.outcome === 'reject' ? 'Rejected'
+    : object?.outcome === 'spilled' ? 'Spilled'
+      : object?.outcome === 'accept' ? 'Passed' : 'In progress';
+  $('card-state').textContent = stateLabel;
+  $('object-title').textContent = request?.object_id == null ? (request ? 'Following your stone' : 'Follow your stone') : `Your stone, object ${request.object_id}`;
+  $('command').textContent = request ? request.payload.command_id : 'No injection yet';
+  $('card-command').textContent = request
+    ? `Command ${request.payload.command_id}${request.payload.command_epoch ? ` · Epoch ${request.payload.command_epoch}` : ''}`
+    : 'No injection yet';
+  let acknowledgment = 'Waiting';
+  if (request?.invalidated) acknowledgment = 'Engine session changed. The request was not retried.';
+  else if (request?.error) acknowledgment = 'Injection failed';
+  else if (request?.acknowledged) acknowledgment = `${request.acknowledgment_ms.toFixed(0)} ms on this connection`;
+  else if (request?.serverPending) acknowledgment = 'Server still has the original injection request';
+  else if (request?.retryPending) acknowledgment = 'Retrying the original injection request';
+  else if (request) acknowledgment = 'Waiting for physical spawn';
+  $('ack').textContent = acknowledgment;
+  $('card-error').hidden = !request?.error;
+  $('card-error').textContent = request?.error ? `Injection failed: ${request.error}` : '';
+  measurements.acknowledgment_ms = request?.acknowledgment_ms ?? null;
+  measurements.outcome_wall_s = request?.outcome_wall_s ?? null;
+}
 
 function formatScore(score) {
   return Number.isFinite(score?.value) ? `${(score.value * 100).toFixed(1)}%` : 'Unavailable';
@@ -234,7 +310,7 @@ function update() {
   $('status').dataset.state = status;
   const durationComplete = !continuousMode() && state.sim_time_s >= (state.limits?.sim_seconds || 10) - 0.6;
   const awaitingHeartbeat = continuousMode() && heartbeatSeenAt === null;
-  $('inject').disabled = !connected || restartPending || awaitingHeartbeat || !['ready', 'running'].includes(status) || pendingRequest() || durationComplete || (continuousMode() && !state.command_epoch);
+  $('inject').disabled = !connected || restartPending || awaitingHeartbeat || !['ready', 'running'].includes(status) || durationComplete || (continuousMode() && !state.command_epoch);
   $('restart').hidden = !state.restart_supported;
   $('restart').disabled = !connected || !state.restart_supported || restartPending || !state.session_id || !['ready', 'running', 'completed', 'failed'].includes(status);
   $('restart').textContent = restartPending || status === 'restarting' ? 'Restarting…' : 'Restart session';
@@ -251,19 +327,7 @@ function update() {
   const objects = state.objects || [];
   $('active').textContent = objects.filter(o => o.active).length;
   updateScoreboard();
-  const object = objects.find(o => o.object_id === selected) || (state.injected_objects || []).find(o => o.object_id === selected);
-  if (object) {
-    const decision = object.decision;
-    $('prediction').textContent = decision ? `${decision.predicted_class}${decision.association_approximate ? ' (approximate object match)' : ''}` : 'Not observed';
-    $('decision').textContent = decision ? `${decision.reject ? 'Reject' : 'Keep'}${decision.scheduled ? ', valves scheduled' : ''}${decision.late ? ', late' : ''}` : 'Not decided';
-    $('hit').textContent = object.jet_hits ? `${object.own_pulse_hit ? 'Own pulse' : 'Other or unassociated pulse'}, ${object.jet_hits} nozzle contact steps` : 'No contact recorded';
-    $('outcome').textContent = object.outcome ? ({accept:'Accept path', reject:'Reject path', spilled:'Spilled'})[object.outcome] : 'Unresolved';
-    if (object.outcome && outcomeWall === null && spawnWall !== null) {
-      outcomeWall = performance.now();
-      measurements.outcome_wall_s = (outcomeWall - spawnWall) / 1000;
-    }
-    if (object.spawn_to_outcome_wall_s != null) $('outcome-time').textContent = `${object.spawn_to_outcome_wall_s.toFixed(2)} wall seconds from physical spawn`;
-  }
+  updateLatestEvidence();
   const scoreVersions = state.rolling_scores?.versions || {};
   const modelVersion = scoreVersions.model || state.model_version;
   const policyVersion = scoreVersions.policy || state.policy_version;
