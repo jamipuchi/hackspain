@@ -6,7 +6,7 @@ Repository: `tarasyarema/hackspain`. Branch: `swarm/magnet-adaptive-routing`. [P
 
 ## Final paired results
 
-Each configuration used seeds **4, 17, 29**, THEKER v1, identical OSMesa A/B cameras, headless pacing, calibrated silhouette geometry, 60 action steps maximum and $1.50 per-run reservation limits. One common $5 ledger covers all three development sweeps. Nine ferrous parts are scored independently per run.
+Each configuration used seeds **4, 17, 29**, THEKER v1, identical OSMesa A/B cameras, low vision reasoning, headless pacing, calibrated silhouette geometry, 60 action steps maximum and $1.50 per-run reservation limits. One common $5 ledger covers all three development sweeps. Nine ferrous parts are scored independently per run.
 
 | Configuration | Seed | Correct / 9 | Agent wall, s | Vision / Jev attempts | Recorded cost | Unpriced HTTP rejections |
 |---|---:|---:|---:|---:|---:|---:|
@@ -80,6 +80,8 @@ V1 clipped silhouettes at the workspace boundary, turning a lid wall into an ext
 - Part occlusion, hardware touching a lid, split/merged contours and oblique-view parallax remain failure modes. Marker-fit residual is not object-centroid accuracy. Two cameras can miss the same part. The 8 mm matching tolerance is a gate, not a proof of magnetic capture.
 - The inherited scorer and physical simulation are unchanged. Results are not directly comparable with the earlier 8/9 Astra/Gemini single-seed runs: those used a different policy and conditions. `OPENAI_API_KEY` was absent, so no direct Astra experiment was run. `TYPESAFE_API_KEY` and `OPENROUTER_API_KEY` were supplied through the authorized process environment; no secret values were saved.
 - Explicit 429 failures came from upstream GLM providers. Reported costs omit their unknown charges; the retained ceilings cover them. The first rejection predates response-error logging, so its body/latency is unavailable; its HTTP status, failure result and full reservation are preserved.
+
+Historical `meta.json` files retained the CLI defaults `vision_provider=openai` and `effort=medium`. Those two fields were wrong for the opt-in policy: its preserved source and request ledger establish OpenRouter with low reasoning for every evaluated vision request. The current runner records those fields correctly. Original run files remain unaltered as evidence.
 
 ## Verification and reproduction
 

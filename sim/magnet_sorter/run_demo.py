@@ -238,8 +238,8 @@ def main() -> None:
 
     metadata = {"build": sd.BUILD, "title": sd.CFG.title, "seed": seed, "planner": args.planner,
                 "brain": args.brain, "decision_model": args.decision_model, "phone": args.phone,
-                "vision_provider": args.vision_provider, "reuse_pick_observation": args.reuse_pick_observation,
-                "effort": args.effort, "viewer": args.viewer,
+                "vision_provider": "openrouter" if args.routing else args.vision_provider, "reuse_pick_observation": args.reuse_pick_observation,
+                "effort": "low" if args.routing else args.effort, "viewer": args.viewer,
                 "max_steps": args.max_steps, "budget_usd": args.budget, "routing": args.routing}
     (run_dir / "meta.json").write_text(json.dumps(metadata, indent=2))
     hopper = list(pieces)
@@ -434,7 +434,7 @@ def main() -> None:
             metadata.update(cameras=cam_names, vision_model=agent.model,
                             decision_model=getattr(agent, "decision_model", agent.model))
             (run_dir / "meta.json").write_text(json.dumps(metadata, indent=2))
-            print(f"agent mode: decisions={metadata['decision_model']}, vision={agent.model}, {len(cams)} camera(s) {list(cams)}, effort={args.effort}, max {args.max_steps} steps, budget ${args.budget:.2f}")
+            print(f"agent mode: decisions={metadata['decision_model']}, vision={agent.model}, {len(cams)} camera(s) {list(cams)}, effort={metadata['effort']}, max {args.max_steps} steps, budget ${args.budget:.2f}")
             result = agent.run_loop()
         except (Exception, KeyboardInterrupt, SystemExit) as exc:
             (run_dir / "error.json").write_text(json.dumps({"error": type(exc).__name__, "message": str(exc)}, indent=2))
