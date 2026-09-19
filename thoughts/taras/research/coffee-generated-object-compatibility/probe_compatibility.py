@@ -62,6 +62,15 @@ def inspect_fixture(case_dir: Path) -> dict:
     if render["glb_units"] != "meters" or render["glb_scale_from_recipe_mm"] != 0.001:
         raise ValueError(f"{case_dir.name}: GLB unit metadata is invalid")
     document = glb_json(glb_path)
+    mesh_nodes = [
+        {
+            key: node[key]
+            for key in ("name", "mesh", "translation", "rotation", "scale", "matrix")
+            if key in node
+        }
+        for node in document.get("nodes", [])
+        if "mesh" in node
+    ]
     return {
         "case": case_dir.name,
         "recipe_sha256": sha256(recipe_path),
@@ -70,6 +79,7 @@ def inspect_fixture(case_dir: Path) -> dict:
         "recipe_part_kinds": [part["kind"] for part in recipe["parts"]],
         "bounding_dimensions_mm": render["bounding_dimensions_mm"],
         "mesh_count": len(document.get("meshes", [])),
+        "single_mesh_node": mesh_nodes[0] if len(mesh_nodes) == 1 else None,
         "primitive_count": sum(
             len(mesh.get("primitives", [])) for mesh in document.get("meshes", [])
         ),
@@ -98,6 +108,7 @@ def model_record(path: Path, profile_name: str) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--baseline-revision")
     args = parser.parse_args()
 
     gemini = OBJECT_GENERATION / "results/gemini"
@@ -113,10 +124,39 @@ def main() -> None:
         if path.is_file():
             model_records.append(model_record(path, profile_name))
 
+    source_paths = (
+        COFFEE / "engine.py",
+        COFFEE / "live.py",
+        COFFEE / "live_web/live.js",
+        COFFEE / "profiles.py",
+        COFFEE / "scene.py",
+        COFFEE / "sim.py",
+        COFFEE / "vision.py",
+        COFFEE / "classifier.py",
+        COFFEE / "controller.py",
+        COFFEE / "rolling_scores.py",
+        OBJECT_GENERATION / "probe.py",
+        OBJECT_GENERATION / "render_recipe.py",
+    )
+    current_revision = subprocess.check_output(
+        ["git", "-C", str(ROOT), "rev-parse", "HEAD"], text=True
+    ).strip()
+    source_revision = current_revision
+    if args.baseline_revision:
+        source_revision = subprocess.check_output(
+            ["git", "-C", str(ROOT), "rev-parse", f"{args.baseline_revision}^{{commit}}"],
+            text=True,
+        ).strip()
+        relative_paths = [str(path.relative_to(ROOT)) for path in source_paths]
+        check = subprocess.run(
+            ["git", "-C", str(ROOT), "diff", "--quiet", source_revision, "--", *relative_paths]
+        )
+        if check.returncode != 0:
+            raise RuntimeError("Audited source files differ from the requested baseline revision")
+
     result = {
-        "source_revision": subprocess.check_output(
-            ["git", "-C", str(ROOT), "rev-parse", "HEAD"], text=True
-        ).strip(),
+        "source_revision": source_revision,
+        "execution_revision": current_revision,
         "recipe_kinds": PART_FIELDS["kind"]["enum"],
         "physics_pool_shapes": [ELLIPSOID, HALF, BOX, CAPSULE],
         "direct_recipe_physics_shape_overlap": sorted(
@@ -149,20 +189,7 @@ def main() -> None:
         },
         "source_sha256": {
             str(path.relative_to(ROOT)): sha256(path)
-            for path in (
-                COFFEE / "engine.py",
-                COFFEE / "live.py",
-                COFFEE / "live_web/live.js",
-                COFFEE / "profiles.py",
-                COFFEE / "scene.py",
-                COFFEE / "sim.py",
-                COFFEE / "vision.py",
-                COFFEE / "classifier.py",
-                COFFEE / "controller.py",
-                COFFEE / "rolling_scores.py",
-                OBJECT_GENERATION / "probe.py",
-                OBJECT_GENERATION / "render_recipe.py",
-            )
+            for path in source_paths
         },
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)

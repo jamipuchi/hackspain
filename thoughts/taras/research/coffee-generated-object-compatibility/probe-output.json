@@ -8,6 +8,7 @@
     "box",
     "ellipsoid"
   ],
+  "execution_revision": "45be46037d4c48d0e09fea14f0fa279a305e0f13",
   "generated_fixtures": [
     {
       "bounding_dimensions_mm": [
@@ -35,6 +36,7 @@
         "ellipsoid"
       ],
       "recipe_sha256": "22fcd535f56a9eb27c660088164de40c68e9ac464917146130396108dfe2762c",
+      "single_mesh_node": null,
       "texture_count": 0
     },
     {
@@ -62,6 +64,7 @@
         "text"
       ],
       "recipe_sha256": "7298d81eead9d3e207921fc48818fade54e320ba46f468d919f707e1bb6e6664",
+      "single_mesh_node": null,
       "texture_count": 0
     },
     {
@@ -83,6 +86,20 @@
         "polygon"
       ],
       "recipe_sha256": "ab172827287041a6d98b836b37e7297ff9d5438e397ef7c213ed25f47293549b",
+      "single_mesh_node": {
+        "mesh": 0,
+        "name": "star_body",
+        "scale": [
+          0.0010000000474974513,
+          0.0010000000474974513,
+          0.0010000000474974513
+        ],
+        "translation": [
+          0,
+          0.0010000000474974513,
+          0
+        ]
+      },
       "texture_count": 0
     }
   ],
