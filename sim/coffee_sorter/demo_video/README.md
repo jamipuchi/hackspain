@@ -61,6 +61,34 @@ Only unfinished clips render with the CPU backend. Do not combine partial GPU fr
 Swarm Lead task `8d7515a6-f830-4140-bcf5-2a1d09cea153` owns monitoring and verified delivery in Slack `#x-hackspain`.
 The local render queue stopped after remote verification. Its files remain intact, and its heartbeat is paused.
 
+### Local assistance for the final clips
+
+Taras subsequently authorized local rendering alongside the remote batch.
+The Mac renders `07c-normal-closing`, then `07b-blueprint-closing`, using Metal and eight Blender threads.
+Run the selected batch with reduced CPU priority:
+
+```sh
+nice -n 15 python3 sim/coffee_sorter/demo_video/bulk_full_hd.py \
+  --credentials /path/to/private-agent-fs.json --device METAL \
+  --only 07c-normal-closing --only 07b-blueprint-closing --source-bundles
+```
+
+The credential path can be `/dev/stdin` when a parent process supplies the JSON through a private pipe.
+Never include credential values in shell arguments or logs.
+The selected batch uploads each verified MP4 and manifest without creating the final nine-clip ZIP.
+It also uploads native-frame ZIP parts under `full-hd/sources/<segment-id>/`.
+Each part stays below 40 MiB because agent-fs limits uploads to 50 MiB.
+The worker uploads `ready.json` only after every part passes upload and download checks.
+That index records each part's path, hash, byte count, and members.
+It also records the manifest and video hashes.
+
+The remote monitor must verify all indexed parts before importing a completed local clip.
+It must reject unsafe paths, duplicate members, mismatched hashes, and conflicts with partial CPU renders.
+It must compare the imported files with the canonical MP4 and manifest uploads.
+The remote batch then preserves the verified complete clip instead of rendering it again.
+The Lead retains final archive creation and Slack delivery in `#x-hackspain`.
+Local rendering requires the Mac to remain awake. Reduced CPU priority does not limit GPU utilization.
+
 ### Preview commands
 
 Taras authorized video rendering after the still review.

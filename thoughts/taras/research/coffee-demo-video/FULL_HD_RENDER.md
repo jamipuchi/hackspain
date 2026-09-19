@@ -104,3 +104,23 @@ The remote batch verified these completed Full HD uploads during handoff:
 Their existing agent-fs bytes and manifests matched the copied local files.
 The batch currently renders `03-overhead-inspection`.
 The remaining seven clips and final ZIP are not complete at handoff.
+
+## Subsequent local assistance
+
+Taras authorized two local closing clips after the remote handoff.
+The Mac tests passed for `07c-normal-closing` at native 1920 by 1080.
+The three frames took 16.295, 9.297, and 8.293 seconds.
+Their PNG dimensions and SHA-256 hashes passed independent checks.
+The Mac continues that clip, then renders `07b-blueprint-closing`.
+The selected worker uses Metal, eight Blender threads, and Unix priority 15.
+
+The worker uploads completed MP4s, manifests, and bounded native-frame archives automatically.
+Agent-fs limits each upload to 50 MiB, so native-frame parts stay below 40 MiB.
+The completion index is `full-hd/sources/<segment-id>/ready.json` under the existing archive prefix.
+The index appears only after all source parts pass upload verification and downloaded-byte comparison.
+The original unrestricted local queue and heartbeat remain stopped.
+
+Lead follow-up task: `2d41f9fa-865a-4d5f-b8eb-208076844006`.
+The task received instructions to reuse verified agent-fs source parts before rendering the closing clips.
+This agent-fs handoff replaces the proposed SSH transfer of local clips.
+The Lead still owns remote recovery, final verification, archive creation, and delivery in Slack `#x-hackspain`.

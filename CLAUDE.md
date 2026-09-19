@@ -18,6 +18,8 @@ These rules apply to coffee sorter work in this repository.
 Run `sim/coffee_sorter/demo_video/bulk_full_hd.py` for sequential CPU renders and verified uploads to Swarm.
 Read `sim/coffee_sorter/demo_video/README.md` for the container paths and commands.
 The script requires a private JSON file with only the two agent-fs connection variables.
+For approved local assistance, select clips with repeatable `--only`, `--device METAL`, and `--source-bundles`.
+The source index appears only after all bounded native-frame archives pass upload verification.
 Generated and maintained with the script-builder skill.
 
 </important>
