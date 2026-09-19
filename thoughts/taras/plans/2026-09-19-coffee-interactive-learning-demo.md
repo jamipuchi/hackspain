@@ -5,7 +5,7 @@ topic: Coffee sorting quality, live interaction, and measured adaptation
 status: draft
 owner: taras
 source_branch: codex/coffee-sorter-upstream
-source_revision: 4dbc350d6586f33c3030de44a346c3d7caa0d892
+source_revision: 3c620dc4e52bedfe098f44499ecabdd40f414ecb
 ---
 
 # Coffee sorter: a working default, then natural-language adaptation
@@ -73,8 +73,11 @@ flowchart LR
 
 ## Current state and evidence
 
-The implementation base is [upstream PR #2](https://github.com/jamipuchi/hackspain/pull/2), revision `4dbc350`.
+The implementation base is [upstream PR #2](https://github.com/jamipuchi/hackspain/pull/2), revision `3c620dc`, including upstream `fdfc11f`.
 The main local checkout still contains the separate magnet experiment. Implementation must use the coffee branch or its merged successor.
+Upstream now includes `vision_paper.py` and a separate physical-line prototype under `sim/line/`.
+The merge preserves the coffee detector's optimized features and evaluation metadata while enabling the white-paper segmentation override.
+The live Three.js session and learning controls in this plan remain unimplemented. The physical-line prototype does not supply that browser connection.
 
 | Component | Current behavior and source |
 |---|---|
@@ -124,7 +127,8 @@ Keep good-bean loss as a constraint while maximizing capture and throughput. Rep
 If no configuration meets the goal, show the tradeoff and let Taras choose the next experiment. Do not change the goal silently.
 More CPU cores help independent experiments. They do not automatically accelerate one sequential simulation by the same factor.
 
-The integration passed 72 simulator tests and five replay checks on this Mac.
+Revision `4dbc350` passed 72 simulator tests and five replay checks on this Mac.
+The later upstream merge received syntax and diff checks. Those earlier test results do not validate the new merge.
 The optional comparison with recorded physics failed across runtimes. Record platform metadata and preserve this known limitation.
 
 ## Boundaries that keep the demo honest

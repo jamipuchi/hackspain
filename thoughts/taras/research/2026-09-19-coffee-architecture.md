@@ -11,7 +11,11 @@ Taras, the current system has three parts: a simulated machine, a classifier tra
 The classifier stays fixed during each run. The browser currently plays a recording.
 
 Source snapshot: simulator [PR #1](https://github.com/tarasyarema/hackspain/pull/1), commit `340e734`. Browser [PR #3](https://github.com/tarasyarema/hackspain/pull/3), commit `c88c26f`.
-The browser PR merged into the fork. [Upstream PR #2](https://github.com/jamipuchi/hackspain/pull/2) combines both with Jaume's main at `84f8ad5`.
+The browser PR merged into the fork. [Upstream PR #2](https://github.com/jamipuchi/hackspain/pull/2) combines both with Jaume's main through `fdfc11f`.
+
+The branch also contains upstream's separate physical-line prototype under `sim/line/` and a white-paper inspection variant.
+This explanation covers the simulated belt sorter. The live webpage and runtime learning controls remain proposed work.
+Historical timing and accuracy figures below describe their original runs, not a new measurement after this merge.
 
 ## 1. What happens to one bean
 
