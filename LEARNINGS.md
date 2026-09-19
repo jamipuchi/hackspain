@@ -96,6 +96,23 @@ extra use cases for the demo.
   perception or physics. Mechanics ceilings above (7/9 etc.) need re-measuring with the new layout.
 
 ## Cameras
+- **Real iPhone over USB-C works, zero phone-side setup (19 Sep 12:45).** macOS Continuity Camera exposes a
+  plugged-in, unlocked iPhone as a normal AVFoundation device ("Jaume's iPhone Camera" plus a "Desk View"
+  variant and the phone microphone). 640×480 … 1920×1440 at 30 or 60 fps. `ffmpeg -f avfoundation -i "1:none"`
+  and `cv2.VideoCapture(i, cv2.CAP_AVFOUNDATION)` both pull frames; `sim/demos/iphone_camera.py` is the viewer.
+- **OpenCV camera indices are not ffmpeg's.** OpenCV's AVFoundation backend lists external / Continuity
+  cameras first, built-in after; ffmpeg and `system_profiler` list built-in first. On the MacBook the phone
+  is OpenCV 0 / ffmpeg 1. The first live viewer opened index 1 and showed the Mac camera while a snapshot
+  "looked plausible"; a thumbnail-per-index probe caught it. Rule: never hard-code a camera index, resolve
+  by name (`sim/demos/avf_cameras.swift`, a 10-line Swift DiscoverySession helper, compiled on first use;
+  `swift file.swift` interpreted takes 15 s, the compiled binary is instant) and keep a `--probe` that saves
+  one thumbnail per index. `camera.RealCamera()` now does this; its old default `index=1` was the Mac camera.
+- Asking OpenCV for 1280×960 on the phone returns 1920×1440 (nearest 4:3 mode); downscale yourself if the
+  GPT-6 image budget matters.
+- ffmpeg needs an explicit supported pixel format for the phone (`uyvy422`, `yuyv422`, `nv12`, `0rgb`,
+  `bgr0`); the default `yuv420p` request is refused. `ffprobe -f avfoundation -i "1:none"` lists modes.
+- Continuity Camera drops when the phone locks or sleeps; the device disappears from every listing. Wake it
+  and reopen. Camera permission must be granted to the terminal app once.
 - One or two oblique phones ≤ 50 cm work; two views help when the arm hides a spot. The final sheet
   puts one phone on a gooseneck 25–30 cm straight above the tray: `theker_v1` camera A.
 - Tall cups between the camera and the tray hide parts: use shallow lids (the sheet agrees).
@@ -159,4 +176,5 @@ Bench: Arduino Uno R3 on USB, one blue 9 g micro servo (SG90/FS90R form factor) 
 ## Open issues
 - Verifier still confuses look-alike neighbours occasionally (two cameras disagree → we say so to GPT-6).
 - Photoreal Cycles video renders at 13–30 s/frame while the GPU is shared with live sims; render when idle.
-- Real iPhone camera path (`camera.RealCamera`) is wired but untested (needs camera permission in Terminal).
+- `camera.RealCamera` is tested standalone against the USB iPhone (frame grab OK) but not yet wired into
+  `run_demo.py` in place of the rendered phone; the ArUco calibration on real frames is untested.

@@ -12,7 +12,7 @@ rsync -a --delete \
   --exclude '__pycache__' --exclude 'runs/' --exclude '*.raw.mp4' --exclude 'scene_generated*.xml' --exclude '.pixi' \
   "$SRC/magnet_sorter/" sim/magnet_sorter/
 rsync -a --delete --exclude '__pycache__' --exclude 'runs/' "$SRC/astra_sort/" sim/astra_sort_v0/
-rsync -a "$SRC/demos/" sim/demos/
+rsync -a --exclude '__pycache__' --exclude 'avf_cameras' --exclude '*.jpg' "$SRC/demos/" sim/demos/
 # coffee bean optical sorter (belt + camera + air jets); keep its preview renders, drop models/videos/run dirs
 rsync -a --delete --exclude '.git' --exclude '__pycache__' --exclude 'runs/' --exclude 'models/' --exclude '*.mp4' --exclude 'MUJOCO_LOG.TXT' \
   "$SRC/coffee_sorter/" sim/coffee_sorter/
