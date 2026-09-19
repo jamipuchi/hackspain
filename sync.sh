@@ -7,6 +7,14 @@ REPO=~/hackspain
 SRC=~/robotics
 cd "$REPO"
 
+# RETIRED 19 Sep 20:10 (see INTEGRATOR.md 19:57–20:05): teammates commit to sim/magnet_sorter and sim/coffee_sorter on origin
+# directly, so any rsync from the older ~/robotics copies overwrites their work (it deleted 18 files at 19:54, restored in db99349).
+# Origin is canonical; agents push their own files with plain git. Set SYNC_FORCE=1 to run this anyway, knowingly.
+if [ "${SYNC_FORCE:-}" != "1" ]; then
+  echo "sync.sh is retired ($(date '+%H:%M:%S')): use git add/commit/push on your own files. SYNC_FORCE=1 overrides." 
+  exit 0
+fi
+
 # RETIRED 19 Sep 2026 20:07 (INTEGRATOR.md 19:57 + agreement of arduino, build, coffee-sim): origin/main is canonical for every
 # directory someone else pushes to, and rsync from the older ~/robotics copies overwrites their versions even without --delete.
 # Agents push their own files with plain git add/commit/push. Set SYNC_FORCE=1 only if Jaume explicitly re-enables mirroring.
