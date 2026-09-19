@@ -16,7 +16,7 @@
       75
     ],
     "settle_ms": 150,
-    "default_dwell_s": 0.8,
+    "default_dwell_s": 1.0,
     "ramp_override": false,
     "door_vmax_deg_s": 400,
     "door_accel_deg_s2": 8000
@@ -88,10 +88,10 @@
   "panel_port": 8800,
   "door_on_d6": true,
   "door_d6_mode": "continuous",
-  "door_d6_speed": 60,
-  "door_d6_open_ms": 180,
-  "door_d6_close_ms": 180,
-  "door_d6_dir": 1,
+  "door_d6_speed": 25,
+  "door_d6_open_ms": 95,
+  "door_d6_close_ms": 95,
+  "door_d6_dir": -1,
   "act_on": "all",
   "lost_after_s": 0.4,
   "dry_run": true
