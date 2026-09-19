@@ -3,19 +3,20 @@ date: 2026-09-19
 planner: Codex
 topic: Coffee sorting quality and the first live engine demonstration
 status: in-progress
-next_increment: ui-restart-feedback
+next_increment: continuous-engine-plan-review
 updated: 2026-09-19
 owner: taras
 initial_source_branch: codex/coffee-sorter-upstream
 initial_source_revision: 4d0f705
-previous_implementation_revision: 10d0975
+current_implementation_revision: 90dffc1
 implementation_branch: codex/coffee-core-live
 ---
 
 # Coffee sorter implementation
 
 Taras owns functional QA and acceptance. This task owns the plan, live interface, service, and separate language-policy work.
-The parallel quality task owns physical motion, sorting quality, and engine runtime. The swarm owns rendering assets.
+The parallel quality task completed its delivery. This task now owns its integration and the next continuous-engine increment.
+The swarm owns rendering assets.
 
 This revision addresses [Claude's review](../reviews/2026-09-19-review-of-coffee-interactive-learning-demo.md).
 The first bounded increment is complete. Taras requested continued progress while the parallel task improves the engine.
@@ -24,8 +25,13 @@ Each visible increment keeps its own feedback checkpoint.
 
 ## Current checkpoint
 
-Phase 2A now provides restart from the page. Its [checkpoint evidence](../research/coffee-ui-restart/REPORT.md) records lifecycle checks and the browser result.
-Taras's restart acceptance remains pending. Phase 2B follows that feedback checkpoint.
+Phase 2A provides restart from the page. Its [checkpoint evidence](../research/coffee-ui-restart/REPORT.md) records lifecycle checks and the browser result.
+Taras requested continued progress after the quality task finished.
+Commit `90dffc1` integrates that task's delivery and preserves the restart interface.
+The exact selected model is installed. Source, model, preset, policy, and bootstrap provenance checks passed.
+The integrated browser check recognized an injected stone, recorded its own-pulse contact, and sent it to reject. Browser restart also passed.
+An idle connection still lost its first injection. The continuous-operation plan includes recovery from that failure.
+The current service remains bounded. Continuous operation and rolling scores are proposed in the [next plan](2026-09-19-coffee-continuous-live.md).
 
 The first increment from Phases 1 and 2 is implemented and pushed. Taras's functional acceptance remains pending.
 The [checkpoint report](../research/coffee-core-live/REPORT.md) records measurements and evidence from implementation revision `51181c3`.
@@ -45,23 +51,23 @@ The figures above remain historical baseline measurements. Overall smoothness an
 
 ## Next steps after alignment
 
-1. Add **Restart session** to the page (Phase 2A). Stop the old worker before starting a fresh session.
+1. Implement the [continuous-engine plan](2026-09-19-coffee-continuous-live.md): bounded histories, automatic operation, and rolling scores.
+   The deployed engine continues without browsers. Visitors do not need to restart it.
 2. Add class selection and a lasting result card for every injected object (Phase 2B).
    Clearly distinguish the camera prediction, controller action, actual air contact, and physical outcome.
-3. Add measured decision reasons and live sorting scores after the engine interface handoff (Phase 2C).
+3. Add measured decision reasons through Phase 2C. The continuous-engine plan now owns the rolling scoreboard.
 4. Build the **3D live view** from the existing rendering work (Phase 5).
    The current 2D projection is temporary. Taras explicitly deferred 3D implementation until a later increment.
 5. Prepare the offline language contract independently (Phase 3A).
    Live policy activation follows the physical and language checkpoints (Phase 3B).
 
-Integrate reviewed quality revisions as the parallel task supplies them. Never import its uncommitted experiments.
+The committed quality delivery is integrated. Never import uncommitted experiments from another checkout.
 The running demo must show its actual engine revision, model, policy, and preset.
-Before Phase 2A, the service on port 8890 used engine revision `10d0975`. It does not include the parallel task's newer engine changes.
-Its session `263d2001-256d-451e-acb5-22823117c9d9` completed before this restart increment.
+Before Phase 2A, port 8890 used engine revision `10d0975`.
+Session `263d2001-256d-451e-acb5-22823117c9d9` completed before that restart increment. Treat it as historical evidence.
 
 Sorting quality does not block the restart control, injection cards, or independent visual work.
-Engine ownership does block uncoordinated edits to its snapshot and decision fields.
-This task requested an interface handoff after the parallel task's current quality checkpoint.
+The quality task supplied its interface handoff. This task owns additive engine changes under the continuous-operation plan.
 Taras retains functional QA and acceptance.
 
 ## Existing rendering checkpoint
@@ -120,7 +126,7 @@ The [live contract](../contracts/2026-09-19-coffee-live-v1.md) defines IDs, time
 
 | Scope | Owner and location |
 |---|---|
-| `sim.py`, `scene.py`, `controller.py`, `vision.py`, `classifier.py`, `bootstrap_model.py`, `engine.py`, engine presets | Parallel quality task, branch `codex/coffee-quality` |
+| `sim.py`, `scene.py`, `controller.py`, `vision.py`, `classifier.py`, `bootstrap_model.py`, `engine.py`, engine presets | This task after committed quality handoff. Preserve the completed quality checkout. |
 | Overall plan, shared contract, `LIVE.md`, `live.py`, `live_web/*`, separate language-policy files | This task, `/private/tmp/hackspain-coffee-core`, branch `codex/coffee-core-live` |
 | New quality evidence and local quality plan | Parallel task, `thoughts/taras/research/coffee-quality/` |
 | `visual_assets/*`, GLBs, cinematic scripts | Swarm and existing render owners |
@@ -133,7 +139,7 @@ Its active engine checkout is now `/private/tmp/hackspain-coffee-quality`, based
 The quality task supplied source checkpoint `0e0df4b` and its final delivery at `1944538` on `codex/coffee-quality`.
 Its evidence includes the reserved evaluation, seven feed rates, and a browser demonstration. Existing engine interfaces remain unchanged.
 All three reserved seeds passed the capture bound. All three failed the good-loss bound, with observed losses from 4.95% to 6.42%.
-These changes are not yet integrated into this branch. Review and integration remain a separate increment.
+Commit `90dffc1` integrates these changes into this branch with the exact selected model restored locally.
 Do not edit either checkout from this task.
 
 Use port 8890 for this task and 8891 for the quality task.
@@ -145,7 +151,7 @@ Review a supplied quality commit before integration. Never merge its uncommitted
 The recorded 1,000 beans/s run captured 202/392 defects, or 51.5%.
 Its 94/2,208 false ejects equal 4.26%. That figure excludes spills and cannot represent total good loss.
 At 500 beans/s, historical capture was 61.6% and false ejects were 2.9%.
-No known mechanism establishes a path to 80% capture with at most 2% total good loss.
+The frozen quality delivery met the capture bound but exceeded the good-loss bound on every reserved seed.
 Merged objects and jet intersection are candidates for investigation, not proven fixes.
 
 Historical execution needed 13 to 37 wall seconds per simulated second.
@@ -336,7 +342,8 @@ Commit and push the increment after the required checks. Pause for Taras's visib
 
 Taras can select a coffee class and retain a result card for every successful injection in the current session.
 A new injection does not erase previous results. Selecting a card highlights that physical object when it remains visible.
-Cards remain readable after the object leaves the view and after reconnects, within the existing 64-command limit.
+Cards remain readable after the object leaves the view and after reconnects.
+Continuous mode retains the latest 64 completed cards plus bounded pending requests. Show when older history expires.
 
 Each card shows this sequence:
 
@@ -395,13 +402,15 @@ Show provisional live capture, total good loss, correctly sorted objects, unreso
 Display numerator and denominator beside each percentage. Display unavailable values when a denominator is zero.
 Keep engine speed and browser FPS separate from sorting scores.
 
-Use the existing cohort definition with the current simulation time as the provisional run end.
-Keep spills and unresolved objects in cohort denominators. Label the changing cohort and live values as provisional.
+The continuous-engine plan supersedes the earlier cumulative scoreboard proposal.
+Use its explicit rolling spawn-time window, settling delay, and warm-up labels.
+Keep spills and unresolved objects in cohort denominators. Label rolling values as simulation measurements.
 Correctly sorted objects are required defects in reject plus keep objects in accept.
 Divide that count by all eligible cohort objects, including unresolved objects.
-Show manually injected objects separately when they fall outside the quality cohort.
+Exclude manual injections from feed-score numerators, denominators, settling counts, and warm-up counts.
+Show their results in a separate bounded injection ledger.
 Do not label classifier confidence or a selected-object score as overall sorting accuracy.
-Compare final values with the engine's report for the exact same session.
+Compare counts against an independent calculation of the exact same window.
 
 For each injected object, add the measured reject probability, policy threshold, and anomaly-trigger status when available.
 Explain the actual decision rule, scheduling result, recorded contact, and final outcome.
@@ -411,8 +420,8 @@ An approximate object association remains approximate even when the underlying c
 ### Changes
 
 Agree on an additive snapshot contract after the quality owner supplies its committed handoff.
-The engine owner supplies cumulative cohort counts and decision evidence from its existing evaluator and controller data.
-This task owns the service and UI integration. Evaluator truth never reaches the model or controller inputs.
+This task supplies rolling cohort counts and decision evidence after the committed engine handoff.
+Evaluator truth never reaches the model or controller inputs.
 Do not compute scores from the page's truncated object or event lists.
 Do not serialize the full engine report at every pose update.
 Measure added evaluation and serialization cost before retaining the update cadence.
@@ -430,13 +439,13 @@ The handoff must supply the exact bounded comparison command before implementati
 
 #### Automated Verification
 
-- [ ] Final displayed counts match the same session's terminal report.
+- [ ] Displayed counts match an independent calculation of the same rolling window.
 - [ ] A decision explanation matches its recorded score, threshold, and anomaly result.
 - [ ] Measure the added score publication cost and preserve the inspection schedule.
 
 #### Automated QA
 
-- [ ] Capture live and final score states with their denominators and provisional labels.
+- [ ] Capture rolling scores with their denominators, clock, bounds, and warm-up labels.
 
 #### Manual Verification
 
@@ -628,6 +637,8 @@ Target: Vercel frontend with an HTTPS/WSS API on `hackspain`.
 The first local demo remains same-origin and requires no CORS or DNS changes.
 Before public deployment, implement an explicit frontend API URL and one exact allowed origin.
 Use authenticated access, a hard cap of one shared session, and a visible busy state.
+Use the continuous engine from the dedicated plan. It starts automatically and runs when no visitors are connected.
+Score windows expire old observations without resetting the engine. Restrict restart to administration.
 Document process supervision, Caddy routing, restart, rollback revision, and resource limits before changing services.
 Reserve one engine process and one native thread. Coordinate rendering or training allocations with the swarm before host work.
 
@@ -708,7 +719,7 @@ open http://127.0.0.1:8890
 For the current checkpoint, inject a stone. Observe its command acknowledgment, camera-derived decision, and physical outcome.
 After Phase 2A, use Restart session and inject again without a terminal command.
 After Phase 2B, select stone and stick in separate injections. Review each object's retained result card.
-After Phase 2C, compare live scores with the same session's final counts.
+After the continuous-engine increment, compare rolling scores against the same window's recorded counts.
 Check actual engine speed and browser FPS separately. Before Phase 2A, restart the service to reset the session.
 For a later SSH demonstration, install the same revision and requirements on the host, then forward its loopback service:
 

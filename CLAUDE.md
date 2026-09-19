@@ -11,3 +11,4 @@ These rules apply to coffee sorter work in this repository.
 - Commit and push review revisions to the active coffee branch. Keep its plan, evidence, and PR description consistent.
 - Preserve the current policy and model when a language request is unsupported or ambiguous.
 - The live demonstration must use a 3D view. Keep the current 2D projection temporary until the dedicated 3D increment.
+- The deployed engine must run continuously without browser activity. Use explicitly labeled rolling score windows instead of requiring visitor restarts.

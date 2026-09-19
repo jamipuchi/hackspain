@@ -1,0 +1,53 @@
+{
+  "integration_revision": "90dffc14f932fd9530665905c795a31efed90c2c",
+  "quality_delivery": "1944538",
+  "source_and_artifact_freeze_matched": true,
+  "bootstrap_provenance_matched": true,
+  "model_sha256": "89513398373c6e0e81286419962feb3e312742de14a76d02dd0d819ad5264a5a",
+  "session_id": "415ad091-b7b5-415c-be28-d32ce8ed97a9",
+  "stone": {
+    "object_id": 0,
+    "spawn_to_outcome_wall_s": 1.469838583143428,
+    "active": false,
+    "appearance_key": "f9cc4ecc88ae32badabb",
+    "shape": "box",
+    "axes": [
+      0.0033174306915139022,
+      0.003974553686675851,
+      0.002137421676971034
+    ],
+    "pos": [
+      0.3657301395459281,
+      -0.17001218836271356,
+      0.1569572949826464
+    ],
+    "quat": [
+      0.984729445673561,
+      -0.024375373116759875,
+      -0.06998613778825613,
+      -0.15752999881401725
+    ],
+    "rgb": [
+      0.421870619058609,
+      0.2549934685230255,
+      0.4079105854034424
+    ],
+    "decision": {
+      "track_id": 1,
+      "predicted_class": "stone",
+      "reject": true,
+      "scheduled": true,
+      "late": false,
+      "association": "current_component",
+      "association_approximate": true
+    },
+    "outcome": "reject",
+    "jet_hits": 5,
+    "own_pulse_hit": true
+  },
+  "restart_session_id": "9ad46fbe-aba9-4346-a8c9-caecfdf3fb8f",
+  "restart_status": "ready",
+  "idle_connection_issue": "Initial idle connection kept an injection pending. No command reached the worker. Reload and another click succeeded.",
+  "evidence_directory": "/tmp/coffee-quality-integrated-90dffc1",
+  "scope": "Integration check only. Not new quality acceptance or runtime evidence."
+}
