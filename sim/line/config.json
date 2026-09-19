@@ -38,10 +38,10 @@
     "fps": 60,
     "file_paths": [],
     "zone": [
-      527,
-      326,
-      1268,
-      475
+      540,
+      290,
+      1240,
+      570
     ],
     "px_per_mm": 4.3,
     "flow_axis": "-x",
@@ -106,5 +106,5 @@
   "dry_run": false,
   "door_d6_trim": 0,
   "door_policy": "state",
-  "trigger_on": "verdict"
+  "trigger_on": "seen"
 }
