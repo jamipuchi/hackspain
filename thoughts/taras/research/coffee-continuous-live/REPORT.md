@@ -3,7 +3,7 @@
 Date: 2026-09-19
 
 Taras owns functional QA and acceptance. This report records automated and local browser evidence.
-The required three-window endurance run remains pending.
+The three-window duration and retention check passed. The independent score-row count remains pending.
 
 ## Historical baseline
 
@@ -115,11 +115,30 @@ This interactive preview does not provide clean timing evidence.
 Browser probes and Taras's review can overlap its runtime.
 The measured 0.163x engine rate does not satisfy the real-time target and is not an acceptance benchmark.
 
+## Three-window endurance
+
+The same session remained healthy through 180.501 simulated seconds.
+An exclusive runtime reservation covered the interval from 101.697 through 180.501 simulated seconds.
+The service stayed available for Taras, so these samples do not provide clean timing evidence.
+
+| Simulated seconds | Engine rate | Service RSS KiB | Worker RSS KiB | Active bodies | Object records | Score rows |
+|---:|---:|---:|---:|---:|---:|---:|
+| 101.697 | 0.1596x | 144,560 | 155,136 | 323 | 556 | 30,299 |
+| 120.765 | 0.1605x | 144,640 | 156,112 | 336 | 568 | 30,292 |
+| 180.501 | 0.1651x | 118,224 | 134,528 | 367 | 599 | 30,205 |
+
+Every sample retained 200 recent feed outcomes, 64 completed injections, 2,000 events, and 2,000 decision records.
+Every timing category retained at most 4,096 samples.
+The score ledger stayed near 30,300 rows for one 60-second window plus settling.
+Active bodies remained bounded by the configured body pools.
+
+RSS did not show sustained growth across these samples.
+This observation does not prove long-term stability beyond the measured session.
+The session's displayed engine rate remained near 0.16x and still failed the real-time target.
+
 ## Pending verification
 
-- Run three complete 60-simulated-second score windows under the exclusive runtime lock.
 - Compare every sampled rolling aggregate with an independent count from the retained score rows.
-- Record memory and engine cost by interval.
 - Complete Taras's functional QA.
 - Add the required later 3D view.
 

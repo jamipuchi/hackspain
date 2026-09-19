@@ -167,9 +167,9 @@ curl --fail http://127.0.0.1:8892/state
 ps -o pid,rss,etime,%cpu -p <engine-worker-pid>
 ```
 
-- [ ] Automated verification: retained structures stay within their configured limits across three windows.
+- [x] Automated verification: retained structures stay within their configured limits across three windows.
 - [ ] Automated verification: scoreboard counts equal the independently calculated cohort at each sampled boundary.
-- [ ] Automated QA: document memory and engine cost by interval, including any slowdown.
+- [x] Automated QA: document memory and engine cost by interval, including any slowdown.
 - [ ] Manual verification: Taras accepts continuous behavior before the deployment phase begins.
 
 ## Manual E2E
