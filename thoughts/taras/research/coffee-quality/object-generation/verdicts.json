@@ -1,0 +1,27 @@
+{
+  "flash-lite": {
+    "earring": "Floating hoop; the bead does not connect.",
+    "star": "Recognizable five-point star, with uneven proportions.",
+    "logo": "Readable NOVA text, but the white silhouette does not form an N."
+  },
+  "deepseek": {
+    "earring": "Coherent angular hoop, closer to an open cuff.",
+    "star": "A decagon. It has no concave star valleys.",
+    "logo": "Best badge in the blind review. Clear N and spacious layout, after a retry."
+  },
+  "glm": {
+    "earring": "Disconnected rods instead of a continuous hoop.",
+    "star": "Six points instead of the requested five.",
+    "logo": "Strong, readable badge. The star sits close to the N."
+  },
+  "qwen": {
+    "earring": "Distracting black blocks. Its 33.5 mm length exceeds the 28 mm brief.",
+    "star": "Malformed outline, about 6.2 by 9.7 mm instead of roughly 18 mm.",
+    "logo": "Readable wordmark, but dark seams break the N."
+  },
+  "gemini": {
+    "earring": "Best earring appearance. Convincing pendant details; hardware remains approximate.",
+    "star": "Best five-point silhouette. Clean and balanced.",
+    "logo": "The gold rim adds polish, but dark seams weaken the N."
+  }
+}

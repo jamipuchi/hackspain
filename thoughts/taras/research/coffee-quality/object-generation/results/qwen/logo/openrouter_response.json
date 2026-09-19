@@ -56,5 +56,5 @@
   "latency_s": 78.63345466693863,
   "request_sha256": "2d01ac1a606a29e236746e08da2c30e57207f237a6b2952abf6a1461c1fea9bd",
   "endpoint": "https://openrouter.ai/api/v1/chat/completions",
-  "cached": true
+  "cached": false
 }

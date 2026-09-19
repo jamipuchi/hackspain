@@ -33,7 +33,7 @@ These settings compare practical configurations. They do not equalize internal r
 
 1. Generate three recipes per model. Retain requests, responses, usage, and failures.
 2. Validate recipes locally. Render valid recipes without manual geometry repair.
-3. Inspect perspective and top views. Compare recognition, connected geometry, lettering, and visual appeal.
+3. Inspect angled and top views. Compare recognition, connected geometry, lettering, and visual appeal.
 4. Report first-attempt failures and any separate repair attempts.
 
 Verification:
@@ -100,8 +100,18 @@ agent-browser --session coffee-object-probe open http://127.0.0.1:8891/gallery.h
 agent-browser --session coffee-object-probe snapshot -i
 ```
 
-Compare perspective and top views. Use blind labels to hide model names and costs.
+Compare angled and top views. Use blind labels to hide model names and costs.
 Open any saved `object.blend` in Blender to inspect its parts.
 Use `object.glb` for downstream asset inspection. GLB dimensions use meters.
 The recipes and Blender scenes use millimeters.
 Do not use these visual assets as validated physical colliders or training labels.
+
+## Evidence integrity
+
+Provider request and response files remain immutable during cache replays.
+A different request requires a different output directory. Replay status stays in execution records.
+The Qwen normalization records the SHA256 of its original response. That hash was verified after the replay fix.
+Local validation checks numeric limits, ring dimensions, unique polygon vertices, signed area, and boundary intersections.
+It does not prove that a shape matches its name or requested class.
+Both cameras use orthographic projection. The angled view retains the historical filename `perspective.png`.
+The analysis summary labels original generation attempts separately from the retry-inclusive total.

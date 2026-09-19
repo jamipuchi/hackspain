@@ -40,7 +40,7 @@ def main():
                 "mean_api_s": statistics.mean(row["latency_s"] for row in group),
                 "reported_cost_usd": sum(row["cost_usd"] for row in group if row["cost_usd"] is not None),
             }
-    print(json.dumps({"models": summary, "reported_cost_with_retry_usd":
+    print(json.dumps({"original_generation_attempts": summary, "reported_cost_with_retry_usd":
                       sum(row["cost_usd"] for row in rows if row["cost_usd"] is not None)}, indent=2))
 
     diagnostics = []

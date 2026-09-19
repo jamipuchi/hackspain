@@ -135,6 +135,8 @@ def card(model_key, case, verdicts):
             usage = {"cost": usage["cost"] + retry_cost}
             billed_label = "Billed total"
     render_seconds = render.get("render_timings_seconds", {}).get("total") if isinstance(render, dict) else None
+    dimensions = render.get("bounding_dimensions_mm", []) if isinstance(render, dict) else []
+    size = " x ".join(f"{value:.1f}" for value in dimensions) + " mm" if dimensions else "Unavailable"
     ready = bool(perspective and top and isinstance(render, dict))
     verdict = verdict_for(verdicts, model_key, case)
     title = escaped(MODEL_NAMES[model_key])
@@ -153,13 +155,14 @@ def card(model_key, case, verdicts):
     <h3 class="model-name" data-real-label="{title}">{title}</h3>
     <span class="blind-label" aria-hidden="true"></span>
   </div>
-  {state}{repair_note}
+  <div class="status-wrap">{state}{repair_note}</div>
   <div class="image-wrap">{image or '<div class="missing-image">No rendered image</div>'}</div>
   <dl class="metrics">
     <div><dt>{api_label}</dt><dd>{number(api_seconds)} s</dd></div>
     <div><dt>{billed_label}</dt><dd>{cost(usage.get('cost'))}</dd></div>
     <div><dt>Render</dt><dd>{number(render_seconds)} s</dd></div>
   </dl>
+  <p class="dimensions">Size: {escaped(size)}</p>
   {critique}
   <nav class="links" aria-label="Saved files">{links_for(active_folder, perspective, top, glb, relative(folder / 'openrouter_response.json') if repair_used else '')}{original_failure}</nav>
 </article>'''
@@ -203,6 +206,7 @@ h2 {{ font-size:1.15rem; font-weight:650; }}
 .model-name {{ font-size:.88rem; line-height:1.25; font-weight:650; overflow-wrap:anywhere; }}
 .blind-label {{ color:var(--accent); font-weight:700; }}
 .state {{ display:block; min-height:20px; margin:4px 0 8px; font-size:.75rem; line-height:1.25; }}
+.status-wrap {{ min-height:72px; }}
 .ready {{ color:#346244; }} .missing {{ color:#8a453b; }}
 .repair-note {{ display:inline-block; margin:-4px 0 8px; padding:4px 6px; background:#d8e4e3; color:#294a4e; font-size:.74rem; font-weight:700; line-height:1.25; }}
 .image-wrap {{ aspect-ratio:1; background:#ebe6dc; display:grid; place-items:center; overflow:hidden; }}
@@ -212,6 +216,7 @@ h2 {{ font-size:1.15rem; font-weight:650; }}
 .metrics div {{ min-width:0; }}
 dt {{ color:var(--muted); font-size:.68rem; }} dd {{ margin:2px 0 0; font-size:.78rem; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }}
 .critique {{ margin:10px 0 0; color:var(--muted); font-size:.78rem; line-height:1.35; }}
+.dimensions {{ margin-top:8px; color:var(--muted); font-size:.74rem; }}
 .links {{ display:flex; gap:9px; flex-wrap:wrap; margin-top:auto; padding-top:12px; }}
 a {{ color:var(--accent); font-size:.78rem; text-underline-offset:2px; }}
 body.blind .model-name {{ display:none; }} body:not(.blind) .blind-label {{ display:none; }}
@@ -224,7 +229,7 @@ body.blind .metrics,body.blind .critique,body.blind .links {{ display:none; }}
   <header class="masthead">
     <div><h1>Object recipe comparison</h1><p class="intro">Five model outputs, built by one frozen renderer. Select the view before a taste review.</p></div>
     <div class="controls" aria-label="Gallery controls">
-      <button type="button" data-view="perspective" aria-pressed="true">Perspective</button>
+      <button type="button" data-view="perspective" aria-pressed="true">Angled</button>
       <button type="button" data-view="top" aria-pressed="false">Top</button>
       <button type="button" id="blind-toggle" aria-pressed="false">Blind labels</button>
     </div>
@@ -238,7 +243,10 @@ const pngLinks = document.querySelectorAll('.png-link');
 function setView(view) {{
   buttons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.view === view)));
   images.forEach((image) => image.src = image.dataset[view]);
-  pngLinks.forEach((link) => link.href = link.closest('.result-card').querySelector('.object-image').dataset[view]);
+  pngLinks.forEach((link) => {{
+    const image = link.closest('.result-card').querySelector('.object-image');
+    if (image) link.href = image.dataset[view];
+  }});
 }}
 buttons.forEach((button) => button.addEventListener('click', () => setView(button.dataset.view)));
 document.querySelector('#blind-toggle').addEventListener('click', (event) => {{

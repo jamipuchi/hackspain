@@ -35,6 +35,8 @@ def main():
             except BlockingIOError:
                 print("Runtime lock is occupied. No Blender process started.", flush=True)
                 raise SystemExit(75)
+            if out.exists():
+                out.rename(out.with_name(f"render-failed-{time.time_ns()}"))
             out.mkdir(exist_ok=True)
             env = {**os.environ, **{key: "1" for key in (
                 "OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "VECLIB_MAXIMUM_THREADS")}}
@@ -45,17 +47,22 @@ def main():
             load = os.getloadavg()
             print(f"Rendering: {recipe.parent}", flush=True)
             with (out / "blender.log").open("w") as log:
-                result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, env=env, timeout=600)
-            record = {"returncode": result.returncode, "subprocess_wall_seconds": time.monotonic() - started,
+                try:
+                    result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, env=env, timeout=600)
+                    returncode = result.returncode
+                except subprocess.TimeoutExpired:
+                    returncode = 124
+                    log.write("\nBlender exceeded the 600-second subprocess deadline.\n")
+            record = {"returncode": returncode, "subprocess_wall_seconds": time.monotonic() - started,
                       "host_load_before": load, "host_load_after": os.getloadavg(),
                       "command": command, "thread_environment": {key: env[key] for key in (
                           "OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "VECLIB_MAXIMUM_THREADS")},
                       "exclusive_lock": "/private/tmp/hackspain-coffee-runtime.lock"}
             (out / "execution.json").write_text(json.dumps(record, indent=2) + "\n")
             print(json.dumps({"case": str(recipe.parent.relative_to(HERE)),
-                              "returncode": result.returncode, "wall_s": record["subprocess_wall_seconds"]}), flush=True)
-            if result.returncode:
-                raise SystemExit(result.returncode)
+                              "returncode": returncode, "wall_s": record["subprocess_wall_seconds"]}), flush=True)
+            if returncode:
+                raise SystemExit(returncode)
 
 
 if __name__ == "__main__":

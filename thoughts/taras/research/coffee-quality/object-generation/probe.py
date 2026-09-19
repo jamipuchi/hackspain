@@ -127,15 +127,46 @@ def validate_recipe(recipe):
             area = sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(points, points[1:] + points[:1]))
             if abs(area) < 1e-5:
                 raise ValueError("polygon has zero signed area")
+            for index in range(len(points)):
+                for other in range(index + 2, len(points)):
+                    if index == 0 and other == len(points) - 1:
+                        continue
+                    if segments_intersect(points[index], points[(index + 1) % len(points)],
+                                          points[other], points[(other + 1) % len(points)]):
+                        raise ValueError("polygon boundary intersects itself")
         elif part["outline"]:
             raise ValueError("unused outline must be empty")
         if (part["kind"] == "text") != bool(part["text"].strip()):
             raise ValueError("text field does not match part kind")
 
 
+def segments_intersect(a, b, c, d):
+    def turn(p, q, r):
+        return (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+
+    values = (turn(a, b, c), turn(a, b, d), turn(c, d, a), turn(c, d, b))
+    if values[0] * values[1] < 0 and values[2] * values[3] < 0:
+        return True
+    for value, p, q, r in zip(values, (a, a, c, c), (b, b, d, d), (c, d, a, b)):
+        if abs(value) < 1e-10 and all(min(p[i], q[i]) - 1e-10 <= r[i] <= max(p[i], q[i]) + 1e-10 for i in (0, 1)):
+            return True
+    return False
+
+
 def save(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2, allow_nan=False) + "\n")
+
+
+def save_attempt(path, data):
+    """Keep provider evidence immutable. A different request needs a new output directory."""
+    if path.exists():
+        previous = json.loads(path.read_text())
+        comparable = lambda value: {key: item for key, item in value.items() if key != "cached"}
+        if comparable(previous) != comparable(data):
+            raise RuntimeError(f"attempt already exists with different data; choose a new --out: {path}")
+        return
+    save(path, data)
 
 
 def provider_schema(value):
@@ -161,15 +192,17 @@ def main():
     if not keys.get("OPENROUTER_API_KEY"):
         raise SystemExit("OPENROUTER_API_KEY is missing")
     args.out.mkdir(parents=True, exist_ok=True)
-    save(args.out / "schema.json", SCHEMA)
-    save(args.out / "environment.json", {
+    save_attempt(args.out / "schema.json", SCHEMA)
+    environment = {
         "source_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
         "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "python": sys.version, "platform": platform.platform(),
         "thread_environment": {k: os.environ.get(k) for k in (
             "OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "VECLIB_MAXIMUM_THREADS")},
         "created_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-    })
+    }
+    if not (args.out / "environment.json").exists():
+        save(args.out / "environment.json", environment)
     for case in CASES if args.case == "all" else [args.case]:
         folder = args.out / case
         folder.mkdir(exist_ok=True)
@@ -188,13 +221,13 @@ def main():
                     },
                 }},
             }
-            save(folder / "jev_request.json", jev_payload)
+            save_attempt(folder / "jev_request.json", jev_payload)
             try:
                 classification = call(TYPESAFE_URL, keys["TYPESAFE_API_KEY"], jev_payload, args.out, args.live)
-                save(folder / "jev_response.json", classification)
+                save_attempt(folder / "jev_response.json", classification)
             except Exception as error:
                 classification = {"status": "failed", "reason": str(error)}
-                save(folder / "jev_response.json", classification)
+                save_attempt(folder / "jev_response.json", classification)
         context = classification.get("response", {}).get("answers", classification)
         prompt = CASES[case] + "\nPreliminary text classification from Jev: " + json.dumps(context)
         payload = {
@@ -210,16 +243,16 @@ def main():
         if args.model == "google/gemini-3.8-flash":
             # The available Vertex endpoint does not advertise temperature support.
             payload.pop("temperature")
-        save(folder / "openrouter_request.json", payload)
+        save_attempt(folder / "openrouter_request.json", payload)
         result = call(OPENROUTER_URL, keys["OPENROUTER_API_KEY"], payload, args.out, args.live)
-        save(folder / "openrouter_response.json", result)
+        save_attempt(folder / "openrouter_response.json", result)
         response = result["response"]
         choice = response["choices"][0]
         if choice["finish_reason"] != "stop":
             raise ValueError(f"{case}: response did not finish")
         recipe = json.loads(choice["message"]["content"])
         validate_recipe(recipe)
-        save(folder / "recipe.json", recipe)
+        save_attempt(folder / "recipe.json", recipe)
         print(json.dumps({"case": case, "model": response.get("model"),
                           "latency_s": result["latency_s"], "usage": response.get("usage"),
                           "parts": len(recipe["parts"]), "cached": result["cached"]}), flush=True)
@@ -244,11 +277,19 @@ def call(url, key, payload, out, live):
         with urllib.request.urlopen(request, timeout=120) as response:
             body = json.load(response)
     except urllib.error.HTTPError as error:
-        body = json.loads(error.read().decode().replace(key, "[REDACTED]"))
+        raw = error.read().decode(errors="replace").replace(key, "[REDACTED]")
+        try:
+            body = json.loads(raw)
+        except json.JSONDecodeError:
+            body = {"error": {"code": error.code, "body": raw[:8000]}}
         result = {"error": body.get("error", {"code": error.code}),
                   "latency_s": time.monotonic() - started, "request_sha256": digest, "endpoint": url}
         save(path, result)
         raise RuntimeError(f"provider returned HTTP {error.code}; diagnostic saved at {path}") from None
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+        save(path, {"error": "transport or JSON response failure; billing status unknown",
+                    "latency_s": time.monotonic() - started, "request_sha256": digest, "endpoint": url})
+        raise RuntimeError(f"provider connection or JSON response failed; diagnostic saved at {path}") from None
     result = {"response": body, "latency_s": time.monotonic() - started,
               "request_sha256": digest, "endpoint": url}
     save(path, result)
