@@ -1,20 +1,33 @@
 # Coffee live contract v1
 
-Owner: Codex core task. Scope: one local engine session and a separate diagnostic page.
+Owner: original demo task for this contract and the live service. Scope: one local engine session and its interface.
+The parallel quality task owns physics, sorting quality, and engine runtime.
 
 ## File ownership
 
 | Files | Owner |
 |---|---|
-| `vision.py`, `sim.py`, `controller.py`, `classifier.py` | Codex core task |
-| New `engine.py`, `live.py`, `bootstrap_model.py`, `configs/default_demo.json`, `live_web/*` | Codex core task |
-| Plan, contract, and engine evidence | Codex core task |
+| `sim.py`, `scene.py`, `controller.py`, `vision.py`, `classifier.py`, `bootstrap_model.py`, `engine.py`, engine presets | Parallel quality task, `codex/coffee-quality` |
+| `live.py`, `live_web/*`, `LIVE.md`, separate language-policy files | Original demo task, `codex/coffee-core-live` |
+| Overall plan, shared contract, existing demo evidence | Original demo task |
+| New quality evidence and local quality plan | Parallel task, `thoughts/taras/research/coffee-quality/` |
 | `export_replay.py` | Existing replay owner. Frozen until coordinated with Taras and the swarm. |
 | `web/viewer.js`, `web/template.html`, `web/build_page.py` | Taras ownership confirmation pending. Frozen in this task. |
 | Generated `web/index.html` | Taras is the integration owner until explicitly reassigned. No other track regenerates it. |
 | Rendering assets, GLBs, cinematic scripts | Swarm. Visual acceptance remains with Taras. |
 
-The diagnostic page uses a separate directory. It does not modify the existing viewer or merge asset work.
+The original demo task uses `/private/tmp/hackspain-coffee-core` and port 8890.
+The task named "Improve coffee sorting motion" uses `/private/tmp/hackspain-coffee-quality` and port 8891 for engine work.
+Its Codex task directory remains `/Users/taras/.codex/worktrees/0833/hackspain`.
+Each task edits only its own checkout and assigned files.
+Both tasks coordinate snapshot, command, and policy changes before modifying these interfaces.
+Only committed, reviewed quality changes enter the demo branch.
+
+The diagnostic page uses a separate directory. Existing viewer files remain frozen until Taras confirms ownership.
+The render integration source is `codex/coffee-cinematic-scene`, currently `2fa9853`.
+It includes the earlier asset and moodboard work. Reuse those outputs after owner coordination.
+Independent interface and offline language work can proceed before physical-quality acceptance.
+Live language activation still requires the physical and language checkpoints.
 The source checkout and its unpushed moodboard plan commit remain intact.
 
 ## Identity and time
@@ -51,7 +64,9 @@ The requested class selects a physical object at spawn. It never supplies a pred
 The worker acknowledges only after spawn succeeds. Failed spawn returns an explicit error without hidden retry.
 The service bounds pending commands, command IDs, clients, events, snapshots, simulation duration, and wall duration.
 Concrete limits live in the preset or service constants. Shutdown joins the worker and closes the renderer.
-The first increment resets through service restart. Automatic reconnect obtains the latest bounded snapshot.
+The initial increment resets through service restart. Phase 2A adds a same-origin restart control for the shared session.
+That control must stop the old worker before creating a new session. Preserve each session's evidence separately.
+Automatic reconnect obtains the latest bounded snapshot.
 An unavailable worker produces an error state. No synthetic poses or predicted outcomes replace it.
 
 ## Measurements
@@ -61,3 +76,23 @@ Record simulation rate, admitted throughput, browser FPS, and injection latency 
 Acknowledgment latency starts at browser send and ends at receipt of the worker's spawn acknowledgment.
 Final sorting latency starts at successful spawn and ends at the physical outcome.
 Include preset, model, policy, source hashes, platform, and native thread counts with evidence.
+
+## Next demo requirements
+
+Taras requires a 3D live view in a later increment. The current 2D projection remains temporary.
+Every successful injection must retain its own result card during the session.
+The card separates the requested class, camera prediction, control decision, actual air contact, and physical outcome.
+A command does not prove contact. Contact does not prove correct sorting.
+The UI must label approximate associations and unavailable reasons explicitly.
+
+Phase 2C needs an additive engine contract after the quality task's committed handoff:
+
+- Cumulative quality-cohort counts, including required defects, keep objects, correct outcomes, spills, and unresolved objects.
+- The measured rejection probability and threshold for each retained decision.
+- The anomaly score, anomaly threshold, and trigger status used for that decision.
+- Explicit reason values and retained decision evidence for injected objects.
+
+These fields are proposed, not implemented. Both tasks must confirm their names and semantics before changing the shared snapshot.
+The UI must not derive quality percentages from truncated object or event windows.
+Live quality values remain provisional until the session completes. Include counts beside every percentage.
+Keep truth in the evaluator. Do not supply these summaries as controller or model inputs.
