@@ -908,7 +908,7 @@ const clickTargets = [];
 const presets = {
   overview: {position: [1.82, -2.62, 1.98], target: [-.22, 0, .47]},
   sorting: {position: [.20, 1.75, .58], target: [.12, 0, .48]},
-  inspection: {position: [.72, 0, 1.52], target: [-.50, 0, .58]},
+  inspection: {position: [.82, 0, 1.65], target: [-.35, 0, .58]},
 };
 const INK = '#25342d', EDGE = '#34463d', EDGE_SOFT = '#829188', PAPER = '#eef0ea';
 const REJECT_COLOR = new THREE.Color('#d26045'), SPILL_COLOR = new THREE.Color('#d49a27'), SELECT_COLOR = new THREE.Color('#d8781c');
@@ -1187,7 +1187,7 @@ async function loadBlenderAssets(L) {
   scene.add(machine.scene);
   scene.remove(three.machineGroup);
   disposeOwnedFallbackMachine(three.machineGroup);
-  three.inspectionHousing = meshes.filter(mesh => /^(Camera shroud|Camera gantry bridge|Inspection light)/.test(mesh.name));
+  three.inspectionHousing = meshes.filter(mesh => /^(Camera_(?:shroud|gantry_bridge)|Inspection_light|Recorded_surface_(?:11|12|13))/.test(mesh.name));
   updateMachineVisibility();
   clickTargets.length = 0; clickTargets.push(...meshes.filter(m => m.visible));
   loaded.push(`machine ${meshes.length} parts`);
