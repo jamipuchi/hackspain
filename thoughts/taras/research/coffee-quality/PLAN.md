@@ -89,3 +89,10 @@ agent-browser snapshot
 ```
 
 Taras reviews motion and sorting behavior. Browser FPS, pose frequency, engine speed, and admitted throughput remain separate measurements.
+
+## Production capacity note
+
+Taras reports approximately 16 vCPUs and 128 GB RAM for production.
+Parallel inference can use that capacity after a measured comparison.
+Local speed measurements do not establish production speed.
+This task retains its restriction against shared-host jobs and public deployment.

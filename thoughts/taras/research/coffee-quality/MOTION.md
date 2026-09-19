@@ -47,3 +47,13 @@ The observed axis mismatch remains unresolved. The simple correction did not imp
 .venv-coffee/bin/python thoughts/taras/research/coffee-quality/measure_motion.py --preset thoughts/taras/research/coffee-quality/timestep-1ms.json --seconds 2 --out /tmp/coffee-motion-1ms
 .venv-coffee/bin/python sim/coffee_sorter/engine.py --preset sim/coffee_sorter/configs/default_demo.json --seconds 4 --out /tmp/coffee-quality-1ms
 ```
+
+## Remaining model concerns
+
+The capsule path assigns local AABB extents in the wrong axis order.
+The simulator also changes geometry sizes and mass properties after compilation.
+MuJoCo documents restrictions on these runtime changes.
+These findings limit claims about physical fidelity. The short timestep experiment does not resolve them.
+The inertia correction already failed the motion comparison. No unmeasured geometry or solver correction entered this branch.
+
+Source: [MuJoCo model changes](https://mujoco.readthedocs.io/en/stable/programming/simulation.html#mjmodel-changes).

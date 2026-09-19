@@ -14,7 +14,7 @@ The replay uses 1,000 actual camera batches with 6,001 observations.
 All probabilities and anomaly scores match the original predictor bit for bit.
 The check also covers empty batches, one-row batches, NaN routing, large batches, and unsupported classifiers.
 Three prototype replays measured 8,601.4 ms versus 3,280.0 ms at the median, or 2.62x faster inference.
-The integrated replay measured 2.73x faster inference.
+The integrated replay also passed numerical equivalence. Its timing overlaps another session and is excluded.
 
 | Four-second engine run | Wall seconds | Inference ms/s | Capture count | Keep loss | Late decisions |
 |---|---:|---:|---:|---:|---:|
@@ -45,3 +45,16 @@ These are local measurements. They do not establish production speed or parallel
 The original feature archive remains at `/tmp/coffee-quality-light-force/features.npz`.
 Its SHA256 is `640cd67dd340a30c7837b3529bb44944d6c57b1b1dbde2f3668a53ec45543a18`.
 Newly bootstrapped models require a separate comparison.
+
+## Host timing audit
+
+The service on port 8890 completed a user-triggered run while this task remained active.
+File timestamps and reported active durations place that run approximately between 17:04:59 and 17:05:52 local time.
+The integrated inference replay overlaps that window. Its timing is excluded, while numerical equivalence remains valid.
+The three-run prototype benchmark preceded that window.
+The engine baseline ran approximately from 17:03:04 to 17:03:27.
+The first optimized engine run ran approximately from 17:05:56 to 17:06:17.
+The optimized repeat ran approximately from 17:07:30 to 17:07:48.
+Those engine comparisons do not overlap the observed service run.
+The final bootstrap ran approximately from 17:09:44 to 17:10:10.
+Reserved evaluation checks competing activity before each seed and during execution.
