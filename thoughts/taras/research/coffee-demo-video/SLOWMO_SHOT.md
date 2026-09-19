@@ -2,8 +2,34 @@
 
 Status: Taras approved the concept and requested an ultra-slow-motion effect.
 Three [basic stills](BASIC_RENDER_REVIEW.md) now show one recorded bean pair.
-A fresh dense capture now validates one simulator pulse contact.
-The final animation remains unvalidated.
+The [video preview](SEGMENTS_REVIEW.md) uses a different pair from an independently audited 500 Hz capture.
+The original still pair remains historical composition evidence only.
+
+## Verified video event
+
+The video tracks black bean 1261 and good bean 1256 from source revision `44609edd` with development seed 8.
+The black bean receives its own pulse at 1.628 and 1.630 simulated seconds, then rejects at 1.710 seconds.
+The good bean receives no contact and accepts at 1.714 seconds.
+The renderer uses 120 consecutive source samples from `[1.478, 1.718)`.
+Playback at 30 fps lasts four seconds and slows the recorded motion by 16.667 times.
+The clip ends after both outcomes, before the splitter hides the good bean in later captured frames.
+The camera retains both paths. All nearby recorded beans remain present.
+The render omits both chute walls and splitter side trim as documented presentation cutaways.
+It also omits the decorative right manifold support and clamp to retain visibility during the pulse.
+It contains no airflow graphic, force arrow, labels, sound, motion blur, or synthetic intermediate poses.
+
+The durable independent audit is `/private/tmp/coffee-demo-video-previews/high-rate-capture/independent-audit.json`.
+The source replay is `/private/tmp/coffee-demo-video-previews/high-rate-capture/fresh-current-main/replay.json`.
+The reproduction replay is verification evidence only.
+This selected simulation event does not establish aggregate sorting performance or hardware feasibility.
+
+The tracked audit report is [INDEPENDENT_AUDIT.md](../coffee-high-rate-capture/INDEPENDENT_AUDIT.md).
+The source stores bean axes as semiaxes. Renderers double them to obtain full dimensions.
+Quaternion values use `w,x,y,z` order.
+The zero-delta result covers encoded poses, not unquantized simulator state.
+The contact record comes from the simulator force predicate, not a hardware sensor.
+
+## Earlier concept
 
 ![Three moments of the slow-motion shot](/private/tmp/coffee-demo-video-previews/mockups/air-jet-slowmo-concept-v1.png)
 
@@ -48,34 +74,14 @@ The splitter classifies objects above its height as accepted and objects below i
 Sources: `sim.py`, the `step` method, and `scene.py`, the splitter geometry.
 The source replay identifies simulator revision `340e734d06a91b589248ab6d35f20520ebab22b6`.
 
-The original slow-motion plan required denser poses and verified pulse contact.
+A final slow-motion shot needs denser recorded poses and verified pulse contact for the selected bean.
 Preserve both object IDs, pose timestamps, pulse timestamps, contact records, and final outcomes.
 Record nearby beans too, so the crop does not falsely imply that the pulse affects only one object.
 Keep the simulator, model, policy, and preset provenance with the capture.
 The previous recording notes propose every-step capture at 500 Hz for a 2 ms timestep.
-The existing exporter accepts at most 60 fps. The new capture tool resolves this sampling gap.
+The existing exporter accepts at most 60 fps. A denser capture requires coordination with its owner.
 
-No simulation, exporter change, or animation ran during the initial concept work.
-
-## Independent dense-capture handoff
-
-The new capture records every 0.002-second physics step at 500 Hz.
-An independent raw-file audit passed for the render handoff.
-See [the independent audit](../coffee-high-rate-capture/INDEPENDENT_AUDIT.md).
-
-Use black bean 1261 and good bean 1256 for the validated dense sequence.
-Black bean 1261 contacted its targeted pulse at 1.628 and 1.630 seconds.
-It received a reject outcome at 1.710 seconds.
-Good bean 1256 has no pulse contact and received an accept outcome at 1.714 seconds.
-
-Use `[1.478, 1.764)` simulated seconds for the proposed render.
-The interval has 143 samples. It lasts 4.7667 seconds at 30 frames per second.
-The playback is 16.6667 times slower than simulation time.
-
-The stored axes are semiaxes. Renderers must double them for full dimensions.
-Quaternion values use `w,x,y,z` order.
-The zero-delta result covers encoded poses, not unquantized simulator state.
-The contact record comes from the simulator force predicate, not a hardware sensor.
+No simulation, exporter change, or animation ran during the original concept pass.
 
 ## Recorded pair for the still studies
 
@@ -96,8 +102,7 @@ The gallery adds optional review markers. The clean PNGs contain no markers or s
 
 Stretching this 0.100-second interval to five seconds would imply 50-times slower playback.
 That is an editorial target, not a rendered or validated result.
-The new dense capture supplies the required pose and pulse-contact evidence.
-The final clip still requires rendering and Taras's framing review.
+The verified video event above replaces that proposed 50-times slowdown and historical pair.
 
 ## Revised edit proposal
 
