@@ -229,7 +229,7 @@ pre{margin:0;background:color-mix(in srgb,var(--line) 40%,transparent);border-ra
         <li><b>Tower.</b> Cut the servo hole in one T2 (1.2 wide × 2.3 tall, centred, bottom edge 10.35 above the tower's bottom edge). Glue T1 + T2 into a box, T3 on top. Glue it to the base on its footprint (Fig. 3), front wall towards the chute, with the two G buttresses on its sides.</li>
         <li><b>Servo.</b> Wire it to D9, 5V, GND; send <code>S 90 90 75</code>. Push the body through the hole from outside until the flange sits on the wall; glue the flange and tape across it. Shaft points at the chute. Cable out through the open tower bottom.</li>
         <li><b>Hanger.</b> Glue HP on the back of H around its centre, then glue the cross horn onto HP with H hanging straight down from the axis (top edge 1.0 above the axis). Let it cure fully before loading it.</li>
-        <li><b>Tray.</b> Glue TS edge-on under TR along its centre line, then glue TR + TS to the front face of H with the tray top exactly 1.0 below the axis. Glue TL on the front edge. Paper on top. <span class="check">Level at S 90; tilts symmetric at S 45 / S 135.</span></li>
+        <li><b>Tray.</b> Glue TS edge-on under TR along its centre line, then glue TR + TS to the front face of H with the tray top exactly 1.0 below the axis. Glue TL on the front edge. Paper on top, and a paper strip over the inside face of the rim and lip so the camera sees only white around the bean. <span class="check">Level at S 90; tilts symmetric at S 45 / S 135.</span></li>
         <li><b>Chute.</b> Panels P with floor line and rails as before; B1 and B2 between them; F onto the rails; glue the panels to the base from 3.0 to 17.1 on the centre line so the exit is 0.5 before the tray lip and 1.5 above the tray. Two G buttresses.</li>
         <li><b>Containers and phone.</b> Bowl under the left edge, cup under the right (Fig. 3). Phone 20 cm above the tray, lens down. Ten beans: each should stop on the tray, then leave on the commanded side.</li>
       </ol>
@@ -242,7 +242,7 @@ pre{margin:0;background:color-mix(in srgb,var(--line) 40%,transparent);border-ra
         <dt>SUSPECT</dt><dd><code>S 135 90 75</code>, tray tips to the cup. Hold 0.5 s, back to 90</dd>
         <dt>STUCK</dt><dd>bean still in the ROI 0.8 s after the tilt → <code>S 30</code> / <code>S 150</code>, then level</dd>
         <dt>SWING</dt><dd>stock firmware ramp: 45° in about 0.5 s. That is fine here; nothing waits on it</dd>
-        <dt>ROI</dt><dd>the tray itself: 6 × 6 cm, phone 20 cm above, px/mm from the tray edges</dd>
+        <dt>ROI</dt><dd>the inner 5.5 × 5.5 cm of the tray, phone 20 cm above, px/mm from the tray edges (6.0 cm). The back rim, front lip and hanger are the white face of the foam board; cover any cut edge or glue mark inside the zone with white paper so nothing dark but the bean is in view. The horn sits behind the rim, outside the zone</dd>
         <dt>TRIGGER</dt><dd>bean present in the ROI and not moving between two frames (0.1 s apart) → classify</dd>
         <dt>CYCLE</dt><dd>settle 0.4 + classify + tilt 0.5 + hold 0.5 + level 0.5 ≈ 2 s. Feed one bean every 2.5 s</dd>
       </dl>
