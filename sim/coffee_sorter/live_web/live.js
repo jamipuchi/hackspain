@@ -2,18 +2,31 @@ import * as THREE from 'three';
 import {OrbitControls} from '/vendor/OrbitControls.js';
 import {RoomEnvironment} from '/vendor/RoomEnvironment.js';
 import {GLTFLoader} from '/assets/vendor/loaders/GLTFLoader.js';
+import {samePresentationTimeline} from './timeline.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('scene');
 const ctx = canvas.getContext('2d');
 let state = null;
+let liveState = null;
 let socket;
 let selected = null;
 const requests = new Map();
 let latestCommandId = null;
+let activePolicyRequest = null;
+const policyQueue = [];
+let policyTransportClasses = new Set();
+let policyTransportVersion = null;
+let policyDesiredClasses = new Set();
+let policyInitialized = false;
+let pendingPolicyPresentation = null;
+let policyError = '';
+let itemCatalogSignature = '';
 let shownSession = null;
 let frames = 0;
 let fpsStart = performance.now();
+let lastFrameAt = null;
+let frameIntervals = [];
 let previousPacket = null;
 let restartPending = false;
 let reconnectTimer = null;
@@ -21,13 +34,19 @@ let heartbeatSeq = null;
 let heartbeatSeenAt = null;
 let staleConnection = false;
 const selectedEvents = new Map();
-const measurements = {fps: null, acknowledgment_ms: null, outcome_wall_s: null, pose_hz: null, webgl: null};
+const measurements = {fps: null, frame_ms_p50: null, frame_ms_p95: null, frame_ms_max: null, acknowledgment_ms: null, outcome_wall_s: null, pose_hz: null, click_dispatch_ms: null, buffer_delay_ms: 240, buffer_waiting: true, webgl: null};
 window.coffeeMeasurements = measurements;
 const HEARTBEAT_IDLE_MS = 4500;
 const MAX_CLIENT_REQUESTS = 64;
 const MAX_CLIENT_PENDING_REQUESTS = 16;
+const DISPLAY_DELAY_MS = 240;
+const SNAPSHOT_LIMIT = 32;
+const SNAPSHOT_MAX_AGE_MS = 1500;
+const localHost = ['localhost', '127.0.0.1', '::1'].includes(location.hostname);
+document.body.classList.toggle('localhost', localHost);
 
 const continuousMode = () => state?.mode === 'continuous';
+const liveContinuousMode = () => liveState?.mode === 'continuous';
 const latestRequest = () => latestCommandId ? requests.get(latestCommandId) : null;
 const pendingRequests = () => [...requests.values()].filter(request => !request.acknowledged && !request.invalidated);
 const pendingRequest = () => pendingRequests().length > 0;
@@ -38,9 +57,9 @@ function scheduleReconnect() {
 }
 
 function retryPending() {
-  if (!pendingRequest() || !state || socket?.readyState !== WebSocket.OPEN) return;
+  if ((!pendingRequest() && !activePolicyRequest) || !liveState || socket?.readyState !== WebSocket.OPEN) return;
   for (const request of pendingRequests()) {
-    if (state.session_id !== request.payload.session_id) {
+    if (liveState.session_id !== request.payload.session_id) {
       request.invalidated = true;
       request.error = 'Engine session changed. The original request was not retried.';
       continue;
@@ -48,6 +67,11 @@ function retryPending() {
     socket.send(JSON.stringify(request.payload));
     request.lastSend = performance.now();
     request.retryPending = false;
+  }
+  if (activePolicyRequest && performance.now() - activePolicyRequest.lastSend > 2000) {
+    socket.send(JSON.stringify(activePolicyRequest.payload));
+    activePolicyRequest.lastSend = performance.now();
+    activePolicyRequest.serverPending = false;
   }
   updateLatestEvidence();
 }
@@ -78,25 +102,28 @@ function connect() {
       if (shownSession && packet.session_id && shownSession !== packet.session_id) {
         heartbeatSeq = heartbeatSeenAt = null;
         invalidatePendingRequests();
-        resetPoses();
+        resetDisplayTimeline();
+        resetPolicyControls('Engine session changed');
       }
       if (packet.session_id) shownSession = packet.session_id;
+      const arrivedAt = performance.now();
       const nextHeartbeat = Number(packet.heartbeat_seq);
       if (Number.isFinite(nextHeartbeat) && nextHeartbeat !== heartbeatSeq) {
         heartbeatSeq = nextHeartbeat;
-        heartbeatSeenAt = performance.now();
+        heartbeatSeenAt = arrivedAt;
       } else if (!packet.mode || packet.mode !== 'continuous') {
-        heartbeatSeenAt = performance.now();
+        heartbeatSeenAt = arrivedAt;
       }
-      if (previousPacket !== null) measurements.pose_hz = 1000 / (performance.now() - previousPacket);
-      previousPacket = performance.now();
-      state = packet;
-      window.coffeeState = state;
-      ingestPoses(packet);
-      update();
+      if (previousPacket !== null) measurements.pose_hz = 1000 / (arrivedAt - previousPacket);
+      previousPacket = arrivedAt;
+      liveState = packet;
+      window.cintaLiveState = liveState;
+      syncPolicyTransport(packet.reject_policy);
+      enqueueSnapshot(packet, arrivedAt);
       // Retry each retained command after a new connection or an acknowledgment timeout.
-      if (pendingRequest() && ['ready', 'running'].includes(state.status)) {
-        if (pendingRequests().some(request => request.retryPending || performance.now() - request.lastSend > 2000)) retryPending();
+      if ((pendingRequest() || activePolicyRequest) && ['ready', 'running'].includes(liveState.status)) {
+        const policyRetry = activePolicyRequest && performance.now() - activePolicyRequest.lastSend > 2000;
+        if (policyRetry || pendingRequests().some(request => request.retryPending || performance.now() - request.lastSend > 2000)) retryPending();
       }
     } else if (packet.type === 'ack' && requests.has(packet.command_id)) {
       const request = requests.get(packet.command_id);
@@ -108,19 +135,25 @@ function connect() {
         $('error').textContent = `Injection ${packet.command_id.slice(0, 8)} failed: ${request.error}`;
       } else {
         request.object_id = packet.object_id;
+        request.spawn_position = packet.spawn_position;
         request.spawnWall = performance.now();
         request.acknowledgment_ms = request.spawnWall - request.sent;
       }
-      update();
+      updateLatestEvidence();
+    } else if (packet.type === 'ack' && activePolicyRequest?.payload.command_id === packet.command_id) {
+      handlePolicyAck(packet);
     } else if (packet.type === 'pending' && requests.has(packet.command_id)) {
       requests.get(packet.command_id).serverPending = true;
       updateLatestEvidence();
+    } else if (packet.type === 'pending' && activePolicyRequest?.payload.command_id === packet.command_id) {
+      activePolicyRequest.serverPending = true;
+      updateItems();
     }
   };
 }
 
 setInterval(() => {
-  if (!continuousMode() || !state || socket?.readyState !== WebSocket.OPEN || heartbeatSeenAt === null) return;
+  if (!liveContinuousMode() || !liveState || socket?.readyState !== WebSocket.OPEN || heartbeatSeenAt === null) return;
   if (performance.now() - heartbeatSeenAt < HEARTBEAT_IDLE_MS || staleConnection) return;
   staleConnection = true;
   for (const request of pendingRequests()) request.retryPending = true;
@@ -146,7 +179,7 @@ $('details-toggle').onclick = () => $('diagnostics').showModal();
 $('details-close').onclick = () => $('diagnostics').close();
 
 $('restart').onclick = async () => {
-  if (!state?.session_id || !state.restart_supported || restartPending || socket.readyState !== WebSocket.OPEN) return;
+  if (!liveState?.session_id || !liveState.restart_supported || restartPending || socket.readyState !== WebSocket.OPEN) return;
   restartPending = true;
   $('error').textContent = '';
   update();
@@ -154,7 +187,7 @@ $('restart').onclick = async () => {
     const response = await fetch('/restart', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({session_id: state.session_id}),
+      body: JSON.stringify({session_id: liveState.session_id}),
     });
     if (!response.headers.get('Content-Type')?.includes('application/json')) {
       throw new Error(response.status === 404 ? 'Restart is unavailable on this server. The service needs the latest update.' : `Restart failed with server status ${response.status}. Try again.`);
@@ -170,7 +203,8 @@ $('restart').onclick = async () => {
 };
 
 function injectStone() {
-  if (!state || restartPending || socket?.readyState !== WebSocket.OPEN || $('inject').disabled) return;
+  const interactionStarted = performance.now();
+  if (!liveState || restartPending || socket?.readyState !== WebSocket.OPEN || $('inject').disabled) return;
   for (const [commandId, request] of requests) {
     if (requests.size < MAX_CLIENT_REQUESTS) break;
     if (request.acknowledged || request.invalidated) requests.delete(commandId);
@@ -180,14 +214,14 @@ function injectStone() {
     update();
     return;
   }
-  const payload = {type: 'inject', command_id: crypto.randomUUID(), session_id: state.session_id, class_name: 'stone'};
+  const payload = {type: 'inject', command_id: crypto.randomUUID(), session_id: liveState.session_id, class_name: 'stone'};
   if (requests.has(payload.command_id)) {
     $('error').textContent = 'The browser could not create a distinct command ID. Try again.';
     return;
   }
-  if (continuousMode()) {
-    if (!state.command_epoch) return;
-    payload.command_epoch = state.command_epoch;
+  if (liveContinuousMode()) {
+    if (!liveState.command_epoch) return;
+    payload.command_epoch = liveState.command_epoch;
   }
   const request = {payload, sent: performance.now(), lastSend: performance.now(), acknowledged: false, retryPending: false};
   requests.set(payload.command_id, request);
@@ -205,9 +239,184 @@ function injectStone() {
   }
   updateLatestEvidence();
   socket.send(JSON.stringify(payload));
+  measurements.click_dispatch_ms = performance.now() - interactionStarted;
   update();
 }
 $('inject').onclick = injectStone;
+
+function sameSet(a, b) {
+  return a.size === b.size && [...a].every(value => b.has(value));
+}
+
+function normalizedPolicy(value) {
+  if (!value || !Array.isArray(value.reject_classes) || typeof value.policy_version !== 'string') return null;
+  return {
+    classes: new Set(value.reject_classes),
+    policy_version: value.policy_version,
+    score_epoch_id: value.score_epoch_id || null,
+  };
+}
+
+function syncPolicyTransport(value) {
+  const policy = normalizedPolicy(value);
+  if (!policy) return;
+  policyTransportClasses = policy.classes;
+  policyTransportVersion = policy.policy_version;
+  if (!policyInitialized) {
+    policyDesiredClasses = new Set(policy.classes);
+    policyInitialized = true;
+  }
+}
+
+function resetPolicyControls(message = '') {
+  activePolicyRequest = null;
+  policyQueue.length = 0;
+  policyTransportClasses = new Set();
+  policyDesiredClasses = new Set();
+  policyTransportVersion = null;
+  policyInitialized = false;
+  pendingPolicyPresentation = null;
+  policyError = message;
+  updateItems();
+}
+
+function policyCatalogNames() {
+  return new Set((liveState?.class_catalog || []).map(item => item.name));
+}
+
+function queuePolicyChange(className, reject) {
+  if (!policyCatalogNames().has(className)) {
+    policyError = `Unknown item class: ${className}`;
+    updateItems();
+    return;
+  }
+  policyError = '';
+  if (reject) policyDesiredClasses.add(className);
+  else policyDesiredClasses.delete(className);
+  policyQueue.push({className, reject, retries: 0});
+  updateItems();
+  processPolicyQueue();
+}
+
+function processPolicyQueue() {
+  if (activePolicyRequest || !policyQueue.length || socket?.readyState !== WebSocket.OPEN || !liveState?.command_epoch || !policyTransportVersion) return;
+  const op = policyQueue.shift();
+  if (!policyCatalogNames().has(op.className)) {
+    policyError = `Item class left the catalog: ${op.className}`;
+    updateItems();
+    processPolicyQueue();
+    return;
+  }
+  const target = new Set(policyTransportClasses);
+  if (op.reject) target.add(op.className);
+  else target.delete(op.className);
+  if (sameSet(target, policyTransportClasses)) {
+    updateItems();
+    processPolicyQueue();
+    return;
+  }
+  const payload = {
+    type: 'set_reject_policy',
+    command_id: crypto.randomUUID(),
+    command_epoch: liveState.command_epoch,
+    session_id: liveState.session_id,
+    expected_policy_version: policyTransportVersion,
+    reject_classes: [...target].sort(),
+  };
+  activePolicyRequest = {op, payload, lastSend: performance.now(), serverPending: false};
+  socket.send(JSON.stringify(payload));
+  updateItems();
+}
+
+function handlePolicyAck(packet) {
+  const active = activePolicyRequest;
+  if (!active) return;
+  if (packet.ok) {
+    syncPolicyTransport({
+      reject_classes: packet.reject_classes,
+      policy_version: packet.policy_version,
+      score_epoch_id: packet.score_epoch_id,
+    });
+    pendingPolicyPresentation = {
+      policy_version: packet.policy_version,
+      score_epoch_id: packet.score_epoch_id || null,
+    };
+    activePolicyRequest = null;
+    policyError = '';
+    processPolicyQueue();
+    updateItems();
+    return;
+  }
+  const current = packet.reject_policy || packet.current_reject_policy;
+  if (packet.error_code === 'policy_version_conflict' && normalizedPolicy(current) && active.op.retries < 2) {
+    syncPolicyTransport(current);
+    activePolicyRequest = null;
+    policyQueue.unshift({...active.op, retries: active.op.retries + 1});
+    processPolicyQueue();
+    return;
+  }
+  if (/epoch/i.test(packet.error_code || '') && active.op.retries < 1) {
+    activePolicyRequest = null;
+    policyQueue.unshift({...active.op, retries: active.op.retries + 1});
+    processPolicyQueue();
+    return;
+  }
+  activePolicyRequest = null;
+  policyQueue.length = 0;
+  policyDesiredClasses = new Set(policyTransportClasses);
+  policyError = packet.error || packet.error_code || 'Policy change failed';
+  updateItems();
+}
+
+function updateItems() {
+  const catalog = state?.class_catalog || [];
+  const policy = normalizedPolicy(state?.reject_policy);
+  if (!catalog.length || !policy) {
+    $('items').replaceChildren();
+    $('policy-status').textContent = 'Waiting for catalog';
+    return;
+  }
+  if (!policyInitialized) {
+    policyDesiredClasses = new Set(policy.classes);
+    policyInitialized = true;
+  }
+  if (pendingPolicyPresentation
+      && policy.policy_version === pendingPolicyPresentation.policy_version
+      && policy.score_epoch_id === pendingPolicyPresentation.score_epoch_id) {
+    pendingPolicyPresentation = null;
+  }
+  if (!activePolicyRequest && !policyQueue.length && !pendingPolicyPresentation) {
+    policyDesiredClasses = new Set(policy.classes);
+  }
+  const signature = catalog.map(item => `${item.name}:${item.severity}`).join('|');
+  if (signature !== itemCatalogSignature) {
+    itemCatalogSignature = signature;
+    $('items').replaceChildren(...catalog.map(item => {
+      const row = document.createElement('div'); row.className = 'item-row'; row.dataset.className = item.name;
+      const name = document.createElement('span'); name.className = 'item-name';
+      const dot = document.createElement('i'); dot.dataset.severity = item.severity;
+      name.append(dot, document.createTextNode(item.name));
+      name.title = item.defect ? `${item.severity} defect` : 'Keep item';
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'policy-toggle';
+      button.onclick = () => queuePolicyChange(item.name, !policyDesiredClasses.has(item.name));
+      row.append(name, button);
+      return row;
+    }));
+  }
+  for (const row of $('items').children) {
+    const className = row.dataset.className;
+    const button = row.querySelector('button');
+    const reject = policyDesiredClasses.has(className);
+    const pending = reject !== policy.classes.has(className);
+    button.textContent = reject ? 'Reject' : 'Keep';
+    button.setAttribute('aria-label', `${className}: ${reject ? 'Reject' : 'Keep'}`);
+    button.setAttribute('aria-pressed', String(reject));
+    button.classList.toggle('pending', pending);
+  }
+  const pendingCount = policyQueue.length + (activePolicyRequest ? 1 : 0);
+  $('policy-status').classList.toggle('error', Boolean(policyError));
+  $('policy-status').textContent = policyError || (pendingCount ? `${pendingCount} pending` : pendingPolicyPresentation ? 'Applying' : 'Synced');
+}
 
 function updateLatestEvidence() {
   const request = latestRequest();
@@ -218,8 +427,8 @@ function updateLatestEvidence() {
   const decision = object?.decision;
   const values = {
     prediction: decision ? `${decision.predicted_class}${decision.association_approximate ? ' (approximate object match)' : ''}` : 'Not observed',
-    decision: decision ? `${decision.reject ? 'Reject' : 'Keep'}${decision.scheduled ? ', valves scheduled' : ''}${decision.late ? ', late' : ''}` : 'Not decided',
-    hit: object?.jet_hits ? `${object.own_pulse_hit ? 'Own pulse' : 'Other or unassociated pulse'}, ${object.jet_hits} nozzle contact steps` : 'No contact recorded',
+    decision: decision ? (decision.scheduled ? 'Pulse commanded' : decision.reject ? (decision.late ? 'Reject decision, too late' : 'Reject decision, no pulse') : 'No pulse commanded') : 'Not decided',
+    hit: object?.jet_hits ? `${object.own_pulse_hit ? 'Own pulse' : 'Other pulse'}, ${object.jet_hits} force step${object.jet_hits === 1 ? '' : 's'}` : 'No force contact',
     outcome: object?.outcome ? ({accept:'Accept path', reject:'Reject path', spilled:'Spilled'})[object.outcome] : 'Unresolved',
     'outcome-time': 'Waiting',
   };
@@ -236,17 +445,22 @@ function updateLatestEvidence() {
   const stateLabel = request?.error || request?.invalidated ? 'Command failed'
     : object?.outcome === 'reject' ? 'Rejected'
     : object?.outcome === 'spilled' ? 'Spilled'
-      : object?.outcome === 'accept' ? 'Passed' : 'In progress';
+      : object?.outcome === 'accept' ? 'Passed'
+        : request?.acknowledged ? 'Spawn confirmed'
+          : request ? 'Command pending' : 'No request';
   $('card-state').textContent = stateLabel;
   $('object-title').textContent = request?.object_id == null ? (request ? 'Following your stone' : 'Follow your stone') : `Your stone, object ${request.object_id}`;
   $('command').textContent = request ? request.payload.command_id : 'No injection yet';
   $('card-command').textContent = request
-    ? `Command ${request.payload.command_id}${request.payload.command_epoch ? ` · Epoch ${request.payload.command_epoch}` : ''}`
+    ? `Command ${request.payload.command_id.slice(0, 8)}`
     : 'No injection yet';
   let acknowledgment = 'Waiting';
   if (request?.invalidated) acknowledgment = 'Engine session changed. The request was not retried.';
   else if (request?.error) acknowledgment = 'Injection failed';
-  else if (request?.acknowledged) acknowledgment = `${request.acknowledgment_ms.toFixed(0)} ms on this connection`;
+  else if (request?.acknowledged) {
+    const position = request.spawn_position;
+    acknowledgment = `${request.acknowledgment_ms.toFixed(0)} ms${Array.isArray(position) ? ` at ${position.map(value => Number(value).toFixed(3)).join(', ')} m` : ''}`;
+  }
   else if (request?.serverPending) acknowledgment = 'Server still has the original injection request';
   else if (request?.retryPending) acknowledgment = 'Retrying the original injection request';
   else if (request) acknowledgment = 'Waiting for physical spawn';
@@ -275,8 +489,8 @@ function updateScoreboard() {
     $('score-status').textContent = 'Waiting for server score aggregates';
     for (const [valueId, countId, emptyLabel] of [
       ['score-accuracy', 'score-accuracy-count', 'No eligible objects'],
-      ['score-capture', 'score-capture-count', 'No required defects'],
-      ['score-loss', 'score-loss-count', 'No keep objects'],
+      ['score-capture', 'score-capture-count', 'No reject items'],
+      ['score-loss', 'score-loss-count', 'No keep items'],
       ['score-unresolved', 'score-unresolved-count', 'No eligible objects'],
     ]) {
       $(valueId).textContent = 'Unavailable';
@@ -288,8 +502,8 @@ function updateScoreboard() {
   }
   const metricIds = [
     ['sorting_accuracy', 'score-accuracy', 'score-accuracy-count', 'No eligible objects'],
-    ['defect_capture', 'score-capture', 'score-capture-count', 'No required defects'],
-    ['good_loss', 'score-loss', 'score-loss-count', 'No keep objects'],
+    [scores.reject_capture ? 'reject_capture' : 'defect_capture', 'score-capture', 'score-capture-count', 'No reject items'],
+    [scores.keep_loss ? 'keep_loss' : 'good_loss', 'score-loss', 'score-loss-count', 'No keep items'],
     ['unresolved', 'score-unresolved', 'score-unresolved-count', 'No eligible objects'],
   ];
   for (const [name, valueId, countId, emptyLabel] of metricIds) {
@@ -309,25 +523,27 @@ function updateScoreboard() {
 }
 
 function setMetric(id, text) {
-  $(id).textContent = text;
+  const element = $(id);
+  if (element) element.textContent = text;
   const mirror = document.getElementById(`diag-${id}`);
   if (mirror) mirror.textContent = text;
 }
 
 function update() {
   if (!state) return;
-  const status = state.status;
+  const commandState = liveState || state;
+  const status = commandState.status;
   const connected = socket?.readyState === WebSocket.OPEN;
   const heartbeatAge = heartbeatSeenAt === null ? null : performance.now() - heartbeatSeenAt;
   const heartbeatText = continuousMode() ? (heartbeatAge === null ? 'waiting for heartbeat' : `heartbeat ${(heartbeatAge / 1000).toFixed(1)} s ago`) : '';
   const statusLabel = ({starting:'Preparing', restarting:'Restarting', ready:'Ready', running:'Live', completed:'Session complete', failed:'Engine failed'})[status] || status;
   $('status').textContent = !connected ? 'Disconnected' : `${statusLabel}${heartbeatText ? ` · ${heartbeatText}` : ''}`;
   $('status').dataset.state = status;
-  const durationComplete = !continuousMode() && state.sim_time_s >= (state.limits?.sim_seconds || 10) - 0.6;
-  const awaitingHeartbeat = continuousMode() && heartbeatSeenAt === null;
-  $('inject').disabled = !connected || restartPending || awaitingHeartbeat || !['ready', 'running'].includes(status) || durationComplete || (continuousMode() && !state.command_epoch);
-  $('restart').hidden = !state.restart_supported;
-  $('restart').disabled = !connected || !state.restart_supported || restartPending || !state.session_id || !['ready', 'running', 'completed', 'failed'].includes(status);
+  const durationComplete = !liveContinuousMode() && commandState.sim_time_s >= (commandState.limits?.sim_seconds || 10) - 0.6;
+  const awaitingHeartbeat = liveContinuousMode() && heartbeatSeenAt === null;
+  $('inject').disabled = !connected || restartPending || awaitingHeartbeat || !['ready', 'running'].includes(status) || durationComplete || (liveContinuousMode() && !commandState.command_epoch);
+  $('restart').hidden = !commandState.restart_supported;
+  $('restart').disabled = !connected || !commandState.restart_supported || restartPending || !commandState.session_id || !['ready', 'running', 'completed', 'failed'].includes(status);
   $('restart').textContent = restartPending || status === 'restarting' ? 'Restarting…' : 'Restart session';
   const boundedNotice = {starting:'Preparing the engine', restarting:'Stopping the old session and preparing a new one', ready:'Ready for a physical injection', running:'The simulation clock shows the actual engine rate', completed:'Session complete. Select Restart session to inject again.', failed:'The engine stopped. Select Restart session to try again.'};
   const continuousNotice = {starting:'Preparing the continuous engine', restarting:'Restarting the engine session', ready:'Continuous engine ready', running:'Continuous engine runs without this page', completed:'Continuous engine completed unexpectedly', failed:'The continuous engine stopped'};
@@ -344,6 +560,7 @@ function update() {
   $('pose-hz').textContent = measurements.pose_hz ? `${measurements.pose_hz.toFixed(1)} Hz` : 'Waiting';
   updateScoreboard();
   updateLatestEvidence();
+  updateItems();
   const scoreVersions = state.rolling_scores?.versions || {};
   const modelVersion = scoreVersions.model || state.model_version;
   const policyVersion = scoreVersions.policy || state.policy_version;
@@ -366,12 +583,10 @@ function update() {
     : `Requested feed ${state.requested_rate || 500}/s. Session limit ${state.limits?.sim_seconds || 10} simulated seconds or ${state.limits?.wall_seconds || 300} wall seconds. Restart session resets the shared session for all browsers.`;
 }
 
-// ---------------------------------------------------------------------------
-// Pose interpolation between 10 Hz packets, shared by the 3D view and the inset.
-// ---------------------------------------------------------------------------
-const poses = new Map();
-let packetAt = null;
-let packetInterval = 100;
+// Complete snapshots stay ordered in a short presentation buffer. The view
+// interpolates only between known poses from the same session and policy epoch.
+const snapshots = [];
+let displayFrame = {before: null, after: null, afterById: new Map(), alpha: 0, waiting: true};
 let lastEventId = -1;
 const puffs = [];
 const SUPPORTED_RENDER_SHAPES = new Set(['ellipsoid', 'half', 'box', 'capsule']);
@@ -393,55 +608,73 @@ function hasAuthoritativeRenderFields(object) {
   );
 }
 
-function resetPoses() {
-  poses.clear();
-  packetAt = null;
+function resetDisplayTimeline() {
+  snapshots.length = 0;
+  state = null;
+  displayFrame = {before: null, after: null, afterById: new Map(), alpha: 0, waiting: true};
   lastEventId = -1;
   puffs.length = 0;
 }
 
-function ingestPoses(packet) {
-  const now = performance.now();
-  if (packetAt !== null) packetInterval = Math.min(400, Math.max(40, packetInterval * .6 + (now - packetAt) * .4));
-  packetAt = now;
-  const seen = new Set();
-  for (const o of packet.objects || []) {
-    if (!hasAuthoritativeRenderFields(o)) continue;
-    seen.add(o.object_id);
-    const entry = poses.get(o.object_id);
-    const q = o.quat;
-    if (entry) {
-      entry.p0 = entry.p1; entry.q0 = entry.q1;
-      entry.p1 = o.pos; entry.q1 = q;
-    } else {
-      poses.set(o.object_id, {p0: o.pos, q0: q, p1: o.pos, q1: q});
-    }
-  }
-  for (const id of poses.keys()) if (!seen.has(id)) poses.delete(id);
-  // Air pulses: new valve activations become short puffs at the nozzle bank.
+function enqueueSnapshot(packet, arrivedAt) {
+  snapshots.push({packet, arrivedAt});
+  while (snapshots.length > SNAPSHOT_LIMIT) snapshots.shift();
+  while (snapshots.length > 2 && arrivedAt - snapshots[0].arrivedAt > SNAPSHOT_MAX_AGE_MS) snapshots.shift();
+}
+
+function presentSnapshot(packet, now) {
+  state = packet;
+  window.coffeeState = state;
   const L = packet.layout;
   let maxId = lastEventId;
   for (const event of packet.events || []) {
     if (event.event_id <= lastEventId) continue;
     maxId = Math.max(maxId, event.event_id);
     if (event.type !== 'valve_activated' || !L) continue;
-    const target = (packet.objects || []).find(o => event.object_ids?.includes(o.object_id));
+    const target = (packet.objects || []).find(object => event.object_ids?.includes(object.object_id));
     const y = target?.pos ? target.pos[1] : 0;
     puffs.push({x: L.ej_x, y, z: L.belt_z + L.ej_z_offset, at: now});
   }
-  if (lastEventId === -1) puffs.length = 0; // do not replay history on first connect
+  if (lastEventId === -1) puffs.length = 0;
   lastEventId = maxId;
   while (puffs.length > 48) puffs.shift();
+  update();
 }
 
-const _pa = [0, 0, 0];
-function interpolated(o, alpha, outPos, outQuat) {
-  const entry = poses.get(o.object_id);
-  if (!entry) { outPos.fromArray(o.pos); outQuat.set(o.quat[1], o.quat[2], o.quat[3], o.quat[0]); return; }
-  const a = entry.p0, b = entry.p1;
-  outPos.set(a[0] + (b[0]-a[0])*alpha, a[1] + (b[1]-a[1])*alpha, a[2] + (b[2]-a[2])*alpha);
-  _qa.set(entry.q0[1], entry.q0[2], entry.q0[3], entry.q0[0]).normalize();
-  _qb.set(entry.q1[1], entry.q1[2], entry.q1[3], entry.q1[0]).normalize();
+function advanceDisplayTimeline(now) {
+  const target = now - DISPLAY_DELAY_MS;
+  while (snapshots.length > 1 && snapshots[1].arrivedAt <= target) snapshots.shift();
+  const before = snapshots[0];
+  if (before && before.arrivedAt <= target && state !== before.packet) presentSnapshot(before.packet, now);
+  const after = state === before?.packet ? snapshots[1] : null;
+  const canBlend = after && samePresentationTimeline(before.packet, after.packet);
+  const alpha = canBlend
+    ? THREE.MathUtils.clamp((target - before.arrivedAt) / Math.max(1, after.arrivedAt - before.arrivedAt), 0, 1)
+    : 0;
+  const waiting = Boolean(state && !after && target > before.arrivedAt);
+  displayFrame = {
+    before,
+    after: canBlend ? after : null,
+    afterById: canBlend ? new Map((after.packet.objects || []).map(object => [object.object_id, object])) : new Map(),
+    alpha,
+    waiting,
+  };
+  measurements.buffer_waiting = waiting;
+  const output = $('local-fps');
+  output.dataset.buffering = String(waiting || !state);
+  output.textContent = waiting || !state ? 'Buffering' : measurements.fps === null ? 'Measuring' : `${measurements.fps.toFixed(0)} FPS`;
+}
+
+function displayedPose(object, outPos, outQuat) {
+  outPos.fromArray(object.pos);
+  outQuat.set(object.quat[1], object.quat[2], object.quat[3], object.quat[0]).normalize();
+  if (!displayFrame.after || displayFrame.alpha <= 0) return;
+  const next = displayFrame.afterById.get(object.object_id);
+  if (!hasAuthoritativeRenderFields(next) || next.appearance_key !== object.appearance_key) return;
+  const a = object.pos, b = next.pos, alpha = displayFrame.alpha;
+  outPos.set(a[0] + (b[0] - a[0]) * alpha, a[1] + (b[1] - a[1]) * alpha, a[2] + (b[2] - a[2]) * alpha);
+  _qa.set(object.quat[1], object.quat[2], object.quat[3], object.quat[0]).normalize();
+  _qb.set(next.quat[1], next.quat[2], next.quat[3], next.quat[0]).normalize();
   outQuat.copy(_qa).slerp(_qb, alpha);
 }
 const _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion();
@@ -458,11 +691,12 @@ const dimLines = [];
 const annotations = [];
 const clickTargets = [];
 const presets = {
-  overview: {position: [1.55, -2.2, 1.75], target: [-.23, 0, .5]},
-  sorting: {position: [.40, -1.25, .79], target: [.16, 0, .46]},
+  overview: {position: [1.82, -2.62, 1.98], target: [-.22, 0, .47]},
+  sorting: {position: [.52, -1.44, .90], target: [.16, 0, .45]},
   inspection: {position: [-.20, -.15, 1.75], target: [-.32, 0, .6]},
 };
-const INK = '#2b3a33', EDGE = '#3a4a42', EDGE_SOFT = '#8a978f', PAPER = '#f1f2ec';
+const INK = '#25342d', EDGE = '#34463d', EDGE_SOFT = '#829188', PAPER = '#eef0ea';
+const REJECT_COLOR = new THREE.Color('#d26045'), SPILL_COLOR = new THREE.Color('#d49a27'), SELECT_COLOR = new THREE.Color('#d8781c');
 
 function initThree() {
   try {
@@ -470,13 +704,16 @@ function initThree() {
     const gl = renderer.getContext(), debug = gl.getExtension('WEBGL_debug_renderer_info');
     const gpuName = debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : 'unknown';
     const softwareRenderer = /swiftshader|llvmpipe|software/i.test(gpuName);
-    renderer.setPixelRatio(softwareRenderer ? .6 : Math.min(window.devicePixelRatio, 1.5));
+    renderer.setPixelRatio(softwareRenderer ? .6 : Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
     renderer.domElement.className = 'webgl';
-    renderer.domElement.setAttribute('aria-label', 'Live 3D coffee sorter; drag to orbit, scroll to zoom, click the belt to inject a stone');
+    renderer.domElement.setAttribute('aria-label', 'Live CINTA conveyor; drag to orbit, scroll to zoom, click the machine to drop a test stone');
     stage.prepend(renderer.domElement);
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(PAPER);
-    const persp = new THREE.PerspectiveCamera(35, 1, .005, 30);
+    const persp = new THREE.PerspectiveCamera(33, 1, .005, 30);
     const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, .005, 30);
     for (const c of [persp, ortho]) c.up.set(0, 0, 1);
     const controls = new OrbitControls(persp, renderer.domElement);
@@ -486,10 +723,10 @@ function initThree() {
     controls.maxDistance = 5;
     controls.maxPolarAngle = Math.PI * .49;
     const pmrem = new THREE.PMREMGenerator(renderer); const room = new RoomEnvironment();
-    scene.environment = pmrem.fromScene(room, .04).texture; scene.environmentIntensity = .45; room.dispose(); pmrem.dispose();
-    scene.add(new THREE.HemisphereLight('#ffffff', '#b9bfb4', 1.35));
-    const key = new THREE.DirectionalLight('#ffffff', 1.4); key.position.set(-1.5, -2.5, 4); scene.add(key);
-    const fill = new THREE.DirectionalLight('#ffffff', .5); fill.position.set(1.5, 2, 2); scene.add(fill);
+    scene.environment = pmrem.fromScene(room, .04).texture; scene.environmentIntensity = .62; room.dispose(); pmrem.dispose();
+    scene.add(new THREE.HemisphereLight('#fffdf6', '#aeb8b1', 1.05));
+    const key = new THREE.DirectionalLight('#fff6e6', 2.1); key.position.set(-1.8, -2.8, 4.5); scene.add(key);
+    const fill = new THREE.DirectionalLight('#dbeeff', .75); fill.position.set(1.8, 2.4, 2.2); scene.add(fill);
     // 100 mm grid on the floor, 1 m major lines.
     const grid = new THREE.GridHelper(6, 60, '#b5bcb3', '#dfe3dc'); grid.rotation.x = Math.PI / 2; grid.position.z = .001; scene.add(grid);
     const major = new THREE.GridHelper(6, 6, '#9aa39a', '#9aa39a'); major.rotation.x = Math.PI / 2; major.position.z = .0015; scene.add(major);
@@ -498,7 +735,7 @@ function initThree() {
       const w = stage.clientWidth, h = stage.clientHeight;
       renderer.setSize(w, h);
       persp.aspect = w / h;
-      persp.fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(35) / 2) * Math.max(1, 1.2 / persp.aspect)));
+      persp.fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(33) / 2) * Math.max(1, 1.2 / persp.aspect)));
       persp.updateProjectionMatrix();
       const half = 1.05 * Math.max(1, 1.2 / (w / h));
       ortho.left = -half * (w / h); ortho.right = half * (w / h); ortho.top = half; ortho.bottom = -half;
@@ -544,16 +781,26 @@ function setProjection(ortho) {
   to.updateProjectionMatrix();
   three.camera = to; three.ortho = ortho; three.controls.object = to; three.controls.update();
   $('projection').setAttribute('aria-pressed', String(ortho));
-  $('projection').textContent = ortho ? 'Ortho' : 'Persp';
+  $('projection').textContent = ortho ? 'Orthographic view' : 'Perspective view';
+  $('projection').title = ortho
+    ? 'Orthographic view removes perspective foreshortening'
+    : 'Perspective view uses natural depth and foreshortening';
 }
 
-const matte = (color, opacity = 1) => new THREE.MeshLambertMaterial(opacity < 1
-  ? {color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide} : {color});
+const matte = (color, opacity = 1, metalness = .04) => new THREE.MeshStandardMaterial({
+  color,
+  roughness: metalness > .3 ? .34 : .72,
+  metalness,
+  transparent: opacity < 1,
+  opacity,
+  depthWrite: opacity === 1,
+  side: opacity < 1 ? THREE.DoubleSide : THREE.FrontSide,
+});
 
 function buildMachine(L) {
   const {scene} = three;
   const materials = {
-    steel: matte('#c3cac6'), frame: matte('#55635c'), belt: matte('#5b7fa8'), dark: matte('#3d4a44'),
+    steel: matte('#c3cac6', 1, .55), frame: matte('#55635c', 1, .22), belt: matte('#557ba3'), dark: matte('#35423c', 1, .18),
     volume: matte('#b9c4bd', .18), accept: matte('#9bbf90', .2), reject: matte('#c99a78', .2),
   };
   const edgeMat = new THREE.LineBasicMaterial({color: EDGE}), softEdgeMat = new THREE.LineBasicMaterial({color: EDGE_SOFT});
@@ -572,6 +819,13 @@ function buildMachine(L) {
   add(new THREE.BoxGeometry(L.belt_len + .1, L.belt_w + .08, .05), materials.frame, [beltMid, 0, L.belt_z - .095], {click: true});
   for (const x of [beltX0 + .05, beltX1 - .05]) for (const y of [-1, 1]) add(new THREE.BoxGeometry(.04, .04, L.belt_z - .12), materials.frame, [x, y * (L.belt_w / 2 + .02), (L.belt_z - .12) / 2], {click: true});
   for (const y of [-1, 1]) add(new THREE.BoxGeometry(L.belt_len, .01, .035), materials.steel, [beltMid, y * (L.belt_w / 2 + .005), L.belt_z + .017], {click: true});
+  const spawn = state.spawn_region || {x_min: L.feed_x[0], x_max: L.feed_x[1], y_min: -L.belt_w / 2, y_max: L.belt_w / 2, belt_z: L.belt_z};
+  const spawnCue = new THREE.Mesh(
+    new THREE.BoxGeometry(spawn.x_max - spawn.x_min, spawn.y_max - spawn.y_min, .002),
+    new THREE.MeshBasicMaterial({color: '#28a4c2', transparent: true, opacity: .38, depthWrite: false}),
+  );
+  spawnCue.position.set((spawn.x_min + spawn.x_max) / 2, (spawn.y_min + spawn.y_max) / 2, spawn.belt_z + .003);
+  scene.add(spawnCue);
   // Feeder hopper over the spawn interval.
   const feedMid = (L.feed_x[0] + L.feed_x[1]) / 2;
   add(new THREE.BoxGeometry(L.feed_x[1] - L.feed_x[0] + .06, L.belt_w, .18), materials.volume, [feedMid, 0, L.belt_z + .22], {soft: true});
@@ -644,15 +898,18 @@ function buildMachine(L) {
   const ring = new THREE.Mesh(new THREE.TorusGeometry(.016, .0018, 8, 32), new THREE.MeshBasicMaterial({color: '#d8781c'}));
   ring.visible = false; scene.add(ring);
   const ring2 = ring.clone(); ring2.rotation.x = Math.PI / 2; scene.add(ring2);
+  const selectedShadowMaterial = new THREE.MeshBasicMaterial({color: '#17231d', transparent: true, opacity: .14, depthWrite: false});
+  const selectedShadow = new THREE.Mesh(new THREE.CircleGeometry(1, 24), selectedShadowMaterial);
+  selectedShadow.visible = false; scene.add(selectedShadow);
   for (const [text, p] of [
-    ['1 FEED', [feedMid, 0, L.belt_z + .42]], ['2 INSPECT', [L.cam_x, 0, L.belt_z + .52]],
+    ['1 DROP ZONE', [(spawn.x_min + spawn.x_max) / 2, (spawn.y_min + spawn.y_max) / 2, L.belt_z + .42]], ['2 INSPECT', [L.cam_x, 0, L.belt_z + .52]],
     ['3 AIR JETS', [L.ej_x, .25, L.belt_z + .15]], ['ACCEPT', [L.split_x + .28, -.28, splitZ + .05]], ['REJECT', [L.split_x - .04, -.28, splitZ - .24]],
   ]) {
     const el = document.createElement('div'); el.className = 'annotation'; el.textContent = text; stage.append(el);
     annotations.push({el, pos: new THREE.Vector3(...p)});
   }
   $('title-rows').replaceChildren(...[
-    ['COFFEE SORTER', 'live engine, 3D from layout'],
+    ['CINTA', 'Class-agnostic INline Transport Analyzer'],
     ['BELT', `${L.belt_len.toFixed(2)} × ${L.belt_w.toFixed(2)} m at H ${L.belt_z.toFixed(2)} m, ${L.belt_speed.toFixed(1)} m/s`],
     ['FEED', `x ${L.feed_x[0].toFixed(2)}…${L.feed_x[1].toFixed(2)} m, ${state.requested_rate || 500} obj/s`],
     ['CAMERA', `x ${L.cam_x.toFixed(2)} m, strip ${(L.cam_fov * 1000).toFixed(0)} mm, ${L.cam_w}×${L.cam_h} px`],
@@ -661,9 +918,9 @@ function buildMachine(L) {
     ['STEP', `${(L.timestep * 1000).toFixed(0)} ms physics · units m · rev ${(state.source_revision || '').slice(0, 7) || 'n/a'}`],
     ['ASSETS', 'primitives (loading Blender GLBs)'],
     ['RENDER', 'authoritative objects only'],
-    ['INPUT', 'drag orbit · scroll zoom · click belt = inject · L labels · H panels'],
+    ['INPUT', 'drag orbit · scroll zoom · click machine = drop stone · L labels · H panels'],
   ].map(([k, v]) => { const row = document.createElement('div'); const b = document.createElement('b'); b.textContent = k; row.append(b, document.createTextNode(v)); return row; }));
-  Object.assign(three, {pools, puffMesh, ring, ring2, dummy, machineGroup});
+  Object.assign(three, {pools, puffMesh, ring, ring2, selectedShadow, selectedShadowMaterial, spawnCue, dummy, machineGroup});
   three.machineBuilt = true;
   loadBlenderAssets(L).catch(error => { console.error(error); setAssetsRow(`primitives (Blender GLBs failed: ${error.message})`); });
 }
@@ -691,6 +948,18 @@ async function loadBlenderAssets(L) {
   const machine = await loader.loadAsync('/assets/machine_lod.glb');
   machine.scene.rotation.x = Math.PI / 2;
   const meshes = []; machine.scene.traverse(o => { if (o.isMesh) meshes.push(o); });
+  const anisotropy = three.renderer.capabilities.getMaxAnisotropy();
+  for (const mesh of meshes) {
+    for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+      if (!material) continue;
+      if ('envMapIntensity' in material) material.envMapIntensity = .72;
+      if ('roughness' in material) material.roughness = THREE.MathUtils.clamp(material.roughness, .28, .86);
+      for (const mapName of ['map', 'normalMap', 'roughnessMap', 'metalnessMap']) {
+        if (material[mapName]) material[mapName].anisotropy = anisotropy;
+      }
+      material.needsUpdate = true;
+    }
+  }
   scene.add(machine.scene);
   scene.remove(three.machineGroup);
   clickTargets.length = 0; clickTargets.push(...meshes.filter(m => m.visible));
@@ -706,6 +975,9 @@ async function loadBlenderAssets(L) {
     if (!part) throw new Error(`${kind}: no mesh primitive`);
     const nominal = kind === 'broken' ? NOMINAL_BROKEN : NOMINAL_REGULAR;
     const geometry = part.geometry.clone().applyMatrix4(part.matrixWorld).rotateX(Math.PI / 2).scale(1 / nominal[0], 1 / nominal[1], 1 / nominal[2]);
+    if ('envMapIntensity' in part.material) part.material.envMapIntensity = .65;
+    if (part.material.map) part.material.map.anisotropy = anisotropy;
+    part.material.needsUpdate = true;
     return {geometry, material: part.material};
   };
   const [good, black, broken] = await Promise.all(['good', 'black', 'broken'].map(bean));
@@ -727,10 +999,10 @@ function render3d(now) {
     if (!state?.layout) return;
     buildMachine(state.layout);
   }
-  const {pools, puffMesh, ring, ring2, dummy, camera, controls, renderer, scene} = three;
-  const alpha = packetAt === null ? 1 : THREE.MathUtils.clamp((now - packetAt) / packetInterval, 0, 1);
+  const {pools, puffMesh, ring, ring2, selectedShadow, selectedShadowMaterial, dummy, camera, controls, renderer, scene} = three;
   const counts = {ellipsoid: 0, half: 0, box: 0, capsule: 0, black: 0};
   let ringShown = false;
+  let shadowShown = false;
   let invalid = 0;
   let omitted = 0;
   for (const o of state?.objects || []) {
@@ -747,7 +1019,7 @@ function render3d(now) {
       omitted++;
       continue;
     }
-    interpolated(o, alpha, _p, _q);
+    displayedPose(o, _p, _q);
     dummy.position.copy(_p); dummy.quaternion.copy(_q);
     const ax = o.axes;
     if (shape === 'capsule') dummy.scale.set(ax[1], ax[1], ax[0] + ax[1]);
@@ -759,19 +1031,33 @@ function render3d(now) {
       // Baked textures carry the colour; keep only the engine's per-object deviation from the mean good bean.
       if (shape === 'black') _c.setRGB(1, 1, 1);
       else _c.setRGB(...rgb.slice(0, 3).map((v, i) => THREE.MathUtils.clamp(v / GOOD_MEAN_RGB[i], .55, 1.45)));
-      if (o.outcome) _c.multiplyScalar(.7);
+      if (o.outcome === 'accept') _c.multiplyScalar(.7);
     } else {
       _c.setRGB(rgb[0] <= 1 ? rgb[0] : rgb[0] / 255, rgb[1] <= 1 ? rgb[1] : rgb[1] / 255, rgb[2] <= 1 ? rgb[2] : rgb[2] / 255);
-      if (o.outcome) _c.lerp(_fade, .45);
+      if (o.outcome === 'accept') _c.lerp(_fade, .45);
     }
+    if (o.outcome === 'reject') _c.copy(REJECT_COLOR);
+    else if (o.outcome === 'spilled') _c.copy(SPILL_COLOR);
     mesh.setColorAt(slot, _c);
-    if (o.object_id === selected) { ring.position.copy(_p); ring2.position.copy(_p); ring.lookAt(camera.position); ringShown = true; }
+    if (o.object_id === selected) {
+      ring.position.copy(_p); ring2.position.copy(_p); ring.lookAt(camera.position); ringShown = true;
+      ring.material.color.copy(o.outcome === 'reject' ? REJECT_COLOR : o.outcome === 'spilled' ? SPILL_COLOR : SELECT_COLOR);
+      const beltZ = state.layout?.belt_z;
+      if (Number.isFinite(beltZ) && _p.z >= beltZ - .01) {
+        const radius = Math.max(o.axes[0], o.axes[1]) * 1.8;
+        selectedShadow.position.set(_p.x, _p.y, beltZ + .0035);
+        selectedShadow.scale.set(radius, radius * .7, 1);
+        selectedShadowMaterial.opacity = THREE.MathUtils.clamp(.18 - Math.max(0, _p.z - beltZ) * .3, .06, .18);
+        shadowShown = true;
+      }
+    }
   }
   setRenderRow(`${Object.values(counts).reduce((sum, count) => sum + count, 0)} visible · ${invalid} invalid omitted · ${omitted} over cap`);
   for (const [shape, mesh] of Object.entries(pools)) {
     mesh.count = counts[shape] || 0; mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   }
   ring.visible = ring2.visible = ringShown;
+  selectedShadow.visible = shadowShown;
   let used = 0;
   for (const puff of puffs) {
     const age = (now - puff.at) / 1000;
@@ -823,14 +1109,14 @@ function drawInset(now) {
   ctx.font = '12px Avenir Next, sans-serif';
   ctx.fillStyle = '#466356';ctx.fillText('Accept',X(.36),Z(.56));
   ctx.fillStyle = '#825231';ctx.fillText('Reject',X(.36),Z(.40));
-  const alpha = packetAt === null ? 1 : THREE.MathUtils.clamp((now - packetAt) / packetInterval, 0, 1);
   for (const o of state?.objects || []) {
     if ((!o.active && o.object_id !== selected) || !hasAuthoritativeRenderFields(o)) continue;
-    interpolated(o, alpha, _p, _q);
+    displayedPose(o, _p, _q);
     const x = _p.x, y = _p.y, z = _p.z;
     if (x < -1.2 || x > .55) continue;
     const rgb = o.rgb;
-    const color = `rgb(${rgb.slice(0,3).map(v => Math.round(v <= 1 ? v * 255 : v)).join(',')})`;
+    const color = o.outcome === 'reject' ? '#d26045' : o.outcome === 'spilled' ? '#d49a27'
+      : `rgb(${rgb.slice(0,3).map(v => Math.round(v <= 1 ? v * 255 : v)).join(',')})`;
     const radius = Math.max(2, o.axes[0] * 500);
     const qw = _q.w, qx = _q.x, qy = _q.y, qz = _q.z;
     const yaw = Math.atan2(2*(qx*qy+qw*qz),1-2*(qy*qy+qz*qz));
@@ -852,12 +1138,20 @@ function drawInset(now) {
 }
 
 function draw(now) {
+  if (lastFrameAt !== null) frameIntervals.push(now - lastFrameAt);
+  lastFrameAt = now;
   frames++;
   if (now - fpsStart >= 1000) {
     measurements.fps = frames * 1000 / (now - fpsStart);
-    setMetric('fps', measurements.fps.toFixed(0));
+    const sorted = frameIntervals.slice().sort((a, b) => a - b);
+    const percentile = value => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * value))] ?? null;
+    measurements.frame_ms_p50 = percentile(.5);
+    measurements.frame_ms_p95 = percentile(.95);
+    measurements.frame_ms_max = sorted.at(-1) ?? null;
     fpsStart = now; frames = 0;
+    frameIntervals = [];
   }
+  advanceDisplayTimeline(now);
   drawInset(now);
   render3d(now);
   requestAnimationFrame(draw);
@@ -877,7 +1171,10 @@ function setLabels(on, persist = true) {
   if (persist) { try { localStorage.setItem('coffee.labels', on ? '1' : '0'); } catch {} }
 }
 $('labels').onclick = () => setLabels(!three.labels);
-try { setLabels(localStorage.getItem('coffee.labels') !== '0', false); } catch { setLabels(true, false); }
+try {
+  const storedLabels = localStorage.getItem('coffee.labels');
+  setLabels(storedLabels === null ? window.innerWidth >= 760 : storedLabels !== '0', false);
+} catch { setLabels(window.innerWidth >= 760, false); }
 const PANELS = ['panel-left', 'panel-right', 'title-block', 'inset'];
 document.addEventListener('keydown', event => {
   if (event.metaKey || event.ctrlKey || event.altKey || $('diagnostics').open) return;
@@ -892,7 +1189,8 @@ for (const button of document.querySelectorAll('[data-toggle]')) {
   const id = button.dataset.toggle;
   button.onclick = () => setCollapsed(id, !$(id).classList.contains('collapsed'));
   let stored = null; try { stored = localStorage.getItem(`coffee.panel.${id}`); } catch {}
-  setCollapsed(id, stored === null ? window.innerWidth < 760 : stored === '1', false);
+  const defaultCollapsed = window.innerWidth < 760 || (id === 'title-block' && !localHost);
+  setCollapsed(id, stored === null ? defaultCollapsed : stored === '1', false);
 }
 initThree();
 connect();
