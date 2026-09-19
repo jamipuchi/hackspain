@@ -301,10 +301,6 @@ class Engine:
                         bean.fired_target = True
                 self._event("valve_activated", object_ids=uids, track_id=int(track_id))
             for track_id, uid in fire_hits:
-                hit = (track_id, uid)
-                if hit in self._seen_fire_hits:
-                    continue
-                self._seen_fire_hits.add(hit)
                 decision = self._decision_by_track.get(track_id)
                 own_pulse = bool(decision and uid in decision.target_uids)
                 record = self._object_records.get(uid)
@@ -364,10 +360,7 @@ class Engine:
             if tid in retained_tracks
         }
         self._seen_fired_tracks.intersection_update(retained_tracks)
-        self._seen_fire_hits = {
-            (tid, uid) for tid, uid in self._seen_fire_hits
-            if uid in retained_ids or tid in pending_tracks
-        }
+        self._seen_fire_hits.clear()
         self._seen_outcomes.intersection_update(retained_ids)
 
     def _evaluate_frame(self, blobs, full, blob_tracks, captured_t: float):
