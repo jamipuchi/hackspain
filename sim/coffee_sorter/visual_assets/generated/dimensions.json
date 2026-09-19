@@ -1,0 +1,102 @@
+{
+  "units": "metres",
+  "collection": "CoffeeBeanPrototypes",
+  "regular_simulator_semi_axes_m": [
+    0.0049,
+    0.00355,
+    0.00255
+  ],
+  "broken_simulator_nominal_scale_m": [
+    0.005,
+    0.0036,
+    0.0026
+  ],
+  "broken_source_obj_dimensions_m": [
+    0.01,
+    0.007183224,
+    0.002567526
+  ],
+  "broken_simulator_scale_variants": [
+    0.9,
+    1.0,
+    1.1
+  ],
+  "objects": {
+    "good": {
+      "name": "bean_good",
+      "origin": "body centre",
+      "min_m": [
+        -0.0049,
+        -0.00355,
+        -0.00255
+      ],
+      "max_m": [
+        0.0049,
+        0.00355,
+        0.00255
+      ],
+      "dimensions_m": [
+        0.0098,
+        0.0071,
+        0.0051
+      ]
+    },
+    "black": {
+      "name": "bean_black",
+      "origin": "body centre",
+      "min_m": [
+        -0.0049,
+        -0.00355,
+        -0.00255
+      ],
+      "max_m": [
+        0.0049,
+        0.00355,
+        0.00255
+      ],
+      "dimensions_m": [
+        0.0098,
+        0.0071,
+        0.0051
+      ]
+    },
+    "insect": {
+      "name": "bean_insect",
+      "origin": "body centre",
+      "min_m": [
+        -0.0049,
+        -0.00355,
+        -0.00255
+      ],
+      "max_m": [
+        0.0049,
+        0.00355,
+        0.00255
+      ],
+      "dimensions_m": [
+        0.0098,
+        0.0071,
+        0.0051
+      ]
+    },
+    "broken": {
+      "name": "bean_broken",
+      "origin": "fracture plane at z=0; body extends into +z",
+      "min_m": [
+        -0.005,
+        -0.003591612,
+        0.0
+      ],
+      "max_m": [
+        0.005,
+        0.003591612,
+        0.002567526
+      ],
+      "dimensions_m": [
+        0.01,
+        0.007183224,
+        0.002567526
+      ]
+    }
+  }
+}

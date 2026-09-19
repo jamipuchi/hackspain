@@ -1,0 +1,9 @@
+
+> build
+> python3 build_page.py
+
+
+  ../../../../../../../../tmp/tmp3aweeyd0/viewer.js  525.1kb
+
+⚡ Done in 114ms
+Built index.html: 1,842,120 bytes; replay JSON: 2,782,621 bytes; gzip: 972,967 bytes
