@@ -87,7 +87,16 @@ td.mono{font-family:var(--mono);font-size:.8rem}
      <label>angle <b id="openV"></b><input id="openS" type="range" min="0" max="180" oninput="openV.textContent=this.value+'°'" onchange="setPos('open',+this.value)"></label>
      <div class="row"><button class="sm" onclick="nudgePos('open',-1)">−1°</button><button class="sm" onclick="nudgePos('open',1)">+1°</button><input class="num" id="openN" type="number" min="0" max="180" onchange="setPos('open',+this.value)"></div>
     </div>
-    <div style="display:grid;gap:8px"><svg id="dial" viewBox="0 0 400 240" style="width:100%"></svg>
+    <div style="display:grid;gap:8px">
+     <div class="card" style="background:#0f1317"><h2>Continuous servo on D6 · timed pulses</h2>
+      <p class="hint">This servo spins instead of holding an angle, so OPEN = spin one way for a moment into the stop, CLOSED = spin back. Tune the pulse lengths until the paddle lands where you want; flip direction if OPEN goes the wrong way.</p>
+      <div class="row"><label>speed % <input class="num" id="d6Speed" type="number" min="5" max="100" onchange="setCfg('door_d6_speed',+this.value)"></label>
+       <label>open pulse ms <input class="num" id="d6Open" type="number" min="20" step="10" onchange="setCfg('door_d6_open_ms',+this.value)"></label>
+       <label>close pulse ms <input class="num" id="d6Close" type="number" min="20" step="10" onchange="setCfg('door_d6_close_ms',+this.value)"></label>
+       <label>direction<select id="d6Dir" onchange="setCfg('door_d6_dir',+this.value)"><option value="1">normal</option><option value="-1">flipped</option></select></label></div>
+      <div class="row"><button class="stop" onclick="postJSON('/api/cmd',{line:'STOP'}).then(refresh)">■ STOP SPINNING</button><span class="hint">also Space / Esc</span></div>
+     </div>
+     <svg id="dial" viewBox="0 0 400 240" style="width:100%"></svg>
      <button class="sm acc" onclick="swingTest()">swing test: closed → open → closed</button>
      <div class="hint">White needle = angle the firmware reports. The sorting loop uses these same two angles.</div></div>
    </div>
@@ -171,7 +180,7 @@ async function classifyNow(){const j=await postJSON('/api/classify_now',{});if(!
 async function sample(l){const j=await postJSON('/api/sample',{label:l});if(j.ok){$('clfNow').textContent='saved '+j.path;refresh();}}
 function snapshot(){window.open('/snapshot.jpg?'+Date.now());}
 function sw(k){swT[k]=performance.now()/1000;const T=S?.cfg?.timing||{};let out=[];if(swT.top&&swT.zone)out.push(`top→zone ${(swT.zone-swT.top).toFixed(2)} s`);if(swT.zone&&swT.door){const dt=swT.door-swT.zone;const cm=T.door_from_top_cm[0]-T.zone_from_top_cm[0];const v=cm/dt;out.push(`zone→door ${dt.toFixed(2)} s = ${v.toFixed(1)} cm/s`);setCfg('timing.bean_speed_cm_s',+v.toFixed(1));swT={};}$('swOut').textContent=out.join(' · ')||`marked ${k}`;}
-document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;if(e.code==='Space'||e.key==='Escape'){e.preventDefault();setBelt(0);gate('flush');}
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;if(e.code==='Space'||e.key==='Escape'){e.preventDefault();postJSON('/api/cmd',{line:'STOP'}).then(refresh);}
  else if(e.key==='g')sample('good');else if(e.key==='d')sample('defect');else if(e.key==='f')sample('foreign');});
 // door calibration dial
 function c_pos(S){const rep=S.modules?.arduino?.pos;const chan={base:0,shoulder:1,elbow:2}[S.cfg.gate.channel]??0;return rep?rep[chan]:null;}
@@ -206,7 +215,7 @@ function render(){const m=S.modules,c=S.cfg,l=S.line;
  kv($('camKv'),m.camera);$('zoneTxt').textContent=JSON.stringify(c.camera.zone);setIf('ppm',c.camera.px_per_mm);$('ppmV').textContent=c.camera.px_per_mm;setIf('flow',c.camera.flow_axis);setIf('camBackend',c.camera.backend);drawRoi(null,false);
  $('beltV').textContent=S.belt==0?'stopped':(S.belt>0?'forward ':'reverse ')+Math.abs(S.belt)+'%';
  const dry=l.dry_run;for(const id of['dryBanner','dryBanner2']){$(id).className='banner '+(dry?'dry':'live');$(id).textContent=dry?'DRY RUN: gate commands are logged, the servo does not move':'LIVE: the door servo moves on every suspect verdict and gate button';}
- dialDraw();setIf('closedS',c.gate.flush_deg);setIf('closedN',c.gate.flush_deg);$('closedV').textContent=c.gate.flush_deg+'°';setIf('openS',c.gate.open_deg);setIf('openN',c.gate.open_deg);$('openV').textContent=c.gate.open_deg+'°';const rp=c_pos(S);$('posClosed').style.boxShadow=rp===c.gate.flush_deg?'0 0 0 2px var(--ok)':'none';$('posOpen').style.boxShadow=rp===c.gate.open_deg?'0 0 0 2px var(--warn)':'none';setIf('gFlush',c.gate.flush_deg);setIf('gOpen',c.gate.open_deg);setIf('gDwell',c.gate.default_dwell_s);kv($('gateKv'),m.gate);kv($('ardKv'),m.arduino);
+ dialDraw();setIf('d6Speed',c.door_d6_speed);setIf('d6Open',c.door_d6_open_ms);setIf('d6Close',c.door_d6_close_ms);setIf('d6Dir',c.door_d6_dir);setIf('closedS',c.gate.flush_deg);setIf('closedN',c.gate.flush_deg);$('closedV').textContent=c.gate.flush_deg+'°';setIf('openS',c.gate.open_deg);setIf('openN',c.gate.open_deg);$('openV').textContent=c.gate.open_deg+'°';const rp=c_pos(S);$('posClosed').style.boxShadow=rp===c.gate.flush_deg?'0 0 0 2px var(--ok)':'none';$('posOpen').style.boxShadow=rp===c.gate.open_deg?'0 0 0 2px var(--warn)':'none';setIf('gFlush',c.gate.flush_deg);setIf('gOpen',c.gate.open_deg);setIf('gDwell',c.gate.default_dwell_s);kv($('gateKv'),m.gate);kv($('ardKv'),m.arduino);
  kv($('clfKv'),m.classifier,['rules']);kv($('detKv'),m.detector,['features']);setIf('thr',c.classifier.suspect_threshold);$('thrV').textContent=c.classifier.suspect_threshold;setIf('clfBackend',c.classifier.backend);
  $('dsCounts').textContent=Object.entries(l.datasets||{}).map(([k,v])=>`${k}: ${v}`).join(' · ')||'no samples yet';
  if(document.activeElement?.closest('#rules')==null)$('rules').innerHTML=Object.entries(c.classifier.rules).map(([k,v])=>`<label>${k}<input type="number" step="0.05" value="${v}" onchange="setCfg('classifier.rules',Object.assign({},S.cfg.classifier.rules,{'${k}':+this.value}))"></label>`).join('');

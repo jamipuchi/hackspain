@@ -56,13 +56,15 @@ every ~2 s; never two beans in the zone at once.
 
 ## Bench fact 19 Sep 14:33 (from the integrator, Jaume watching)
 
-The SG90 moves only when driven through **D6** with the belt command `C <sp>`; `S` on D9/D10/D11 is acknowledged by the
-firmware but produces no motion (all four pins swept). Until the cause is found, the door/tray servo is wired to **D6** and
-driven as `gate.channel = "belt"`: `sp = round((deg − 90) / 0.9)`, clamped −100..100, **never `C 0`** (the firmware detaches
+Cause found 14:38 (arduino): the servo's signal wire is on **D6** because this morning's wiring guide put it there when the servo
+was the conveyor; nothing is wired to D9–D11, so `S` moves nothing. The board is fine. Workaround landed in `line/gate.py`: the
+door/tray servo stays on **D6** and is driven as `gate.channel = "belt"`: `sp = round((deg − 90) / 0.9)`, clamped −100..100, **never `C 0`** (the firmware detaches
 the servo at 0 and it goes limp; use 1). All angles in these sheets stay angles; only the wire and the command change:
-LEVEL/FLUSH 90 → `C 1`, GOOD 45 → `C -50`, REJECT 135 → `C 50`, OPEN (door) 65 → `C -28`. Note there is **no ramp** on the
-belt channel, so a 45° tray move is a step (SG90 ≈ 0.15 s) — fine for the tray; for the swing door it also means no ramp
-problem, but also no soft landing, so the pad matters more.
+LEVEL/FLUSH 90 → `C 1`, GOOD 45 → `C -50`, REJECT 135 → `C 50`, OPEN (door) 65 → `C -28`. There is **no ramp** on the belt channel: the SG90 moves at its own speed (≈ 0.1 s for 25°, ≈ 0.15 s for 45°), so the swing-door
+timing problem disappears on D6 for free, but the door lands hard, so the soft-stop pad matters more. To get the ramped `S` path
+back later: move the orange wire three holes towards the USB end (~6 → ~9) and set `gate.channel = "base"`. Bench caveat:
+`conveyor_button.py` STOP and its exit handler send `C 0`, which detaches the door servo (goes limp) — do not press STOP there
+while the door/tray is in use.
 
 ## As built (fill in when the chute exists)
 
