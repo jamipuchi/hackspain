@@ -1,0 +1,76 @@
+{
+  "name": "five_point_gold_star_token",
+  "design_notes": "A single continuous five-point star token, 18 mm wide, 18 mm tall, and 2 mm thick, laid in the XY plane with extrusion along Z. The outline alternates five outer points and five inner concave valleys.",
+  "parts": [
+    {
+      "name": "star_body",
+      "kind": "polygon",
+      "position_mm": [
+        0,
+        0,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "size_mm": [
+        18,
+        18,
+        2
+      ],
+      "color": [
+        1.0,
+        0.766,
+        0.336
+      ],
+      "metallic": 1.0,
+      "roughness": 0.2,
+      "tube_mm": 0,
+      "outline": [
+        [
+          0.0,
+          0.5
+        ],
+        [
+          -0.3090169944,
+          0.4045084972
+        ],
+        [
+          -0.5,
+          0.1545084972
+        ],
+        [
+          -0.5,
+          -0.1545084972
+        ],
+        [
+          -0.3090169944,
+          -0.4045084972
+        ],
+        [
+          0.0,
+          -0.5
+        ],
+        [
+          0.3090169944,
+          -0.4045084972
+        ],
+        [
+          0.5,
+          -0.1545084972
+        ],
+        [
+          0.5,
+          0.1545084972
+        ],
+        [
+          0.3090169944,
+          0.4045084972
+        ]
+      ],
+      "text": ""
+    }
+  ]
+}

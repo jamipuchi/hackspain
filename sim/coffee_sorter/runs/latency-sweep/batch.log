@@ -1,0 +1,5 @@
+DONE delay-0: admitted=1000.0/s recall=44.4% false_eject=5.7% late=0/532 starved=0
+DONE delay-20: admitted=1000.0/s recall=49.7% false_eject=4.5% late=0/538 starved=0
+DONE delay-30: admitted=1000.0/s recall=44.2% false_eject=5.2% late=39/566 starved=0
+DONE delay-40: admitted=1000.0/s recall=16.5% false_eject=2.9% late=437/553 starved=0
+DONE delay-60: admitted=1000.0/s recall=5.7% false_eject=1.3% late=513/516 starved=0

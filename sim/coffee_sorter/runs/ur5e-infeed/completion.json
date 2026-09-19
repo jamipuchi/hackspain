@@ -1,0 +1,115 @@
+{
+  "artifacts": {
+    "REPORT.md": {
+      "bytes": 4585,
+      "sha256": "de1ba3be858a5b5d8868fe53efa4c087759950d47c3a3c998286672765425c67"
+    },
+    "REVIEW.md": {
+      "bytes": 3465,
+      "sha256": "8f7cab09a07461b76a86d88fb563a165e16c1a17c90a5a78480774ae8cdb62a1"
+    },
+    "burst/contact_sheet.png": {
+      "bytes": 64724,
+      "sha256": "d90b81a56925c1964ceaa0d2f3e0466d4c0a594ac6811ce75296ae93dd462fa3"
+    },
+    "burst/events.json": {
+      "bytes": 2245,
+      "sha256": "e49ef66e1c36aa457e3a89930b4d1ba8b9c98f176a8e91770a9e0751fc11f952"
+    },
+    "burst/feed_manifest.json": {
+      "bytes": 1124,
+      "sha256": "f7681fa673900bf2a4d56df252ccbc86feb0074f4469a8584d0cbe1cc405cc62"
+    },
+    "burst/metrics.json": {
+      "bytes": 7375,
+      "sha256": "f59152de22d671883b7fdb545a8233f554eacd7502b24e6af74e71808be12b36"
+    },
+    "burst/overview.mp4": {
+      "bytes": 434186,
+      "sha256": "1ca6bca5c7aff90e6a6894221fa1090b816761bba04fc2ce19a5cac3d2009f91"
+    },
+    "burst/trajectory.csv": {
+      "bytes": 23395,
+      "sha256": "997ed365fd9da0825e172082d95f1a36ca21df6e4d1e3192c1d76c3c4b1e79c8"
+    },
+    "metrics.json": {
+      "bytes": 22791,
+      "sha256": "524bab58b101090154671621ed3a2c49b0487eeb34a12bb410ddd284942ece84"
+    },
+    "nominal/contact_sheet.png": {
+      "bytes": 69027,
+      "sha256": "a57321148aca84fc47f12a7e53b72157eebeb5ee04cd9c4e6a2b31d9874aa7e1"
+    },
+    "nominal/events.json": {
+      "bytes": 1549,
+      "sha256": "3e4fc4e758f97a99d5f028b7dd06b87992df479c15f2729fd5f8fce6aab9d4e7"
+    },
+    "nominal/feed_manifest.json": {
+      "bytes": 786,
+      "sha256": "ae97b7f3f65475574d78cb5dd957608d25a69c06e174029936c230ca6b6ec174"
+    },
+    "nominal/metrics.json": {
+      "bytes": 6879,
+      "sha256": "e13aa53ba531e29b9a24609f0169d8a8d401392d8a1aa7098737702effb4a5a8"
+    },
+    "nominal/overview.mp4": {
+      "bytes": 438382,
+      "sha256": "db9f217d4b7bfebed77ad6b944e20d4f6d4fae1a78f4db8acc678701082aaf7c"
+    },
+    "nominal/trajectory.csv": {
+      "bytes": 38095,
+      "sha256": "45de2ca9006583a3530f880f9dcf81c46ac97a50c8d15ee2db80ecad40015929"
+    },
+    "outcomes.png": {
+      "bytes": 49567,
+      "sha256": "56b6d94bea8945acc6de033dc6c1994498dc3be6d52cc43a45ca713869f009f5"
+    },
+    "test_command.txt": {
+      "bytes": 352,
+      "sha256": "5f759b134ed5eb1bc7a1005db3098a7291085a1553217ee743cf7893f5514574"
+    },
+    "tests.log": {
+      "bytes": 11242,
+      "sha256": "6633e7d0e898c7425bf51fbe5cd30e6e23071eb0c13dbf8960a0040349a99156"
+    },
+    "validation.log": {
+      "bytes": 475,
+      "sha256": "6e3d2835cc42b5040b393cfccd8e6f08a15a146add9be9e8e0e7b20bdd249266"
+    },
+    "workspace/contact_sheet.png": {
+      "bytes": 43804,
+      "sha256": "fa99367696d357f29f7b107389caf263766e8656a38c0b6e3e83465f29932a9a"
+    },
+    "workspace/events.json": {
+      "bytes": 389,
+      "sha256": "3071293ae7a6d38da7371b3382b6bd25accd1e3f85f171d7c059a47c1ccbd2f5"
+    },
+    "workspace/feed_manifest.json": {
+      "bytes": 288,
+      "sha256": "7a17410e8f38251bf6ed75fb5393eedce4c3178b9d955d5601a442a0f8206114"
+    },
+    "workspace/metrics.json": {
+      "bytes": 6210,
+      "sha256": "5257d5c90239b6c9b0255dfc0de1c7d402c814677cc05234accf45128f66cda1"
+    },
+    "workspace/overview.mp4": {
+      "bytes": 112400,
+      "sha256": "195e41b0668002c2e0595ff3f24ab267ad15131fe7ba1667843af260146485f7"
+    },
+    "workspace/trajectory.csv": {
+      "bytes": 10678,
+      "sha256": "2f27be0b8feecec1e75ce7c390d0f7d49641db3516a24724519466f9bc949498"
+    }
+  },
+  "complete": true,
+  "scenarios": [
+    "nominal",
+    "burst",
+    "workspace"
+  ],
+  "source_files_sha256": {
+    "render.py": "33a2b3047c7143b78861cfcb64d8538fedeb636f66258b356de7a63da8e65ac6",
+    "run_ur5e_infeed.py": "e1712e5f5d157ae11535d9b2264b0878433704904b287794681c8efff9c1b989",
+    "ur5e_infeed.py": "8793e5d3efce83fb76c9a090ff3b5ef4af9a71893f0bc9aaa1b0fbba5b2b9228"
+  }
+}

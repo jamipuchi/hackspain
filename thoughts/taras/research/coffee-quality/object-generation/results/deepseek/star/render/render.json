@@ -1,0 +1,51 @@
+{
+  "recipe_name": "five_point_gold_star_token",
+  "engine": "CYCLES",
+  "samples": 24,
+  "blender_version": "5.2.2 LTS",
+  "blender_build_hash": "d13f752e3b9c",
+  "seed": 20260919,
+  "recipe_sha256": "839852f62ac157f76639f7ebe1d283f05c0e2f2fb78d409d1de17ccb6917992f",
+  "renderer_sha256": "42924fc046d5fd500c55e4517089bc138ca9c880f12cb18d8389a4290320499b",
+  "scene_threads": {
+    "mode": "FIXED",
+    "threads": 1
+  },
+  "mesh_counts": {
+    "objects": 1,
+    "vertices": 140,
+    "polygons": 132
+  },
+  "bounding_dimensions_mm": [
+    18.0,
+    17.944656372070312,
+    2.0
+  ],
+  "part_bounds_mm": [
+    {
+      "name": "star_body",
+      "minimum_mm": [
+        -9.0,
+        -8.972328186035156,
+        0.0
+      ],
+      "maximum_mm": [
+        9.0,
+        8.972328186035156,
+        2.0
+      ],
+      "dimensions_mm": [
+        18.0,
+        17.944656372070312,
+        2.0
+      ]
+    }
+  ],
+  "glb_units": "meters",
+  "glb_scale_from_recipe_mm": 0.001,
+  "render_timings_seconds": {
+    "perspective": 17.558946332894266,
+    "top": 18.127554166829214,
+    "total": 35.68650049972348
+  }
+}

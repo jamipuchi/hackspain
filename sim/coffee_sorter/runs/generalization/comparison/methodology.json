@@ -1,0 +1,34 @@
+{
+  "commit": "511f1047e5fa1befa1790db607b2d9c4f88f6a45",
+  "protected_source_reference_commit": "511f1047e5fa1befa1790db607b2d9c4f88f6a45",
+  "training": {
+    "seconds": 24.0,
+    "rate": 900.0,
+    "defect_boost": 5.0,
+    "seed": 0
+  },
+  "closed_loop": {
+    "seconds": 4.0,
+    "rate": 1000.0,
+    "seed": 1,
+    "fixed_latency_ms": 60.0,
+    "jet_force_n": 0.06,
+    "policy": "specialty",
+    "threshold": 0.5
+  },
+  "run_order": [
+    "green_arabica",
+    "roasted"
+  ],
+  "green_training_source": "existing artifact from the same documented 24 s / 900 s^-1 / boost 5 recipe",
+  "camera_contact_sheet": "real MuJoCo inspection-camera frames with one staged, isolated instance per profile class; ground-truth labels are evaluation-only",
+  "holdout_limit": "blob-level random split can place repeated views of a bean in both train and test",
+  "timing_limit": "single sequential run per profile on a shared host; fixed latency is a simulated minimum and measured compute can exceed it",
+  "versions": {
+    "python": "3.12.3",
+    "mujoco": "3.13.0",
+    "numpy": "2.5.3",
+    "opencv": "5.0.0",
+    "scikit_learn": "1.9.1"
+  }
+}

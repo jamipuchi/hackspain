@@ -1,0 +1,12 @@
+{
+  "origin": "pre-existing documented green_arabica training artifact",
+  "training": {
+    "seconds": 24.0,
+    "rate": 900.0,
+    "defect_boost": 5.0,
+    "seed": 0
+  },
+  "model_sha256": "0b9e164cbf4df18f904f30fde38e0b7ed352877653849cc55da25e6f143051c8",
+  "report_sha256": "7967a7a5db44c496ec5b6eeb4a1486c85a399e63fcf444c79459be5460624b83",
+  "confusion_sha256": "4821922abd99acf0010aa4a803b792a8cace6c146fe5ec8ec816cd7ec093d05f"
+}

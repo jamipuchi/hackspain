@@ -1,0 +1,8 @@
+{
+  "case": "earring",
+  "model": "google/gemini-3.8-flash",
+  "returncode": 1,
+  "wall_seconds": 1.3922942921053618,
+  "stdout": "",
+  "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/probe.py\", line 256, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/probe.py\", line 211, in main\n    result = call(OPENROUTER_URL, keys[\"OPENROUTER_API_KEY\"], payload, args.out, args.live)\n  File \"/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/probe.py\", line 248, in call\n    raise RuntimeError(f\"provider returned HTTP {error.code}; diagnostic saved at {path}\") from None\nRuntimeError: provider returned HTTP 404; diagnostic saved at /private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/results/cache/b9c97d0cde560ee7328901fbec0c178301d0dcacb5f3fccfd51a8a9a5332f142.json\n"
+}

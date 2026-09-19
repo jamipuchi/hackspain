@@ -1,0 +1,51 @@
+{
+  "recipe_name": "gold_star_token",
+  "engine": "CYCLES",
+  "samples": 24,
+  "blender_version": "5.2.2 LTS",
+  "blender_build_hash": "d13f752e3b9c",
+  "seed": 20260919,
+  "recipe_sha256": "e95aff4afa83784a999bf73c88145b35fdb329b10f3e520ca9f47045371e38d5",
+  "renderer_sha256": "42924fc046d5fd500c55e4517089bc138ca9c880f12cb18d8389a4290320499b",
+  "scene_threads": {
+    "mode": "FIXED",
+    "threads": 1
+  },
+  "mesh_counts": {
+    "objects": 1,
+    "vertices": 132,
+    "polygons": 124
+  },
+  "bounding_dimensions_mm": [
+    6.249680995941162,
+    9.698086738586426,
+    2.0
+  ],
+  "part_bounds_mm": [
+    {
+      "name": "star_body",
+      "minimum_mm": [
+        -6.299140453338623,
+        -5.391857147216797,
+        0.0
+      ],
+      "maximum_mm": [
+        -0.04945945367217064,
+        4.306229591369629,
+        2.0
+      ],
+      "dimensions_mm": [
+        6.249680995941162,
+        9.698086738586426,
+        2.0
+      ]
+    }
+  ],
+  "glb_units": "meters",
+  "glb_scale_from_recipe_mm": 0.001,
+  "render_timings_seconds": {
+    "perspective": 19.445109041873366,
+    "top": 20.511571957962587,
+    "total": 39.95668099983595
+  }
+}

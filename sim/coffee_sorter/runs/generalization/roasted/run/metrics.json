@@ -1,0 +1,316 @@
+{
+ "beans_evaluated": 2600,
+ "beans_resolved": 2599,
+ "beans_unresolved": 1,
+ "throughput_beans_per_s": 1000.0000000000686,
+ "feed_kg_per_h": 589.2205601268744,
+ "defect_removal": 0.3950617283950617,
+ "physical_reject_recall": 0.3950617283950617,
+ "physical_reject_precision": 0.5161290322580645,
+ "good_yield_loss": 0.03818413237165889,
+ "good_false_eject_rate": 0.03818413237165889,
+ "physical_reject_accuracy": 0.8984615384615384,
+ "accept_purity_defects_per_1000": 55.250948966680724,
+ "accept_purity_defects_per_1000_incoming": 93.46153846153847,
+ "spilled_rate": 0.016153846153846154,
+ "decisions": 3818,
+ "reject_decisions": 363,
+ "scheduled_reject_decisions": 363,
+ "activated_reject_decisions": 351,
+ "associated_reject_decisions": 333,
+ "associated_activated": 321,
+ "associated_jet_hit": 172,
+ "associated_rejected": 136,
+ "associated_constituents": 342,
+ "own_pulse_hit_constituents": 179,
+ "scheduled_valves": 587,
+ "fired_valves": 566,
+ "late_decisions": 0,
+ "obs_per_track_mean": 2.36406495547407,
+ "latency_ms": {
+  "p50": 60.0,
+  "p99": 60.0,
+  "max": 60.0
+ },
+ "measured_compute_ms": {
+  "p50": 14.642523000020446,
+  "p99": 26.219960509797602,
+  "max": 29.065741000522394
+ },
+ "latency_budget_ms": 73.33333333333333,
+ "deadline_headroom_ms": {
+  "p01": 1.6882869127623579,
+  "p50": 11.03731884057968,
+  "minimum": 0.19312945658611635
+ },
+ "pool_starved": 0,
+ "frames": 1000,
+ "denominators": {
+  "eligible_beans": 2600,
+  "resolved_beans": 2599,
+  "defects_to_remove": 243,
+  "keep_beans": 2357,
+  "accepted_beans": 2371,
+  "rejected_beans": 186,
+  "decisions": 3818,
+  "reject_decisions": 363,
+  "frames": 1000,
+  "cohort_start_s": 0.8,
+  "cohort_end_s": 3.399999999999781
+ },
+ "intervals_95": {
+  "defect_removal": [
+   0.3356863535043224,
+   0.45770341548113214
+  ],
+  "physical_reject_recall": [
+   0.3356863535043224,
+   0.45770341548113214
+  ],
+  "physical_reject_precision": [
+   0.44471258776651124,
+   0.5868927084383249
+  ],
+  "good_yield_loss": [
+   0.03116862333827453,
+   0.046702590045969467
+  ],
+  "good_false_eject_rate": [
+   0.03116862333827453,
+   0.046702590045969467
+  ],
+  "physical_reject_accuracy": [
+   0.8862572884477754,
+   0.9094900411900949
+  ]
+ },
+ "camera_blobs": {
+  "full_observations": 10917,
+  "constituent_observations": 11520,
+  "single_observations": 10313,
+  "single_action_tn": 9362,
+  "single_class_correct": 10217,
+  "single_action_tp": 851,
+  "merged_observations": 577,
+  "merged_action_tn": 440,
+  "single_action_fp": 35,
+  "merged_action_fn": 67,
+  "merged_action_fp": 7,
+  "merged_action_tp": 63,
+  "single_action_fn": 65,
+  "unmatched_observations": 27
+ },
+ "camera_bean_cohorts": {
+  "single_only": {
+   "n": 2179,
+   "defects_to_remove": 185,
+   "keep": 1994,
+   "unresolved": 1,
+   "defects_rejected": 82,
+   "keep_rejected": 60,
+   "defect_removal": 0.44324324324324327,
+   "good_yield_loss": 0.03009027081243731
+  },
+  "ever_merged": {
+   "n": 359,
+   "defects_to_remove": 40,
+   "keep": 319,
+   "unresolved": 0,
+   "defects_rejected": 10,
+   "keep_rejected": 25,
+   "defect_removal": 0.25,
+   "good_yield_loss": 0.07836990595611286
+  },
+  "never_observed": {
+   "n": 62,
+   "defects_to_remove": 18,
+   "keep": 44,
+   "unresolved": 0,
+   "defects_rejected": 4,
+   "keep_rejected": 5,
+   "defect_removal": 0.2222222222222222,
+   "good_yield_loss": 0.11363636363636363
+  }
+ },
+ "keep_jet_outcomes": {
+  "any_jet_hit": 44,
+  "all_rejected": 90,
+  "denominator": 2357,
+  "note": "all_rejected is an outcome count, not causal attribution to a jet"
+ },
+ "per_class": {
+  "good": {
+   "n": 2357,
+   "resolved": 2356,
+   "unresolved": 1,
+   "rejected": 90,
+   "spilled": 26,
+   "targeted": 30,
+   "fired_target": 30,
+   "defect": false,
+   "severity": "none",
+   "jet_hit": 44,
+   "targeted_rejected": 8,
+   "jet_hit_rejected": 30,
+   "reject_rate": 0.03818413237165889,
+   "target_rate": 0.012728044123886296
+  },
+  "quaker": {
+   "n": 96,
+   "resolved": 96,
+   "unresolved": 0,
+   "rejected": 44,
+   "spilled": 0,
+   "targeted": 91,
+   "fired_target": 91,
+   "defect": true,
+   "severity": "major",
+   "jet_hit": 49,
+   "targeted_rejected": 44,
+   "jet_hit_rejected": 41,
+   "reject_rate": 0.4583333333333333,
+   "target_rate": 0.9479166666666666
+  },
+  "burnt": {
+   "n": 48,
+   "resolved": 48,
+   "unresolved": 0,
+   "rejected": 22,
+   "spilled": 0,
+   "targeted": 46,
+   "fired_target": 46,
+   "defect": true,
+   "severity": "major",
+   "jet_hit": 28,
+   "targeted_rejected": 21,
+   "jet_hit_rejected": 21,
+   "reject_rate": 0.4583333333333333,
+   "target_rate": 0.9583333333333334
+  },
+  "broken": {
+   "n": 72,
+   "resolved": 72,
+   "unresolved": 0,
+   "rejected": 19,
+   "spilled": 10,
+   "targeted": 39,
+   "fired_target": 39,
+   "defect": true,
+   "severity": "major",
+   "jet_hit": 23,
+   "targeted_rejected": 19,
+   "jet_hit_rejected": 18,
+   "reject_rate": 0.2638888888888889,
+   "target_rate": 0.5416666666666666
+  },
+  "stone": {
+   "n": 15,
+   "resolved": 15,
+   "unresolved": 0,
+   "rejected": 4,
+   "spilled": 6,
+   "targeted": 9,
+   "fired_target": 9,
+   "defect": true,
+   "severity": "foreign",
+   "jet_hit": 1,
+   "targeted_rejected": 3,
+   "jet_hit_rejected": 0,
+   "reject_rate": 0.26666666666666666,
+   "target_rate": 0.6
+  },
+  "stick": {
+   "n": 12,
+   "resolved": 12,
+   "unresolved": 0,
+   "rejected": 7,
+   "spilled": 0,
+   "targeted": 10,
+   "fired_target": 10,
+   "defect": true,
+   "severity": "foreign",
+   "jet_hit": 7,
+   "targeted_rejected": 6,
+   "jet_hit_rejected": 6,
+   "reject_rate": 0.5833333333333334,
+   "target_rate": 0.8333333333333334
+  }
+ },
+ "profile": "roasted",
+ "policy": "specialty",
+ "threshold": 0.5,
+ "rate": 1000.0,
+ "seconds": 4.0,
+ "simulation_seconds": 3.999999999999781,
+ "simulation_end_s": 3.999999999999781,
+ "seed": 1,
+ "wall_seconds": 52.95529106699996,
+ "wall_per_sim_second": 13.23882276674999,
+ "classifier_sha256": "85cc2e0dcc93b7414ae4184bc7182374b2b1f03db9821b67d109552d28411fbe",
+ "source_sha256": {
+  "run.py": "6200c17d588ff73d80a175c52ab17d243d2c180769bc6da86a528113134dae9e",
+  "controller.py": "88bc0337ae5d90192b928581c6e33574b29a1b3631e2d2eacd30bf73ee089b32",
+  "sim.py": "25c01335c9d037d96a27e4a2d19c612a22919b052d2eee004a63fa6c8cb21d1b",
+  "vision.py": "04aa92dba238e4b342244a37bc91f7edfc09f8bd30416beb20b7528a103f54cf",
+  "evidence.py": "d4066440233a90294d57e1841b5c4e18ac1cae0325989e3d26ea83892e509c59",
+  "render.py": "33a2b3047c7143b78861cfcb64d8538fedeb636f66258b356de7a63da8e65ac6",
+  "scene.py": "5fff8ea2b049fcf58556599c05e5d4585dd445dc4aa6615d9e1021b813982a27"
+ },
+ "config": {
+  "layout": {
+   "belt_len": 1.1,
+   "belt_w": 0.5,
+   "belt_z": 0.6,
+   "belt_speed": 3.0,
+   "feed_x": [
+    -1.05,
+    -0.95
+   ],
+   "feed_vx": 2.6,
+   "feed_drop": 0.006,
+   "cam_x": -0.12,
+   "cam_fov": 0.048,
+   "cam_w": 2080,
+   "cam_h": 192,
+   "ej_x": 0.1,
+   "n_nozzles": 64,
+   "ej_z_offset": 0.045,
+   "split_x": 0.34,
+   "split_z_drop": 0.125,
+   "n_ellipsoid": 1150,
+   "n_half": 48,
+   "n_box": 20,
+   "n_capsule": 20,
+   "timestep": 0.002
+  },
+  "policy": {
+   "name": "specialty",
+   "reject_severities": [
+    "minor",
+    "major",
+    "foreign"
+   ],
+   "threshold": 0.5,
+   "anomaly": true,
+   "base_pulse": 0.003,
+   "ref_mass": 0.0002,
+   "max_pulse": 0.012,
+   "lead": 0.0015,
+   "latency_floor": 0.004,
+   "induced_delay": 0.0,
+   "fixed_latency": 0.06,
+   "target_nozzles": null
+  },
+  "jet_force_n": 0.06,
+  "requested_rate_beans_per_s": 1000.0
+ },
+ "timing_semantics": {
+  "availability": "fixed minimum total latency",
+  "pulse_queue": "t_on=max(nominal_on,t_available)",
+  "camera_backlog_modeled": false,
+  "late_definition": "reject result available more than 2 ms after predicted t_fire",
+  "rendering_in_measured_latency": false,
+  "ground_truth_evaluation_in_measured_latency": false
+ },
+ "decision_scope": "all camera frames; bean outcome metrics use the explicit eligible cohort"
+}

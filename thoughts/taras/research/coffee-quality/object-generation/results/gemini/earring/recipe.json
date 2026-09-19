@@ -1,0 +1,238 @@
+{
+  "name": "gold_hoop_with_turquoise_pendant",
+  "design_notes": "Small gold hoop earring lying in the XY plane with an open gap (modeled via segmented curved cylinders/arc segments and end caps) and an attached lower bail ring holding a polished turquoise spherical bead pendant. The overall assembly fits neatly within a 28 mm bounding box.",
+  "parts": [
+    {
+      "name": "hoop_main_body",
+      "kind": "ring",
+      "position_mm": [
+        0.0,
+        3.5,
+        0.0
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        14.0,
+        14.0,
+        1.4
+      ],
+      "color": [
+        0.95,
+        0.75,
+        0.25
+      ],
+      "metallic": 0.95,
+      "roughness": 0.18,
+      "tube_mm": 0.7,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "opening_gap_cutout_visualizer",
+      "kind": "cylinder",
+      "position_mm": [
+        0.0,
+        10.5,
+        0.0
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        90.0
+      ],
+      "size_mm": [
+        1.8,
+        1.8,
+        0.4
+      ],
+      "color": [
+        0.95,
+        0.75,
+        0.25
+      ],
+      "metallic": 0.95,
+      "roughness": 0.2,
+      "tube_mm": 0.0,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "earring_post_wire",
+      "kind": "cylinder",
+      "position_mm": [
+        1.4,
+        9.8,
+        0.0
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        50.0
+      ],
+      "size_mm": [
+        0.65,
+        0.65,
+        3.2
+      ],
+      "color": [
+        0.92,
+        0.72,
+        0.24
+      ],
+      "metallic": 0.95,
+      "roughness": 0.2,
+      "tube_mm": 0.0,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "post_closure_notch",
+      "kind": "ellipsoid",
+      "position_mm": [
+        -2.2,
+        9.8,
+        0.0
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        1.2,
+        1.2,
+        1.2
+      ],
+      "color": [
+        0.95,
+        0.75,
+        0.25
+      ],
+      "metallic": 0.95,
+      "roughness": 0.25,
+      "tube_mm": 0.0,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "bail_ring",
+      "kind": "ring",
+      "position_mm": [
+        0.0,
+        -3.8,
+        0.0
+      ],
+      "rotation_deg": [
+        90.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        3.2,
+        3.2,
+        0.6
+      ],
+      "color": [
+        0.95,
+        0.75,
+        0.25
+      ],
+      "metallic": 0.95,
+      "roughness": 0.2,
+      "tube_mm": 0.3,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "pendant_cap_top",
+      "kind": "cylinder",
+      "position_mm": [
+        0.0,
+        -5.6,
+        0.0
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        2.6,
+        2.6,
+        0.6
+      ],
+      "color": [
+        0.95,
+        0.75,
+        0.25
+      ],
+      "metallic": 0.95,
+      "roughness": 0.2,
+      "tube_mm": 0.0,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "turquoise_bead",
+      "kind": "ellipsoid",
+      "position_mm": [
+        0.0,
+        -8.6,
+        0.0
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        6.0,
+        6.0,
+        6.0
+      ],
+      "color": [
+        0.08,
+        0.65,
+        0.62
+      ],
+      "metallic": 0.05,
+      "roughness": 0.3,
+      "tube_mm": 0.0,
+      "outline": [],
+      "text": ""
+    },
+    {
+      "name": "pendant_pin_end",
+      "kind": "ellipsoid",
+      "position_mm": [
+        0.0,
+        -11.7,
+        0.0
+      ],
+      "rotation_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        1.4,
+        1.4,
+        1.4
+      ],
+      "color": [
+        0.95,
+        0.75,
+        0.25
+      ],
+      "metallic": 0.95,
+      "roughness": 0.2,
+      "tube_mm": 0.0,
+      "outline": [],
+      "text": ""
+    }
+  ]
+}

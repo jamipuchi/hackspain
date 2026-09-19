@@ -1,0 +1,9 @@
+{
+  "codec_fourcc": "h264",
+  "width": 1280,
+  "height": 720,
+  "fps": 50.0,
+  "frames": 200,
+  "duration_s": 4.0,
+  "size_bytes": 1340051
+}

@@ -1,0 +1,75 @@
+# Coffee demo video previews
+
+This directory owns only the demo storyboard and preview-render command.
+It does not own the source scene, simulator, model, live interface, or recorded evidence.
+
+## Current scene studies
+
+Taras approved the concept direction and requested basic renders of every scene.
+The current pass includes nine scene studies and three matched mode variants.
+Taras will record the UI separately. The gallery excludes the UI.
+It does not contain new animation.
+The discharge has blueprint and normal versions.
+The closing view has clay, blueprint, and normal versions.
+Each group retains its camera, source frame, focus, and geometry settings.
+The gallery provides a wipe control for comparing modes and links to each clean PNG.
+
+```sh
+python3 sim/coffee_sorter/demo_video/render_studies.py \
+  --output-dir /private/tmp/coffee-demo-video-previews/basic-scene-renders-v3
+cp sim/coffee_sorter/demo_video/study_gallery.html /private/tmp/coffee-demo-video-previews/index.html
+python3 -m http.server 8894 --bind 127.0.0.1 \
+  --directory /private/tmp/coffee-demo-video-previews
+```
+
+Open `http://127.0.0.1:8894/` to inspect the gallery.
+Use `--only <shot>` to render one composition.
+Each shot produces a PNG, an editable Blender scene, a log, and a source manifest.
+The renderer retains all recorded beans and lists each presentation cutaway.
+Existing images remain unchanged. Use a new output directory for a revised pass.
+The shared lock and eight-thread limit apply to every Blender process.
+
+See `thoughts/taras/research/coffee-demo-video/BASIC_RENDER_REVIEW.md` for evidence and limitations.
+
+## Earlier studies
+
+Run the three previews from the repository root:
+
+```sh
+python3 sim/coffee_sorter/demo_video/render_previews.py \
+  --output-dir /private/tmp/coffee-demo-video-previews
+```
+
+The command uses frame 60 from the shipped replay.
+It renders each shot separately with Blender preview settings and eight threads.
+It acquires `/private/tmp/hackspain-coffee-runtime.lock` before each Blender process.
+It exits with status 75 when another task owns the render slot.
+
+The wrapper writes each image, Blender scene, source manifest, log, and one run manifest to the output directory.
+The generated files remain outside Git.
+See `thoughts/taras/research/coffee-demo-video/PREVIEW_REPORT.md` for the measured preview review.
+
+The stills use the selected looks for separate roles:
+
+- `machine-overview`: `hero` with `warm-roastery` for machine form.
+- `inspection-close-up`: `inspection` with `noir-rim` for visible bean materials.
+- `discharge-air-jet`: `discharge` with `blueprint` for nozzle and splitter context.
+
+These previews use an old recorded instant.
+They do not show the current live engine or establish sorting quality, speed, or physical feasibility.
+
+## Review segment 1
+
+Render the four-second machine overview:
+
+```sh
+python3 sim/coffee_sorter/demo_video/render_intro_segment.py
+```
+
+The review render is 640 by 360 pixels at 24 frames per second.
+It uses 12 Cycles samples and eight threads.
+The camera moves 0.22 metres forward.
+All beans keep their recorded frame 60 poses.
+
+The command writes PNG frames, an editable Blender scene, an MP4, logs, and one manifest.
+It refuses to replace existing rendered frames.

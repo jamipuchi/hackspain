@@ -1,0 +1,59 @@
+{
+  "response": {
+    "id": "gen-1789836833-W3zygE24jhUT5YTGsSqT",
+    "object": "chat.completion",
+    "created": 1789836833,
+    "model": "z-ai/glm-5.3",
+    "provider": "Makora",
+    "system_fingerprint": null,
+    "service_tier": null,
+    "choices": [
+      {
+        "index": 0,
+        "logprobs": null,
+        "finish_reason": "stop",
+        "native_finish_reason": "stop",
+        "message": {
+          "role": "assistant",
+          "content": "{\n  \"name\": \"NOVA_company_badge\",\n  \"design_notes\": \"26 mm midnight-blue disk badge with a raised white geometric N monogram, raised NOVA lettering, and a small gold five-point star accent. All raised elements sit on the +Z face of the disk and read correctly from the +Z side.\",\n  \"parts\": [\n    {\n      \"name\": \"disk_base\",\n      \"kind\": \"cylinder\",\n      \"position_mm\": [0, 0, 0],\n      \"rotation_deg\": [0, 0, 0],\n      \"size_mm\": [26, 26, 3],\n      \"color\": [0.08, 0.10, 0.28],\n      \"metallic\": 0.3,\n      \"roughness\": 0.35,\n      \"tube_mm\": 0,\n      \"outline\": [],\n      \"text\": \"\"\n    },\n    {\n      \"name\": \"n_monogram\",\n      \"kind\": \"polygon\",\n      \"position_mm\": [0, 2, 1.8],\n      \"rotation_deg\": [0, 0, 0],\n      \"size_mm\": [10, 10, 1],\n      \"color\": [0.95, 0.95, 0.97],\n      \"metallic\": 0.1,\n      \"roughness\": 0.4,\n      \"tube_mm\": 0,\n      \"outline\": [\n        [-0.5, -0.5],\n        [-0.32, -0.5],\n        [-0.32, 0.18],\n        [0.18, -0.5],\n        [0.5, -0.5],\n        [0.5, 0.5],\n        [0.32, 0.5],\n        [0.32, -0.18],\n        [-0.18, 0.5],\n        [-0.5, 0.5]\n      ],\n      \"text\": \"\"\n    },\n    {\n      \"name\": \"nova_lettering\",\n      \"kind\": \"text\",\n      \"position_mm\": [0, -6, 1.7],\n      \"rotation_deg\": [0, 0, 0],\n      \"size_mm\": [12, 3, 0.8],\n      \"color\": [0.95, 0.95, 0.97],\n      \"metallic\": 0.1,\n      \"roughness\": 0.4,\n      \"tube_mm\": 0,\n      \"outline\": [],\n      \"text\": \"NOVA\"\n    },\n    {\n      \"name\": \"gold_star\",\n      \"kind\": \"polygon\",\n      \"position_mm\": [0, 8, 1.7],\n      \"rotation_deg\": [0, 0, 0],\n      \"size_mm\": [4, 4, 0.8],\n      \"color\": [0.95, 0.78, 0.25],\n      \"metallic\": 0.9,\n      \"roughness\": 0.25,\n      \"tube_mm\": 0,\n      \"outline\": [\n        [0.0, 0.5],\n        [-0.118, 0.162],\n        [-0.4755, 0.1545],\n        [-0.19, -0.0618],\n        [-0.294, -0.405],\n        [0.0, -0.2],\n        [0.294, -0.405],\n        [0.19, -0.0618],\n        [0.4755, 0.1545],\n        [0.118, 0.162]\n      ],\n      \"text\": \"\"\n    }\n  ]\n}",
+          "refusal": null,
+          "reasoning": "Design: disk cylinder 26mm dia, 3mm thick. Raised N logo as polygon or boxes. Use polygon for N shape. Text \"NOVA\" small. Star as polygon.\n\nDisk: cylinder size [26,26,3], z=0. N logo: polygon extruded, z above disk top (1.5) plus half thickness. N polygon in [-0.5,0.5] coords: N shape outline. Let's make N width 10mm, height 10mm, thickness 1mm. Outline points (x,y): left bar from (-0.5,-0.5) to (-0.3,-0.5) up... N: left vertical bar, diagonal, right vertical bar. Boundary: (-0.5,-0.5),(-0.32,-0.5),(-0.32,0.5),(-0.5,0.5) \u2014 that's just a bar. Full N outline: start (-0.5,-0.5) \u2192 (-0.32,-0.5) \u2192 (-0.32,0.18) \u2192 (0.18,-0.5) \u2192 (0.5,-0.5) \u2192 (0.5,0.5) \u2192 (0.32,0.5) \u2192 (0.32,-0.18) \u2192 (-0.18,0.5) \u2192 (-0.5,0.5) close. Check: left bar bottom, up to 0.18, diagonal down to right bar bottom... yes that's an N. Size [10,10,1], z = 1.5+0.5-0.2 overlap \u2192 1.8? Disk top at 1.5. N center z = 1.5+0.5-0.2=1.8? thickness 1, so center 1.8 gives bottom 1.3, overlapping 0.2. Good.\n\nText NOVA: size [12,3,0.8], z = 1.5+0.4-0.2=1.7, y=-6. N at y=+2.\n\nStar: polygon 5-point star, size [4,4,0.8], position maybe y=+7? Keep on disk: radius 13. Star at (0, 7.5)? N top at y=7 (y=2+5). Star at y=8, z=1.7. Star points: standard 10-vertex star in [-0.5,0.5]. Outer r=0.5, inner r=0.2. Points at angles 90,162,... Compute: outer at 90\u00b0:(0,0.5); inner at 126\u00b0:(0.2cos126=-0.118,0.2sin126=0.162); outer 162\u00b0:(-0.4755,0.1545); inner 198\u00b0:(-0.190,-0.0618); outer 234\u00b0:(-0.294,-0.405); inner 270\u00b0:(0,-0.2); outer 306\u00b0:(0.294,-0.405); inner 342\u00b0:(0.190,-0.0618); outer 18\u00b0:(0.4755,0.1545); inner 54\u00b0:(0.118,0.162). Close.\n\nStar size 4mm at y=8 fits within disk (8+2=10<13). Good.",
+          "reasoning_details": [
+            {
+              "type": "reasoning.text",
+              "text": "Design: disk cylinder 26mm dia, 3mm thick. Raised N logo as polygon or boxes. Use polygon for N shape. Text \"NOVA\" small. Star as polygon.\n\nDisk: cylinder size [26,26,3], z=0. N logo: polygon extruded, z above disk top (1.5) plus half thickness. N polygon in [-0.5,0.5] coords: N shape outline. Let's make N width 10mm, height 10mm, thickness 1mm. Outline points (x,y): left bar from (-0.5,-0.5) to (-0.3,-0.5) up... N: left vertical bar, diagonal, right vertical bar. Boundary: (-0.5,-0.5),(-0.32,-0.5),(-0.32,0.5),(-0.5,0.5) \u2014 that's just a bar. Full N outline: start (-0.5,-0.5) \u2192 (-0.32,-0.5) \u2192 (-0.32,0.18) \u2192 (0.18,-0.5) \u2192 (0.5,-0.5) \u2192 (0.5,0.5) \u2192 (0.32,0.5) \u2192 (0.32,-0.18) \u2192 (-0.18,0.5) \u2192 (-0.5,0.5) close. Check: left bar bottom, up to 0.18, diagonal down to right bar bottom... yes that's an N. Size [10,10,1], z = 1.5+0.5-0.2 overlap \u2192 1.8? Disk top at 1.5. N center z = 1.5+0.5-0.2=1.8? thickness 1, so center 1.8 gives bottom 1.3, overlapping 0.2. Good.\n\nText NOVA: size [12,3,0.8], z = 1.5+0.4-0.2=1.7, y=-6. N at y=+2.\n\nStar: polygon 5-point star, size [4,4,0.8], position maybe y=+7? Keep on disk: radius 13. Star at (0, 7.5)? N top at y=7 (y=2+5). Star at y=8, z=1.7. Star points: standard 10-vertex star in [-0.5,0.5]. Outer r=0.5, inner r=0.2. Points at angles 90,162,... Compute: outer at 90\u00b0:(0,0.5); inner at 126\u00b0:(0.2cos126=-0.118,0.2sin126=0.162); outer 162\u00b0:(-0.4755,0.1545); inner 198\u00b0:(-0.190,-0.0618); outer 234\u00b0:(-0.294,-0.405); inner 270\u00b0:(0,-0.2); outer 306\u00b0:(0.294,-0.405); inner 342\u00b0:(0.190,-0.0618); outer 18\u00b0:(0.4755,0.1545); inner 54\u00b0:(0.118,0.162). Close.\n\nStar size 4mm at y=8 fits within disk (8+2=10<13). Good.",
+              "format": "unknown",
+              "index": 0
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 486,
+      "completion_tokens": 1558,
+      "total_tokens": 2044,
+      "cost": 0.0070539,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.0070539,
+        "upstream_inference_prompt_cost": 0.0005103,
+        "upstream_inference_completions_cost": 0.0065436
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 425,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    }
+  },
+  "latency_s": 8.175144624896348,
+  "request_sha256": "c67ebe5612df9f4dceb60059d22e10b7434d1f8b71a36767a035a7b97f7d9f97",
+  "endpoint": "https://openrouter.ai/api/v1/chat/completions"
+}

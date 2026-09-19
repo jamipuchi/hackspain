@@ -1,0 +1,9 @@
+
+> test
+> python3 -m unittest discover -s . -p 'test_*.py'
+
+s.....
+----------------------------------------------------------------------
+Ran 6 tests in 0.201s
+
+OK (skipped=1)

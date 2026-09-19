@@ -1,0 +1,8 @@
+{
+  "case": "star",
+  "model": "qwen/qwen3.8-max-0902",
+  "returncode": 1,
+  "wall_seconds": 0.11486254190094769,
+  "stdout": "",
+  "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/probe.py\", line 259, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/probe.py\", line 221, in main\n    validate_recipe(recipe)\n    ~~~~~~~~~~~~~~~^^^^^^^^\n  File \"/private/tmp/hackspain-coffee-object-probe/thoughts/taras/research/coffee-quality/object-generation/probe.py\", line 126, in validate_recipe\n    raise ValueError(\"polygon needs distinct boundary points\")\nValueError: polygon needs distinct boundary points\n"
+}

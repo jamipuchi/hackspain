@@ -1,0 +1,5 @@
+nominal {'missed': 0, 'outside_workspace': 0, 'success': 2, 'timed_out': 0} trajectory/video frames 181 at 10.0 fps: PASS
+burst {'missed': 1, 'outside_workspace': 0, 'success': 3, 'timed_out': 0} trajectory/video frames 111 at 10.0 fps: PASS
+workspace {'missed': 0, 'outside_workspace': 1, 'success': 0, 'timed_out': 0} trajectory/video frames 51 at 10.0 fps: PASS
+Original morning review preserved: 18614 bytes; addendum 9 lines: PASS
+Independent saved-evidence audit: PASS

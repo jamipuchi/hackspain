@@ -1,0 +1,337 @@
+RUN base-1000: matched synthetic baseline
+  t= 0.40s  wall=  4.9s  active=402  queued=13  decisions=96
+  t= 0.80s  wall= 12.1s  active=510  queued=106  decisions=503
+  t= 1.20s  wall= 19.3s  active=518  queued=193  decisions=890
+  t= 1.60s  wall= 26.7s  active=524  queued=281  decisions=1294
+  t= 2.00s  wall= 34.0s  active=518  queued=418  decisions=1711
+  t= 2.40s  wall= 41.3s  active=531  queued=516  decisions=2125
+  t= 2.80s  wall= 48.9s  active=528  queued=608  decisions=2526
+  t= 3.20s  wall= 56.6s  active=544  queued=701  decisions=2928
+  t= 3.60s  wall= 63.9s  active=530  queued=785  decisions=3324
+
+== green_arabica @ 1000 beans/s, policy specialty ==
+throughput 1000 beans/s  (758 kg/h)   evaluated 2600   wall 17.8 s per sim s
+defect removal 48.7%   good yield loss 4.14%   accept stream 65.2 defects/1000 (incoming 145/1000)   spilled 2.12%
+decisions 3712  valves 861  late 0  obs/track 2.49  latency p50 60.0 ms p99 60.0 ms (budget 73 ms)  starved 0
+class         n  rejected  targeted  jet hit  hit/rej  spilled
+good       2224        92        48       79       58       10   keep none
+faded        74        37        59       40       37        2   DEFECT minor
+black        73        49        72       55       49        0   DEFECT major
+sour         65        37        61       42       36        0   DEFECT major
+insect       44        23        41       29       22        1   DEFECT major
+broken       45        24        31       24       22        3   DEFECT major
+shell        27         3        16        6        0       15   DEFECT major
+husk         26         5         9        2        0       15   DEFECT foreign
+stone        12         1         5        0        0        9   DEFECT foreign
+stick        10         4         6        3        3        0   DEFECT foreign
+wrote /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/sensor-realism/base-1000
+DONE base-1000: effective=1000.0/s accuracy=88.7% recall=48.7% good-false-eject=4.1%
+RUN brightness-minus30-1000: one factor: brightness -30%
+  t= 0.40s  wall=  5.1s  active=402  queued=45  decisions=96
+  t= 0.80s  wall= 12.9s  active=513  queued=273  decisions=499
+  t= 1.20s  wall= 20.3s  active=526  queued=565  decisions=926
+  t= 1.60s  wall= 27.7s  active=537  queued=801  decisions=1326
+  t= 2.00s  wall= 35.3s  active=537  queued=1033  decisions=1744
+  t= 2.40s  wall= 43.0s  active=547  queued=1289  decisions=2175
+  t= 2.80s  wall= 50.5s  active=542  queued=1530  decisions=2592
+  t= 3.20s  wall= 58.1s  active=545  queued=1783  decisions=3006
+  t= 3.60s  wall= 65.6s  active=564  queued=2008  decisions=3435
+
+== green_arabica @ 1000 beans/s, policy specialty ==
+throughput 1000 beans/s  (758 kg/h)   evaluated 2600   wall 18.2 s per sim s
+defect removal 34.8%   good yield loss 22.80%   accept stream 105.2 defects/1000 (incoming 145/1000)   spilled 3.04%
+decisions 3834  valves 2209  late 0  obs/track 2.39  latency p50 60.0 ms p99 60.0 ms (budget 73 ms)  starved 0
+class         n  rejected  targeted  jet hit  hit/rej  spilled
+good       2224       507       736      576      449       32   keep none
+faded        74        20        34       19       16        2   DEFECT minor
+black        73        35        72       37       31        0   DEFECT major
+sour         65        30        62       35       28        2   DEFECT major
+insect       44        17        31       23       17        1   DEFECT major
+broken       45         9        17        7        6        6   DEFECT major
+shell        27         5        13        8        2       12   DEFECT major
+husk         26         7         6        3        0       12   DEFECT foreign
+stone        12         1         4        0        0       10   DEFECT foreign
+stick        10         7         4        5        5        2   DEFECT foreign
+wrote /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/sensor-realism/brightness-minus30-1000
+DONE brightness-minus30-1000: effective=1000.0/s accuracy=69.8% recall=34.8% good-false-eject=22.8%
+RUN brightness-plus30-1000: one factor: brightness +30%
+  t= 0.40s  wall=  5.1s  active=402  queued=41  decisions=96
+  t= 0.80s  wall= 12.9s  active=516  queued=274  decisions=495
+  t= 1.20s  wall= 20.5s  active=525  queued=474  decisions=895
+  t= 1.60s  wall= 28.0s  active=528  queued=655  decisions=1309
+  t= 2.00s  wall= 35.6s  active=531  queued=854  decisions=1690
+  t= 2.40s  wall= 43.1s  active=532  queued=1042  decisions=2099
+  t= 2.80s  wall= 50.8s  active=536  queued=1255  decisions=2527
+  t= 3.20s  wall= 58.4s  active=547  queued=1450  decisions=2926
+  t= 3.60s  wall= 66.3s  active=573  queued=1659  decisions=3340
+
+== green_arabica @ 1000 beans/s, policy specialty ==
+throughput 1000 beans/s  (758 kg/h)   evaluated 2600   wall 18.5 s per sim s
+defect removal 47.6%   good yield loss 17.45%   accept stream 78.0 defects/1000 (incoming 145/1000)   spilled 2.77%
+decisions 3740  valves 1844  late 0  obs/track 2.47  latency p50 60.0 ms p99 60.0 ms (budget 73 ms)  starved 0
+class         n  rejected  targeted  jet hit  hit/rej  spilled
+good       2224       388       592      462      346       28   keep none
+faded        74        41        71       47       40        0   DEFECT minor
+black        73        37        69       40       36        1   DEFECT major
+sour         65        45        62       47       44        0   DEFECT major
+insect       44        24        41       25       23        0   DEFECT major
+broken       45        14        22       13       11        4   DEFECT major
+shell        27         5        15        8        0       16   DEFECT major
+husk         26         4         9        3        0       13   DEFECT foreign
+stone        12         1         0        0        0        9   DEFECT foreign
+stick        10         8         7        7        7        1   DEFECT foreign
+wrote /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/sensor-realism/brightness-plus30-1000
+DONE brightness-plus30-1000: effective=1000.0/s accuracy=76.4% recall=47.6% good-false-eject=17.4%
+RUN gradient-30-1000: one factor: horizontal illumination gradient -30% to +30% across 2080 px
+  t= 0.40s  wall=  5.3s  active=402  queued=18  decisions=96
+  t= 0.80s  wall= 13.2s  active=513  queued=119  decisions=492
+  t= 1.20s  wall= 20.9s  active=519  queued=236  decisions=889
+  t= 1.60s  wall= 28.7s  active=534  queued=351  decisions=1291
+  t= 2.00s  wall= 36.3s  active=531  queued=489  decisions=1689
+  t= 2.40s  wall= 44.2s  active=535  queued=611  decisions=2084
+  t= 2.80s  wall= 51.9s  active=536  queued=722  decisions=2512
+  t= 3.20s  wall= 59.8s  active=538  queued=847  decisions=2902
+  t= 3.60s  wall= 67.6s  active=543  queued=981  decisions=3313
+
+== green_arabica @ 1000 beans/s, policy specialty ==
+throughput 1000 beans/s  (758 kg/h)   evaluated 2600   wall 18.8 s per sim s
+defect removal 42.8%   good yield loss 8.99%   accept stream 77.5 defects/1000 (incoming 145/1000)   spilled 2.69%
+decisions 3731  valves 1081  late 0  obs/track 2.47  latency p50 60.0 ms p99 60.0 ms (budget 73 ms)  starved 0
+class         n  rejected  targeted  jet hit  hit/rej  spilled
+good       2224       200       190      198      152       23   keep none
+faded        74        28        56       36       27        1   DEFECT minor
+black        73        41        71       47       41        2   DEFECT major
+sour         65        33        65       37       33        0   DEFECT major
+insect       44        25        40       28       25        2   DEFECT major
+broken       45        18        28       17       16        5   DEFECT major
+shell        27         4        18        8        1       12   DEFECT major
+husk         26         4         7        4        0       16   DEFECT foreign
+stone        12         3         6        2        2        6   DEFECT foreign
+stick        10         5         6        5        5        3   DEFECT foreign
+wrote /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/sensor-realism/gradient-30-1000
+DONE gradient-30-1000: effective=1000.0/s accuracy=83.2% recall=42.8% good-false-eject=9.0%
+RUN exposure-nominal-100us-1000: one factor: ASSUMED nominal 100 us exposure
+  t= 0.40s  wall=  5.1s  active=402  queued=16  decisions=96
+  t= 0.80s  wall= 12.7s  active=512  queued=119  decisions=494
+  t= 1.20s  wall= 20.2s  active=521  queued=242  decisions=908
+  t= 1.60s  wall= 27.6s  active=513  queued=323  decisions=1315
+  t= 2.00s  wall= 35.1s  active=519  queued=429  decisions=1718
+  t= 2.40s  wall= 42.6s  active=529  queued=512  decisions=2113
+  t= 2.80s  wall= 50.3s  active=536  queued=608  decisions=2515
+  t= 3.20s  wall= 58.0s  active=534  queued=739  decisions=2923
+  t= 3.60s  wall= 65.6s  active=539  queued=840  decisions=3341
+
+== green_arabica @ 1000 beans/s, policy specialty ==
+throughput 1000 beans/s  (758 kg/h)   evaluated 2600   wall 18.3 s per sim s
+defect removal 48.9%   good yield loss 5.98%   accept stream 68.2 defects/1000 (incoming 145/1000)   spilled 2.00%
+decisions 3751  valves 931  late 0  obs/track 2.47  latency p50 60.0 ms p99 60.0 ms (budget 73 ms)  starved 0
+class         n  rejected  targeted  jet hit  hit/rej  spilled
+good       2224       133        98      118       75       12   keep none
+faded        74        50        65       53       50        0   DEFECT minor
+black        73        40        73       44       40        0   DEFECT major
+sour         65        34        62       40       33        0   DEFECT major
+insect       44        23        39       22       22        0   DEFECT major
+broken       45        20        30       19       19        7   DEFECT major
+shell        27         7        18        7        3       11   DEFECT major
+husk         26         5         9        2        0       15   DEFECT foreign
+stone        12         1         5        0        0        6   DEFECT foreign
+stick        10         4         6        3        3        1   DEFECT foreign
+wrote /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/sensor-realism/exposure-nominal-100us-1000
+DONE exposure-nominal-100us-1000: effective=1000.0/s accuracy=87.0% recall=48.9% good-false-eject=6.0%
+RUN exposure-stress-500us-1000: one factor: ASSUMED stress 500 us exposure
+  t= 0.40s  wall=  5.1s  active=402  queued=44  decisions=96
+  t= 0.80s  wall= 12.7s  active=515  queued=272  decisions=498
+  t= 1.20s  wall= 20.3s  active=522  queued=477  decisions=881
+  t= 1.60s  wall= 27.8s  active=539  queued=669  decisions=1293
+  t= 2.00s  wall= 35.1s  active=528  queued=849  decisions=1690
+  t= 2.40s  wall= 42.6s  active=539  queued=1092  decisions=2092
+  t= 2.80s  wall= 50.3s  active=541  queued=1308  decisions=2491
+  t= 3.20s  wall= 58.0s  active=549  queued=1556  decisions=2911
+  t= 3.60s  wall= 65.4s  active=547  queued=1753  decisions=3314
+
+== green_arabica @ 1000 beans/s, policy specialty ==
+throughput 1000 beans/s  (758 kg/h)   evaluated 2600   wall 18.2 s per sim s
+defect removal 44.7%   good yield loss 15.78%   accept stream 79.0 defects/1000 (incoming 145/1000)   spilled 2.65%
+decisions 3709  valves 1925  late 0  obs/track 2.47  latency p50 60.0 ms p99 60.0 ms (budget 73 ms)  starved 0
+class         n  rejected  targeted  jet hit  hit/rej  spilled
+good       2224       351       615      470      318       20   keep none
+faded        74        45        67       48       43        1   DEFECT minor
+black        73        38        71       45       38        1   DEFECT major
+sour         65        42        60       47       40        0   DEFECT major
+insect       44        13        22       15       13        0   DEFECT major
+broken       45        19        30       21       18        4   DEFECT major
+shell        27         4        15        8        1       16   DEFECT major
+husk         26         4        10        1        0       15   DEFECT foreign
+stone        12         0         3        0        0        9   DEFECT foreign
+stick        10         3         6        4        3        3   DEFECT foreign
+wrote /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/sensor-realism/exposure-stress-500us-1000
+DONE exposure-stress-500us-1000: effective=1000.0/s accuracy=77.7% recall=44.7% good-false-eject=15.8%
+RUN noise-nominal-1000: one factor: ASSUMED well-lit shot plus read noise
+  t= 0.40s  wall=  7.4s  active=402  queued=18  decisions=96
+  t= 0.80s  wall= 16.9s  active=507  queued=122  decisions=497
+  t= 1.20s  wall= 26.2s  active=515  queued=232  decisions=888
+  t= 1.60s  wall= 35.7s  active=516  queued=316  decisions=1285
+  t= 2.00s  wall= 44.9s  active=525  queued=413  decisions=1670
+  t= 2.40s  wall= 54.0s  active=523  queued=515  decisions=2065
+  t= 2.80s  wall= 63.3s  active=520  queued=610  decisions=2473
+  t= 3.20s  wall= 73.1s  active=524  queued=724  decisions=2874
+  t= 3.60s  wall= 82.4s  active=541  queued=834  decisions=3273
+
+== green_arabica @ 1000 beans/s, policy specialty ==
+throughput 1000 beans/s  (758 kg/h)   evaluated 2600   wall 22.9 s per sim s
+defect removal 52.9%   good yield loss 6.43%   accept stream 59.0 defects/1000 (incoming 145/1000)   spilled 2.08%
+decisions 3673  valves 936  late 0  obs/track 2.51  latency p50 60.0 ms p99 60.0 ms (budget 73 ms)  starved 0
+class         n  rejected  targeted  jet hit  hit/rej  spilled
+good       2224       143       115      161      111        7   keep none
+faded        74        45        64       48       44        1   DEFECT minor
+black        73        46        71       54       45        1   DEFECT major
+sour         65        40        63       46       40        1   DEFECT major
+insect       44        28        40       29       27        0   DEFECT major
+broken       45        25        36       29       23        6   DEFECT major
+shell        27         3        15        8        1       15   DEFECT major
+husk         26         7        12        5        0       14   DEFECT foreign
+stone        12         1         3        0        0        7   DEFECT foreign
+stick        10         4         8        6        4        2   DEFECT foreign
+wrote /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/sensor-realism/noise-nominal-1000
+DONE noise-nominal-1000: effective=1000.0/s accuracy=87.4% recall=52.9% good-false-eject=6.4%
+RUN noise-stress-1000: one factor: ASSUMED lower-light shot plus read noise
+  t= 0.40s  wall=  7.1s  active=402  queued=24  decisions=96
+  t= 0.80s  wall= 16.3s  active=510  queued=170  decisions=509
+  t= 1.20s  wall= 25.5s  active=514  queued=322  decisions=909
+  t= 1.60s  wall= 34.8s  active=519  queued=457  decisions=1322
+  t= 2.00s  wall= 44.2s  active=523  queued=583  decisions=1720
+  t= 2.40s  wall= 53.6s  active=527  queued=718  decisions=2107
+  t= 2.80s  wall= 62.7s  active=527  queued=848  decisions=2522
+  t= 3.20s  wall= 71.9s  active=532  queued=978  decisions=2923
+  t= 3.60s  wall= 81.0s  active=541  queued=1134  decisions=3342
+
+== green_arabica @ 1000 beans/s, policy specialty ==
+throughput 1000 beans/s  (758 kg/h)   evaluated 2600   wall 22.5 s per sim s
+defect removal 51.1%   good yield loss 9.80%   accept stream 67.0 defects/1000 (incoming 145/1000)   spilled 2.15%
+decisions 3745  valves 1261  late 0  obs/track 2.47  latency p50 60.0 ms p99 60.0 ms (budget 73 ms)  starved 0
+class         n  rejected  targeted  jet hit  hit/rej  spilled
+good       2224       218       258      254      182       15   keep none
+faded        74        39        68       45       39        0   DEFECT minor
+black        73        45        70       50       45        1   DEFECT major
+sour         65        44        63       48       43        0   DEFECT major
+insect       44        27        43       30       27        0   DEFECT major
+broken       45        24        34       26       23        5   DEFECT major
+shell        27         5        16        9        2       13   DEFECT major
+husk         26         2        11        5        0       15   DEFECT foreign
+stone        12         2         7        0        0        6   DEFECT foreign
+stick        10         4         7        5        3        1   DEFECT foreign
+wrote /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/sensor-realism/noise-stress-1000
+DONE noise-stress-1000: effective=1000.0/s accuracy=84.0% recall=51.1% good-false-eject=9.8%
+RUN belt-jitter-5pct-1000: one factor: ASSUMED physical belt jitter +/-5%
+  t= 0.40s  wall=  5.0s  active=402  queued=14  decisions=97
+  t= 0.80s  wall= 12.4s  active=500  queued=102  decisions=491
+  t= 1.20s  wall= 19.9s  active=508  queued=211  decisions=879
+  t= 1.60s  wall= 27.2s  active=516  queued=281  decisions=1289
+  t= 2.00s  wall= 34.5s  active=524  queued=350  decisions=1656
+  t= 2.40s  wall= 41.7s  active=512  queued=442  decisions=2051
+  t= 2.80s  wall= 49.0s  active=508  queued=523  decisions=2438
+  t= 3.20s  wall= 56.1s  active=521  queued=613  decisions=2831
+  t= 3.60s  wall= 63.4s  active=527  queued=714  decisions=3233
+
+== green_arabica @ 1000 beans/s, policy specialty ==
+throughput 1000 beans/s  (758 kg/h)   evaluated 2600   wall 17.7 s per sim s
+defect removal 46.8%   good yield loss 2.61%   accept stream 74.6 defects/1000 (incoming 145/1000)   spilled 1.19%
+decisions 3618  valves 781  late 0  obs/track 2.60  latency p50 60.0 ms p99 60.0 ms (budget 73 ms)  starved 0
+class         n  rejected  targeted  jet hit  hit/rej  spilled
+good       2224        58        39       80       53        6   keep none
+faded        74        35        66       50       35        0   DEFECT minor
+black        73        38        71       50       38        0   DEFECT major
+sour         65        32        63       45       31        0   DEFECT major
+insect       44        23        43       30       23        0   DEFECT major
+broken       45        28        35       27       27        1   DEFECT major
+shell        27         7        20       11        5        7   DEFECT major
+husk         26         4        12        1        0       11   DEFECT foreign
+stone        12         3         5        1        1        6   DEFECT foreign
+stick        10         6         9        7        6        0   DEFECT foreign
+wrote /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/sensor-realism/belt-jitter-5pct-1000
+DONE belt-jitter-5pct-1000: effective=1000.0/s accuracy=89.8% recall=46.8% good-false-eject=2.6%
+RUN high-feed-reference-3000: matched high-feed reference
+  t= 0.40s  wall=  5.7s  active=1199  queued=48  decisions=281
+  t= 0.80s  wall= 15.6s  active=1525  queued=314  decisions=1404
+  t= 1.20s  wall= 25.7s  active=1537  queued=539  decisions=2536
+  t= 1.60s  wall= 36.1s  active=1541  queued=782  decisions=3669
+  t= 2.00s  wall= 46.8s  active=1579  queued=1029  decisions=4818
+  t= 2.40s  wall= 57.2s  active=1589  queued=1328  decisions=5930
+  t= 2.80s  wall= 67.7s  active=1604  queued=1550  decisions=7098
+  t= 3.20s  wall= 77.9s  active=1625  queued=1831  decisions=8251
+  t= 3.60s  wall= 88.4s  active=1654  queued=2088  decisions=9415
+
+== green_arabica @ 3000 beans/s, policy specialty ==
+throughput 3000 beans/s  (2255 kg/h)   evaluated 7800   wall 24.8 s per sim s
+defect removal 38.8%   good yield loss 8.55%   accept stream 88.6 defects/1000 (incoming 155/1000)   spilled 4.59%
+decisions 10543  valves 2291  late 0  obs/track 2.26  latency p50 60.0 ms p99 60.0 ms (budget 73 ms)  starved 0
+class         n  rejected  targeted  jet hit  hit/rej  spilled
+good       6594       564       302      504      328      190   keep none
+faded       252       103       186      114       99       10   DEFECT minor
+black       201       106       183      117      102        8   DEFECT major
+sour        185        85       154       90       78        5   DEFECT major
+insect      163        74       136       81       71        2   DEFECT major
+broken      152        46        73       44       38       37   DEFECT major
+shell        93        19        53       34        5       46   DEFECT major
+husk         82        14        41       13        0       35   DEFECT foreign
+stone        36         4         8        1        1       21   DEFECT foreign
+stick        42        17        31       23       16        4   DEFECT foreign
+wrote /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/sensor-realism/high-feed-reference-3000
+DONE high-feed-reference-3000: effective=3000.0/s accuracy=80.7% recall=38.8% good-false-eject=8.6%
+RUN touching-3000: one factor: crowded non-penetrating feed
+  t= 0.40s  wall=  5.5s  active=513  queued=25  decisions=121
+  t= 0.80s  wall= 13.6s  active=628  queued=138  decisions=545
+  t= 1.20s  wall= 21.7s  active=634  queued=241  decisions=966
+  t= 1.60s  wall= 29.6s  active=634  queued=319  decisions=1386
+  t= 2.00s  wall= 37.4s  active=647  queued=438  decisions=1812
+  t= 2.40s  wall= 45.7s  active=654  queued=567  decisions=2273
+  t= 2.80s  wall= 53.7s  active=645  queued=682  decisions=2713
+  t= 3.20s  wall= 62.1s  active=672  queued=814  decisions=3164
+  t= 3.60s  wall= 70.4s  active=664  queued=932  decisions=3613
+
+== green_arabica @ 3000 beans/s, policy specialty ==
+throughput 1193 beans/s  (903 kg/h)   evaluated 3107   wall 19.7 s per sim s
+defect removal 39.4%   good yield loss 9.61%   accept stream 89.1 defects/1000 (incoming 146/1000)   spilled 1.77%
+decisions 4068  valves 1036  late 0  obs/track 2.28  latency p50 60.0 ms p99 60.0 ms (budget 73 ms)  starved 0
+class         n  rejected  targeted  jet hit  hit/rej  spilled
+good       2653       255       173      325      192       14   keep none
+faded        94        37        73       48       37        2   DEFECT minor
+black        85        40        77       46       38        0   DEFECT major
+sour         72        37        63       43       37        0   DEFECT major
+insect       56        31        49       33       30        1   DEFECT major
+broken       53        18        32       18       16        3   DEFECT major
+shell        36         4        23        4        1       12   DEFECT major
+husk         30         5        13        3        0       12   DEFECT foreign
+stone        16         3         3        1        1       10   DEFECT foreign
+stick        12         4        11        9        4        1   DEFECT foreign
+wrote /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/sensor-realism/touching-3000
+DONE touching-3000: effective=1192.8/s accuracy=82.5% recall=39.4% good-false-eject=9.6%
+RUN combined-assumed-worst-3000: ASSUMED realistic-worst combined sensor, jitter, and crowded feed
+  t= 0.40s  wall=  8.3s  active=504  queued=59  decisions=120
+  t= 0.80s  wall= 18.9s  active=613  queued=273  decisions=528
+  t= 1.20s  wall= 29.4s  active=629  queued=514  decisions=933
+  t= 1.60s  wall= 39.9s  active=655  queued=738  decisions=1373
+  t= 2.00s  wall= 50.5s  active=662  queued=1008  decisions=1821
+  t= 2.40s  wall= 61.0s  active=658  queued=1230  decisions=2261
+  t= 2.80s  wall= 71.3s  active=680  queued=1458  decisions=2669
+  t= 3.20s  wall= 81.5s  active=710  queued=1716  decisions=3127
+  t= 3.60s  wall= 90.2s  active=698  queued=1989  decisions=3601
+
+== green_arabica @ 3000 beans/s, policy specialty ==
+throughput 1201 beans/s  (910 kg/h)   evaluated 3136   wall 24.6 s per sim s
+defect removal 31.4%   good yield loss 24.40%   accept stream 118.5 defects/1000 (incoming 145/1000)   spilled 1.88%
+decisions 4062  valves 2227  late 0  obs/track 2.34  latency p50 60.0 ms p99 60.0 ms (budget 73 ms)  starved 0
+class         n  rejected  targeted  jet hit  hit/rej  spilled
+good       2680       654       776      895      612       16   keep none
+faded        94        18        18       29       16        1   DEFECT minor
+black        86        39        80       56       39        1   DEFECT major
+sour         72        32        70       43       30        0   DEFECT major
+insect       57        17        27       27       17        1   DEFECT major
+broken       53        19        26       21       18        5   DEFECT major
+shell        36         5        17        8        4       15   DEFECT major
+husk         30         6        10        3        0       11   DEFECT foreign
+stone        16         2         5        1        1        9   DEFECT foreign
+stick        12         5         9        9        5        0   DEFECT foreign
+wrote /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/sensor-realism/combined-assumed-worst-3000
+DONE combined-assumed-worst-3000: effective=1201.3/s accuracy=68.6% recall=31.4% good-false-eject=24.4%
+wrote /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/sensor-realism/summary.json /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/sensor-realism/summary.png /home/worker/.worktrees/hackspain/2026-09-19-coffee-sorter-closed-loop/sim/coffee_sorter/runs/sensor-realism/REPORT.md

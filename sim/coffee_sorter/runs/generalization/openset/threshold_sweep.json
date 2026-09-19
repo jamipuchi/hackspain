@@ -1,0 +1,5827 @@
+{
+ "model_anomaly_threshold": 18.48719999197408,
+ "collection": {
+  "frames": 2000,
+  "full_blob_observations": 6689,
+  "single_object_observations": 6479,
+  "merged_or_unmatched_observations": 210,
+  "independent_objects": 1948,
+  "objects_by_class": {
+   "wrong_size": 201,
+   "plastic_chip": 100,
+   "good": 1429,
+   "odd_colour": 218
+  },
+  "eligible_population_coverage_by_class": {
+   "good": {
+    "eligible_spawned_objects": 1542,
+    "selected_full_single": 1429,
+    "merged_full_only": 39,
+    "partial_only": 9,
+    "never_in_any_detected_component": 65,
+    "selected_rate": 0.9267185473411155
+   },
+   "plastic_chip": {
+    "eligible_spawned_objects": 221,
+    "selected_full_single": 100,
+    "merged_full_only": 4,
+    "partial_only": 2,
+    "never_in_any_detected_component": 115,
+    "selected_rate": 0.45248868778280543
+   },
+   "odd_colour": {
+    "eligible_spawned_objects": 238,
+    "selected_full_single": 218,
+    "merged_full_only": 9,
+    "partial_only": 3,
+    "never_in_any_detected_component": 8,
+    "selected_rate": 0.9159663865546218
+   },
+   "wrong_size": {
+    "eligible_spawned_objects": 211,
+    "selected_full_single": 201,
+    "merged_full_only": 9,
+    "partial_only": 1,
+    "never_in_any_detected_component": 0,
+    "selected_rate": 0.95260663507109
+   }
+  },
+  "wall_seconds": 112.41665835299955,
+  "simulation_seconds": 7.999999999999341,
+  "rate_beans_per_s": 300.0,
+  "seed": 41,
+  "selection": "Offline whole-passage curve: full, single-constituent blobs only; all views aggregated by physical UID using max anomaly and mean classifier probability. This is not the controller's camera-centre finalization rule."
+ },
+ "default_threshold_result": {
+  "threshold": 18.48719999197408,
+  "denominators": {
+   "good_objects": 1429,
+   "unknown_objects": 519
+  },
+  "anomaly_detector_alone": {
+   "unknown_rejected": 319,
+   "unknown_rejection_rate": 0.6146435452793835,
+   "unknown_rejection_interval_95": [
+    0.5720756057193559,
+    0.6555267885813272
+   ],
+   "good_false_ejects": 0,
+   "good_false_eject_rate": 0.0,
+   "good_false_eject_interval_95": [
+    0.0,
+    0.0026811058528730604
+   ]
+  },
+  "classifier_alone": {
+   "unknown_rejected": 256,
+   "unknown_rejection_rate": 0.4932562620423892,
+   "good_false_ejects": 24,
+   "good_false_eject_rate": 0.016794961511546535
+  },
+  "combined_classifier_or_anomaly": {
+   "unknown_rejected": 327,
+   "unknown_rejection_rate": 0.630057803468208,
+   "good_false_ejects": 24,
+   "good_false_eject_rate": 0.016794961511546535
+  },
+  "per_unknown_class": {
+   "plastic_chip": {
+    "n": 100,
+    "anomaly_rejected": 100,
+    "anomaly_rejection_rate": 1.0,
+    "combined_rejected": 100,
+    "combined_rejection_rate": 1.0
+   },
+   "odd_colour": {
+    "n": 218,
+    "anomaly_rejected": 218,
+    "anomaly_rejection_rate": 1.0,
+    "combined_rejected": 218,
+    "combined_rejection_rate": 1.0
+   },
+   "wrong_size": {
+    "n": 201,
+    "anomaly_rejected": 1,
+    "anomaly_rejection_rate": 0.004975124378109453,
+    "combined_rejected": 9,
+    "combined_rejection_rate": 0.04477611940298507
+   }
+  }
+ },
+ "threshold_rows": [
+  {
+   "threshold": 1.3112000591638286,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1428,
+    "good_false_eject_rate": 0.9993002099370188,
+    "good_false_eject_interval_95": [
+     0.9960466040775681,
+     0.999876462366064
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1428,
+    "good_false_eject_rate": 0.9993002099370188
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 1.6620298007379073,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1409,
+    "good_false_eject_rate": 0.9860041987403779,
+    "good_false_eject_interval_95": [
+     0.9784804846359034,
+     0.990921855441325
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1409,
+    "good_false_eject_rate": 0.9860041987403779
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 1.745767096796605,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1390,
+    "good_false_eject_rate": 0.9727081875437369,
+    "good_false_eject_interval_95": [
+     0.9629096000872241,
+     0.9799720136236008
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1390,
+    "good_false_eject_rate": 0.9727081875437369
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 1.823393375140221,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1370,
+    "good_false_eject_rate": 0.9587123862841148,
+    "good_false_eject_interval_95": [
+     0.947107626596296,
+     0.9678574330446302
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1370,
+    "good_false_eject_rate": 0.9587123862841148
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 1.8926792071708398,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1351,
+    "good_false_eject_rate": 0.9454163750874738,
+    "good_false_eject_interval_95": [
+     0.9323991975495773,
+     0.9560451357249453
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1351,
+    "good_false_eject_rate": 0.9454163750874738
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 1.9498827282531968,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1331,
+    "good_false_eject_rate": 0.9314205738278516,
+    "good_false_eject_interval_95": [
+     0.9171262715040449,
+     0.9434015077005788
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1331,
+    "good_false_eject_rate": 0.9314205738278516
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 1.9985546211462781,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1312,
+    "good_false_eject_rate": 0.9181245626312107,
+    "good_false_eject_interval_95": [
+     0.902762725545254,
+     0.9312443272929664
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1312,
+    "good_false_eject_rate": 0.9181245626312107
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.039787233375757,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1292,
+    "good_false_eject_rate": 0.9041287613715885,
+    "good_false_eject_interval_95": [
+     0.8877621834602457,
+     0.918328315308076
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1292,
+    "good_false_eject_rate": 0.9041287613715885
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.073206161999375,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1273,
+    "good_false_eject_rate": 0.8908327501749476,
+    "good_false_eject_interval_95": [
+     0.8736035721825284,
+     0.9059662002193898
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1273,
+    "good_false_eject_rate": 0.8908327501749476
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.1126602883672767,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1253,
+    "good_false_eject_rate": 0.8768369489153254,
+    "good_false_eject_interval_95": [
+     0.8587806741336536,
+     0.8928725441983659
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1253,
+    "good_false_eject_rate": 0.8768369489153254
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.1480444627949393,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1234,
+    "good_false_eject_rate": 0.8635409377186843,
+    "good_false_eject_interval_95": [
+     0.8447649499751839,
+     0.8803675419904318
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1234,
+    "good_false_eject_rate": 0.8635409377186843
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.1891419521266355,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1214,
+    "good_false_eject_rate": 0.8495451364590623,
+    "good_false_eject_interval_95": [
+     0.8300722628492601,
+     0.8671436750464572
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1214,
+    "good_false_eject_rate": 0.8495451364590623
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.2267294565321243,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1195,
+    "good_false_eject_rate": 0.8362491252624212,
+    "good_false_eject_interval_95": [
+     0.8161654771525142,
+     0.8545297343767992
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1195,
+    "good_false_eject_rate": 0.8362491252624212
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.2593069290107204,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1175,
+    "good_false_eject_rate": 0.8222533240027992,
+    "good_false_eject_interval_95": [
+     0.8015752528649672,
+     0.8412034045944478
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1175,
+    "good_false_eject_rate": 0.8222533240027992
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.2826224166251716,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1156,
+    "good_false_eject_rate": 0.8089573128061581,
+    "good_false_eject_interval_95": [
+     0.7877564674427322,
+     0.828501463650279
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1156,
+    "good_false_eject_rate": 0.8089573128061581
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.308449235289094,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1136,
+    "good_false_eject_rate": 0.794961511546536,
+    "good_false_eject_interval_95": [
+     0.7732508532701524,
+     0.8150905237529603
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1136,
+    "good_false_eject_rate": 0.794961511546536
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.3271058557486137,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1117,
+    "good_false_eject_rate": 0.781665500349895,
+    "good_false_eject_interval_95": [
+     0.7595061200817804,
+     0.8023145305749285
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1117,
+    "good_false_eject_rate": 0.781665500349895
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.3500484411891276,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1098,
+    "good_false_eject_rate": 0.768369489153254,
+    "good_false_eject_interval_95": [
+     0.7457937253524767,
+     0.7895061989378287
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1098,
+    "good_false_eject_rate": 0.768369489153254
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.3733894360369887,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1078,
+    "good_false_eject_rate": 0.7543736878936319,
+    "good_false_eject_interval_95": [
+     0.7313924019862904,
+     0.7759909682341165
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1078,
+    "good_false_eject_rate": 0.7543736878936319
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.3973836551277747,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1059,
+    "good_false_eject_rate": 0.7410776766969909,
+    "good_false_eject_interval_95": [
+     0.7177405191330081,
+     0.763122124720995
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1059,
+    "good_false_eject_rate": 0.7410776766969909
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.4332005184683285,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1039,
+    "good_false_eject_rate": 0.7270818754373688,
+    "good_false_eject_interval_95": [
+     0.7033994072118523,
+     0.7495466825722523
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1039,
+    "good_false_eject_rate": 0.7270818754373688
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.463040495254387,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1020,
+    "good_false_eject_rate": 0.7137858642407278,
+    "good_false_eject_interval_95": [
+     0.6898018577488094,
+     0.7366235056688915
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1020,
+    "good_false_eject_rate": 0.7137858642407278
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.4880265213775936,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 1000,
+    "good_false_eject_rate": 0.6997900629811057,
+    "good_false_eject_interval_95": [
+     0.6755153190531871,
+     0.7229934902946153
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 1000,
+    "good_false_eject_rate": 0.6997900629811057
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.514696683752972,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 981,
+    "good_false_eject_rate": 0.6864940517844647,
+    "good_false_eject_interval_95": [
+     0.6619674410675455,
+     0.7100206419138532
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 981,
+    "good_false_eject_rate": 0.6864940517844647
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.5390822624764424,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 961,
+    "good_false_eject_rate": 0.6724982505248426,
+    "good_false_eject_interval_95": [
+     0.6477311904259136,
+     0.6963403384855865
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 961,
+    "good_false_eject_rate": 0.6724982505248426
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.5591825189299278,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 942,
+    "good_false_eject_rate": 0.6592022393282015,
+    "good_false_eject_interval_95": [
+     0.63422942238285,
+     0.6833213801622464
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 942,
+    "good_false_eject_rate": 0.6592022393282015
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.5985360843929692,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 922,
+    "good_false_eject_rate": 0.6452064380685795,
+    "good_false_eject_interval_95": [
+     0.620040176205411,
+     0.669594072269787
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 922,
+    "good_false_eject_rate": 0.6452064380685795
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.629135360327335,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 903,
+    "good_false_eject_rate": 0.6319104268719384,
+    "good_false_eject_interval_95": [
+     0.6065817869049235,
+     0.6565317352038706
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 903,
+    "good_false_eject_rate": 0.6319104268719384
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.6558477675805614,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 883,
+    "good_false_eject_rate": 0.6179146256123164,
+    "good_false_eject_interval_95": [
+     0.5924370315343183,
+     0.6427599365045774
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 883,
+    "good_false_eject_rate": 0.6179146256123164
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.6784399028815415,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 864,
+    "good_false_eject_rate": 0.6046186144156753,
+    "good_false_eject_interval_95": [
+     0.5790199398148145,
+     0.6296563018576776
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 864,
+    "good_false_eject_rate": 0.6046186144156753
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.7116396929594124,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 844,
+    "good_false_eject_rate": 0.5906228131560531,
+    "good_false_eject_interval_95": [
+     0.5649177753290207,
+     0.6158419122735725
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 844,
+    "good_false_eject_rate": 0.5906228131560531
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.7364264173739996,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 825,
+    "good_false_eject_rate": 0.5773268019594122,
+    "good_false_eject_interval_95": [
+     0.5515404276830306,
+     0.6026985335531593
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 825,
+    "good_false_eject_rate": 0.5773268019594122
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.765672766397742,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 805,
+    "good_false_eject_rate": 0.56333100069979,
+    "good_false_eject_interval_95": [
+     0.5374794615673466,
+     0.5888429455989443
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 805,
+    "good_false_eject_rate": 0.56333100069979
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.8043296023290285,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 786,
+    "good_false_eject_rate": 0.5500349895031491,
+    "good_false_eject_interval_95": [
+     0.5241407489748455,
+     0.5756609318250421
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 786,
+    "good_false_eject_rate": 0.5500349895031491
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.83661993377651,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 767,
+    "good_false_eject_rate": 0.5367389783065081,
+    "good_false_eject_interval_95": [
+     0.5108205752749672,
+     0.5624603791585167
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 767,
+    "good_false_eject_rate": 0.5367389783065081
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.8612582926402244,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 747,
+    "good_false_eject_rate": 0.5227431770468859,
+    "good_false_eject_interval_95": [
+     0.4968192271555189,
+     0.5485451732080663
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 747,
+    "good_false_eject_rate": 0.5227431770468859
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.8868131607294556,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 728,
+    "good_false_eject_rate": 0.509447165850245,
+    "good_false_eject_interval_95": [
+     0.48353674826189497,
+     0.5353069257352866
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 728,
+    "good_false_eject_rate": 0.509447165850245
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.915135954869152,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 708,
+    "good_false_eject_rate": 0.49545136459062283,
+    "good_false_eject_interval_95": [
+     0.46957493042015575,
+     0.5213521895071274
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 708,
+    "good_false_eject_rate": 0.49545136459062283
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.942289067226986,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 689,
+    "good_false_eject_rate": 0.4821553533939818,
+    "good_false_eject_interval_95": [
+     0.45632994797237314,
+     0.5080764455885063
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 689,
+    "good_false_eject_rate": 0.4821553533939818
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 2.98271170071803,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 669,
+    "good_false_eject_rate": 0.46815955213435967,
+    "good_false_eject_interval_95": [
+     0.44240762871342443,
+     0.4940822107775563
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 669,
+    "good_false_eject_rate": 0.46815955213435967
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 3.013744611871638,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 650,
+    "good_false_eject_rate": 0.4548635409377187,
+    "good_false_eject_interval_95": [
+     0.4292002805163074,
+     0.4807688326082698
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 650,
+    "good_false_eject_rate": 0.4548635409377187
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 3.0327747418159623,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 630,
+    "good_false_eject_rate": 0.44086773967809656,
+    "good_false_eject_interval_95": [
+     0.4153177832962244,
+     0.46673477575845423
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 630,
+    "good_false_eject_rate": 0.44086773967809656
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 3.0793011092067104,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 611,
+    "good_false_eject_rate": 0.4275717284814556,
+    "good_false_eject_interval_95": [
+     0.4021485495610282,
+     0.45338328312724674
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 611,
+    "good_false_eject_rate": 0.4275717284814556
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 3.1048080082579412,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 591,
+    "good_false_eject_rate": 0.41357592722183345,
+    "good_false_eject_interval_95": [
+     0.3883065677354568,
+     0.43930871088291956
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 592,
+    "good_false_eject_rate": 0.41427571728481455
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 3.1400911072678324,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 572,
+    "good_false_eject_rate": 0.4002799160251924,
+    "good_false_eject_interval_95": [
+     0.37517629323333734,
+     0.4259182590186352
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 573,
+    "good_false_eject_rate": 0.40097970608817357
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 3.1844920091213065,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 552,
+    "good_false_eject_rate": 0.38628411476557034,
+    "good_false_eject_interval_95": [
+     0.3613759225888401,
+     0.411802075593234
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 554,
+    "good_false_eject_rate": 0.38768369489153254
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 3.213933242813861,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 533,
+    "good_false_eject_rate": 0.3729881035689293,
+    "good_false_eject_interval_95": [
+     0.34828585716162647,
+     0.39837141465404396
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 535,
+    "good_false_eject_rate": 0.37438768369489156
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 3.2544394083878574,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 513,
+    "good_false_eject_rate": 0.35899230230930723,
+    "good_false_eject_interval_95": [
+     0.33452864990678527,
+     0.3842120678389866
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 515,
+    "good_false_eject_rate": 0.36039188243526943
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 3.2951244918076696,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 494,
+    "good_false_eject_rate": 0.3456962911126662,
+    "good_false_eject_interval_95": [
+     0.3214805120556777,
+     0.3707394793236905
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 496,
+    "good_false_eject_rate": 0.3470958712386284
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 3.3442329987804795,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 474,
+    "good_false_eject_rate": 0.33170048985304407,
+    "good_false_eject_interval_95": [
+     0.307768558802882,
+     0.3565348785065875
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 477,
+    "good_false_eject_rate": 0.3337998600419874
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 3.3805925462391224,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 455,
+    "good_false_eject_rate": 0.3184044786564031,
+    "good_false_eject_interval_95": [
+     0.2947646303896293,
+     0.34301808055343663
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 459,
+    "good_false_eject_rate": 0.3212036389083275
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 3.4165340503087744,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 436,
+    "good_false_eject_rate": 0.30510846745976206,
+    "good_false_eject_interval_95": [
+     0.2817832705777653,
+     0.32947871399889694
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 441,
+    "good_false_eject_rate": 0.3086074177746676
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 3.469819713005295,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 416,
+    "good_false_eject_rate": 0.29111266620014,
+    "good_false_eject_interval_95": [
+     0.2681439463813929,
+     0.3152014841253708
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 421,
+    "good_false_eject_rate": 0.29461161651504547
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 3.5118960225007734,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 397,
+    "good_false_eject_rate": 0.27781665500349895,
+    "good_false_eject_interval_95": [
+     0.2552115470985045,
+     0.3016131570418555
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 403,
+    "good_false_eject_rate": 0.2820153953813856
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 3.570605292182995,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 377,
+    "good_false_eject_rate": 0.2638208537438768,
+    "good_false_eject_interval_95": [
+     0.24162593957832282,
+     0.28728221049213865
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 383,
+    "good_false_eject_rate": 0.26801959412176346
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 3.6261396417738934,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 358,
+    "good_false_eject_rate": 0.25052484254723584,
+    "good_false_eject_interval_95": [
+     0.22874693982938393,
+     0.2736404838746738
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 364,
+    "good_false_eject_rate": 0.2547235829251225
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 3.6825118730109105,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 338,
+    "good_false_eject_rate": 0.2365290412876137,
+    "good_false_eject_interval_95": [
+     0.2152204109787972,
+     0.25925045865536195
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 344,
+    "good_false_eject_rate": 0.24072778166550035
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 3.759581851275835,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 319,
+    "good_false_eject_rate": 0.2232330300909727,
+    "good_false_eject_interval_95": [
+     0.20240067710023635,
+     0.24554946616751916
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 326,
+    "good_false_eject_rate": 0.22813156053184044
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 3.816532783592337,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 299,
+    "good_false_eject_rate": 0.2092372288313506,
+    "good_false_eject_interval_95": [
+     0.1889403745254176,
+     0.23109321467243935
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 307,
+    "good_false_eject_rate": 0.21483554933519944
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 3.9171988695523847,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 280,
+    "good_false_eject_rate": 0.1959412176347096,
+    "good_false_eject_interval_95": [
+     0.17618781145464077,
+     0.21732505137681254
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 288,
+    "good_false_eject_rate": 0.20153953813855843
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 4.004131127066927,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 260,
+    "good_false_eject_rate": 0.1819454163750875,
+    "good_false_eject_interval_95": [
+     0.16280349524430326,
+     0.20279281351725148
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 268,
+    "good_false_eject_rate": 0.18754373687893633
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 4.085848999539251,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 241,
+    "good_false_eject_rate": 0.16864940517844645,
+    "good_false_eject_interval_95": [
+     0.15012907003754822,
+     0.1889465123576028
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 249,
+    "good_false_eject_rate": 0.17424772568229532
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 4.1857830098910185,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 221,
+    "good_false_eject_rate": 0.15465360391882435,
+    "good_false_eject_interval_95": [
+     0.13683454131105272,
+     0.17432448701419972
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 232,
+    "good_false_eject_rate": 0.16235129461161651
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 4.273589751586572,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 202,
+    "good_false_eject_rate": 0.14135759272218335,
+    "good_false_eject_interval_95": [
+     0.12425411598401004,
+     0.16038418597483878
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 215,
+    "good_false_eject_rate": 0.1504548635409377
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 4.380023440301648,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 182,
+    "good_false_eject_rate": 0.12736179146256124,
+    "good_false_eject_interval_95": [
+     0.11106988430297647,
+     0.14565186358597376
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 195,
+    "good_false_eject_rate": 0.1364590622813156
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 4.623040119732748,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 163,
+    "good_false_eject_rate": 0.11406578026592022,
+    "good_false_eject_interval_95": [
+     0.09860780861586528,
+     0.13159321290668127
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 178,
+    "good_false_eject_rate": 0.1245626312106368
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 4.789514405412812,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 143,
+    "good_false_eject_rate": 0.1000699790062981,
+    "good_false_eject_interval_95": [
+     0.08556663291247592,
+     0.11671783454017205
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 160,
+    "good_false_eject_rate": 0.11196641007697691
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 4.997561206174265,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 124,
+    "good_false_eject_rate": 0.0867739678096571,
+    "good_false_eject_interval_95": [
+     0.07326374271899602,
+     0.1024999983672483
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 142,
+    "good_false_eject_rate": 0.099370188943317
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 5.304651650722795,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 105,
+    "good_false_eject_rate": 0.0734779566130161,
+    "good_false_eject_interval_95": [
+     0.06106294658664092,
+     0.08818006813319972
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 125,
+    "good_false_eject_rate": 0.08747375787263821
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 5.68063406907698,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "unknown_rejection_interval_95": [
+     0.9926524591769287,
+     1.0
+    ],
+    "good_false_ejects": 85,
+    "good_false_eject_rate": 0.05948215535339398,
+    "good_false_eject_interval_95": [
+     0.04835929597608972,
+     0.07296716467385234
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 519,
+    "unknown_rejection_rate": 1.0,
+    "good_false_ejects": 107,
+    "good_false_eject_rate": 0.0748775367389783
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 201,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 201,
+     "combined_rejection_rate": 1.0
+    }
+   }
+  },
+  {
+   "threshold": 6.504502067632251,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 518,
+    "unknown_rejection_rate": 0.9980732177263969,
+    "unknown_rejection_interval_95": [
+     0.9891674054929895,
+     0.9996598033595581
+    ],
+    "good_false_ejects": 67,
+    "good_false_eject_rate": 0.04688593421973408,
+    "good_false_eject_interval_95": [
+     0.03708769083074349,
+     0.05911387115628985
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 518,
+    "unknown_rejection_rate": 0.9980732177263969,
+    "good_false_ejects": 89,
+    "good_false_eject_rate": 0.0622813156053184
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 200,
+     "anomaly_rejection_rate": 0.9950248756218906,
+     "combined_rejected": 200,
+     "combined_rejection_rate": 0.9950248756218906
+    }
+   }
+  },
+  {
+   "threshold": 7.153230642215831,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 514,
+    "unknown_rejection_rate": 0.9903660886319846,
+    "unknown_rejection_interval_95": [
+     0.9776480000951039,
+     0.9958782074599185
+    ],
+    "good_false_ejects": 51,
+    "good_false_eject_rate": 0.03568929321203639,
+    "good_false_eject_interval_95": [
+     0.027248010937994623,
+     0.04662030779311984
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 514,
+    "unknown_rejection_rate": 0.9903660886319846,
+    "good_false_ejects": 73,
+    "good_false_eject_rate": 0.05108467459762071
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 196,
+     "anomaly_rejection_rate": 0.9751243781094527,
+     "combined_rejected": 196,
+     "combined_rejection_rate": 0.9751243781094527
+    }
+   }
+  },
+  {
+   "threshold": 7.562432038823347,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 509,
+    "unknown_rejection_rate": 0.9807321772639692,
+    "unknown_rejection_interval_95": [
+     0.9648987675029564,
+     0.98950118843016
+    ],
+    "good_false_ejects": 37,
+    "good_false_eject_rate": 0.02589223233030091,
+    "good_false_eject_interval_95": [
+     0.018842418317413206,
+     0.03548431256477224
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 509,
+    "unknown_rejection_rate": 0.9807321772639692,
+    "good_false_ejects": 60,
+    "good_false_eject_rate": 0.04198740377886634
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 191,
+     "anomaly_rejection_rate": 0.9502487562189055,
+     "combined_rejected": 191,
+     "combined_rejection_rate": 0.9502487562189055
+    }
+   }
+  },
+  {
+   "threshold": 7.900826637593489,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 498,
+    "unknown_rejection_rate": 0.9595375722543352,
+    "unknown_rejection_interval_95": [
+     0.9389369773002098,
+     0.9733852250647129
+    ],
+    "good_false_ejects": 28,
+    "good_false_eject_rate": 0.01959412176347096,
+    "good_false_eject_interval_95": [
+     0.013590806768566475,
+     0.02817347478216461
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 498,
+    "unknown_rejection_rate": 0.9595375722543352,
+    "good_false_ejects": 51,
+    "good_false_eject_rate": 0.03568929321203639
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 180,
+     "anomaly_rejection_rate": 0.8955223880597015,
+     "combined_rejected": 180,
+     "combined_rejection_rate": 0.8955223880597015
+    }
+   }
+  },
+  {
+   "threshold": 8.560606034755734,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 482,
+    "unknown_rejection_rate": 0.928709055876686,
+    "unknown_rejection_interval_95": [
+     0.9032792372513212,
+     0.947838959923502
+    ],
+    "good_false_ejects": 25,
+    "good_false_eject_rate": 0.01749475157452764,
+    "good_false_eject_interval_95": [
+     0.011877667794569564,
+     0.025699130645676728
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 482,
+    "unknown_rejection_rate": 0.928709055876686,
+    "good_false_ejects": 48,
+    "good_false_eject_rate": 0.03358992302309307
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 164,
+     "anomaly_rejection_rate": 0.8159203980099502,
+     "combined_rejected": 164,
+     "combined_rejection_rate": 0.8159203980099502
+    }
+   }
+  },
+  {
+   "threshold": 8.878623517174258,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 465,
+    "unknown_rejection_rate": 0.8959537572254336,
+    "unknown_rejection_interval_95": [
+     0.8667118622611641,
+     0.9193770793991781
+    ],
+    "good_false_ejects": 22,
+    "good_false_eject_rate": 0.015395381385584325,
+    "good_false_eject_interval_95": [
+     0.010188560811543465,
+     0.02320075451821805
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 466,
+    "unknown_rejection_rate": 0.8978805394990366,
+    "good_false_ejects": 45,
+    "good_false_eject_rate": 0.031490552834149754
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 147,
+     "anomaly_rejection_rate": 0.7313432835820896,
+     "combined_rejected": 148,
+     "combined_rejection_rate": 0.736318407960199
+    }
+   }
+  },
+  {
+   "threshold": 9.22881180503856,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 450,
+    "unknown_rejection_rate": 0.8670520231213873,
+    "unknown_rejection_interval_95": [
+     0.8351276213159567,
+     0.8935825654786672
+    ],
+    "good_false_ejects": 18,
+    "good_false_eject_rate": 0.012596221133659902,
+    "good_false_eject_interval_95": [
+     0.007982353473887394,
+     0.019823651041894395
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 451,
+    "unknown_rejection_rate": 0.8689788053949904,
+    "good_false_ejects": 41,
+    "good_false_eject_rate": 0.028691392582225334
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 132,
+     "anomaly_rejection_rate": 0.6567164179104478,
+     "combined_rejected": 133,
+     "combined_rejection_rate": 0.6616915422885572
+    }
+   }
+  },
+  {
+   "threshold": 9.697380164620819,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 433,
+    "unknown_rejection_rate": 0.8342967244701349,
+    "unknown_rejection_interval_95": [
+     0.7998748727022408,
+     0.8638060585779023
+    ],
+    "good_false_ejects": 15,
+    "good_false_eject_rate": 0.010496850944716585,
+    "good_false_eject_interval_95": [
+     0.006371414324492377,
+     0.017247107080804625
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 435,
+    "unknown_rejection_rate": 0.838150289017341,
+    "good_false_ejects": 38,
+    "good_false_eject_rate": 0.026592022393282014
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 115,
+     "anomaly_rejection_rate": 0.572139303482587,
+     "combined_rejected": 117,
+     "combined_rejection_rate": 0.582089552238806
+    }
+   }
+  },
+  {
+   "threshold": 10.181622378660961,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 417,
+    "unknown_rejection_rate": 0.8034682080924855,
+    "unknown_rejection_interval_95": [
+     0.7671034336076886,
+     0.8353734924823547
+    ],
+    "good_false_ejects": 12,
+    "good_false_eject_rate": 0.008397480755773267,
+    "good_false_eject_interval_95": [
+     0.004810145091050007,
+     0.014620893203762204
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 419,
+    "unknown_rejection_rate": 0.8073217726396917,
+    "good_false_ejects": 36,
+    "good_false_eject_rate": 0.025192442267319804
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 99,
+     "anomaly_rejection_rate": 0.4925373134328358,
+     "combined_rejected": 101,
+     "combined_rejection_rate": 0.5024875621890548
+    }
+   }
+  },
+  {
+   "threshold": 10.486889901406359,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 398,
+    "unknown_rejection_rate": 0.766859344894027,
+    "unknown_rejection_interval_95": [
+     0.7286014407962366,
+     0.8011957291305635
+    ],
+    "good_false_ejects": 11,
+    "good_false_eject_rate": 0.007697690692792162,
+    "good_false_eject_interval_95": [
+     0.004303622828821105,
+     0.013731587762496177
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 400,
+    "unknown_rejection_rate": 0.7707129094412332,
+    "good_false_ejects": 35,
+    "good_false_eject_rate": 0.0244926522043387
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 80,
+     "anomaly_rejection_rate": 0.39800995024875624,
+     "combined_rejected": 82,
+     "combined_rejection_rate": 0.4079601990049751
+    }
+   }
+  },
+  {
+   "threshold": 10.897059779601058,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 380,
+    "unknown_rejection_rate": 0.7321772639691715,
+    "unknown_rejection_interval_95": [
+     0.6924750585083956,
+     0.7684676055795423
+    ],
+    "good_false_ejects": 10,
+    "good_false_eject_rate": 0.006997900629811057,
+    "good_false_eject_interval_95": [
+     0.0038054973968066003,
+     0.012833885491015756
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 383,
+    "unknown_rejection_rate": 0.7379576107899807,
+    "good_false_ejects": 34,
+    "good_false_eject_rate": 0.023792862141357594
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 62,
+     "anomaly_rejection_rate": 0.30845771144278605,
+     "combined_rejected": 65,
+     "combined_rejection_rate": 0.32338308457711445
+    }
+   }
+  },
+  {
+   "threshold": 11.583100855482769,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 363,
+    "unknown_rejection_rate": 0.6994219653179191,
+    "unknown_rejection_interval_95": [
+     0.6586269831955027,
+     0.7372864253779543
+    ],
+    "good_false_ejects": 7,
+    "good_false_eject_rate": 0.00489853044086774,
+    "good_false_eject_interval_95": [
+     0.0023748219654497484,
+     0.010077077811887818
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 367,
+    "unknown_rejection_rate": 0.7071290944123314,
+    "good_false_ejects": 31,
+    "good_false_eject_rate": 0.021693491952414275
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 45,
+     "anomaly_rejection_rate": 0.22388059701492538,
+     "combined_rejected": 49,
+     "combined_rejection_rate": 0.24378109452736318
+    }
+   }
+  },
+  {
+   "threshold": 12.404416426292043,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 346,
+    "unknown_rejection_rate": 0.6666666666666666,
+    "unknown_rejection_interval_95": [
+     0.6250157673908157,
+     0.7058683856681605
+    ],
+    "good_false_ejects": 5,
+    "good_false_eject_rate": 0.0034989503149055285,
+    "good_false_eject_interval_95": [
+     0.0014954181702776241,
+     0.008164826200070084
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 351,
+    "unknown_rejection_rate": 0.6763005780346821,
+    "good_false_ejects": 29,
+    "good_false_eject_rate": 0.020293911826452064
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 28,
+     "anomaly_rejection_rate": 0.13930348258706468,
+     "combined_rejected": 33,
+     "combined_rejection_rate": 0.16417910447761194
+    }
+   }
+  },
+  {
+   "threshold": 13.50760100935406,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 328,
+    "unknown_rejection_rate": 0.6319845857418112,
+    "unknown_rejection_interval_95": [
+     0.5896647088444075,
+     0.6723649383757065
+    ],
+    "good_false_ejects": 3,
+    "good_false_eject_rate": 0.002099370188943317,
+    "good_false_eject_interval_95": [
+     0.0007142136037522014,
+     0.0061543753596056475
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 334,
+    "unknown_rejection_rate": 0.6435452793834296,
+    "good_false_ejects": 27,
+    "good_false_eject_rate": 0.018894331700489854
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 10,
+     "anomaly_rejection_rate": 0.04975124378109453,
+     "combined_rejected": 16,
+     "combined_rejection_rate": 0.07960199004975124
+    }
+   }
+  },
+  {
+   "threshold": 18.48719999197408,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 319,
+    "unknown_rejection_rate": 0.6146435452793835,
+    "unknown_rejection_interval_95": [
+     0.5720756057193559,
+     0.6555267885813272
+    ],
+    "good_false_ejects": 0,
+    "good_false_eject_rate": 0.0,
+    "good_false_eject_interval_95": [
+     0.0,
+     0.0026811058528730604
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 327,
+    "unknown_rejection_rate": 0.630057803468208,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 100,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 100,
+     "combined_rejection_rate": 1.0
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 1,
+     "anomaly_rejection_rate": 0.004975124378109453,
+     "combined_rejected": 9,
+     "combined_rejection_rate": 0.04477611940298507
+    }
+   }
+  },
+  {
+   "threshold": 20.92756000292223,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 312,
+    "unknown_rejection_rate": 0.6011560693641619,
+    "unknown_rejection_interval_95": [
+     0.5584336173265796,
+     0.6423920247034349
+    ],
+    "good_false_ejects": 0,
+    "good_false_eject_rate": 0.0,
+    "good_false_eject_interval_95": [
+     0.0,
+     0.0026811058528730604
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 322,
+    "unknown_rejection_rate": 0.6204238921001927,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 94,
+     "anomaly_rejection_rate": 0.94,
+     "combined_rejected": 95,
+     "combined_rejection_rate": 0.95
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 9,
+     "combined_rejection_rate": 0.04477611940298507
+    }
+   }
+  },
+  {
+   "threshold": 22.14865435638223,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 293,
+    "unknown_rejection_rate": 0.5645472061657033,
+    "unknown_rejection_interval_95": [
+     0.5215700281539476,
+     0.6065758577128236
+    ],
+    "good_false_ejects": 0,
+    "good_false_eject_rate": 0.0,
+    "good_false_eject_interval_95": [
+     0.0,
+     0.0026811058528730604
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 306,
+    "unknown_rejection_rate": 0.5895953757225434,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 75,
+     "anomaly_rejection_rate": 0.75,
+     "combined_rejected": 79,
+     "combined_rejection_rate": 0.79
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 9,
+     "combined_rejection_rate": 0.04477611940298507
+    }
+   }
+  },
+  {
+   "threshold": 23.00111961189971,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 273,
+    "unknown_rejection_rate": 0.5260115606936416,
+    "unknown_rejection_interval_95": [
+     0.4830191502532851,
+     0.5686217291258614
+    ],
+    "good_false_ejects": 0,
+    "good_false_eject_rate": 0.0,
+    "good_false_eject_interval_95": [
+     0.0,
+     0.0026811058528730604
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 287,
+    "unknown_rejection_rate": 0.5529865125240848,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 55,
+     "anomaly_rejection_rate": 0.55,
+     "combined_rejected": 60,
+     "combined_rejection_rate": 0.6
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 9,
+     "combined_rejection_rate": 0.04477611940298507
+    }
+   }
+  },
+  {
+   "threshold": 23.448418862633993,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 254,
+    "unknown_rejection_rate": 0.48940269749518306,
+    "unknown_rejection_interval_95": [
+     0.4466312195006258,
+     0.5323299037152774
+    ],
+    "good_false_ejects": 0,
+    "good_false_eject_rate": 0.0,
+    "good_false_eject_interval_95": [
+     0.0,
+     0.0026811058528730604
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 277,
+    "unknown_rejection_rate": 0.5337186897880539,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 36,
+     "anomaly_rejection_rate": 0.36,
+     "combined_rejected": 50,
+     "combined_rejection_rate": 0.5
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 9,
+     "combined_rejection_rate": 0.04477611940298507
+    }
+   }
+  },
+  {
+   "threshold": 24.60744956012965,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 234,
+    "unknown_rejection_rate": 0.4508670520231214,
+    "unknown_rejection_interval_95": [
+     0.40857506051435677,
+     0.493881056213922
+    ],
+    "good_false_ejects": 0,
+    "good_false_eject_rate": 0.0,
+    "good_false_eject_interval_95": [
+     0.0,
+     0.0026811058528730604
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 263,
+    "unknown_rejection_rate": 0.5067437379576107,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 16,
+     "anomaly_rejection_rate": 0.16,
+     "combined_rejected": 36,
+     "combined_rejection_rate": 0.36
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 218,
+     "anomaly_rejection_rate": 1.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 9,
+     "combined_rejection_rate": 0.04477611940298507
+    }
+   }
+  },
+  {
+   "threshold": 125.9469262346104,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 215,
+    "unknown_rejection_rate": 0.4142581888246628,
+    "unknown_rejection_interval_95": [
+     0.3726594520707497,
+     0.45711690849428566
+    ],
+    "good_false_ejects": 0,
+    "good_false_eject_rate": 0.0,
+    "good_false_eject_interval_95": [
+     0.0,
+     0.0026811058528730604
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 29,
+     "combined_rejection_rate": 0.29
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 215,
+     "anomaly_rejection_rate": 0.9862385321100917,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 9,
+     "combined_rejection_rate": 0.04477611940298507
+    }
+   }
+  },
+  {
+   "threshold": 144.06017566596137,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 195,
+    "unknown_rejection_rate": 0.37572254335260113,
+    "unknown_rejection_interval_95": [
+     0.33511174313537123,
+     0.4181596109420395
+    ],
+    "good_false_ejects": 0,
+    "good_false_eject_rate": 0.0,
+    "good_false_eject_interval_95": [
+     0.0,
+     0.0026811058528730604
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 29,
+     "combined_rejection_rate": 0.29
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 195,
+     "anomaly_rejection_rate": 0.8944954128440367,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 9,
+     "combined_rejection_rate": 0.04477611940298507
+    }
+   }
+  },
+  {
+   "threshold": 159.94044283822103,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 176,
+    "unknown_rejection_rate": 0.33911368015414256,
+    "unknown_rejection_interval_95": [
+     0.29969905195924734,
+     0.3808925459549201
+    ],
+    "good_false_ejects": 0,
+    "good_false_eject_rate": 0.0,
+    "good_false_eject_interval_95": [
+     0.0,
+     0.0026811058528730604
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 29,
+     "combined_rejection_rate": 0.29
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 176,
+     "anomaly_rejection_rate": 0.8073394495412844,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 9,
+     "combined_rejection_rate": 0.04477611940298507
+    }
+   }
+  },
+  {
+   "threshold": 174.9405879175994,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 156,
+    "unknown_rejection_rate": 0.30057803468208094,
+    "unknown_rejection_interval_95": [
+     0.2627135746220457,
+     0.3413730168044973
+    ],
+    "good_false_ejects": 0,
+    "good_false_eject_rate": 0.0,
+    "good_false_eject_interval_95": [
+     0.0,
+     0.0026811058528730604
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 29,
+     "combined_rejection_rate": 0.29
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 156,
+     "anomaly_rejection_rate": 0.7155963302752294,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 9,
+     "combined_rejection_rate": 0.04477611940298507
+    }
+   }
+  },
+  {
+   "threshold": 185.53179307896622,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 137,
+    "unknown_rejection_rate": 0.26396917148362237,
+    "unknown_rejection_interval_95": [
+     0.2278807093692904,
+     0.3035261258940093
+    ],
+    "good_false_ejects": 0,
+    "good_false_eject_rate": 0.0,
+    "good_false_eject_interval_95": [
+     0.0,
+     0.0026811058528730604
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 29,
+     "combined_rejection_rate": 0.29
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 137,
+     "anomaly_rejection_rate": 0.6284403669724771,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 9,
+     "combined_rejection_rate": 0.04477611940298507
+    }
+   }
+  },
+  {
+   "threshold": 192.26903052660086,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 117,
+    "unknown_rejection_rate": 0.2254335260115607,
+    "unknown_rejection_interval_95": [
+     0.1915754652827879,
+     0.2633263634928872
+    ],
+    "good_false_ejects": 0,
+    "good_false_eject_rate": 0.0,
+    "good_false_eject_interval_95": [
+     0.0,
+     0.0026811058528730604
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 29,
+     "combined_rejection_rate": 0.29
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 117,
+     "anomaly_rejection_rate": 0.536697247706422,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 9,
+     "combined_rejection_rate": 0.04477611940298507
+    }
+   }
+  },
+  {
+   "threshold": 203.02133087042873,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 98,
+    "unknown_rejection_rate": 0.18882466281310212,
+    "unknown_rejection_interval_95": [
+     0.15748590185498995,
+     0.2247361707574418
+    ],
+    "good_false_ejects": 0,
+    "good_false_eject_rate": 0.0,
+    "good_false_eject_interval_95": [
+     0.0,
+     0.0026811058528730604
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 29,
+     "combined_rejection_rate": 0.29
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 98,
+     "anomaly_rejection_rate": 0.44954128440366975,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 9,
+     "combined_rejection_rate": 0.04477611940298507
+    }
+   }
+  },
+  {
+   "threshold": 219.3646048887033,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 78,
+    "unknown_rejection_rate": 0.15028901734104047,
+    "unknown_rejection_interval_95": [
+     0.12211931139147236,
+     0.18359775473333484
+    ],
+    "good_false_ejects": 0,
+    "good_false_eject_rate": 0.0,
+    "good_false_eject_interval_95": [
+     0.0,
+     0.0026811058528730604
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 29,
+     "combined_rejection_rate": 0.29
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 78,
+     "anomaly_rejection_rate": 0.3577981651376147,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 9,
+     "combined_rejection_rate": 0.04477611940298507
+    }
+   }
+  },
+  {
+   "threshold": 237.00720456776057,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 59,
+    "unknown_rejection_rate": 0.11368015414258188,
+    "unknown_rejection_interval_95": [
+     0.089162246472048,
+     0.1438750634895159
+    ],
+    "good_false_ejects": 0,
+    "good_false_eject_rate": 0.0,
+    "good_false_eject_interval_95": [
+     0.0,
+     0.0026811058528730604
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 29,
+     "combined_rejection_rate": 0.29
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 59,
+     "anomaly_rejection_rate": 0.2706422018348624,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 9,
+     "combined_rejection_rate": 0.04477611940298507
+    }
+   }
+  },
+  {
+   "threshold": 263.6473774142161,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 39,
+    "unknown_rejection_rate": 0.07514450867052024,
+    "unknown_rejection_interval_95": [
+     0.05545425434875274,
+     0.1010780491251866
+    ],
+    "good_false_ejects": 0,
+    "good_false_eject_rate": 0.0,
+    "good_false_eject_interval_95": [
+     0.0,
+     0.0026811058528730604
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 29,
+     "combined_rejection_rate": 0.29
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 39,
+     "anomaly_rejection_rate": 0.17889908256880735,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 9,
+     "combined_rejection_rate": 0.04477611940298507
+    }
+   }
+  },
+  {
+   "threshold": 294.4710838680522,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 20,
+    "unknown_rejection_rate": 0.038535645472061654,
+    "unknown_rejection_interval_95": [
+     0.025082060429415187,
+     0.05877048688128081
+    ],
+    "good_false_ejects": 0,
+    "good_false_eject_rate": 0.0,
+    "good_false_eject_interval_95": [
+     0.0,
+     0.0026811058528730604
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 29,
+     "combined_rejection_rate": 0.29
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 20,
+     "anomaly_rejection_rate": 0.09174311926605505,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 9,
+     "combined_rejection_rate": 0.04477611940298507
+    }
+   }
+  },
+  {
+   "threshold": 505.87443788416925,
+   "denominators": {
+    "good_objects": 1429,
+    "unknown_objects": 519
+   },
+   "anomaly_detector_alone": {
+    "unknown_rejected": 0,
+    "unknown_rejection_rate": 0.0,
+    "unknown_rejection_interval_95": [
+     0.0,
+     0.007347540823071461
+    ],
+    "good_false_ejects": 0,
+    "good_false_eject_rate": 0.0,
+    "good_false_eject_interval_95": [
+     0.0,
+     0.0026811058528730604
+    ]
+   },
+   "classifier_alone": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "combined_classifier_or_anomaly": {
+    "unknown_rejected": 256,
+    "unknown_rejection_rate": 0.4932562620423892,
+    "good_false_ejects": 24,
+    "good_false_eject_rate": 0.016794961511546535
+   },
+   "per_unknown_class": {
+    "plastic_chip": {
+     "n": 100,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 29,
+     "combined_rejection_rate": 0.29
+    },
+    "odd_colour": {
+     "n": 218,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 218,
+     "combined_rejection_rate": 1.0
+    },
+    "wrong_size": {
+     "n": 201,
+     "anomaly_rejected": 0,
+     "anomaly_rejection_rate": 0.0,
+     "combined_rejected": 9,
+     "combined_rejection_rate": 0.04477611940298507
+    }
+   }
+  }
+ ],
+ "curve_semantics": "Offline whole-passage criterion over selected full singleton objects. Max anomaly and mean classifier probability use all recorded views, unlike the controller, which finalizes around camera centre or after misses.",
+ "caveat": "Simulated camera observations, not real-camera validation. Conditional curve excludes merged-only, partial-only, and never-detected objects; eligible population coverage is reported separately."
+}

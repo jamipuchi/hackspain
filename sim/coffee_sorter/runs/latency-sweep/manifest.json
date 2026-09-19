@@ -1,0 +1,107 @@
+[
+  {
+    "name": "delay-0",
+    "command": [
+      "/workspace/personal/venvs/coffee-sorter/bin/python",
+      "-u",
+      "run.py",
+      "run",
+      "--rate",
+      "1000",
+      "--seconds",
+      "4",
+      "--name",
+      "latency-sweep/delay-0",
+      "--controller-delay-ms",
+      "0"
+    ],
+    "metrics": "runs/latency-sweep/delay-0/metrics.json",
+    "status": "completed",
+    "returncode": 0,
+    "wall_seconds": 69.93157529830933
+  },
+  {
+    "name": "delay-20",
+    "command": [
+      "/workspace/personal/venvs/coffee-sorter/bin/python",
+      "-u",
+      "run.py",
+      "run",
+      "--rate",
+      "1000",
+      "--seconds",
+      "4",
+      "--name",
+      "latency-sweep/delay-20",
+      "--controller-delay-ms",
+      "20"
+    ],
+    "metrics": "runs/latency-sweep/delay-20/metrics.json",
+    "status": "completed",
+    "returncode": 0,
+    "wall_seconds": 70.52381587028503
+  },
+  {
+    "name": "delay-30",
+    "command": [
+      "/workspace/personal/venvs/coffee-sorter/bin/python",
+      "-u",
+      "run.py",
+      "run",
+      "--rate",
+      "1000",
+      "--seconds",
+      "4",
+      "--name",
+      "latency-sweep/delay-30",
+      "--controller-delay-ms",
+      "30"
+    ],
+    "metrics": "runs/latency-sweep/delay-30/metrics.json",
+    "status": "completed",
+    "returncode": 0,
+    "wall_seconds": 68.38785552978516
+  },
+  {
+    "name": "delay-40",
+    "command": [
+      "/workspace/personal/venvs/coffee-sorter/bin/python",
+      "-u",
+      "run.py",
+      "run",
+      "--rate",
+      "1000",
+      "--seconds",
+      "4",
+      "--name",
+      "latency-sweep/delay-40",
+      "--controller-delay-ms",
+      "40"
+    ],
+    "metrics": "runs/latency-sweep/delay-40/metrics.json",
+    "status": "completed",
+    "returncode": 0,
+    "wall_seconds": 71.42848896980286
+  },
+  {
+    "name": "delay-60",
+    "command": [
+      "/workspace/personal/venvs/coffee-sorter/bin/python",
+      "-u",
+      "run.py",
+      "run",
+      "--rate",
+      "1000",
+      "--seconds",
+      "4",
+      "--name",
+      "latency-sweep/delay-60",
+      "--controller-delay-ms",
+      "60"
+    ],
+    "metrics": "runs/latency-sweep/delay-60/metrics.json",
+    "status": "completed",
+    "returncode": 0,
+    "wall_seconds": 68.83815479278564
+  }
+]

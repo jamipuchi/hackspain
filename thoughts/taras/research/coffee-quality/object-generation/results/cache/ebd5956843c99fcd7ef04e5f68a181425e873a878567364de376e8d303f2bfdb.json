@@ -1,0 +1,59 @@
+{
+  "response": {
+    "id": "gen-1789837027-eVd667d0DgGtKDO8bXuT",
+    "object": "chat.completion",
+    "created": 1789837027,
+    "model": "qwen/qwen3.8-max-0902",
+    "provider": "Alibaba",
+    "system_fingerprint": null,
+    "service_tier": null,
+    "choices": [
+      {
+        "index": 0,
+        "logprobs": null,
+        "finish_reason": "stop",
+        "native_finish_reason": "stop",
+        "message": {
+          "role": "assistant",
+          "content": "{\n  \"name\": \"gold_star_token\",\n  \"design_notes\": \"A single continuous five-pointed star token, 18 mm wide, 2 mm thick, lying flat in the XY plane.\",\n  \"parts\": [\n   {\n   \"name\": \"star_body\",\n   \"kind\": \"polygon\",\n   \"position_mm\": [0, 0, 0],\n   \"rotation_deg\": [0, 0, 0],\n   \"size_mm\": [18, 18, 2],\n   \"color\": [0.83, 0.69, 0.22],\n   \"metallic\": 0.95,\n   \"roughness\": 0.25,\n   \"tube_mm\": 0,\n   \"outline\": [\n   [-0.0588, 0.1809],\n   [-0.1763, 0.2427],\n   [-0.1763, 0.0573],\n   [-0.2939, -0.0046],\n   [-0.3527, -0.1855],\n   [-0.2351, -0.1236],\n   [-0.1763, -0.3045],\n   [-0.1176, -0.1236],\n   [-0.0000, -0.1855],\n   [-0.0588, -0.0046],\n   [-0.0588, 0.1809]\n   ],\n   \"text\": \"\"\n   }\n  ]\n}",
+          "refusal": null,
+          "reasoning": "The user wants a five-point gold star token, about 18mm wide and 2mm thick, laid flat in the XY plane.\n\nI need to create a polygon shape for a five-pointed star. The star should have 5 outer points and 5 inner concave valleys.\n\nFor a five-pointed star, I need 10 vertices alternating between outer radius and inner radius.\n\nThe star should be about 18mm wide, so the outer radius is about 9mm. The polygon coordinates are in [-0.5, 0.5] range, and then multiplied by size_mm X/Y.\n\nSo if size_mm X = 18 and size_mm Y = 18, then coordinates in [-0.5, 0.5] map to [-9, 9] mm.\n\nFor a classic five-pointed star:\n- Outer radius: 0.5 (maps to 9mm)\n- Inner radius: typically about 0.382 * outer radius for a \"golden ratio\" star, but let me use about 0.19 (which maps to about 3.4mm inner radius) for a nice looking star. Actually, the classic ratio is inner/outer \u2248 0.382 for a regular pentagram. Let me use 0.191 which gives inner radius of about 3.44mm.\n\nWait, let me reconsider. The inner radius ratio for a standard five-pointed star is sin(18\u00b0)/sin(54\u00b0) \u2248 0.382. So inner radius = 0.5 * 0.382 = 0.191.\n\nLet me compute the 10 points of the star. Starting from the top (pointing up), going clockwise:\n\nAngles for outer points (starting from top, going clockwise):\n- Point 0: 90\u00b0 (top)\n- Point 1: 90\u00b0 - 72\u00b0 = 18\u00b0\n- Point 2: 90\u00b0 - 144\u00b0 = -54\u00b0\n- Point 3: 90\u00b0 - 216\u00b0 = -126\u00b0\n- Point 4: 90\u00b0 - 288\u00b0 = -198\u00b0 = 162\u00b0\n\nWait, let me think more carefully. For a star pointing up:\n- Outer vertices at angles: 90\u00b0, 90\u00b0+72\u00b0=162\u00b0, 90\u00b0+144\u00b0=234\u00b0, 90\u00b0+216\u00b0=306\u00b0, 90\u00b0+288\u00b0=378\u00b0=18\u00b0\n- Inner vertices at angles: 90\u00b0+36\u00b0=126\u00b0, 90\u00b0+108\u00b0=198\u00b0, 90\u00b0+180\u00b0=270\u00b0, 90\u00b0+252\u00b0=342\u00b0, 90\u00b0+324\u00b0=414\u00b0=54\u00b0\n\nActually, let me just list them alternating outer/inner going counterclockwise (or clockwise):\n\nStarting from top, going counterclockwise:\n- Outer at 90\u00b0\n- Inner at 90\u00b0 + 36\u00b0 = 126\u00b0\n- Outer at 90\u00b0 + 72\u00b0 = 162\u00b0\n- Inner at 90\u00b0 + 108\u00b0 = 198\u00b0\n- Outer at 90\u00b0 + 144\u00b0 = 234\u00b0\n- Inner at 90\u00b0 + 180\u00b0 = 270\u00b0\n- Outer at 90\u00b0 + 216\u00b0 = 306\u00b0\n- Inner at 90\u00b0 + 252\u00b0 = 342\u00b0\n- Outer at 90\u00b0 + 288\u00b0 = 378\u00b0 = 18\u00b0\n- Inner at 90\u00b0 + 324\u00b0 = 414\u00b0 = 54\u00b0\n\nOuter radius R = 0.5\nInner radius r = 0.5 * 0.382 = 0.191\n\nLet me compute coordinates (x = r*cos(\u03b8), y = r*sin(\u03b8)):\n\n1. Outer, 90\u00b0: (0.5*cos(90\u00b0), 0.5*sin(90\u00b0)) = (0, 0.5)\n2. Inner, 126\u00b0: (0.191*cos(126\u00b0), 0.191*sin(126\u00b0)) = (0.191*(-0.5878), 0.191*0.8090) = (-0.1123, 0.1545)\n3. Outer, 162\u00b0: (0.5*cos(162\u00b0), 0.5*sin(162\u00b0)) = (0.5*(-0.9511), 0.5*0.3090) = (-0.4755, 0.1545)\n4. Inner, 198\u00b0: (0.191*cos(198\u00b0), 0.191*sin(198\u00b0)) = (0.191*(-0.9511), 0.191*(-0.3090)) = (-0.1817, -0.0590)\n5. Outer, 234\u00b0: (0.5*cos(234\u00b0), 0.5*sin(234\u00b0)) = (0.5*(-0.5878), 0.5*(-0.8090)) = (-0.2939, -0.4045)\n6. Inner, 270\u00b0: (0.191*cos(270\u00b0), 0.191*sin(270\u00b0)) = (0, -0.191)\n7. Outer, 306\u00b0: (0.5*cos(306\u00b0), 0.5*sin(306\u00b0)) = (0.5*0.5878, 0.5*(-0.8090)) = (0.2939, -0.4045)\n8. Inner, 342\u00b0: (0.191*cos(342\u00b0), 0.191*sin(342\u00b0)) = (0.191*0.9511, 0.191*(-0.3090)) = (0.1817, -0.0590)\n9. Outer, 18\u00b0: (0.5*cos(18\u00b0), 0.5*sin(18\u00b0)) = (0.5*0.9511, 0.5*0.3090) = (0.4755, 0.1545)\n10. Inner, 54\u00b0: (0.191*cos(54\u00b0), 0.191*sin(54\u00b0)) = (0.191*0.5878, 0.191*0.8090) = (0.1123, 0.1545)\n\nLet me round these to 4 decimal places for cleanliness.\n\nNow for the JSON:\n- type: polygon\n- size_mm: [18, 18, 2]\n- position: [0, 0, 1] (center at z=1 so it sits from z=0 to z=2)\n- rotation_deg: [0, 0, 0]\n- outline: the 10 points above\n- color: gold - something like [0.83, 0.69, 0.22] or [1.0, 0.84, 0.0] for bright gold\n- metallic: 1.0\n- roughness: 0.3\n\nLet me use a nice gold color: [0.855, 0.647, 0.125] or the classic gold [1.0, 0.843, 0.0]. I'll go with [0.83, 0.69, 0.22] for a slightly more realistic gold.\n\nActually, let me use [0.95, 0.78, 0.2] for a bright gold.\n\nLet me double-check the polygon is non-self-intersecting and in boundary order. Going counterclockwise from the top point, alternating outer and inner vertices - yes, this traces the star boundary correctly.",
+          "reasoning_details": [
+            {
+              "type": "reasoning.text",
+              "text": "The user wants a five-point gold star token, about 18mm wide and 2mm thick, laid flat in the XY plane.\n\nI need to create a polygon shape for a five-pointed star. The star should have 5 outer points and 5 inner concave valleys.\n\nFor a five-pointed star, I need 10 vertices alternating between outer radius and inner radius.\n\nThe star should be about 18mm wide, so the outer radius is about 9mm. The polygon coordinates are in [-0.5, 0.5] range, and then multiplied by size_mm X/Y.\n\nSo if size_mm X = 18 and size_mm Y = 18, then coordinates in [-0.5, 0.5] map to [-9, 9] mm.\n\nFor a classic five-pointed star:\n- Outer radius: 0.5 (maps to 9mm)\n- Inner radius: typically about 0.382 * outer radius for a \"golden ratio\" star, but let me use about 0.19 (which maps to about 3.4mm inner radius) for a nice looking star. Actually, the classic ratio is inner/outer \u2248 0.382 for a regular pentagram. Let me use 0.191 which gives inner radius of about 3.44mm.\n\nWait, let me reconsider. The inner radius ratio for a standard five-pointed star is sin(18\u00b0)/sin(54\u00b0) \u2248 0.382. So inner radius = 0.5 * 0.382 = 0.191.\n\nLet me compute the 10 points of the star. Starting from the top (pointing up), going clockwise:\n\nAngles for outer points (starting from top, going clockwise):\n- Point 0: 90\u00b0 (top)\n- Point 1: 90\u00b0 - 72\u00b0 = 18\u00b0\n- Point 2: 90\u00b0 - 144\u00b0 = -54\u00b0\n- Point 3: 90\u00b0 - 216\u00b0 = -126\u00b0\n- Point 4: 90\u00b0 - 288\u00b0 = -198\u00b0 = 162\u00b0\n\nWait, let me think more carefully. For a star pointing up:\n- Outer vertices at angles: 90\u00b0, 90\u00b0+72\u00b0=162\u00b0, 90\u00b0+144\u00b0=234\u00b0, 90\u00b0+216\u00b0=306\u00b0, 90\u00b0+288\u00b0=378\u00b0=18\u00b0\n- Inner vertices at angles: 90\u00b0+36\u00b0=126\u00b0, 90\u00b0+108\u00b0=198\u00b0, 90\u00b0+180\u00b0=270\u00b0, 90\u00b0+252\u00b0=342\u00b0, 90\u00b0+324\u00b0=414\u00b0=54\u00b0\n\nActually, let me just list them alternating outer/inner going counterclockwise (or clockwise):\n\nStarting from top, going counterclockwise:\n- Outer at 90\u00b0\n- Inner at 90\u00b0 + 36\u00b0 = 126\u00b0\n- Outer at 90\u00b0 + 72\u00b0 = 162\u00b0\n- Inner at 90\u00b0 + 108\u00b0 = 198\u00b0\n- Outer at 90\u00b0 + 144\u00b0 = 234\u00b0\n- Inner at 90\u00b0 + 180\u00b0 = 270\u00b0\n- Outer at 90\u00b0 + 216\u00b0 = 306\u00b0\n- Inner at 90\u00b0 + 252\u00b0 = 342\u00b0\n- Outer at 90\u00b0 + 288\u00b0 = 378\u00b0 = 18\u00b0\n- Inner at 90\u00b0 + 324\u00b0 = 414\u00b0 = 54\u00b0\n\nOuter radius R = 0.5\nInner radius r = 0.5 * 0.382 = 0.191\n\nLet me compute coordinates (x = r*cos(\u03b8), y = r*sin(\u03b8)):\n\n1. Outer, 90\u00b0: (0.5*cos(90\u00b0), 0.5*sin(90\u00b0)) = (0, 0.5)\n2. Inner, 126\u00b0: (0.191*cos(126\u00b0), 0.191*sin(126\u00b0)) = (0.191*(-0.5878), 0.191*0.8090) = (-0.1123, 0.1545)\n3. Outer, 162\u00b0: (0.5*cos(162\u00b0), 0.5*sin(162\u00b0)) = (0.5*(-0.9511), 0.5*0.3090) = (-0.4755, 0.1545)\n4. Inner, 198\u00b0: (0.191*cos(198\u00b0), 0.191*sin(198\u00b0)) = (0.191*(-0.9511), 0.191*(-0.3090)) = (-0.1817, -0.0590)\n5. Outer, 234\u00b0: (0.5*cos(234\u00b0), 0.5*sin(234\u00b0)) = (0.5*(-0.5878), 0.5*(-0.8090)) = (-0.2939, -0.4045)\n6. Inner, 270\u00b0: (0.191*cos(270\u00b0), 0.191*sin(270\u00b0)) = (0, -0.191)\n7. Outer, 306\u00b0: (0.5*cos(306\u00b0), 0.5*sin(306\u00b0)) = (0.5*0.5878, 0.5*(-0.8090)) = (0.2939, -0.4045)\n8. Inner, 342\u00b0: (0.191*cos(342\u00b0), 0.191*sin(342\u00b0)) = (0.191*0.9511, 0.191*(-0.3090)) = (0.1817, -0.0590)\n9. Outer, 18\u00b0: (0.5*cos(18\u00b0), 0.5*sin(18\u00b0)) = (0.5*0.9511, 0.5*0.3090) = (0.4755, 0.1545)\n10. Inner, 54\u00b0: (0.191*cos(54\u00b0), 0.191*sin(54\u00b0)) = (0.191*0.5878, 0.191*0.8090) = (0.1123, 0.1545)\n\nLet me round these to 4 decimal places for cleanliness.\n\nNow for the JSON:\n- type: polygon\n- size_mm: [18, 18, 2]\n- position: [0, 0, 1] (center at z=1 so it sits from z=0 to z=2)\n- rotation_deg: [0, 0, 0]\n- outline: the 10 points above\n- color: gold - something like [0.83, 0.69, 0.22] or [1.0, 0.84, 0.0] for bright gold\n- metallic: 1.0\n- roughness: 0.3\n\nLet me use a nice gold color: [0.855, 0.647, 0.125] or the classic gold [1.0, 0.843, 0.0]. I'll go with [0.83, 0.69, 0.22] for a slightly more realistic gold.\n\nActually, let me use [0.95, 0.78, 0.2] for a bright gold.\n\nLet me double-check the polygon is non-self-intersecting and in boundary order. Going counterclockwise from the top point, alternating outer and inner vertices - yes, this traces the star boundary correctly.",
+              "format": "unknown",
+              "index": 0
+            }
+          ]
+        }
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 508,
+      "completion_tokens": 2363,
+      "total_tokens": 2871,
+      "cost": 0.015194,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.015194,
+        "upstream_inference_prompt_cost": 0.001016,
+        "upstream_inference_completions_cost": 0.014178
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 1966,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    }
+  },
+  "latency_s": 49.69896779186092,
+  "request_sha256": "ebd5956843c99fcd7ef04e5f68a181425e873a878567364de376e8d303f2bfdb",
+  "endpoint": "https://openrouter.ai/api/v1/chat/completions"
+}

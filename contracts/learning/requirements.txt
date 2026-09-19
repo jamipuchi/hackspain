@@ -1,0 +1,4 @@
+mujoco==3.13.0
+opencv-python==5.0.0.93
+numpy==2.4.4
+Pillow==12.1.1

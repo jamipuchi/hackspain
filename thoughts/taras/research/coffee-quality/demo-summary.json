@@ -1,0 +1,136 @@
+{
+  "session_id": "ba5057f1-5d84-459f-9148-d39c1b6e9ec9",
+  "browser_packets": 491,
+  "pose_packet_hz": 9.625395328736715,
+  "browser_fps_median": 60,
+  "browser_fps_min": 59.89787902031392,
+  "browser_fps_max": 60.99360550909985,
+  "browser_measurements": {
+    "acknowledgment_ms": 27.899999856948853,
+    "fps": 60,
+    "outcome_wall_s": 1.4982000000476836,
+    "pose_hz": 5.130836330087081
+  },
+  "runtime": {
+    "simulation_seconds": 10.000999999999896,
+    "active_wall_seconds": 50.9866887498647,
+    "engine_rate": 0.1961492351280889,
+    "requested_rate": 500.0,
+    "admitted_rate": 500.04999500050513,
+    "objects_spawned": 5001,
+    "peak_active_bodies": 262,
+    "pool_starved": 0,
+    "platform": "macOS-26.6-arm64-arm-64bit-Mach-O",
+    "python": "3.13.12",
+    "native_threadpools": [
+      {
+        "internal_api": "openmp",
+        "prefix": "libomp",
+        "version": null,
+        "num_threads": 1
+      }
+    ],
+    "packages": {
+      "mujoco": "3.13.0",
+      "numpy": "2.5.3",
+      "opencv-python-headless": "5.0.0.93",
+      "scikit-learn": "1.9.1",
+      "joblib": "1.6.0",
+      "aiohttp": "3.14.3"
+    },
+    "native_thread_limits": {
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "VECLIB_MAXIMUM_THREADS": "1"
+    }
+  },
+  "quality": {
+    "cohort_start_s": 0.8,
+    "cohort_end_s": 9.400999999999897,
+    "eligible_objects": 4300,
+    "required_defects": 671,
+    "keep_objects": 3629,
+    "captured_required_defects": 574,
+    "capture": 0.8554396423248882,
+    "capture_interval_95": [
+      0.8268069560514097,
+      0.8800255806505364
+    ],
+    "good_objects_lost": 176,
+    "good_loss": 0.04849820887296776,
+    "good_loss_interval_95": [
+      0.04197381041602524,
+      0.05597750130645669
+    ],
+    "unresolved_objects": 0,
+    "unresolved_rate": 0.0,
+    "spills_in_denominators": true,
+    "unresolved_in_denominators": true
+  },
+  "injected_objects": [
+    {
+      "object_id": 0,
+      "truth_class": "stone",
+      "spawn_time_s": 0.0,
+      "outcome": "reject",
+      "resolved_time_s": 0.44200000000000034,
+      "in_cohort": false,
+      "required_reject": true,
+      "injected": true,
+      "spawn_to_outcome_wall_s": 1.4312792920973152,
+      "full_camera_observations": 3,
+      "merged_observations": 0,
+      "ever_merged": false,
+      "predictions": [
+        {
+          "track_id": 1,
+          "sim_time_s": 0.2920000000000002,
+          "predicted_class": "stone",
+          "reject": true,
+          "scheduled": true,
+          "late": false,
+          "association": "current_component",
+          "association_approximate": true,
+          "object_ids": [
+            0
+          ]
+        }
+      ],
+      "associated_rejection_tracks": [
+        1
+      ],
+      "scheduled_target": true,
+      "activated_rejection_tracks": [
+        1
+      ],
+      "any_jet_hit": true,
+      "jet_hit_steps": 5,
+      "own_pulse_hit_tracks": [
+        1
+      ],
+      "missed_category": null,
+      "captured_without_own_pulse_hit": false
+    }
+  ],
+  "source_versions": {
+    "preset": "b7a3f5f06d490daf780a5db7dde27d9c817468635b6c9cbdb02d53c633c5079b",
+    "model": "89513398373c6e0e81286419962feb3e312742de14a76d02dd0d819ad5264a5a",
+    "policy": "2d7f41a11898ae3ec8d864c60d5af27fff3911ab6916e95b30c4578bfd8d414c",
+    "source_revision": "b72be633e9bde205f395f9b2c5bcba274f66983b",
+    "source_sha256": {
+      "engine.py": "c0f8fcb79bf93b27b5b78e10f2b777a231b023191d9066e60da4a5a6981dff1d",
+      "controller.py": "ee2045d8c8694d2c19a90a63eeef33b9d3b29f51255bfcd79a2823ed10f712d6",
+      "sim.py": "1bda4e58ee7c7c7635ac81062891a8189d56639b35ba48b5459357ec1df7e7c9",
+      "vision.py": "b539b9a9d2fe04c81058526b2990aee89b1f88629578d8bc50ee41d17059c1c4",
+      "classifier.py": "221a98bd276d5f1a2ff10a5a3bb0a7708ac237a93d2cb295e8e672f1c43d99c4",
+      "profiles.py": "e47a848e1331d902bb1bd1eb7d29306529339100edfb8175f9918e1ab09d6948",
+      "scene.py": "5fff8ea2b049fcf58556599c05e5d4585dd445dc4aa6615d9e1021b813982a27"
+    }
+  },
+  "first_attempt": {
+    "command_id": "16eb6b10-08ec-4272-b2f2-87dbca3c7e13",
+    "result": "idle socket disconnected before acknowledgment, no worker command recorded, reload allowed fresh injection"
+  },
+  "scope": "Browser transport and one injected object. Separate from frozen physical acceptance."
+}

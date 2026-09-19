@@ -1,0 +1,85 @@
+{
+  "_help": {
+    "shots": "stage names a staging function in render_stills.py. camera (optional) replaces that stage's camera: location and target in metres, lens in mm.",
+    "looks": "lights is 'shot' (keep the stage's own lights) or a list of area lights placed relative to the camera and the staged beans.",
+    "light": "azimuth in degrees around the beans: 0 = at the camera, 90 = camera right, 180 = behind the beans. distance and size are multiples of the camera distance. energy in watts = strength x distance squared, so one look keeps its exposure across shots of different scale.",
+    "materials": "overrides by material name from render_stills.py: 'Belt blue', 'Warm stone', 'Frame black', 'Brushed steel', 'Inspection diffuser'."
+  },
+  "picks": {
+    "decided": "2026-09-19",
+    "by": "Taras",
+    "note": "All three looks can be used together. Clay and blueprint use one material, so they cannot show colour defects such as black beans.",
+    "looks": {"noir-rim": "textured", "blueprint": "textured", "warm-roastery": "clay"}
+  },
+  "shots": {
+    "good": {"stage": "good", "note": "Three good beans, studio macro."},
+    "defects": {"stage": "defects", "note": "Good, black, insect-damaged, broken."},
+    "conveyor": {"stage": "conveyor", "note": "Delivered belt close-up, high angle."},
+    "conveyor-low": {
+      "stage": "conveyor",
+      "note": "Same staging, low 60 mm camera at the belt end looking upstream, mild depth of field.",
+      "camera": {"location": [0.016, -0.257, 0.659], "target": [-0.12, -0.172, 0.603], "lens": 60, "fstop": 16, "dof": true}
+    }
+  },
+  "looks": {
+    "lab-daylight": {
+      "note": "Control. The delivered lighting and materials, unchanged.",
+      "lights": "shot"
+    },
+    "high-key": {
+      "note": "Bright lab product style. Light grey belt differs from the simulator's blue belt.",
+      "world": [0.85, 0.87, 0.90],
+      "world_strength": 0.45,
+      "view_look": "AgX - Base Contrast",
+      "exposure": 0.0,
+      "materials": {
+        "Belt blue": {"color": [0.55, 0.57, 0.60], "roughness": 0.6},
+        "Warm stone": {"color": [0.78, 0.78, 0.77], "roughness": 0.55}
+      },
+      "lights": [
+        {"name": "Top softbox", "azimuth": -40, "elevation": 62, "distance": 1.2, "size": 1.4, "strength": 7.0, "color": [1.0, 0.98, 0.95]},
+        {"name": "Edge", "azimuth": 165, "elevation": 25, "distance": 1.1, "size": 0.5, "strength": 3.0, "color": [0.92, 0.96, 1.0]}
+      ]
+    },
+    "warm-roastery": {
+      "note": "Warm window light, dark warm belt. Belt colour differs from the simulator.",
+      "world": [0.05, 0.035, 0.02],
+      "view_look": "AgX - Medium High Contrast",
+      "exposure": 0.9,
+      "materials": {
+        "Belt blue": {"color": [0.035, 0.028, 0.022], "roughness": 0.7},
+        "Warm stone": {"color": [0.10, 0.06, 0.035], "roughness": 0.6}
+      },
+      "lights": [
+        {"name": "Window", "azimuth": 62, "elevation": 35, "distance": 1.1, "size": 0.9, "strength": 8.0, "color": [1.0, 0.80, 0.58]},
+        {"name": "Bounce", "azimuth": -70, "elevation": 20, "distance": 1.2, "size": 1.0, "strength": 1.8, "color": [1.0, 0.90, 0.78]},
+        {"name": "Back", "azimuth": 170, "elevation": 30, "distance": 1.0, "size": 0.3, "strength": 5.0, "color": [1.0, 0.70, 0.40]}
+      ]
+    },
+    "noir-rim": {
+      "note": "Near-black set, cool rim from behind, small warm key. Black rubber belt differs from the simulator.",
+      "world": [0.001, 0.0012, 0.002],
+      "view_look": "AgX - High Contrast",
+      "exposure": 0.6,
+      "materials": {
+        "Belt blue": {"color": [0.010, 0.012, 0.016], "roughness": 0.75},
+        "Warm stone": {"color": [0.012, 0.012, 0.014], "roughness": 0.75}
+      },
+      "lights": [
+        {"name": "Rim", "azimuth": 155, "elevation": 32, "distance": 1.0, "size": 0.3, "strength": 11.0, "color": [0.62, 0.80, 1.0]},
+        {"name": "Key", "azimuth": -50, "elevation": 40, "distance": 0.9, "size": 0.25, "strength": 3.5, "color": [1.0, 0.78, 0.55]}
+      ]
+    },
+    "blueprint": {
+      "note": "Technical drawing style: one blue material plus Freestyle outlines. A style option, not a realism proof.",
+      "world": [0.010, 0.030, 0.075],
+      "view_look": "AgX - Base Contrast",
+      "exposure": 0.8,
+      "material_override": {"color": [0.03, 0.09, 0.22], "roughness": 1.0},
+      "freestyle": {"color": [0.75, 0.92, 1.0], "thickness": 1.4},
+      "lights": [
+        {"name": "Top", "azimuth": 0, "elevation": 75, "distance": 1.2, "size": 1.2, "strength": 5.0, "color": [0.85, 0.92, 1.0]}
+      ]
+    }
+  }
+}

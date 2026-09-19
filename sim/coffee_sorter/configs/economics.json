@@ -1,0 +1,13 @@
+{
+  "assumptions": {
+    "object_mass_g": 0.2,
+    "duty_cycle": 0.8,
+    "base_feed_price_eur_per_kg": 6.0,
+    "accepted_stream_premium_eur_per_kg": 0.5,
+    "rejected_salvage_eur_per_kg": 0.0,
+    "spilled_or_unresolved_sale_eur_per_kg": 0.0,
+    "operating_cost_eur_per_h": 0.0,
+    "capital_cost_eur_per_h": 0.0,
+    "labor_cost_eur_per_h": 0.0
+  }
+}

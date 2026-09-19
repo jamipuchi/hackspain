@@ -1,0 +1,8 @@
+{
+  "case": "star",
+  "model": "google/gemini-3.8-flash",
+  "returncode": 0,
+  "wall_seconds": 0.1058704589959234,
+  "stdout": "{\"case\": \"star\", \"model\": \"google/gemini-3.8-flash\", \"latency_s\": 7.875764959026128, \"usage\": {\"prompt_tokens\": 965, \"completion_tokens\": 1009, \"total_tokens\": 1974, \"cost\": 0.0045075, \"is_byok\": false, \"prompt_tokens_details\": {\"cached_tokens\": 0, \"cache_write_tokens\": 0, \"audio_tokens\": 0, \"video_tokens\": 0}, \"cost_details\": {\"upstream_inference_cost\": 0.0045075, \"upstream_inference_prompt_cost\": 0.00072375, \"upstream_inference_completions_cost\": 0.00378375}, \"completion_tokens_details\": {\"reasoning_tokens\": 610, \"image_tokens\": 0, \"audio_tokens\": 0}}, \"parts\": 1, \"cached\": true}\n",
+  "stderr": ""
+}

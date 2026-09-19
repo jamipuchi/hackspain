@@ -1,0 +1,61 @@
+{
+  "name": "provisional-live-v1",
+  "version": 1,
+  "provisional": true,
+  "profile": "green_arabica",
+  "seed": 8,
+  "requested_rate": 500.0,
+  "camera_every_steps": 2,
+  "jet_force_n": 0.06,
+  "model_path": "models/live_green_arabica.joblib",
+  "layout": {
+    "belt_len": 1.1,
+    "belt_w": 0.5,
+    "belt_z": 0.6,
+    "belt_speed": 3.0,
+    "feed_x": [
+      -1.05,
+      -0.95
+    ],
+    "feed_vx": 3.0,
+    "feed_drop": 0.006,
+    "cam_x": -0.12,
+    "cam_fov": 0.048,
+    "cam_w": 2080,
+    "cam_h": 192,
+    "ej_x": 0.1,
+    "n_nozzles": 64,
+    "ej_z_offset": 0.045,
+    "split_x": 0.34,
+    "split_z_drop": 0.125,
+    "n_ellipsoid": 400,
+    "n_half": 48,
+    "n_box": 20,
+    "n_capsule": 20,
+    "timestep": 0.002
+  },
+  "policy": {
+    "name": "specialty",
+    "reject_severities": [
+      "minor",
+      "major",
+      "foreign"
+    ],
+    "threshold": 0.5,
+    "anomaly": true,
+    "base_pulse_s": 0.003,
+    "ref_mass_kg": 0.0002,
+    "max_pulse_s": 0.012,
+    "lead_s": 0.0015,
+    "latency_floor_s": 0.004,
+    "induced_delay_s": 0.0,
+    "fixed_latency_s": null,
+    "target_nozzles": null
+  },
+  "limits": {
+    "max_sim_seconds": 10.0,
+    "max_wall_seconds": 300.0,
+    "max_events": 2000,
+    "max_recent_resolved_objects": 200
+  }
+}

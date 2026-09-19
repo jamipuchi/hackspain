@@ -1,0 +1,57 @@
+{
+  "01-bean-macro": {
+    "title": "Bean detail", "rig": "inspection", "look": "noir-rim", "frame": 60,
+    "camera": [-0.350, -0.096, 0.620], "target": [-0.3339, -0.0748, 0.6040], "lens": 60, "fstop": 16,
+    "focus_uids": [1783], "focus_offset": [-0.001, -0.001, 0.002], "light_scale": 0.25, "macro_lights": true
+  },
+  "02a-low-reveal-start": {
+    "title": "Conveyor reveal: start", "rig": "hero", "look": "noir-rim", "frame": 60,
+    "camera": [-0.91, -0.30, 0.672], "target": [-0.12, 0.04, 0.775], "lens": 28, "fstop": 8
+  },
+  "02b-low-reveal-end": {
+    "title": "Conveyor reveal: end", "rig": "hero", "look": "noir-rim", "frame": 60,
+    "camera": [-0.71, -0.235, 0.685], "target": [-0.12, 0.045, 0.775], "lens": 28, "fstop": 8
+  },
+  "03-overhead-inspection": {
+    "title": "Overhead inspection", "rig": "inspection", "look": "noir-rim", "frame": 60,
+    "camera": [-0.12, 0.0, 0.825], "target": [-0.12, 0.0, 0.602], "lens": 24, "fstop": 11
+  },
+  "04-blueprint-discharge": {
+    "title": "Nozzle and splitter context", "rig": "discharge", "look": "blueprint", "frame": 55,
+    "camera": [0.70, -0.52, 0.84], "target": [0.18, 0.0, 0.555], "lens": 45, "fstop": 8,
+    "cutaway_near_wall": true
+  },
+  "04b-normal-discharge": {
+    "title": "Nozzle and splitter context: normal", "rig": "discharge", "look": "noir-rim", "frame": 55,
+    "camera": [0.70, -0.52, 0.84], "target": [0.18, 0.0, 0.555], "lens": 45, "fstop": 8,
+    "cutaway_near_wall": true
+  },
+  "05a-slowmo-belt-edge": {
+    "title": "Ultra slow motion: belt edge", "rig": "discharge", "look": "noir-rim", "frame": 54,
+    "camera": [0.020, -0.285, 0.645], "target": [-0.0118, -0.1457, 0.6025], "lens": 55, "fstop": 8,
+    "focus_uids": [1470, 1480], "pair_lights": true, "cutaway_near_wall": true
+  },
+  "05b-slowmo-valve-on": {
+    "title": "Ultra slow motion: sampled valve ON", "rig": "discharge", "look": "noir-rim", "frame": 55,
+    "camera": [0.090, -0.280, 0.640], "target": [0.090, -0.1457, 0.602], "lens": 55, "fstop": 8,
+    "focus_uids": [1470, 1480], "pair_lights": true, "cutaway_near_wall": true
+  },
+  "05c-slowmo-splitter": {
+    "title": "Ultra slow motion: splitter approach", "rig": "discharge", "look": "noir-rim", "frame": 57,
+    "camera": [0.285, -0.425, 0.535], "target": [0.294, -0.145, 0.510], "lens": 42, "fstop": 11,
+    "focus_uids": [1470, 1480], "pair_lights": true, "cutaway_near_wall": true,
+    "hide_objects": ["Recorded surface 16", "Splitter side trim left", "Splitter side trim right"]
+  },
+  "07-warm-closing": {
+    "title": "Whole system: closing view", "rig": "hero", "look": "warm-roastery", "frame": 60,
+    "camera": [1.50, -2.30, 2.50], "target": [-0.19, 0.0, 0.48], "lens": 44, "fstop": 11
+  },
+  "07b-blueprint-closing": {
+    "title": "Whole system: blueprint", "rig": "hero", "look": "blueprint", "frame": 60,
+    "camera": [1.50, -2.30, 2.50], "target": [-0.19, 0.0, 0.48], "lens": 44, "fstop": 11
+  },
+  "07c-normal-closing": {
+    "title": "Whole system: normal", "rig": "hero", "look": "noir-rim", "frame": 60,
+    "camera": [1.50, -2.30, 2.50], "target": [-0.19, 0.0, 0.48], "lens": 44, "fstop": 11
+  }
+}

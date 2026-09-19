@@ -1,0 +1,113 @@
+[
+  {
+    "association_error_m": 0.00191,
+    "event": "camera_observed",
+    "item_id": "a-large-1",
+    "measured_size_m": 0.05417,
+    "selected": true,
+    "time_s": 1.12
+  },
+  {
+    "event": "pick_started",
+    "item_id": "a-large-1",
+    "queue_wait_s": 0.0,
+    "time_s": 1.12
+  },
+  {
+    "event": "ideal_attachment",
+    "grasp_error_m": 0.01046,
+    "item_id": "a-large-1",
+    "time_s": 1.42
+  },
+  {
+    "association_error_m": 0.00157,
+    "event": "camera_observed",
+    "item_id": "a-large-2",
+    "measured_size_m": 0.05625,
+    "selected": true,
+    "time_s": 1.6
+  },
+  {
+    "event": "lift_complete",
+    "item_id": "a-large-1",
+    "time_s": 1.64
+  },
+  {
+    "association_error_m": 0.00152,
+    "event": "camera_observed",
+    "item_id": "a-large-3",
+    "measured_size_m": 0.05208,
+    "selected": true,
+    "time_s": 2.08
+  },
+  {
+    "event": "ideal_placement_in_reject_bin",
+    "item_id": "a-large-1",
+    "time_s": 2.42
+  },
+  {
+    "association_error_m": 0.00226,
+    "event": "camera_observed",
+    "item_id": "a-large-4",
+    "measured_size_m": 0.05417,
+    "selected": true,
+    "time_s": 2.48
+  },
+  {
+    "association_error_m": 0.00167,
+    "event": "camera_observed",
+    "item_id": "a-small",
+    "measured_size_m": 0.02917,
+    "selected": false,
+    "time_s": 2.96
+  },
+  {
+    "event": "pick_started",
+    "item_id": "a-large-2",
+    "queue_wait_s": 1.5,
+    "time_s": 3.1
+  },
+  {
+    "event": "ideal_attachment",
+    "grasp_error_m": 0.00809,
+    "item_id": "a-large-2",
+    "time_s": 3.44
+  },
+  {
+    "event": "lift_complete",
+    "item_id": "a-large-2",
+    "time_s": 3.66
+  },
+  {
+    "event": "ideal_placement_in_reject_bin",
+    "item_id": "a-large-2",
+    "time_s": 4.06
+  },
+  {
+    "event": "pick_started",
+    "item_id": "a-large-3",
+    "queue_wait_s": 2.68,
+    "time_s": 4.76
+  },
+  {
+    "event": "ideal_attachment",
+    "grasp_error_m": 0.01346,
+    "item_id": "a-large-3",
+    "time_s": 5.34
+  },
+  {
+    "event": "lift_complete",
+    "item_id": "a-large-3",
+    "time_s": 5.52
+  },
+  {
+    "event": "ideal_placement_in_reject_bin",
+    "item_id": "a-large-3",
+    "time_s": 5.6
+  },
+  {
+    "event": "missed_while_busy_or_undetected",
+    "item_id": "a-large-4",
+    "time_s": 5.86
+  }
+]

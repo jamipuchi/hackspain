@@ -1,0 +1,13 @@
+{
+  "source_commit": "fdaf64df6958138f08d46176a8329c64a7b5c117",
+  "runner_sha256": "caa85f43bd0beb28ffce699304d56fd8c1ffb93e845f82260766bc9d65671341",
+  "python": "3.14.3 (main, Feb  3 2026, 15:32:20) [Clang 17.0.0 (clang-1700.6.3.2)]",
+  "platform": "macOS-26.6-arm64-arm-64bit-Mach-O",
+  "thread_environment": {
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "VECLIB_MAXIMUM_THREADS": "1"
+  },
+  "created_utc": "2026-09-19T17:06:13Z"
+}

@@ -1,0 +1,6 @@
+.env
+/sim/magnet_sorter/runs/
+/sim/magnet_sorter/__pycache__/
+/sim/magnet_sorter/scene_generated_*.xml
+/.venv-coffee/
+__pycache__/

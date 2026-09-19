@@ -1,0 +1,38 @@
+{
+  "config_sha256": "419cd75bd5996ebf319b3d97623bf0c8446366121f52e32d6df9e117a98e1c3b",
+  "items": [
+    {
+      "arrival_s": 0.0,
+      "is_large_debris": false,
+      "item_id": "n-bean",
+      "kind": "bean",
+      "lane_x_m": 0.43,
+      "size_m": 0.018
+    },
+    {
+      "arrival_s": 0.2,
+      "is_large_debris": true,
+      "item_id": "n-large-1",
+      "kind": "debris",
+      "lane_x_m": 0.49,
+      "size_m": 0.058
+    },
+    {
+      "arrival_s": 1.0,
+      "is_large_debris": false,
+      "item_id": "n-small",
+      "kind": "debris",
+      "lane_x_m": 0.58,
+      "size_m": 0.03
+    },
+    {
+      "arrival_s": 7.0,
+      "is_large_debris": true,
+      "item_id": "n-large-2",
+      "kind": "debris",
+      "lane_x_m": 0.57,
+      "size_m": 0.054
+    }
+  ],
+  "seed": 0
+}

@@ -32,7 +32,10 @@ class Bean:
     outcome: str | None = None       # accept | reject | spilled
     resolved_t: float | None = None
     targeted: bool = False           # a valve was fired for this bean
+    fired_target: bool = False       # a scheduled valve actually reached its on-time
     jet_hits: int = 0                # physics steps during which a jet pushed it
+    camera_observations: int = 0     # full camera blobs containing this bean's rendered centre
+    merged_observations: int = 0     # those observations whose component contains >=2 bean centres
     last_pos: tuple | None = None    # where it was recycled (diagnostics)
 
 
@@ -43,6 +46,14 @@ class Fire:
     t_off: float
     force: float
     uid: int | None = None
+    activated: bool = False
+    hit_objects: set[int] = field(default_factory=set)
+
+    def records_first_hit(self, object_id: int) -> bool:
+        if object_id in self.hit_objects:
+            return False
+        self.hit_objects.add(object_id)
+        return True
 
 
 class SorterSim:
@@ -77,8 +88,15 @@ class SorterSim:
         self.geom_of = np.array([self.body_geom[b] for b in self.all_bodies])
         self.body_index = {b: i for i, b in enumerate(self.all_bodies)}
         self.active = np.zeros(len(self.all_bodies), bool)
+        self.continuous = False
         self.bean_of = {}                  # body -> Bean (active)
         self.beans: list[Bean] = []        # every bean ever spawned (ground truth log)
+        self.bean_by_uid: dict[int, Bean] = {}
+        self._spawned_events: list[Bean] = []
+        self._outcome_events: list[Bean] = []
+        self._retired_events: list[Bean] = []
+        self._activated_events: list[int] = []
+        self._fire_hit_events: list[tuple[int, int]] = []
         self.material_ids = {}
         for fam in ("good", "faded", "black", "sour", "insect", "roast"):
             self.material_ids[fam] = [mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_MATERIAL, f"m_{fam}_{k}") for k in range(N_VARIANTS)]
@@ -88,8 +106,12 @@ class SorterSim:
         self.roller_tail = m.jnt_qposadr[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, "roller_tail")]
         self.nozzle_y = np.array([layout.nozzle_y(j) for j in range(layout.n_nozzles)])
         self.fires: list[Fire] = []
-        self.n_fired = 0
+        self.n_fired = 0                   # valve commands accepted (legacy name)
+        self.n_activated = 0               # valve commands that reached t_on in simulation
+        self.fired_targets: set[int] = set()
+        self.fire_hits: set[tuple[int, int]] = set()  # (controller track id, bean uid)
         self.uid = 0
+        self.n_spawned = 0
         self.starved = 0
         self.spawn_accum = 0.0
         self.class_by_name = {c.name: c for c in profile.classes}
@@ -154,6 +176,10 @@ class SorterSim:
             mujoco.mju_euler2Quat(q, np.array([tilt[0], np.pi / 2 + tilt[1], yaw]), "xyz")
         else:
             mujoco.mju_euler2Quat(q, np.array([tilt[0], tilt[1], yaw]), "xyz")
+        if spec.shape == CAPSULE:
+            rotation = np.empty(9)
+            mujoco.mju_quat2Mat(rotation, q)
+            half[2] = r + hl * abs(rotation[8])
         qa, va = self.body_qpos[b], self.body_qvel[b]
         margin = 0.012
         pos = self._free_spot(half, margin)
@@ -167,7 +193,12 @@ class SorterSim:
         bean = Bean(self.uid, b, spec.name, spec.defect, d.time, axes.copy(), mass)
         self.uid += 1
         self.bean_of[b] = bean
-        self.beans.append(bean)
+        self.n_spawned += 1
+        if self.continuous:
+            self._spawned_events.append(bean)
+        else:
+            self.beans.append(bean)
+        self.bean_by_uid[bean.uid] = bean
         self.active[self.body_index[b]] = True
         return bean
 
@@ -202,6 +233,9 @@ class SorterSim:
         d.qvel[va:va + 6] = 0
         d.xfrc_applied[b] = 0
         bean = self.bean_of.pop(b)
+        if self.continuous:
+            self._retired_events.append(bean)
+            self.bean_by_uid.pop(bean.uid, None)
         for k, v in self.pools.items():
             if b in v:
                 self.free[k].append(b)
@@ -211,8 +245,11 @@ class SorterSim:
     def fire(self, nozzle: int, t_on: float, duration: float, force: float = JET_FORCE, uid: int | None = None):
         """Open valve `nozzle` from t_on for `duration` seconds (the controller's only handle)."""
         if 0 <= nozzle < self.L.n_nozzles:
-            self.fires.append(Fire(nozzle, t_on, t_on + duration, force, uid))
+            fire = Fire(nozzle, t_on, t_on + duration, force, uid)
+            self.fires.append(fire)
             self.n_fired += 1
+            return fire
+        return None
 
     # ------------------------------------------------------------------ stepping
     def step(self):
@@ -242,12 +279,27 @@ class SorterSim:
                 inflight = pos[:, 0] > 0.02
                 for fr in live:
                     if fr.t_on <= t:
+                        if not fr.activated:
+                            fr.activated = True
+                            self.n_activated += 1
+                            if fr.uid is not None:
+                                if self.continuous:
+                                    self._activated_events.append(fr.uid)
+                                else:
+                                    self.fired_targets.add(fr.uid)
                         hit = inflight & (np.abs(pos[:, 0] - L.ej_x) < JET_HALF_X) & \
                               (np.abs(pos[:, 1] - self.nozzle_y[fr.nozzle]) < JET_HALF_Y_FACTOR * L.nozzle_pitch) & \
                               (pos[:, 2] > L.belt_z - 0.07) & (pos[:, 2] < L.belt_z + 0.03)
                         f[hit, 2] -= fr.force
                         for b in bodies[hit]:
-                            self.bean_of[b].jet_hits += 1
+                            bean = self.bean_of[b]
+                            bean.jet_hits += 1
+                            if fr.uid is not None:
+                                if self.continuous:
+                                    if fr.records_first_hit(bean.uid):
+                                        self._fire_hit_events.append((fr.uid, bean.uid))
+                                else:
+                                    self.fire_hits.add((fr.uid, bean.uid))
             d.xfrc_applied[bodies, :3] = f
             # outcome capture at the splitter plane and recycling
             past = pos[:, 0] >= L.split_x
@@ -256,6 +308,8 @@ class SorterSim:
                 if bean.outcome is None:
                     bean.outcome = "accept" if p[2] > L.split_z else "reject"
                     bean.resolved_t = t
+                    if self.continuous:
+                        self._outcome_events.append(bean)
             gone = (pos[:, 0] > L.split_x + 0.16) | (pos[:, 2] < L.belt_z - 0.44) | \
                    ((pos[:, 0] < 0) & (np.abs(pos[:, 1]) > L.belt_w / 2 + 0.03)) | (pos[:, 2] < 0.05)
             for b, p in zip(bodies[gone], pos[gone]):
@@ -264,6 +318,8 @@ class SorterSim:
                 if bean.outcome is None:
                     bean.outcome = "spilled"
                     bean.resolved_t = t
+                    if self.continuous:
+                        self._outcome_events.append(bean)
                 self._park(b)
         # conveyor: the belt body never moves in position but always carries belt_speed, so friction
         # transports whatever rests on it (standard MuJoCo conveyor idiom)
@@ -274,6 +330,14 @@ class SorterSim:
         d.qpos[self.roller_head] += w
         d.qpos[self.roller_tail] += w
         mujoco.mj_step(m, d)
+
+    def drain_continuous_events(self):
+        """Return new physical facts and clear their per-step queues."""
+        events = (self._spawned_events, self._outcome_events, self._retired_events,
+                  self._activated_events, self._fire_hit_events)
+        self._spawned_events, self._outcome_events, self._retired_events = [], [], []
+        self._activated_events, self._fire_hit_events = [], []
+        return events
 
     # ------------------------------------------------------------------ ground truth helpers
     def active_state(self, rendered=False):

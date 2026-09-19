@@ -1,0 +1,18 @@
+{
+  "model": "jev-1.13.0",
+  "state": {
+    "requested_object": "A fictional NOVA company logo badge. Use a 26 mm diameter midnight-blue disk. Add a raised white geometric N logo above small raised NOVA lettering. Include a small gold five-point star accent. Keep all raised elements on the disk. The logo must read from the +Z side. Lay the disk in the XY plane."
+  },
+  "questions": {
+    "geometry_family": {
+      "type": "choice",
+      "instructions": "Classify the requested design from its description. Use defer if the design is unclear.",
+      "criteria": {
+        "open_ring": "A loop or hoop with a visible opening, possibly with attached decorative parts.",
+        "flat_silhouette": "A solid flat outline, such as a star, without raised lettering or a base disk.",
+        "layered_badge": "A badge with a supporting base and raised logo details or lettering.",
+        "defer": "The description does not support one of the geometry families."
+      }
+    }
+  }
+}
