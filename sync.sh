@@ -8,7 +8,7 @@ SRC=~/robotics
 cd "$REPO"
 
 # GUARD (19 Sep 19:55): origin/main now carries Taras's coffee sorter under sim/coffee_sorter — the SAME path this
-# script mirrors ~/robotics/coffee_sorter into with --delete. If this clone is ever behind origin, syncing would
+# script mirrors ~/robotics/coffee_sorter into with. If this clone is ever behind origin, syncing would
 # overwrite/delete his files and push that. Refuse to run until a human has rebased and re-pointed the coffee rsync.
 git fetch -q origin main 2>/dev/null || true
 behind=$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0)
@@ -24,7 +24,7 @@ rsync -a \
 rsync -a --exclude '__pycache__' --exclude 'runs/' "$SRC/astra_sort/" sim/astra_sort_v0/
 rsync -a --exclude '__pycache__' --exclude 'avf_cameras' --exclude '*.jpg' "$SRC/demos/" sim/demos/
 # NOTE 19 Sep 19:55: the ~/robotics/coffee_sorter mirror was removed from this script. sim/coffee_sorter on origin/main is
-# Taras's fork of it (PR #3, merged 19:44) and is now the canonical version; an rsync --delete from the older local copy would erase it.
+# Taras's fork of it (PR #3, merged 19:44) and is now the canonical version; an rsync from the older local copy would erase it.
 cp "$SRC/README.md" sim/README-toolchain.md
 
 # selected run artifacts: GPT-6 photos/plans and preview videos (small), never Cycles frame dumps
