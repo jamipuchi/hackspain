@@ -54,6 +54,16 @@ speed of 40 cm/s (`v' = a − 1.6 v`). Bean released from rest at the top.
 Photo → door-command budget at 15°: ≈ 0.45 s with the fast-door firmware option (0.55 − 0.10), only ≈ 0.15 s with the stock ramp (0.55 − 0.38). At 18° with the stock ramp the budget is ≈ 0.09 s, i.e. not workable; the fast-door option or 12° is required. The chute is hand-fed one bean
 every ~2 s; never two beans in the zone at once.
 
+## Bench fact 19 Sep 14:33 (from the integrator, Jaume watching)
+
+The SG90 moves only when driven through **D6** with the belt command `C <sp>`; `S` on D9/D10/D11 is acknowledged by the
+firmware but produces no motion (all four pins swept). Until the cause is found, the door/tray servo is wired to **D6** and
+driven as `gate.channel = "belt"`: `sp = round((deg − 90) / 0.9)`, clamped −100..100, **never `C 0`** (the firmware detaches
+the servo at 0 and it goes limp; use 1). All angles in these sheets stay angles; only the wire and the command change:
+LEVEL/FLUSH 90 → `C 1`, GOOD 45 → `C -50`, REJECT 135 → `C 50`, OPEN (door) 65 → `C -28`. Note there is **no ramp** on the
+belt channel, so a 45° tray move is a step (SG90 ≈ 0.15 s) — fine for the tray; for the swing door it also means no ramp
+problem, but also no soft landing, so the pad matters more.
+
 ## As built (fill in when the chute exists)
 
 ```
