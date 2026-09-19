@@ -89,13 +89,17 @@ class PaperBeanDetector:
         if len(keep) == 0:
             return []
 
-        lab = labels.ravel()
+        # every statistic below runs over FOREGROUND pixels only (a few thousand), not the whole ROI:
+        # bincount over the full 150k-px ROI costs ~25 ms per frame, over the foreground < 2 ms.
+        fg = np.flatnonzero(mask.ravel())
+        lab = labels.ravel()[fg]
         area = np.bincount(lab, minlength=n).astype(np.float64)
         area_safe = np.maximum(area, 1)
-        g = gray.astype(np.float32).ravel()
-        b_, g_, r_ = (crop[..., i].astype(np.float32).ravel() for i in range(3))
-        hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
-        hh, ss, vv = (hsv[..., i].astype(np.float32).ravel() for i in range(3))
+        g = gray.ravel()[fg].astype(np.float32)
+        bgr_fg = crop.reshape(-1, 3)[fg].astype(np.float32)
+        b_, g_, r_ = bgr_fg[:, 0], bgr_fg[:, 1], bgr_fg[:, 2]
+        hsv_fg = cv2.cvtColor(crop.reshape(-1, 1, 3)[fg], cv2.COLOR_BGR2HSV).reshape(-1, 3).astype(np.float32)
+        hh, ss, vv = hsv_fg[:, 0], hsv_fg[:, 1], hsv_fg[:, 2]
 
         def bmean(w):
             return np.bincount(lab, weights=w, minlength=n) / area_safe
@@ -108,7 +112,7 @@ class PaperBeanDetector:
         dark_frac = bmean((g < DARK_T).astype(np.float32))
         bright_frac = bmean((g > BRIGHT_T).astype(np.float32))
         # second moments -> equivalent ellipse axes (full lengths)
-        ys, xs = np.divmod(np.arange(H * W), W)
+        ys, xs = np.divmod(fg, W)
         xs = xs.astype(np.float64)
         ys = ys.astype(np.float64)
         mx, my = bmean(xs), bmean(ys)
@@ -120,7 +124,9 @@ class PaperBeanDetector:
         l1, l2 = tr / 2 + disc, np.maximum(tr / 2 - disc, 1e-6)
         major, minor = 4 * np.sqrt(l1), 4 * np.sqrt(l2)
         # dark spots inside beans (insect holes, mould, burnt patches)
-        spot_mask = ((mask.ravel() > 0) & (g < v.dark_spot_gray)).reshape(H, W).astype(np.uint8)
+        spot_mask = np.zeros(H * W, np.uint8)
+        spot_mask[fg[g < v.dark_spot_gray]] = 1
+        spot_mask = spot_mask.reshape(H, W)
         n_spots = np.zeros(n)
         spot_area = np.zeros(n)
         ns, _slab, sstats, scents = cv2.connectedComponentsWithStats(spot_mask, connectivity=8)

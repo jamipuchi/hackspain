@@ -389,7 +389,7 @@ class SyntheticCamera:
         self._t0 = now()
         self._sim_t = 0.0
         self._last_real: float | None = None
-        self._next_spawn = 0.2
+        self._next_spawn = 0.1  # first bean early so short tests see one
         self._n_spawned = 0
         self._beans: list[dict] = []
         # static paper texture (seeded) so consecutive frames differ only by the beans
