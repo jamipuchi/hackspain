@@ -16,7 +16,7 @@
   Protocol (one command per line):
     S <base> <shoulder> <elbow>   servo targets in degrees 0-180        -> ok
     M <0|1>                       electromagnet off / on                -> ok
-    C <speed>                     conveyor servo, -100..100 (0 stops)   -> ok
+    C <speed>                     conveyor servo, -100..100 (0 = no signal, stops) -> ok
     H                             home pose                             -> ok
     ?                             -> P <b> <s> <e> M <0|1> B <0|1>   (B=1 while still moving)
 
@@ -42,6 +42,19 @@ unsigned long lastTick = 0;
 char line[48];
 uint8_t lineLen = 0;
 
+// DS04-NFC conveyor drive. Its dead centre is not exactly 90, so at speed 0 we stop sending
+// pulses altogether (detach): a continuous servo with no signal stands still.
+void setBelt(int sp) {
+  if (sp == 0) {
+    if (belt.attached()) belt.detach();
+    pinMode(PIN_BELT, OUTPUT);
+    digitalWrite(PIN_BELT, LOW);
+    return;
+  }
+  if (!belt.attached()) belt.attach(PIN_BELT);
+  belt.write(90 + sp * 90 / 100);   // 0/180 = full speed either way
+}
+
 void applyServos() {
   for (uint8_t i = 0; i < 3; i++) servos[i].write((int)(current[i] + 0.5f));
 }
@@ -66,7 +79,7 @@ void handle(char *cmd) {
     Serial.println(F("ok"));
   } else if (cmd[0] == 'C') {
     int sp = constrain(atoi(cmd + 1), -100, 100);
-    belt.write(90 + sp * 90 / 100);   // DS04-NFC: 90 = stop, 0/180 = full speed either way
+    setBelt(sp);
     Serial.println(F("ok"));
   } else if (cmd[0] == 'H') {
     for (uint8_t i = 0; i < 3; i++) target[i] = HOME_POSE[i];
@@ -88,8 +101,7 @@ void setup() {
   servos[0].attach(PIN_BASE);
   servos[1].attach(PIN_SHOULDER);
   servos[2].attach(PIN_ELBOW);
-  belt.attach(PIN_BELT);
-  belt.write(90);
+  setBelt(0);   // conveyor off: no pulses on D6 until a C command asks for speed
   for (uint8_t i = 0; i < 3; i++) { current[i] = HOME_POSE[i]; target[i] = HOME_POSE[i]; vel[i] = 0; }
   applyServos();
   Serial.println(F("magnet_arm ready"));
