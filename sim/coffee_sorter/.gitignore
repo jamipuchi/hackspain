@@ -11,3 +11,5 @@ models/*.joblib
 .DS_Store
 MUJOCO_LOG.TXT
 .venv-picking/
+models/*.manifest.json
+models/*.report.json
