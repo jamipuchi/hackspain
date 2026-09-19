@@ -38,10 +38,10 @@
     "fps": 60,
     "file_paths": [],
     "zone": [
-      705,
-      465,
-      1271,
-      670
+      886,
+      466,
+      1272,
+      652
     ],
     "px_per_mm": 4.3,
     "flow_axis": "-x",
@@ -96,13 +96,14 @@
   },
   "panel_port": 8800,
   "door_on_d6": true,
-  "door_d6_mode": "positional",
+  "door_d6_mode": "continuous",
   "door_d6_speed": 71,
-  "door_d6_open_ms": 90,
-  "door_d6_close_ms": 90,
+  "door_d6_open_ms": 75,
+  "door_d6_close_ms": 75,
   "door_d6_dir": -1,
   "act_on": "all",
   "lost_after_s": 0.4,
   "dry_run": false,
-  "door_d6_trim": 0
+  "door_d6_trim": 0,
+  "door_policy": "state"
 }
