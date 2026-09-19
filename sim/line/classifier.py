@@ -65,6 +65,10 @@ def _fmt(x: float) -> str:
 RULES = [
     ("major_mm", "min", "min_major_mm", "fragment", "too short"),
     ("major_mm", "max", "max_major_mm", "foreign", "too long: stick / cluster"),
+    # width across the flow: not smeared by motion blur when the chute aligns the bean with its travel direction.
+    # Only active when min_minor_mm / max_minor_mm exist in cfg.classifier.rules.
+    ("minor_mm", "min", "min_minor_mm", "fragment", "too narrow: fragment / husk"),
+    ("minor_mm", "max", "max_minor_mm", "foreign", "too wide: cluster / stone"),
     ("aspect", "min", "min_aspect", "odd_shape", "too round: stone / cluster"),
     ("aspect", "max", "max_aspect", "odd_shape", "too elongated: husk / stick"),
     ("dark_frac", "max", "max_dark_frac", "burnt", "black surface"),

@@ -199,3 +199,18 @@ def test_fit_with_few_samples_does_not_crash():
 def test_resolve_relative_to_line_dir(cfg):
     p = C._resolve(None, cfg)
     assert p.is_absolute() and p.parent.name == "models" and p.parent.parent == C.LINE_DIR
+
+
+def test_minor_rules_are_optional_and_blur_tolerant(cfg):
+    rc = C.RuleClassifier(cfg)
+    smeared = {**GOOD, "major_mm": 23.0, "aspect": 3.1}          # 11 mm bean + 12 mm motion blur, width intact
+    assert rc.classify(frame(), blob(**smeared)).label in ("foreign", "odd_shape")   # length rules alone reject it
+    # operator relaxes the length rules and relies on the width instead
+    cfg.classifier.rules.update(min_minor_mm=5.0, max_minor_mm=11.0, max_major_mm=40.0, max_aspect=6.0)
+    v = rc.classify(frame(), blob(**smeared))
+    assert v.label == "good" and not v.suspect
+    v_wide = rc.classify(frame(), blob(**{**smeared, "minor_mm": 14.0}))
+    assert v_wide.suspect and v_wide.label == "foreign" and "minor_mm 14.0 mm > 11.0 mm" in v_wide.reason
+    v_thin = rc.classify(frame(), blob(**{**smeared, "minor_mm": 3.0}))
+    assert v_thin.suspect and v_thin.label == "fragment"
+    assert "min_minor_mm" not in dict(C.RuleClassifier(LineConfig()).rules)   # default config: rule inactive
