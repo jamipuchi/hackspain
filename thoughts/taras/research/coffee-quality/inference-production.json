@@ -1,0 +1,48 @@
+{
+  "status": "accepted",
+  "model": "/private/tmp/hackspain-coffee-quality/sim/coffee_sorter/models/live_green_arabica.joblib",
+  "model_sha256": "3e0532d24da3a872ae931b43b9f048ceda5435e13bdaaf65087d54c37705bdbd",
+  "features": "/private/tmp/coffee-quality-light-force/features.npz",
+  "features_sha256": "640cd67dd340a30c7837b3529bb44944d6c57b1b1dbde2f3668a53ec45543a18",
+  "native_thread_limits": {
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "VECLIB_MAXIMUM_THREADS": "1"
+  },
+  "native_threadpools": [
+    {
+      "internal_api": "openmp",
+      "prefix": "libomp",
+      "version": null,
+      "num_threads": 1
+    }
+  ],
+  "feature_batches": 1000,
+  "nonempty_batches": 927,
+  "feature_rows": 6001,
+  "trees": 3000,
+  "nodes": 72332,
+  "max_depth": 20,
+  "exactness": [
+    "camera batches",
+    "empty batch",
+    "one-row batch",
+    "NaN routing",
+    "large public fallback",
+    "unsupported-model fallback"
+  ],
+  "sklearn": {
+    "runs": 1,
+    "min_ms": 8587.79383287765,
+    "median_ms": 8587.79383287765,
+    "max_ms": 8587.79383287765
+  },
+  "numpy": {
+    "runs": 1,
+    "min_ms": 3140.0579588953406,
+    "median_ms": 3140.0579588953406,
+    "max_ms": 3140.0579588953406
+  },
+  "median_speedup": 2.734915707065102
+}

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json, time
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 import numpy as np
 import joblib
@@ -17,6 +18,75 @@ from sklearn.metrics import confusion_matrix, classification_report
 from vision import FEATURES
 
 MODELS = Path(__file__).resolve().parent / "models"
+
+
+class _NumericForest:
+    def __init__(self, classifier):
+        predictors = classifier._predictors
+        trees = [tree for iteration in predictors for tree in iteration]
+        counts = np.asarray([len(tree.nodes) for tree in trees], dtype=np.int64)
+        self.roots = np.concatenate((np.zeros(1, dtype=np.int64), np.cumsum(counts[:-1])))
+        nodes = np.concatenate([tree.nodes for tree in trees])
+        self.feature = nodes["feature_idx"]
+        self.threshold = nodes["num_threshold"]
+        self.missing_left = nodes["missing_go_to_left"].astype(bool, copy=False)
+        self.left = nodes["left"]
+        self.right = nodes["right"]
+        self.is_leaf = nodes["is_leaf"].astype(bool, copy=False)
+        self.value = nodes["value"]
+        self.iterations = len(predictors)
+        self.outputs = int(classifier.n_trees_per_iteration_)
+        self.max_depth = int(nodes["depth"].max())
+
+    def predict_proba(self, classifier, X):
+        X = classifier._preprocess_X(X, reset=False)
+        count = len(X)
+        node_index = np.broadcast_to(self.roots, (count, len(self.roots))).copy()
+        for _ in range(self.max_depth):
+            active_rows, active_trees = np.nonzero(~self.is_leaf[node_index])
+            if not len(active_rows):
+                break
+            current = node_index[active_rows, active_trees]
+            values = X[active_rows, self.feature[current]]
+            go_left = np.where(np.isnan(values), self.missing_left[current],
+                               values <= self.threshold[current])
+            child = np.where(go_left, self.left[current], self.right[current])
+            node_index[active_rows, active_trees] = self.roots[active_trees] + child
+        if np.any(~self.is_leaf[node_index]):
+            raise RuntimeError("NumPy traversal stopped before reaching every leaf")
+
+        leaves = self.value[node_index].reshape(count, self.iterations, self.outputs)
+        raw = np.zeros((count, self.outputs), dtype=classifier._baseline_prediction.dtype, order="F")
+        raw += classifier._baseline_prediction
+        for iteration in range(self.iterations):
+            raw += leaves[:, iteration, :]
+        return classifier._loss.predict_proba(raw)
+
+
+@lru_cache(maxsize=2)
+def _compiled_forest(classifier):
+    required = ("_baseline_prediction", "_loss", "_predictors", "_preprocess_X",
+                "n_trees_per_iteration_")
+    if not isinstance(classifier, HistGradientBoostingClassifier) or any(
+            not hasattr(classifier, name) for name in required):
+        return None
+    predictors = classifier._predictors
+    outputs = int(classifier.n_trees_per_iteration_)
+    if not predictors or any(len(iteration) != outputs for iteration in predictors):
+        return None
+    trees = [tree for iteration in predictors for tree in iteration]
+    if any(not hasattr(tree, "nodes") or not tree.nodes.dtype.names or
+           "is_categorical" not in tree.nodes.dtype.names or
+           np.any(tree.nodes["is_categorical"]) for tree in trees):
+        return None
+    return _NumericForest(classifier)
+
+
+def _predict_proba(classifier, X):
+    if len(X) > 64 or not isinstance(classifier, HistGradientBoostingClassifier):
+        return classifier.predict_proba(X)
+    forest = _compiled_forest(classifier)
+    return classifier.predict_proba(X) if forest is None else forest.predict_proba(classifier, X)
 
 
 @dataclass
@@ -33,7 +103,7 @@ class Model:
         """(probs (n, C), anomaly score (n,)) — anomaly = Mahalanobis distance to the 'good' cloud."""
         if len(X) == 0:
             return np.zeros((0, len(self.classes))), np.zeros(0)
-        P = self.clf.predict_proba(X)
+        P = _predict_proba(self.clf, X)
         d = (X - self.good_mean) / self.feature_scale
         a = np.sqrt(np.einsum("ij,jk,ik->i", d, self.good_icov, d))
         return P, a
