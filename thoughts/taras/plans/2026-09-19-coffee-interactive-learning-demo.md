@@ -27,6 +27,11 @@ These results miss all three targets. The injected stone received rejection comm
 The selected 400-body pool remains provisional. Existing UI ownership remains unconfirmed, so overlapping files remain unchanged.
 No deferred phase starts before Taras's feedback checkpoint.
 
+Taras then reported dropping and bouncing in the live demonstration.
+Commit `91dedc3` corrects capsule spawn height. The [motion follow-up](../research/2026-09-19-coffee-motion-followup.md) records the bounded measurements and remaining uncertainty.
+The model was rebuilt for that source change. No full quality evaluation ran afterward.
+The figures above remain historical baseline measurements. Overall smoothness and sorting targets remain unaccepted.
+
 ## Desired End State
 
 Start one local engine session from a fresh checkout. Open a webpage and inject a stone.

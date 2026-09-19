@@ -79,6 +79,8 @@ HTTP encoding and send waits appear in `service-profile.json`. Remaining IPC and
 
 The first demonstrated stone was classified as stone, received rejection commands, and spilled without jet contact.
 A functioning transport does not establish successful sorting.
+The later capsule-placement correction removes excess stick spawn height. Other objects still bounce after collisions.
+The short motion diagnostic does not establish smoother overall physics or acceptable sorting quality.
 The 80% capture and 2% good-loss targets remain unproven. Lighting robustness remains unsupported.
 Reset through the page, a full object inspector, language policies, and learning controls remain deferred.
 
