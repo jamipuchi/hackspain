@@ -30,6 +30,8 @@ SEVERITIES = frozenset({"none", "minor", "major", "foreign"})
 ACTIVE_LIFECYCLE = "active_ready"
 ARCHIVED_LIFECYCLE = "archived"
 MASS_BASIS = "density_times_contact_proxy_volume"
+# The anomaly reference is the product cloud. It is never a replacement victim.
+ANOMALY_REFERENCE_LABEL = "good"
 _ID_RE = re.compile(r"^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
 _LABEL_RE = re.compile(r"^[a-z][a-z0-9_]{0,79}$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -208,6 +210,167 @@ def require_label_order(catalog: Mapping[str, Any], model_classes: list[str]) ->
         raise CatalogError("model label order does not equal the active catalog label order")
 
 
+def label_from_object_key(object_key: Any) -> str:
+    """Derive one classifier label from a draft object key. Only underscores separate words."""
+    label = re.sub(r"[.-]", "_", object_key) if isinstance(object_key, str) else ""
+    if not _LABEL_RE.fullmatch(label):
+        raise CatalogError("object_key does not derive a valid classifier label")
+    return label
+
+
+def recipe_rgb(recipe: Mapping[str, Any]) -> list[float]:
+    """The flat proxy colour of a generated type: the mean of the recipe part colours.
+
+    The inspection camera sees this flat colour, never the GLB. A beauty render is
+    never classifier evidence.
+    """
+    parts = _mapping(recipe, "recipe").get("parts")
+    if not isinstance(parts, list) or not parts:
+        raise CatalogError("a recipe needs at least one part")
+    total = [0.0, 0.0, 0.0]
+    for part in parts:
+        colour = _mapping(part, "recipe part").get("color")
+        if not isinstance(colour, list) or len(colour) != 3:
+            raise CatalogError("a recipe part colour needs three channels")
+        for index, value in enumerate(colour):
+            total[index] += _number(value, "recipe part colour")
+    rgb = [value / len(parts) for value in total]
+    if any(not 0 <= value <= 1 for value in rgb):
+        raise CatalogError("recipe part colours must be in [0, 1]")
+    return rgb
+
+
+def type_definition_from_draft(draft: Mapping[str, Any], *, rgb, prior: float,
+                              source_sha256: str) -> dict[str, Any]:
+    """Build one active generated type from a validated supported draft definition."""
+    physics = _mapping(_mapping(draft, "draft")["physics"], "draft.physics")
+    proxy = physics["proxy"]
+    if proxy is None:
+        raise CatalogError("a draft without a supported contact proxy cannot become a type")
+    sorting = _mapping(draft["sorting"], "draft.sorting")
+    if sorting["status"] == "unassigned":
+        raise CatalogError("a draft without a sorting proposal carries no defect truth")
+    if proxy["shape"] == "box":
+        semi_axes_mm = [value * 1e3 for value in proxy["half_extents_m"]]
+    else:  # capsule: half length along its local axis, then the radius twice
+        radius_mm = proxy["radius_m"] * 1e3
+        semi_axes_mm = [proxy["half_length_m"] * 1e3, radius_mm, radius_mm]
+    try:
+        visual = _mapping(draft["visual"], "draft.visual")
+        asset_id = visual["visual_asset_id"]
+        definition = {
+            "schema_version": SCHEMA_VERSION,
+            "object_type_id": draft["object_type_id"],
+            "display_name": draft["display_name"],
+            "classifier_label": label_from_object_key(draft["object_key"]),
+            "provenance": {"kind": "generated", "source": draft["object_type_id"],
+                           "source_sha256": source_sha256},
+            "feed": {"prior": prior},
+            "truth": {"defect": sorting["defect"], "severity": sorting["severity"]},
+            "visual": {
+                "shape": proxy["shape"],
+                "size_mm": [[value, value] for value in semi_axes_mm],
+                "rgb": list(rgb),
+                "rgb_jitter": 0.0,
+                # The inspection camera sees this flat-colour proxy, never the GLB.
+                "texture": None,
+                "asset": {
+                    "visual_asset_id": asset_id,
+                    "glb_sha256": asset_id.removeprefix("sha256:") if isinstance(asset_id, str) else asset_id,
+                    "units": visual["units"],
+                    "source_up_axis": visual["source_up_axis"],
+                    "engine_up_axis": visual["engine_up_axis"],
+                    "sim_from_asset_quaternion_wxyz": list(visual["sim_from_asset_quaternion_wxyz"]),
+                },
+            },
+            "physics": {
+                "contact_shape": proxy["shape"],
+                "density_kg_m3": physics["density_kg_m3"],
+                "mass_basis": MASS_BASIS,
+                "measurement_status": "unmeasured_estimate",
+            },
+            "lifecycle_state": ACTIVE_LIFECYCLE,
+            "validation_status": "validated",
+        }
+    except (KeyError, TypeError) as error:
+        raise CatalogError("draft definition is missing required fields") from error
+    validate_type_definition(definition)
+    return definition
+
+
+def select_victim(catalog: Mapping[str, Any], reject_labels) -> str | None:
+    """The last active type the policy keeps. None means the job waits for a replacement."""
+    rejected = set(reject_labels)
+    for definition in reversed(catalog["definitions"]):
+        label = definition["classifier_label"]
+        if label not in rejected and label != ANOMALY_REFERENCE_LABEL:
+            return definition["object_type_id"]
+    return None
+
+
+def candidate_catalog(catalog: Mapping[str, Any], new_definition: Mapping[str, Any],
+                      victim_id: str) -> dict[str, Any]:
+    """One candidate catalog: the new type first, then every survivor in its existing order."""
+    validate_type_definition(new_definition)
+    survivors = [value for value in catalog["definitions"] if value["object_type_id"] != victim_id]
+    if len(survivors) == len(catalog["definitions"]):
+        raise CatalogError(f"replacement victim is not active: {victim_id}")
+    # select_victim never offers it. A direct caller must not remove it either.
+    if any(value["object_type_id"] == victim_id and value["classifier_label"] == ANOMALY_REFERENCE_LABEL
+           for value in catalog["definitions"]):
+        raise CatalogError("the anomaly reference type cannot be a replacement victim")
+    definitions = [dict(new_definition), *survivors]
+    ids = [value["object_type_id"] for value in definitions]
+    labels = [value["classifier_label"] for value in definitions]
+    if len(set(ids)) != len(ids):
+        raise CatalogError("active type identifiers must be unique and hashed exactly once")
+    if len(set(labels)) != len(labels):
+        raise CatalogError("classifier labels must be unique in one catalog")
+    hashes = {type_id: definition_sha256(value) for type_id, value in zip(ids, definitions)}
+    return {**dict(catalog), "active_type_ids": ids, "definition_sha256": hashes,
+            "catalog_revision": catalog_revision(ids, hashes),
+            # A candidate has no active bundle yet.
+            "active_bundle_sha256": None, "definitions": definitions}
+
+
+def write_catalog(root: Path, catalog: Mapping[str, Any]) -> Path:
+    """Write one loadable catalog root atomically. The root must not exist yet."""
+    root = Path(root)
+    definitions = list(catalog["definitions"])
+    manifest = {key: value for key, value in catalog.items() if key != "definitions"}
+    _exact(manifest, _CATALOG_FIELDS, "catalog")
+    # The file names come from the definitions, so this function checks them itself.
+    for definition in definitions:
+        validate_type_definition(definition)
+    if [definition["object_type_id"] for definition in definitions] != manifest["active_type_ids"]:
+        raise CatalogError("catalog definitions do not match the ordered active set")
+    if root.exists():
+        raise CatalogError(f"catalog root already exists: {root.name}")
+    files = {"active/catalog.json": _pretty(manifest)}
+    for definition in definitions:
+        files[f"definitions/{definition['object_type_id']}.json"] = _pretty(definition)
+    return _publish_staged(root, files)
+
+
+def _publish_staged(target: Path, files: Mapping[str, bytes]) -> Path:
+    """Write one complete directory beside its target, then publish it with one rename."""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    # The dot prefix keeps an interrupted write outside every identifier pattern.
+    staging = Path(tempfile.mkdtemp(prefix=".staging-", dir=target.parent))
+    try:
+        for name, data in files.items():
+            (staging / name).parent.mkdir(parents=True, exist_ok=True)
+            (staging / name).write_bytes(data)
+        # A rename onto an existing directory fails, so a second writer cannot replace the first.
+        os.replace(staging, target)
+    except BaseException as error:
+        shutil.rmtree(staging, ignore_errors=True)
+        if isinstance(error, OSError) and target.exists():
+            raise CatalogError(f"directory already exists: {target.name}") from error
+        raise
+    return target
+
+
 def archive_type(root: Path, definition: Mapping[str, Any], retired_at: str,
                  evidence: Mapping[str, Path] | None = None) -> Path:
     """Store one replaced type and its evidence as one immutable Wall of Fame entry."""
@@ -241,17 +404,7 @@ def archive_type(root: Path, definition: Mapping[str, Any], retired_at: str,
         if current != files:
             raise CatalogError(f"an archived type is immutable: {archived['object_type_id']}")
         return directory
-    wall.mkdir(parents=True, exist_ok=True)
-    # The dot prefix keeps an interrupted write outside _ID_RE, so no page can read it.
-    staging = Path(tempfile.mkdtemp(prefix=".staging-", dir=wall))
-    try:
-        for name, data in files.items():
-            (staging / name).write_bytes(data)
-        os.replace(staging, directory)
-    except BaseException:
-        shutil.rmtree(staging, ignore_errors=True)
-        raise
-    return directory
+    return _publish_staged(directory, files)
 
 
 def wall_of_fame_page(root: Path = CATALOG_ROOT, offset: int = 0, limit: int = MAX_WALL_PAGE) -> dict[str, Any]:

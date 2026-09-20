@@ -11,21 +11,30 @@ from pathlib import Path
 
 import object_catalog
 from object_catalog import (
+    ANOMALY_REFERENCE_LABEL,
     MASS_BASIS,
     MAX_WALL_PAGE,
     CatalogError,
     archive_type,
+    candidate_catalog,
     catalog_labels,
     catalog_revision,
     definition_sha256,
     load_catalog,
     load_definition,
+    recipe_rgb,
     require_label_order,
+    select_victim,
+    type_definition_from_draft,
     validate_type_definition,
     wall_of_fame_page,
+    write_catalog,
 )
-from object_definitions import SIM_FROM_ASSET_QUATERNION_WXYZ
+from object_definitions import SIM_FROM_ASSET_QUATERNION_WXYZ, build_object_definition
 from profiles import PROFILES, class_spec, profile_from_catalog
+
+STAR = Path(__file__).resolve().parents[2] / (
+    "thoughts/taras/research/coffee-quality/object-generation/results/gemini/star")
 
 # Frozen copy of the pre-migration literals in profiles.py at afad65b. Each row is
 # (name, prior, shape, size_mm, rgb, rgb_jitter, density, texture, defect, severity).
@@ -132,6 +141,28 @@ def generated_definition(label="star_token", **changes):
     })
     value.update(copy.deepcopy(changes))
     return value
+
+
+def star_draft(**changes):
+    """One valid draft definition built from the tracked star generator artifacts."""
+    values = {
+        "description": "A small five-point star token.",
+        "recipe_path": STAR / "recipe.json",
+        "render_metadata_path": STAR / "render/render.json",
+        "glb_path": STAR / "render/object.glb",
+        "object_key": "star_token",
+        "physics_proposal": {
+            "shape": "box",
+            "dimensions_m": [0.016, 0.012, 0.002],
+            "density_kg_m3": 1200.0,
+            "material_assumption": "Assumed density of a light decorative token.",
+            "limitations": "Density and contact geometry are unmeasured proxy estimates.",
+        },
+        "sorting_proposal": {"class_name": "star_token", "defect": False, "severity": "none",
+                             "proposed_action": "keep"},
+    }
+    values.update(changes)
+    return build_object_definition(**values)
 
 
 def write_json(path, value):
@@ -703,6 +734,217 @@ class CatalogRootContainmentTest(CatalogRootTest):
         (root / relative).unlink()
         (root / relative).symlink_to(root / "kept.json")
         self.assertEqual(["good", "stone"], catalog_labels(load_catalog(root)))
+
+
+class GeneratedTypeTest(CatalogRootTest):
+    """One validated supported draft becomes one active generated type."""
+
+    def build(self, draft=None, **changes):
+        values = {"rgb": [0.82, 0.68, 0.21], "prior": 0.03, "source_sha256": "c" * 64}
+        values.update(changes)
+        return type_definition_from_draft(draft or star_draft(), **values)
+
+    def test_builds_an_active_generated_type_from_a_draft(self):
+        draft = star_draft()
+        definition = self.build(draft)
+
+        validate_type_definition(definition)
+        self.assertEqual("generated", definition["provenance"]["kind"])
+        self.assertEqual("c" * 64, definition["provenance"]["source_sha256"])
+        self.assertEqual("active_ready", definition["lifecycle_state"])
+        self.assertEqual("validated", definition["validation_status"])
+        self.assertEqual(draft["object_type_id"], definition["object_type_id"])
+        self.assertEqual({"defect": False, "severity": "none"}, definition["truth"])
+        self.assertEqual(0.03, definition["feed"]["prior"])
+        self.assertEqual([[8.0, 8.0], [6.0, 6.0], [1.0, 1.0]], definition["visual"]["size_mm"])
+        self.assertEqual(1200.0, definition["physics"]["density_kg_m3"])
+        self.assertEqual(MASS_BASIS, definition["physics"]["mass_basis"])
+        self.assertEqual("unmeasured_estimate", definition["physics"]["measurement_status"])
+
+    def test_a_generated_type_has_no_texture_and_binds_the_draft_glb_hash(self):
+        draft = star_draft()
+        asset = self.build(draft)["visual"]["asset"]
+
+        self.assertIsNone(self.build(draft)["visual"]["texture"])
+        self.assertEqual(draft["visual"]["visual_asset_id"], asset["visual_asset_id"])
+        self.assertEqual(draft["visual"]["visual_asset_id"], f"sha256:{asset['glb_sha256']}")
+        self.assertEqual("m", asset["units"])
+        self.assertEqual(list(SIM_FROM_ASSET_QUATERNION_WXYZ),
+                         asset["sim_from_asset_quaternion_wxyz"])
+
+    def test_an_unsupported_draft_is_refused(self):
+        draft = star_draft(physics_proposal={
+            "shape": "unsupported",
+            "unsupported_reason": "The ring opening is meaningful geometry.",
+            "limitations": "Box and capsule primitives cannot preserve the opening.",
+        })
+
+        with self.assertRaisesRegex(CatalogError, "supported contact proxy"):
+            self.build(draft)
+
+    def test_the_label_always_derives_from_the_object_key(self):
+        self.assertEqual("star_token", self.build()["classifier_label"])
+        with self.assertRaises(TypeError):
+            self.build(classifier_label="other_token")
+
+    def test_a_draft_without_a_sorting_proposal_carries_no_truth(self):
+        with self.assertRaisesRegex(CatalogError, "sorting proposal"):
+            self.build(star_draft(sorting_proposal=None))
+
+    def test_a_capsule_proxy_uses_half_length_and_radius(self):
+        draft = star_draft(object_key="example_stick", physics_proposal={
+            "shape": "capsule", "dimensions_m": [0.018, 0.004, 0.004], "density_kg_m3": 700.0,
+            "material_assumption": "Dry wood.", "limitations": "The proxy excludes irregularity.",
+        })
+        definition = self.build(draft)
+
+        self.assertEqual("capsule", definition["visual"]["shape"])
+        for axis, expected in zip(definition["visual"]["size_mm"], (7.0, 2.0, 2.0)):
+            with self.subTest(semi_axis_mm=expected):
+                self.assertAlmostEqual(expected, axis[0])
+                self.assertEqual(axis[0], axis[1])
+
+    def test_a_label_that_collides_with_a_survivor_is_refused(self):
+        root = self.make_root()
+        self.write_catalog(root, [builtin_definition("good"), builtin_definition("stone"),
+                                  builtin_definition("star_token")])
+        catalog = load_catalog(root)
+        victim = catalog["definitions"][-1]["object_type_id"]
+
+        # Removing stone leaves the built-in star_token, which collides with the new label.
+        with self.assertRaisesRegex(CatalogError, "labels must be unique"):
+            candidate_catalog(catalog, self.build(), catalog["definitions"][1]["object_type_id"])
+        candidate_catalog(catalog, self.build(), victim)
+
+    def test_the_flat_proxy_colour_is_the_mean_of_the_recipe_part_colours(self):
+        recipe = {"parts": [{"color": [1.0, 0.8, 0.2]}, {"color": [0.6, 0.4, 0.0]}]}
+
+        self.assertEqual([0.8, 0.6000000000000001, 0.1], recipe_rgb(recipe))
+        self.assertEqual([1.0, 0.78, 0.22], recipe_rgb(json.loads((STAR / "recipe.json").read_text())))
+        for wrong in ({"parts": []}, {"parts": [{"color": [1.0, 0.8]}]},
+                      {"parts": [{"color": [1.2, 0.8, 0.2]}]}, {"parts": [{}]}):
+            with self.subTest(recipe=wrong):
+                with self.assertRaises(CatalogError):
+                    recipe_rgb(wrong)
+
+
+class ReplacementTest(CatalogRootTest):
+    """The victim is the last current Keep type, and the candidate leads the new order."""
+
+    def catalog(self, labels=("good", "faded", "stone", "stick")):
+        root = self.make_root()
+        self.write_catalog(root, [builtin_definition(label) for label in labels])
+        return load_catalog(root)
+
+    def test_the_victim_is_the_last_type_the_policy_keeps(self):
+        catalog = self.catalog()
+
+        self.assertEqual("builtin.test.stick", select_victim(catalog, []))
+        self.assertEqual("builtin.test.stone", select_victim(catalog, ["stick"]))
+        self.assertEqual("builtin.test.faded", select_victim(catalog, ["stick", "stone"]))
+
+    def test_the_anomaly_reference_is_never_a_victim(self):
+        catalog = self.catalog(("good", "stone"))
+
+        self.assertEqual("good", ANOMALY_REFERENCE_LABEL)
+        self.assertIsNone(select_victim(catalog, ["stone"]))
+        self.assertIsNone(select_victim(self.catalog(("good",)), []))
+
+    def test_a_rejected_label_is_never_a_victim(self):
+        catalog = self.catalog(("good", "faded", "stone"))
+
+        self.assertEqual("builtin.test.faded", select_victim(catalog, ["stone"]))
+        self.assertIsNone(select_victim(catalog, ["faded", "stone"]))
+
+    def test_the_candidate_leads_and_survivors_keep_their_order(self):
+        catalog = self.catalog()
+        new_definition = generated_definition()
+        candidate = candidate_catalog(catalog, new_definition, "builtin.test.stick")
+
+        self.assertEqual(["star_token", "good", "faded", "stone"], catalog_labels(candidate))
+        self.assertEqual(catalog["max_active_types"], candidate["max_active_types"])
+        self.assertEqual(len(catalog["active_type_ids"]), len(candidate["active_type_ids"]))
+        self.assertNotEqual(catalog["catalog_revision"], candidate["catalog_revision"])
+        self.assertEqual(catalog_revision(candidate["active_type_ids"],
+                                          candidate["definition_sha256"]),
+                         candidate["catalog_revision"])
+        self.assertEqual(definition_sha256(new_definition),
+                         candidate["definition_sha256"][new_definition["object_type_id"]])
+        self.assertIsNone(candidate["active_bundle_sha256"])
+
+    def test_a_victim_that_is_not_active_is_refused(self):
+        with self.assertRaisesRegex(CatalogError, "victim is not active"):
+            candidate_catalog(self.catalog(), generated_definition(), "builtin.test.absent")
+
+    def test_the_candidate_model_must_train_on_the_candidate_order(self):
+        candidate = candidate_catalog(self.catalog(), generated_definition(), "builtin.test.stick")
+
+        require_label_order(candidate, ["star_token", "good", "faded", "stone"])
+        with self.assertRaisesRegex(CatalogError, "model label order"):
+            require_label_order(candidate, ["good", "faded", "stone", "star_token"])
+
+    def test_a_written_candidate_root_loads_back_unchanged(self):
+        candidate = candidate_catalog(self.catalog(), generated_definition(), "builtin.test.stick")
+        root = self.make_root() / "candidate"
+        write_catalog(root, candidate)
+        loaded = load_catalog(root)
+
+        self.assertEqual(candidate["active_type_ids"], loaded["active_type_ids"])
+        self.assertEqual(candidate["catalog_revision"], loaded["catalog_revision"])
+        self.assertEqual(candidate["definitions"], loaded["definitions"])
+        self.assertEqual(["star_token", "good", "faded", "stone"], catalog_labels(loaded))
+        self.assertEqual(["star_token", "good", "faded", "stone"],
+                         profile_from_catalog(loaded).names)
+
+    def test_an_existing_root_is_never_overwritten(self):
+        candidate = candidate_catalog(self.catalog(), generated_definition(), "builtin.test.stick")
+        root = self.make_root() / "candidate"
+        write_catalog(root, candidate)
+
+        with self.assertRaisesRegex(CatalogError, "already exists"):
+            write_catalog(root, candidate)
+
+
+class ReferenceVictimGuardTest(CatalogRootTest):
+    """select_victim never offers the anomaly reference. A direct caller cannot remove it either."""
+
+    def test_the_anomaly_reference_type_cannot_be_the_victim(self):
+        catalog = load_catalog(self.make_catalog(("good", "stone")))
+        with self.assertRaisesRegex(CatalogError, "anomaly reference"):
+            candidate_catalog(catalog, generated_definition(), "builtin.test.good")
+        replaced = candidate_catalog(catalog, generated_definition(), "builtin.test.stone")
+        self.assertEqual(["star_token", "good"], catalog_labels(replaced))
+
+
+class WriteCatalogGuardTest(CatalogRootTest):
+    """write_catalog builds file names from definitions, so it checks them itself."""
+
+    def candidate(self):
+        return load_catalog(self.make_catalog(("good", "stone")))
+
+    def test_an_unsafe_type_identifier_never_becomes_a_path(self):
+        catalog = self.candidate()
+        catalog["definitions"][1] = {**catalog["definitions"][1], "object_type_id": "../escaped"}
+        target = self.make_root() / "candidate"
+        with self.assertRaises(CatalogError):
+            write_catalog(target, catalog)
+        self.assertFalse(target.exists())
+        self.assertEqual([], [item.name for item in target.parent.iterdir()])
+
+    def test_definitions_must_match_the_ordered_active_set(self):
+        catalog = self.candidate()
+        catalog["definitions"].reverse()
+        with self.assertRaisesRegex(CatalogError, "ordered active set"):
+            write_catalog(self.make_root() / "candidate", catalog)
+
+    def test_a_second_writer_cannot_replace_a_published_directory(self):
+        target = self.make_root() / "candidate"
+        write_catalog(target, self.candidate())
+        before = sorted(item.name for item in target.rglob("*"))
+        with self.assertRaisesRegex(CatalogError, "already exists"):
+            object_catalog._publish_staged(target, {"active/catalog.json": b"{}"})
+        self.assertEqual(before, sorted(item.name for item in target.rglob("*")))
+        self.assertEqual([target.name], [item.name for item in target.parent.iterdir()])
 
 
 class RepoWallOfFameTest(unittest.TestCase):

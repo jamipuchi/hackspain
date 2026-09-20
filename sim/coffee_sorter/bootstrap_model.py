@@ -79,8 +79,9 @@ def provenance(config: dict) -> dict:
 
 
 def collect_partition(seed: int, seconds: float, rate: float, defect_boost: float,
-                      layout: Layout | None = None, capture_every: int = CAPTURE_EVERY):
-    profile = PROFILES["green_arabica"]
+                      layout: Layout | None = None, capture_every: int = CAPTURE_EVERY,
+                      profile=None):
+    profile = profile or PROFILES["green_arabica"]
     sim = SorterSim(profile, layout or Layout(**POOL), rate=rate, seed=seed, defect_boost=defect_boost)
     inspector = Inspector(sim)
     rows: list[tuple[int, int, str]] = []
