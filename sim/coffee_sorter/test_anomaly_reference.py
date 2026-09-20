@@ -309,6 +309,33 @@ class CoverageGateTest(unittest.TestCase):
     def test_the_default_rounds_are_the_approved_durations(self):
         self.assertEqual((4.0, 8.0, 16.0), collection_rounds(4.0))
 
+    def test_the_frozen_start_is_one_round_with_no_extension(self):
+        """Root approved 4, 8, and 16 only, so a 16 s start has nothing left to buy."""
+        self.assertEqual(16.0, bootstrap_model.STARTING_SECONDS)
+        self.assertEqual((16.0,), collection_rounds(bootstrap_model.STARTING_SECONDS))
+        self.assertEqual((16.0,), bootstrap_model.COLLECTION_SECONDS)
+        # No ladder may reach past the frozen start.
+        for seconds in (2.0, 4.0, 8.0, 16.0):
+            self.assertLessEqual(max(collection_rounds(seconds)), 16.0)
+
+    def test_a_short_label_after_the_single_frozen_round_fails_explicitly(self):
+        calls, _, history = self.collect(per_second=0.5,
+                                         rounds=collection_rounds(bootstrap_model.STARTING_SECONDS))
+
+        self.assertEqual([16.0], calls)
+        self.assertEqual(1, len(history))
+        self.assertEqual(["good"], history[-1]["short_labels"])
+        with self.assertRaises(RuntimeError) as raised:
+            require_label_coverage("training", ["good"], history[-1]["observations"],
+                                   history[-1]["unique_objects"])
+        self.assertIn("insufficient_label_coverage", str(raised.exception))
+
+    def test_an_explicit_smaller_duration_is_still_honoured(self):
+        calls, _, history = self.collect(per_second=0.5, rounds=collection_rounds(4.0))
+
+        self.assertEqual([4.0, 8.0, 16.0], calls)
+        self.assertEqual([4.0, 8.0, 16.0], [round["seconds"] for round in history])
+
     def test_a_zero_variance_label_meets_the_counts_but_owns_no_usable_reference(self):
         """Counts alone never prove a reference, so the fitted model is checked as well."""
         identical = np.tile(CENTRES["stone"], (40, 1))

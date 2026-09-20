@@ -52,6 +52,8 @@ from bootstrap_model import (
     MIN_LABEL_UNIQUE_OBJECTS,
     TRAIN_SEED,
     collect_covered,
+    DURATION_FREEZE,
+    STARTING_SECONDS,
     collection_rounds,
     fit_model,
     label_coverage,
@@ -315,7 +317,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--catalog-root", type=Path, required=True)
     parser.add_argument("--preset", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--seconds", type=float, default=4.0)
+    parser.add_argument("--seconds", type=float, default=STARTING_SECONDS)
     parser.add_argument("--runtime-lock", type=Path, default=RUNTIME_LOCK)
     parser.add_argument("--policy", type=Path,
                         help='training baseline policy: {"reject_classes": [...], "policy_version": "..."}')
@@ -374,6 +376,7 @@ def train(args, preset, preset_path: Path, layout: Layout, rate: float, capture_
         "train_seed": TRAIN_SEED,
         "holdout_seed": HOLDOUT_SEED,
         "seconds_per_partition": args.seconds,
+        "starting_seconds": STARTING_SECONDS,
         "rate": rate,
         "defect_boost": DEFECT_BOOST,
         "capture_every": capture_every,
@@ -496,6 +499,9 @@ def train(args, preset, preset_path: Path, layout: Layout, rate: float, capture_
         "preset_sha256": sha256(preset_out),
         "source": expected["source"],
         "catalog_revision": catalog["catalog_revision"],
+        # The freeze note carries a date, and a bundled manifest must carry none, so it
+        # lives in the external report only.
+        "duration_freeze": DURATION_FREEZE,
         "gate": {
             "min_holdout_unique_objects": MIN_HOLDOUT_UNIQUE,
             "min_holdout_accuracy": MIN_ACCURACY,

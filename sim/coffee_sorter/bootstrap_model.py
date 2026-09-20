@@ -44,7 +44,11 @@ POOL = dict(n_ellipsoid=400, n_half=64, n_box=32, n_capsule=32)
 # of one object are correlated, so both counts are gated and recorded separately.
 MIN_LABEL_OBSERVATIONS = 30
 MIN_LABEL_UNIQUE_OBJECTS = 10
-COLLECTION_SECONDS = (4.0, 8.0, 16.0)
+# Root froze the starting duration after a bounded diagnostic. Only 4, 8, and 16 seconds
+# are approved, so a 16 second start is ONE round with no extension left.
+STARTING_SECONDS = 16.0
+DURATION_FREEZE = "frozen by the duration diagnostic of 2026-09-20 (train seed 7)"
+COLLECTION_SECONDS = (STARTING_SECONDS,)
 
 
 def sha256(path: Path) -> str:
@@ -184,8 +188,15 @@ def require_usable_references(name: str, model, classes: list[str]) -> None:
 
 
 def collection_rounds(seconds: float) -> tuple[float, ...]:
-    """The bounded round durations. The default 4.0 gives the approved 4, 8, 16 seconds."""
-    return tuple(seconds * factor for factor in (1, 2, 4))
+    """The bounded round durations, never past the frozen starting duration.
+
+    The frozen 16.0 start therefore gives ONE round: a label that is still short after it
+    fails with insufficient_label_coverage instead of buying an unapproved longer run. A
+    smaller explicit value keeps the approved 4, 8, 16 ladder for tests.
+    """
+    rounds = tuple(seconds * factor for factor in (1, 2, 4)
+                   if seconds * factor <= STARTING_SECONDS)
+    return rounds or (seconds,)
 
 
 def collect_covered(seed: int, rate: float, defect_boost: float, layout: Layout | None,
@@ -299,7 +310,8 @@ def reusable(output: Path, manifest_path: Path, expected: dict, classes: list[st
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--seconds", type=float, default=4.0, help="simulation seconds for each independent partition")
+    parser.add_argument("--seconds", type=float, default=STARTING_SECONDS,
+                        help="simulation seconds for each independent partition")
     parser.add_argument("--output", type=Path, default=MODELS / "live_green_arabica.joblib")
     parser.add_argument("--preset", type=Path, default=HERE / "configs" / "default_demo.json")
     args = parser.parse_args()
@@ -327,6 +339,7 @@ def main() -> None:
         "train_seed": TRAIN_SEED,
         "holdout_seed": HOLDOUT_SEED,
         "seconds_per_partition": args.seconds,
+        "starting_seconds": STARTING_SECONDS,
         "rate": rate,
         "defect_boost": 5,
         "capture_every": capture_every,
@@ -409,6 +422,9 @@ def main() -> None:
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True))
     # The manifest never carries its own hash. Only the external report records it.
     report["catalog_revision"] = config["catalog_revision"]
+    # The freeze note carries a date, and a bundled manifest must carry none, so it
+    # lives in the external report only.
+    report["duration_freeze"] = DURATION_FREEZE
     report["manifest_sha256"] = sha256(manifest_path)
     report_path.write_text(json.dumps(report, indent=2, sort_keys=True))
     print(json.dumps({"status": "trained", "model": str(output), **report}, sort_keys=True))

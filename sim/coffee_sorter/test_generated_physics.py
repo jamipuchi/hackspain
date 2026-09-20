@@ -1032,5 +1032,34 @@ class TrainerInputTest(unittest.TestCase):
         self.assertEqual(bootstrap_model.CAPTURE_EVERY, signature.parameters["capture_every"].default)
 
 
+class FrozenDurationTest(unittest.TestCase):
+    """The starting duration is frozen policy, recorded in every manifest and report."""
+
+    def test_both_trainers_default_to_the_frozen_start(self):
+        self.assertEqual(16.0, bootstrap_model.STARTING_SECONDS)
+        self.assertEqual(16.0, train_candidate.STARTING_SECONDS)
+        for module in ("bootstrap_model.py", "train_candidate.py"):
+            source = (HERE / module).read_text()
+            self.assertIn('"--seconds", type=float, default=STARTING_SECONDS', source)
+
+    def test_both_trainers_record_the_freeze_and_the_given_duration(self):
+        freeze = "frozen by the duration diagnostic of 2026-09-20 (train seed 7)"
+        self.assertEqual(freeze, bootstrap_model.DURATION_FREEZE)
+        self.assertEqual(freeze, train_candidate.DURATION_FREEZE)
+        for module in ("bootstrap_model.py", "train_candidate.py"):
+            source = (HERE / module).read_text()
+            config = source.split("    config = {")[1].split("\n    }")[0]
+            # The frozen policy and the duration actually used are both recorded.
+            self.assertIn('"starting_seconds": STARTING_SECONDS', config)
+            self.assertIn('"seconds_per_partition": args.seconds', config)
+            # The note carries a date, so it stays out of the bundled manifest.
+            self.assertNotIn("DURATION_FREEZE", config)
+            self.assertIn("DURATION_FREEZE", source)
+
+    def test_the_coverage_gate_is_unchanged(self):
+        self.assertEqual(30, bootstrap_model.MIN_LABEL_OBSERVATIONS)
+        self.assertEqual(10, bootstrap_model.MIN_LABEL_UNIQUE_OBJECTS)
+
+
 if __name__ == "__main__":
     unittest.main()
