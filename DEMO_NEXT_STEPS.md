@@ -63,18 +63,20 @@ If you change a shared policy, record the starting policy first. Restore it afte
 
 Complete these steps in order:
 
-1. Accept the physical collection geometry and outcome evidence.
-2. Freeze the combined source commit.
-3. Run the authorized 16-second model refresh under the shared runtime lock.
-4. Validate source hashes, catalog revision, model identity, and preserved seed-17 rows.
-5. Integrate reviewed queue, worker, startup, activation, and visual commits.
-6. Run one exact cached star job through activation and rollback.
+1. Freeze the accepted combined source with the original collection geometry.
+2. Run the authorized 16-second model refresh under the shared runtime lock.
+3. Validate source hashes, catalog revision, model identity, and preserved seed-17 rows.
+4. Integrate reviewed queue, worker, startup, activation, and visual commits.
+5. Run one exact cached star job through creation, activation, restart, and recovery.
+6. Run the coffee-only reset and confirm it preserves Wall of Fame history and assets.
 7. Capture the final desktop and mobile flows with agent-browser.
 8. Build the immutable image and run the read-only runtime checks.
 9. Deploy with no credential mount and no paid-provider flag.
-10. Verify private health, public HTTPS, public WSS, identities, recovery, and rollback.
+10. Verify private health, public HTTPS, public WSS, identities, recovery, and reset.
 
 A cache miss must remain `operator_required`. It must not start a paid request.
+
+The mixed-feed geometry candidate failed its quality gate. This demo defers that change and does not claim improved sorting quality.
 
 ## Runnable guides
 

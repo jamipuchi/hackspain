@@ -638,6 +638,20 @@ Taras owns final functional acceptance.
 
 ## Implementation log
 
+### Narrowed object-addition demo scope (2026-09-20)
+
+Taras narrowed the immediate release to object creation, activation, restart, recovery, and reset.
+
+The reset targets only the coffee service. It restores the verified built-in seed bundle and preserves Wall of Fame history and assets.
+
+The immediate demo uses cached provider replay. It performs no paid request and mounts no provider credentials.
+
+The current mixed-feed geometry candidate failed its Keep-loss gate. Collection geometry and sorting improvements are deferred and remain unaccepted.
+
+The immediate checklist no longer waits for replacement geometry. It still requires source-bound model validation, one real cached object flow, generated asset loading, restart, recovery, and reset evidence.
+
+The existing detailed sections remain the long-term engineering plan. Their deferred quality gates must not appear as passed.
+
 ### Base gate and baseline (2026-09-20)
 
 - Implementation base: `afad65b58159573990d4d3d0ac644aba64b83802`. The verified release `d26952ddc6e7cccdd36dd9d1519df577e49c9057` is an ancestor, and both trees are identical.

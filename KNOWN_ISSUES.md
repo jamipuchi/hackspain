@@ -42,7 +42,9 @@ Collection candidate 4 failed the Keep-loss gate. It lost `194/3579`, or `5.4205
 
 The baseline lost `145/3582`, or `4.0480%`. Candidate 4 increased loss by `1.3725` percentage points, above the `1.0` point limit.
 
-No further physics tuning is authorized. The failed candidate remains evidence, not a release configuration.
+The narrowed object-addition demo defers this geometry change. The failed candidate remains evidence, not a release configuration.
+
+The demo keeps the accepted original collection geometry. Its sorting losses remain documented limits.
 
 The current activator also remains blocked. A drain-report failure can leave the engine rate at `0.0`.
 
@@ -54,17 +56,19 @@ The candidate still needs final agent-browser recordings. These recordings must 
 
 ## Pending replacement gates
 
-The replacement cannot deploy until these gates pass:
+The narrowed replacement cannot deploy until these gates pass:
 
-1. Accept the final collection geometry and physical outcome evidence.
-2. Refresh the initial model from the frozen source with seeds 7 and 9 for exactly 16 seconds.
-3. Validate the preserved seed-17 anomaly evidence without recollection or retuning.
-4. Integrate only reviewed queue, worker, startup, activation, and visual commits.
-5. Run one real cached job through render, physics, training, activation, restart, and rollback.
+1. Refresh the initial model from the frozen accepted source with seeds 7 and 9 for exactly 16 seconds.
+2. Validate the preserved seed-17 anomaly evidence without recollection or retuning.
+3. Integrate only reviewed queue, worker, startup, activation, and visual commits.
+4. Run one real cached job through render, physics, training, activation, restart, and recovery.
+5. Reset to the built-in startup bundle while preserving Wall of Fame history and assets.
 6. Prove the generated GLB appears in the live scene and the gallery.
 7. Record final desktop and mobile browser flows with agent-browser.
 8. Build the final image and verify its source, model, bundle, and cache identities.
-9. Verify private health, public HTTPS, public WSS, recovery, and rollback.
+9. Verify private health, public HTTPS, public WSS, restart, recovery, and reset.
+
+Collection geometry and mixed-feed quality improvements are deferred. They failed their current quality gate and have not passed release review.
 
 ## Fixed candidate findings
 
