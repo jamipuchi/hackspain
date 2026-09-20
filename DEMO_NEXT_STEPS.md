@@ -27,7 +27,9 @@ Browser FPS measures rendering. The **Sim** badge measures simulated seconds per
 
 ## Replacement candidate for judges
 
-The candidate accepts an item description and can call the real provider after explicit operator approval.
+The candidate accepts an item description. Paid mode authorizes each new provider stage automatically after a cache miss.
+
+The queue prevents another paid request after a confirmed or uncertain response for the same stage.
 
 It renders the item, validates its asset, estimates physics, retrains the classifier, and prepares an immutable activation bundle.
 
@@ -35,7 +37,23 @@ Hard failures block activation. These include invalid assets, failed training, i
 
 Physical Keep, anomaly, and overall accuracy failures appear as **Needs review** warnings. Judges should see these warnings as measured limitations.
 
-The complete real-provider flow, activation, reset, and public deployment still need final E2E verification.
+Two fresh objects completed provider generation, rendering, and physics checks. Neither object completed activation.
+
+The blue token produced no new-label training observations. The coral token exposed a stale victim label in the candidate preset.
+
+The coral trainer fix passes focused real Engine and loader tests. The full corrected flow still needs E2E verification.
+
+### Note for judges
+
+This is a simulator demo with estimated generated-object physics. The engine runs slower than real time.
+
+The active catalog keeps a fixed object count. A generated item replaces one eligible kept item.
+
+Current native-bin scoring measures `74.77%` accuracy and `12.89%` Keep loss on one paired sample.
+
+Provider cache replay can recover an identical answered request. It does not prove fresh generation for arbitrary descriptions.
+
+Generated-item activation, Reset defaults, and production hardening remain unfinished until the final E2E passes.
 
 ## Reset defaults
 
@@ -83,7 +101,7 @@ Confirm HTTPS, WSS, advancing simulation time, stable reconnect, shared sessions
 ## Release path
 
 1. Freeze the reviewed combined source and final bundled model.
-2. Run one real generated-item flow with an explicit provider grant.
+2. Complete one real generated-item flow through automatic paid stage authorization.
 3. Verify hard failures, warnings, activation, restart, and recovery.
 4. Run Reset defaults and verify preserved Wall of Fame evidence.
 5. Capture desktop and mobile browser evidence.

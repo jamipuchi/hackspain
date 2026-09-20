@@ -20,7 +20,9 @@ The public service uses one shared engine. Policy changes affect every visitor, 
 
 The accepted candidate can use the real provider to generate an item. It then renders, validates, retrains, and prepares an activation bundle.
 
-A real provider request needs an explicit operator grant and can cost money. A confirmed response must not trigger another paid request automatically.
+Paid mode authorizes each new provider stage automatically after a cache miss. Each stage can cost money.
+
+A confirmed or uncertain response blocks another paid request for that stage. Cache-only recovery remains available after an interrupted response.
 
 Candidate validation uses a measured simulator heuristic. It is not a calibrated confidence estimate or a production accuracy guarantee.
 
@@ -41,13 +43,27 @@ These warnings disclose measured failures. They do not prove reliable sorting.
 
 ## Known sorting limits
 
-Earlier baseline QA measured `92.24%` reject capture, `3.96%` Keep loss, and 11 spills across four runs.
+The old crossing score and the native bin score disagree on the same `4,902` mature trajectories.
 
-Those results do not approve the replacement candidate or guarantee future outcomes.
+The crossing score measured `95.72%` accuracy, `89.34%` capture, and `2.95%` Keep loss.
+
+The native bin score measured `74.77%` accuracy, `46.84%` capture, and `12.89%` Keep loss.
+
+Native scoring also measured `12.36%` spills and `6.45%` unresolved objects. Another `248` objects remained active after five seconds.
+
+These paired numbers compare two scoring rules on current trajectories. They are not a historical public-physics comparison.
+
+The paired score is reproducible. The cause of long-lived active objects still needs verification.
 
 Collection candidate 4 increased Keep loss from `4.0480%` to `5.4205%`. The candidate exceeded the allowed one-point regression.
 
-The replacement keeps the accepted original collection geometry. Physical Keep loss, anomaly warnings, spills, and overall accuracy remain visible limitations.
+The replacement keeps the accepted original collection geometry and honest native scoring. Congestion and stuck objects remain unresolved.
+
+The first blue token rendered and passed physics. Training collected zero observations for its new label, so activation stopped as a hard failure.
+
+The coral token rendered and passed physics. Training then exposed a stale victim label in the candidate preset.
+
+The trainer fix is committed and passes real Engine and loader tests. The coral token has not completed activation with that fix.
 
 ## Reset defaults
 
@@ -65,11 +81,13 @@ Focused reset tests pass. The complete reset flow still needs integrated browser
 
 The replacement is not a deployment claim yet. These checks remain pending:
 
-1. Run one real generated-item flow through provider, render, physics, training, activation, restart, and recovery.
+1. Complete one real generated-item flow through training, activation, restart, and recovery.
 2. Confirm warning and hard-failure behavior with the final bundled model.
 3. Confirm Reset defaults preserves Wall of Fame entries and verified previews.
 4. Record desktop and mobile browser flows.
 5. Build the final image and verify source, model, bundle, provider cache, HTTPS, and WSS identities.
+
+Generation, rendering, and physics passed for two fresh objects. No fresh object has activated yet.
 
 ## Evidence and commands
 
