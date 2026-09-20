@@ -47,7 +47,7 @@ The reduced five-body pool rejected three of eight Stones after correction. That
 
 A separate balanced sample contains 80 isolated objects, eight per class. Classification remains 76/80 correct. Correct physical outcomes change from 68/80 to 70/80.
 
-Spills change from 5/80 to zero. Good retention remains 6/8 because two Good objects classify as Faded. This small balanced sample does not estimate production feed quality.
+Spills change from 5/80 to zero. Good retention remains 6/8. The two errors classify Good as Faded and Insect. This small balanced sample does not estimate production feed quality.
 
 Ten free-flight samples across all four shapes and reuse produce -9.81 m/s² after correction. Independent force and torque comparisons match full `mj_setConst`.
 
