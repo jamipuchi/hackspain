@@ -503,6 +503,16 @@ bundles before a coordinated engine restart.
 
 ## Current status
 
-The packaging passed a local arm64 diagnostic smoke. The production x86_64
-build, remote service start, Caddy reload, DNS change, HTTPS check, and WSS
-check remain pending until the full deployment diff passes review.
+The public deployment is active at `https://hack-growth.dev/`.
+
+The deployed source is
+`30758f7dd499027ffe76a8f7646377c0f94fa596`. The immutable amd64 image is
+`sha256:5b6e55122ff3a6df0369913e92adcd320038fd558b5132a3a133b1a7cd06c238`.
+
+The service, Caddy route, apex DNS record, production certificate, HTTPS page,
+and WSS connection passed verification. See the
+[public deployment QA report](../../qa/2026-09-20-cinta-public-deployment.md).
+
+The measured public engine rate was about `0.1196x`. The system remains below
+physical real time. One verified Stone injection spilled despite an expected
+Reject result. The QA report preserves that negative result.
