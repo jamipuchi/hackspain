@@ -26,8 +26,6 @@ from object_definitions import SIM_FROM_ASSET_QUATERNION_WXYZ, SUPPORTED_PROXY_S
 SCHEMA_VERSION = 1
 PACKAGED_CATALOG_ROOT = Path(__file__).resolve().parent / "object_catalog"
 CATALOG_ROOT_ENV = "COFFEE_OBJECT_CATALOG_ROOT"
-# The service exports the active bundle catalog before any profiles import. Read once.
-CATALOG_ROOT = Path(os.environ.get(CATALOG_ROOT_ENV) or PACKAGED_CATALOG_ROOT)
 MAX_WALL_PAGE = 24
 BUILTIN_SHAPES = frozenset({"ellipsoid", "half", "box", "capsule"})
 SEVERITIES = frozenset({"none", "minor", "major", "foreign"})
@@ -53,6 +51,8 @@ BUNDLE_SCHEMA_VERSION = 1
 BUNDLE_MANIFEST = "bundle.json"
 BUNDLE_CATALOG = "catalog/active/catalog.json"
 BUNDLE_PRESET = "preset.json"
+# The one seed transaction record. It names the expected bundle and nothing else.
+SEED_MARKER = "seed-transaction.json"
 GLB_MAGIC = b"glTF"
 # A generated victim carries its rendered asset and the model that recognised it.
 GENERATED_EVIDENCE = ("object.glb", "perspective.png", "top.png", "model.manifest.json")
@@ -68,6 +68,16 @@ _DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 class CatalogError(ValueError):
     """The catalog or one definition is invalid."""
+
+
+def default_catalog_root() -> Path:
+    """The catalog root for a caller that names none. Resolved per call, never cached.
+
+    The service imports this module long before it exports the active bundle catalog,
+    and profiles loads its catalog at its own import. A value cached here would bind
+    profiles to the packaged catalog. An unset or empty variable means packaged.
+    """
+    return Path(os.environ.get(CATALOG_ROOT_ENV) or PACKAGED_CATALOG_ROOT)
 
 
 def canonical_json(value: Any) -> bytes:
@@ -178,15 +188,16 @@ def load_catalog(root: Path | None = None, manifest: str = "active/catalog.json"
     requires a bundles root, a verifying bundle, and an inner catalog that agrees with
     this pointer. The definitions then come from that bundle, never from the root.
 
-    Without an explicit root the active manifest follows CATALOG_ROOT, which can be a
-    bundle catalog. A bundle carries no builtin manifest, so a builtin one, such as
-    roasted, then loads whole from the packaged root. One catalog, one root.
+    Without an explicit root the active manifest follows default_catalog_root(), which
+    can be a bundle catalog. A bundle carries no builtin manifest, so a builtin one, such
+    as roasted, then loads whole from the packaged root. One catalog, one root.
     """
     # Safe relative segments only. An absolute or parent path would leave the catalog root.
     if not isinstance(manifest, str) or not _MANIFEST_RE.fullmatch(manifest):
         raise CatalogError("catalog manifest path must stay inside the catalog root")
     if root is None:
-        root = PACKAGED_CATALOG_ROOT if manifest.startswith("builtin/") else CATALOG_ROOT
+        root = (PACKAGED_CATALOG_ROOT if manifest.startswith("builtin/")
+                else default_catalog_root())
     root = Path(root)
     try:
         catalog = json.loads(_inside(root, root / manifest).read_text())
@@ -501,13 +512,14 @@ def _archive_model_artifact(archived: Mapping[str, Any],
     return _model_artifact_sha256(files["model.manifest.json"])
 
 
-def wall_of_fame_page(root: Path = CATALOG_ROOT, offset: int = 0, limit: int = MAX_WALL_PAGE) -> dict[str, Any]:
+def wall_of_fame_page(root: Path | None = None, offset: int = 0,
+                      limit: int = MAX_WALL_PAGE) -> dict[str, Any]:
     """Return one bounded, newest-first page of inactive archived definitions."""
     for name, number in (("offset", offset), ("limit", limit)):
         if isinstance(number, bool) or not isinstance(number, int) or number < 0:
             raise CatalogError(f"{name} must be a non-negative integer")
     limit = min(limit, MAX_WALL_PAGE)
-    wall = Path(root) / "wall-of-fame"
+    wall = Path(default_catalog_root() if root is None else root) / "wall-of-fame"
     entries, unreadable = [], 0
     for directory in sorted(wall.iterdir()) if wall.is_dir() else []:
         record = directory / "archive.json"
@@ -714,22 +726,63 @@ def seed_bundle_files(catalog_root: Path, model_path: Path, model_manifest_path:
 
 def ensure_active_bundle(active_root: Path, *, catalog_root: Path, model_path: Path,
                          model_manifest_path: Path, preset: Mapping[str, Any],
-                         policy: Mapping[str, Any], sources: Mapping[str, Any]) -> Path:
-    """Return the verified active bundle directory. An empty root first gets bundle zero.
+                         policy: Mapping[str, Any], sources: Mapping[str, Any],
+                         validate=None, history_root: Path | None = None) -> Path:
+    """Return the verified active bundle directory. Only an empty root gets bundle zero.
 
     The service calls this before any profiles import, so the catalog and the model start
-    as one verified unit. A root that holds anything is never reseeded: a lost pointer is
-    an error, never a silent return to the packaged default. The packaged tree is only read.
+    as one verified unit. The packaged tree is only read. `validate(bundle_dir)` raises to
+    refuse a seed, and it runs on a scratch copy, so a refusal writes nothing to the root.
+
+    A missing pointer alone never permits a seed. The seed is one transaction: a durable
+    marker names the expected bundle before anything is published, and it goes only after
+    the pointer is written. A start that finds that marker, no pointer, and at most that
+    one bundle completes the same seed. Every other root without a pointer is an error,
+    and so is a root whose history already records an activation.
     """
     active_root = Path(active_root)
-    if not active_root.is_dir() or not any(active_root.iterdir()):
+    marker = active_root / SEED_MARKER
+    if not os.path.lexists(active_root / "active" / "catalog.json"):
+        if history_root is not None and os.path.lexists(Path(history_root) / "activations.jsonl"):
+            raise CatalogError("the activation history exists but the active pointer is lost")
         files = seed_bundle_files(catalog_root, model_path, model_manifest_path,
                                   preset, policy, sources)
+        with tempfile.TemporaryDirectory() as scratch:
+            digest = publish_bundle(scratch, files)
+            _require_seedable(active_root, marker, digest)
+            if validate is not None:
+                validate(Path(scratch) / digest)
+        active_root.mkdir(parents=True, exist_ok=True)
+        _replace_atomically(marker, _pretty({"bundle_sha256": digest}))
         write_active_pointer(active_root, publish_bundle(active_root / "bundles", files))
     bundle_sha256 = read_active(active_root)["active_bundle_sha256"]
     if bundle_sha256 is None:
         raise CatalogError("the active pointer names no bundle")
+    # The pointer is the commit, so a marker that outlived it is a finished transaction.
+    marker.unlink(missing_ok=True)
     return active_root / "bundles" / bundle_sha256
+
+
+def _require_seedable(active_root: Path, marker: Path, digest: str) -> None:
+    """Allow a first seed on an empty root, or the completion of this exact seed."""
+    def names(directory: Path) -> list[str]:
+        # A dot-prefixed name is an interrupted write, never content.
+        return sorted(path.name for path in directory.iterdir()
+                      if not path.name.startswith(".")) if directory.is_dir() else []
+
+    entries = names(active_root)
+    if not entries:
+        return
+    try:
+        expected = json.loads(marker.read_text())
+    except (OSError, json.JSONDecodeError) as error:
+        raise CatalogError("the active root holds no pointer and no seed marker") from error
+    if expected != {"bundle_sha256": digest}:
+        raise CatalogError("the seed marker names another bundle than this seed")
+    if (set(entries) - {SEED_MARKER, "bundles", "active"}
+            or names(active_root / "bundles") not in ([], [digest])
+            or names(active_root / "active")):
+        raise CatalogError("the active root holds more than the interrupted seed")
 
 
 def _verified_bundle(active_root: Path, bundle_sha256: Any) -> Path:

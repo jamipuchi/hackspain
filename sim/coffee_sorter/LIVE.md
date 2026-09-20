@@ -58,6 +58,42 @@ can never reach activation.
 python sim/coffee_sorter/live.py --port 8890 --preset sim/coffee_sorter/configs/continuous_demo.json --item-jobs-provider fake
 ```
 
+### Active bundle under `--item-jobs-root`
+
+Without `--item-jobs-root` no bundle exists. The service starts from `--preset` and the
+packaged catalog, and the job store lives in `<out>/item-jobs`.
+
+With `--item-jobs-root` the root holds two units:
+
+- `active/` holds `bundles/<bundle_sha256>/` and the pointer `active/catalog.json`. A
+  bundle carries the catalog, its definitions, the model, the model manifest, the preset,
+  and the policy as one verified unit. A rollback repoints this unit and nothing else.
+- `history/` holds the job store and the Wall of Fame. It is append-only. A rollback
+  never touches it.
+
+The startup order is fixed. The service resolves and verifies the active bundle. Then it
+exports `COFFEE_OBJECT_CATALOG_ROOT=<bundle>/catalog`. Only then does it load
+`<bundle>/preset.json`, which imports `profiles`. The engine worker inherits the export.
+`--object-catalog-root` cannot be combined with `--item-jobs-root`.
+
+On an empty root the first start seeds bundle zero from the packaged catalog, `--preset`,
+and its model. The packaged tree is only read. Bundle zero states the reject classes that
+the engine derives from the preset severities. `validate_bundle.py` checks the seed in a
+fresh child before anything is written. The model manifest must record
+`provenance.config.catalog_revision`. A model without it stops the start with one error
+that names `model_catalog_unrecorded`. Later starts use the bundle preset. `--preset`
+matters again only for an empty root.
+
+The seed is one transaction. The marker `seed-transaction.json` in `active/` names the
+expected bundle before the publication and goes after the pointer write. A start that finds that marker,
+no pointer, and at most that one bundle completes the same seed. Every other root without
+a pointer is a startup error, and so is a root whose `history/activations.jsonl` exists.
+The service never reseeds over an existing pointer.
+
+`/health` adds `active_bundle_sha256` (null without a bundle) and
+`catalog_model_compatible` (the label order check of the preset loader, null when a
+bounded preset ran no such check).
+
 Open [the local page](http://127.0.0.1:8890). The conveyor starts automatically, including when no browser is connected.
 Select **Inject stone** to add an object. A ring identifies that object in both projections.
 Prediction, jet contact, and physical outcome appear separately.

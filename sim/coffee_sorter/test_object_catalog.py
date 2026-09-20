@@ -817,7 +817,7 @@ class BundlePointerReproductionTest(CatalogRootTest):
 
     def test_a_packaged_catalog_with_an_unknown_bundle_pointer_is_refused(self):
         root = self.make_root() / "catalog"
-        shutil.copytree(object_catalog.CATALOG_ROOT, root)
+        shutil.copytree(object_catalog.PACKAGED_CATALOG_ROOT, root)
         manifest = root / "active" / "catalog.json"
         value = json.loads(manifest.read_text())
         self.assertIsNone(value["active_bundle_sha256"])
@@ -1152,7 +1152,7 @@ class WriteCatalogGuardTest(CatalogRootTest):
 
 class RepoWallOfFameTest(unittest.TestCase):
     def test_the_repo_wall_starts_empty(self):
-        self.assertEqual(0, wall_of_fame_page(object_catalog.CATALOG_ROOT)["total"])
+        self.assertEqual(0, wall_of_fame_page(object_catalog.PACKAGED_CATALOG_ROOT)["total"])
 
 
 if __name__ == "__main__":

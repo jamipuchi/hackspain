@@ -14,6 +14,8 @@ import multiprocessing as mp
 import os
 import re
 import signal
+import subprocess
+import sys
 from pathlib import Path
 import threading
 from queue import Empty, Full
@@ -39,6 +41,11 @@ DNS_LABEL_PATTERN = re.compile(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?')
 # A worker whose parent died has no reader for its results. It leaves after this bound.
 ORPHAN_EXIT_SECONDS = 10.0
 ORPHAN_EXIT_CODE = 3
+VALIDATE_BUNDLE_TIMEOUT_S = 120.0
+# The sources that bundle zero records. engine.SOURCE_FILES cannot be imported for this:
+# engine imports profiles, and profiles must not load before the active catalog is exported.
+BUNDLE_SOURCE_FILES = ('engine.py', 'controller.py', 'sim.py', 'rolling_scores.py', 'vision.py',
+                       'classifier.py', 'profiles.py', 'scene.py', 'live.py', 'object_catalog.py')
 DEFAULT_RUNTIME_LOCK = Path('/private/tmp/hackspain-coffee-runtime.lock')
 # Local development replays the recorded research cache. The service never writes there.
 DEFAULT_PROVIDER_CACHE = (HERE.parents[1]
@@ -183,12 +190,24 @@ def _without_host_paths(value):
     return value
 
 
+def _public_record(record):
+    """Redact one top-level job or summary record, and keep its request text verbatim.
+
+    The description and the requester name were validated at admission and no child can
+    write them. A URL or a slash in that text is content, never a host path.
+    """
+    public = _without_host_paths(record)
+    public.update({key: record[key] for key in ('description', 'requester_name')
+                   if key in record})
+    return public
+
+
 def _public_job(job):
-    """One job record for a public response. No value may carry a host path."""
+    """One job record for a public response. No child-written value may carry a host path."""
     artifacts = {key: value for key, value in (job.get('artifacts') or {}).items()
                  if key not in _PRIVATE_ARTIFACTS}
     public = {**job, 'worker': _public_worker(job.get('worker')), 'artifacts': artifacts}
-    return _without_host_paths(public)
+    return _public_record(public)
 
 
 def _validate_item_job_arguments(parser, args, item_jobs_root):
@@ -306,6 +325,72 @@ def load_preset(preset_path):
     if mismatches:
         raise ValueError(f"The selected model is physically incompatible: {', '.join(mismatches)}.")
     return preset
+
+
+def validate_bundle_child(bundle_dir):
+    """Run the one bundle validator in a fresh child. Any refusal raises CatalogError.
+
+    The child binds the bundle's own catalog before its profiles loads, so this process
+    never judges a bundle against its own cached profiles. No failure code carries a path.
+    """
+    try:
+        result = subprocess.run(
+            [sys.executable, str(HERE / 'validate_bundle.py'), '--bundle', str(bundle_dir)],
+            capture_output=True, text=True, cwd=str(HERE), timeout=VALIDATE_BUNDLE_TIMEOUT_S)
+        payload = json.loads(result.stdout)
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        payload = None
+    if not isinstance(payload, dict):
+        raise object_catalog.CatalogError('the bundle validator returned no result')
+    if result.returncode != 0 or payload.get('ok') is not True:
+        failures = payload.get('failures') or ['no failure code']
+        raise object_catalog.CatalogError(
+            'the bundle validator refused the bundle: ' + '; '.join(map(str, failures)))
+    return payload
+
+
+def default_reject_classes(catalog, preset):
+    """The reject set an engine derives from the preset severities, in catalog order.
+
+    Bundle zero states this set, so a seeded start equals a start without a bundle. It
+    comes from catalog data, because profiles must not load before the catalog export.
+    """
+    severities = set(preset['policy']['reject_severities'])
+    return [definition['classifier_label'] for definition in catalog['definitions']
+            if definition['truth']['defect'] and definition['truth']['severity'] in severities]
+
+
+def _bundle_sources():
+    """What built bundle zero: the source revision and the hash of each source file.
+
+    The revision is deployment-controlled only. The service never asks the host for one.
+    """
+    return {'source_revision': os.environ.get('CINTA_SOURCE_REVISION') or None,
+            'files': {name: _file_hash(HERE / name) for name in BUNDLE_SOURCE_FILES}}
+
+
+def bind_active_bundle(preset_path, item_jobs_root):
+    """Startup steps 2 and 3: resolve the one verified active bundle, then export its catalog.
+
+    An empty root seeds bundle zero from the packaged catalog, the preset, and its model,
+    after the validator child accepts that seed. profiles loads its catalog once, at its
+    import, from the root exported here. It must not exist yet, and the caller loads the
+    bundled preset only afterwards. The engine worker inherits the export through spawn.
+    """
+    if 'profiles' in sys.modules:
+        raise RuntimeError('profiles loaded before the active bundle catalog was bound.')
+    preset_path, item_jobs_root = Path(preset_path), Path(item_jobs_root)
+    preset = json.loads(preset_path.read_text())
+    model_path = resolve_model_path(preset, preset_path, HERE)
+    packaged = object_catalog.load_catalog(object_catalog.PACKAGED_CATALOG_ROOT)
+    bundle = object_catalog.ensure_active_bundle(
+        item_jobs_root / 'active', catalog_root=object_catalog.PACKAGED_CATALOG_ROOT,
+        model_path=model_path, model_manifest_path=model_path.with_suffix('.manifest.json'),
+        preset=preset, policy={'reject_classes': default_reject_classes(packaged, preset)},
+        sources=_bundle_sources(), validate=validate_bundle_child,
+        history_root=item_jobs_root / 'history')
+    os.environ[object_catalog.CATALOG_ROOT_ENV] = str(bundle / 'catalog')
+    return bundle
 
 
 class CommandLog:
@@ -505,11 +590,15 @@ def worker(preset, states, acknowledgments, commands, stop, out):
 class LiveService:
     def __init__(self, preset, out, *, item_jobs_root=None, item_jobs_provider='cached',
                  catalog_root=None, provider_cache=None, provider_env=None,
-                 generator_root=None, runtime_lock=None, physics_replay=None):
+                 generator_root=None, runtime_lock=None, physics_replay=None,
+                 active_bundle=None):
         self.ctx = mp.get_context('spawn')
         self.preset = Path(preset)
         self.preset_config = load_preset(self.preset)
         self.continuous = self.preset_config.get('mode') == 'continuous'
+        # load_preset compares the model label order with the active catalog, and only for
+        # a continuous preset. None means that no such check ran.
+        self.catalog_model_compatible = True if self.continuous else None
         self.out = Path(out)
         self.session_out = self.out
         self.restart_count = 0
@@ -542,6 +631,10 @@ class LiveService:
         self.physics_replay = Path(physics_replay) if physics_replay else None
         self.catalog_root = (Path(catalog_root) if catalog_root
                              else self.item_jobs_root / 'object_catalog')
+        # With an active bundle the persistent root holds two units. `active/` is restored
+        # as one: a rollback repoints it. `history/` is append-only and is never restored.
+        self.active_bundle = Path(active_bundle) if active_bundle else None
+        self.history_root = self.item_jobs_root / 'history' if self.active_bundle else None
         self.item_jobs = None
         self.item_runner = None
         self.item_jobs_state = None
@@ -553,30 +646,36 @@ class LiveService:
 
     def _open_item_jobs(self):
         """Own one job store and one runner thread. Generation and rendering stay in children."""
-        # Phase 4 seeds the persistent catalog root. Until then a fresh writable root reads
-        # the packaged catalog for display and admission only, and nothing writes there.
-        if not (self.catalog_root / 'active/catalog.json').is_file():
+        # Without an active bundle a fresh writable root reads the packaged catalog for
+        # display and admission only, and nothing writes there.
+        if self.active_bundle is None and not (self.catalog_root / 'active/catalog.json').is_file():
             print(f'Item jobs: runtime catalog root holds no active manifest, reading the '
-                  f'packaged catalog read-only: {object_catalog.CATALOG_ROOT}', flush=True)
-            self.catalog_root = object_catalog.CATALOG_ROOT
+                  f'packaged catalog read-only: {object_catalog.PACKAGED_CATALOG_ROOT}',
+                  flush=True)
+            self.catalog_root = object_catalog.PACKAGED_CATALOG_ROOT
         if not (self.provider_cache / 'cache').is_dir():
             print(f'Item jobs: no provider cache at {self.provider_cache}/cache. Every new job '
                   f'stops at operator_required with provider_cache_miss.', flush=True)
-        catalog = object_catalog.load_catalog(self.catalog_root)
+        catalog = self._active_catalog()
         self.catalog_revision = catalog['catalog_revision']
         self.active_type_ids = list(catalog['active_type_ids'])
-        self.item_jobs_root.mkdir(parents=True, exist_ok=True)
+        store_root = self.history_root or self.item_jobs_root
+        store_root.mkdir(parents=True, exist_ok=True)
         # The heavy worker takes this lock. The service only guarantees a writable parent.
         self.runtime_lock.parent.mkdir(parents=True, exist_ok=True)
-        self.item_jobs = item_jobs.ItemJobStore(self.item_jobs_root,
-                                                provider_mode=self.item_jobs_provider)
+        self.item_jobs = item_jobs.ItemJobStore(store_root, provider_mode=self.item_jobs_provider)
         self.item_runner = item_jobs.ItemJobRunner(
             self.item_jobs, self._item_commands(), runtime_lock_path=self.runtime_lock,
-            catalog_provider=lambda: object_catalog.load_catalog(self.catalog_root),
-            policy_provider=self._item_jobs_policy)
+            catalog_provider=self._active_catalog, policy_provider=self._item_jobs_policy)
         self.item_runner.start()
         self.item_jobs_state = self._item_jobs_packet()
         self.item_jobs_revision = self.item_jobs.revision
+
+    def _active_catalog(self):
+        """The active catalog. With a bundle, always through the pointer and its verified bundle."""
+        if self.active_bundle is not None:
+            return object_catalog.read_active(self.item_jobs_root / 'active')
+        return object_catalog.load_catalog(self.catalog_root)
 
     def _item_jobs_policy(self):
         """The policy the live engine applies right now, read from the latest state packet.
@@ -624,7 +723,7 @@ class LiveService:
 
     def _item_jobs_packet(self):
         # A summary carries free text from a child, so it takes the same redaction.
-        return {'summaries': _without_host_paths(self.item_jobs.summaries()),
+        return {'summaries': [_public_record(summary) for summary in self.item_jobs.summaries()],
                 'limits': {'max_queued_jobs': item_jobs.MAX_QUEUED_JOBS,
                            'max_retained_open_jobs': item_jobs.MAX_RETAINED_OPEN_JOBS,
                            'max_retained_jobs': item_jobs.MAX_RETAINED_JOBS,
@@ -720,8 +819,10 @@ class LiveService:
         except (TypeError, ValueError):
             return _item_job_response('invalid_request')
         try:
+            # Archived types are history. Without an active bundle the wall stays where it was.
             page = await asyncio.to_thread(object_catalog.wall_of_fame_page,
-                                           self.catalog_root, offset, limit)
+                                           getattr(self, 'history_root', None) or self.catalog_root,
+                                           offset, limit)
         except object_catalog.CatalogError:
             return _item_job_response('invalid_request')
         return web.json_response({'ok': True, **page})
@@ -1173,6 +1274,10 @@ class LiveService:
             status = 'failed'
             error = 'The service state pump stopped publishing application heartbeats.'
         packet = {'status': status, 'session_id': self.state.get('session_id'), 'error': error}
+        # Additive bundle identity. Null means that the service runs without an active bundle.
+        bundle = getattr(self, 'active_bundle', None)
+        packet.update(active_bundle_sha256=bundle.name if bundle else None,
+                      catalog_model_compatible=getattr(self, 'catalog_model_compatible', None))
         # Additive queue liveness. A valid temporary child is never an extra engine.
         runner = getattr(self, 'item_runner', None)
         queue = runner.health() if runner is not None else None
@@ -1346,9 +1451,12 @@ def build_parser():
     parser.add_argument('--preset', type=Path, default=HERE / 'configs/default_demo.json')
     parser.add_argument('--out', type=Path, default=HERE / 'runs' / time.strftime('live-%Y%m%d-%H%M%S'))
     parser.add_argument('--item-jobs-root', type=Path, default=None,
-                        help='Stable writable job root. Default: <out>/item-jobs.')
+                        help='Stable writable root. It holds the active bundle (active/) and '
+                             'the job history (history/). The first start seeds bundle zero '
+                             'from --preset. Default: <out>/item-jobs, without any bundle.')
     parser.add_argument('--object-catalog-root', type=Path, default=None,
-                        help='Runtime catalog root. Default: <item-jobs-root>/object_catalog.')
+                        help='Runtime catalog root, used only without --item-jobs-root. '
+                             'Default: <out>/item-jobs/object_catalog.')
     parser.add_argument('--item-jobs-provider', choices=list(item_jobs.PROVIDER_MODES),
                         default='cached',
                         help='cached and paid never pass an automatic --live. fake is local only.')
@@ -1367,6 +1475,38 @@ def build_parser():
     return parser
 
 
+def build_service(parser, args):
+    """The startup order. The arguments are parsed. Then the verified active bundle is
+    resolved, then its catalog is exported, and only then does LiveService call
+    load_preset, which imports profiles. Without --item-jobs-root no bundle exists and the
+    service starts from --preset and the packaged catalog.
+    """
+    item_jobs_root = (args.item_jobs_root or args.out / 'item-jobs').resolve()
+    _validate_item_job_arguments(parser, args, item_jobs_root)
+    preset_path, active_bundle = args.preset.resolve(), None
+    if args.item_jobs_root is not None:
+        if args.object_catalog_root is not None:
+            parser.error('--object-catalog-root cannot be used with --item-jobs-root: the '
+                         'active bundle under that root selects the catalog.')
+        try:
+            active_bundle = bind_active_bundle(preset_path, item_jobs_root)
+        except object_catalog.CatalogError as error:
+            # No catalog message carries a host path.
+            parser.error(f'The active bundle cannot start: {error}')
+        preset_path = active_bundle / object_catalog.BUNDLE_PRESET
+    return LiveService(
+        preset_path, args.out.resolve(), item_jobs_root=item_jobs_root,
+        item_jobs_provider=args.item_jobs_provider,
+        catalog_root=args.object_catalog_root.resolve() if args.object_catalog_root else None,
+        provider_cache=args.item_jobs_provider_cache.resolve() if args.item_jobs_provider_cache else None,
+        provider_env=args.item_jobs_provider_env.resolve() if args.item_jobs_provider_env else None,
+        generator_root=args.item_jobs_generator_root.resolve(),
+        runtime_lock=args.item_jobs_runtime_lock.resolve(),
+        physics_replay=args.item_jobs_physics_replay.resolve()
+        if args.item_jobs_physics_replay else None,
+        active_bundle=active_bundle)
+
+
 def main():
     parser = build_parser()
     args = parser.parse_args()
@@ -1378,18 +1518,7 @@ def main():
         _configured_source_revision()
     except ValueError as exc:
         parser.error(str(exc))
-    item_jobs_root = (args.item_jobs_root or args.out / 'item-jobs').resolve()
-    _validate_item_job_arguments(parser, args, item_jobs_root)
-    service = LiveService(
-        args.preset.resolve(), args.out.resolve(), item_jobs_root=item_jobs_root,
-        item_jobs_provider=args.item_jobs_provider,
-        catalog_root=args.object_catalog_root.resolve() if args.object_catalog_root else None,
-        provider_cache=args.item_jobs_provider_cache.resolve() if args.item_jobs_provider_cache else None,
-        provider_env=args.item_jobs_provider_env.resolve() if args.item_jobs_provider_env else None,
-        generator_root=args.item_jobs_generator_root.resolve(),
-        runtime_lock=args.item_jobs_runtime_lock.resolve(),
-        physics_replay=args.item_jobs_physics_replay.resolve()
-        if args.item_jobs_physics_replay else None)
+    service = build_service(parser, args)
 
     async def page(request):
         return web.FileResponse(HERE / 'live_web/index.html')

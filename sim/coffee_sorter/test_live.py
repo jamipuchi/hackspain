@@ -5,6 +5,7 @@ import signal
 import contextlib
 from collections import deque
 import hashlib
+import io
 import json
 import shlex
 import shutil
@@ -250,7 +251,7 @@ def item_service(test, provider_mode='cached'):
     value.item_jobs_unhealthy = False
     value.item_runner = item_jobs.ItemJobRunner(
         value.item_jobs, item_jobs.fake_commands(), runtime_lock_path=value.runtime_lock)
-    value.catalog_root = object_catalog.CATALOG_ROOT
+    value.catalog_root = object_catalog.PACKAGED_CATALOG_ROOT
     value.catalog_revision = CATALOG_REVISION
     value.active_type_ids = ['builtin.green_arabica.good']
     value.item_jobs_state = value._item_jobs_packet()
@@ -1016,6 +1017,19 @@ class ItemJobRouteTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(negative.status, 400)
         self.assertEqual(text.status, 400)
 
+    async def test_the_wall_of_fame_reads_the_history_root_of_an_active_bundle(self):
+        from test_object_catalog import builtin_definition
+
+        value = item_service(self)
+        value.history_root = value.item_jobs_root / 'history'
+        object_catalog.archive_type(value.history_root, builtin_definition('stone'),
+                                    '2026-09-20T01:00:00Z')
+
+        body = json.loads((await value.wall_of_fame(FakeRequest())).text)
+
+        self.assertEqual(body['total'], 1)
+        self.assertEqual(body['entries'][0]['object_type_id'], 'builtin.test.stone')
+
     async def test_new_request_is_refused_with_paid_mode_disabled(self):
         value = item_service(self)
         request_id = str(uuid.uuid4())
@@ -1178,6 +1192,30 @@ class ItemJobRouteTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn('/var/lib', public['progress'])
         self.assertNotIn('passwd', public['forged'])
 
+    async def test_the_validated_request_text_is_published_verbatim(self):
+        """A URL or a slash in the request text is content. Child text keeps its redaction."""
+        value = item_service(self)
+        request_id = str(uuid.uuid4())
+        description = 'A star, see https://example.com/star at ratio 3 /4, /not/a/host/path in my text'
+        requester = 'Taras https://example.com/me 3 /4'
+        await value.submit_item_job(item_request(description, request_id,
+                                                 requester_name=requester))
+        job_dir = value.item_jobs.job_dir(request_id)
+        value.item_jobs.record(request_id, progress=f'the renderer wrote {job_dir}/render.json')
+        value.item_jobs_state = value._item_jobs_packet()
+
+        job = json.loads((await value.get_item_job(FakeRequest(request_id=request_id))).text)['job']
+        summary = value._state_packet()['item_jobs']['summaries'][0]
+
+        for label, record in (('job', job), ('summary', summary)):
+            with self.subTest(record=label):
+                self.assertEqual(record['description'], description)
+                self.assertEqual(record['requester_name'], requester)
+                self.assertEqual(record['request_id'], request_id)
+        self.assertEqual(job['admission_catalog_revision'], CATALOG_REVISION)
+        self.assertIn('<path>', job['progress'])
+        self.assertNotIn(str(value.item_jobs_root), json.dumps([job, summary]))
+
     def test_every_documented_launch_command_is_accepted(self):
         """A documented command the real parser refuses is a broken document."""
         repository = Path(live.HERE).parents[1]
@@ -1230,6 +1268,237 @@ class ItemJobRouteTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(summary['preview'])
         self.assertIsNone(summary['primary_action'])
         self.assertNotIn('item_jobs', service()._state_packet())
+
+
+class ActiveBundleStartupTest(unittest.TestCase):
+    """Startup with --item-jobs-root: one verified active bundle, bound before profiles loads.
+
+    An isolated service object only: no engine process, no server, no port. The model is a
+    tiny picklable object that records the catalog revision, as the final model manifest does.
+    """
+
+    # One fresh interpreter runs the real startup order and reports what each step saw.
+    CHILD = (
+        "import json, os, sys\n"
+        "from pathlib import Path\n"
+        "from unittest.mock import patch\n"
+        "preset, root, out, early = sys.argv[1:5]\n"
+        "if early == 'profiles first':\n"
+        "    import profiles\n"
+        "import live, object_catalog\n"
+        "seen = {}\n"
+        "real = live.load_preset\n"
+        "def exported(bundle):\n"
+        "    expected = str(Path(bundle) / 'catalog')\n"
+        "    return os.environ.get(object_catalog.CATALOG_ROOT_ENV) == expected\n"
+        "def load_preset(path):\n"
+        "    seen['profiles_loaded_before_step_4'] = 'profiles' in sys.modules\n"
+        "    seen['exported_before_step_4'] = exported(Path(path).parent)\n"
+        "    return real(path)\n"
+        "def create_worker(self, out):\n"
+        "    seen['exported_before_the_worker'] = exported(self.active_bundle)\n"
+        "parser = live.build_parser()\n"
+        "args = parser.parse_args(['--preset', preset, '--item-jobs-root', root, '--out', out,\n"
+        "                          '--item-jobs-provider', 'fake'])\n"
+        "try:\n"
+        "    with patch.object(live, 'load_preset', load_preset), \\\n"
+        "            patch.object(live.LiveService, '_create_worker', create_worker):\n"
+        "        service = live.build_service(parser, args)\n"
+        "    import profiles\n"
+        "    seen.update(bundle=service.active_bundle.name,\n"
+        "                bundle_preset=service.preset == service.active_bundle / 'preset.json',\n"
+        "                labels=profiles.PROFILES[service.preset_config['profile']].names,\n"
+        "                compatible=service.catalog_model_compatible)\n"
+        "except RuntimeError as error:\n"
+        "    seen['refused'] = str(error)\n"
+        "print(json.dumps(seen))\n")
+
+    def setUp(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.work = Path(folder.name).resolve()
+        self.root = self.work / 'item-jobs'
+        self.packaged = object_catalog.load_catalog(object_catalog.PACKAGED_CATALOG_ROOT)
+        self.preset = self.write_inputs('packaged', self.packaged['catalog_revision'])
+
+    def write_inputs(self, name, revision):
+        """The real continuous preset beside a tiny model that records this revision."""
+        from test_validate_bundle import CONTINUOUS_PRESET, continuous_model
+
+        directory = self.work / name
+        directory.mkdir()
+        preset = {**json.loads(CONTINUOUS_PRESET.read_text()),
+                  'model_path': str(directory / 'live_green_arabica.joblib')}
+        model, manifest = continuous_model(object_catalog.catalog_labels(self.packaged),
+                                           preset, revision)
+        (directory / 'live_green_arabica.joblib').write_bytes(model)
+        (directory / 'live_green_arabica.manifest.json').write_bytes(manifest)
+        (directory / 'preset.json').write_text(json.dumps(preset))
+        return directory / 'preset.json'
+
+    def arguments(self, *extra, preset=None):
+        return live.build_parser().parse_args([
+            '--preset', str(preset or self.preset), '--out', str(self.work / 'out'),
+            '--item-jobs-provider', 'fake', *map(str, extra)])
+
+    @contextlib.contextmanager
+    def fresh_process_state(self):
+        """Every test module loads profiles, and startup refuses a process that did.
+
+        profiles leaves sys.modules for the call and the export leaves os.environ after it,
+        so no other test sees either one.
+        """
+        with patch.dict(sys.modules), patch.dict(os.environ), \
+                patch.object(LiveService, '_create_worker', lambda self, out: None):
+            sys.modules.pop('profiles', None)
+            os.environ.pop(object_catalog.CATALOG_ROOT_ENV, None)
+            yield
+
+    def exported(self, bundle):
+        return os.environ.get(object_catalog.CATALOG_ROOT_ENV) == str(bundle / 'catalog')
+
+    def tree(self, *roots):
+        return {str(path): path.read_bytes() for root in roots
+                for path in sorted(Path(root).rglob('*')) if path.is_file()}
+
+    def test_the_startup_order_binds_the_bundle_catalog_before_profiles_loads(self):
+        """A changed-label bundle starts only when profiles loads the bundle catalog."""
+        from test_validate_bundle import CHANGED_LABELS, continuous_bundle_files, run_python
+
+        digest = object_catalog.publish_bundle(self.root / 'active' / 'bundles',
+                                               continuous_bundle_files())
+        object_catalog.write_active_pointer(self.root / 'active', digest)
+
+        seen = run_python(self.CHILD, self.preset, self.root, self.work / 'out', 'service order')
+
+        self.assertEqual(seen, {
+            'profiles_loaded_before_step_4': False, 'exported_before_step_4': True,
+            'exported_before_the_worker': True, 'bundle': digest, 'bundle_preset': True,
+            'labels': list(CHANGED_LABELS), 'compatible': True})
+        # The guard: a process that loaded profiles first can never bind a bundle catalog.
+        early = run_python(self.CHILD, self.preset, self.root, self.work / 'out', 'profiles first')
+        self.assertEqual(list(early), ['refused'])
+        self.assertIn('profiles loaded before', early['refused'])
+
+    def test_an_empty_mount_seeds_bundle_zero_and_the_packaged_tree_stays_identical(self):
+        import engine
+        from profiles import PROFILES
+
+        sources = (object_catalog.PACKAGED_CATALOG_ROOT, HERE / 'configs', self.preset.parent)
+        before = self.tree(*sources)
+        with self.fresh_process_state():
+            value = live.build_service(StubParser(), self.arguments('--item-jobs-root', self.root))
+            self.assertTrue(self.exported(value.active_bundle))
+        self.assertEqual(self.tree(*sources), before)
+
+        bundle = value.active_bundle
+        self.assertEqual(bundle.parent, self.root / 'active' / 'bundles')
+        self.assertEqual(value.preset, bundle / 'preset.json')
+        self.assertFalse((self.root / 'active' / object_catalog.SEED_MARKER).exists())
+        catalog = object_catalog.read_active(self.root / 'active')
+        self.assertEqual(catalog['active_bundle_sha256'], bundle.name)
+        self.assertEqual(catalog['catalog_revision'], self.packaged['catalog_revision'])
+        # Bundle zero states the reject set an engine derives without a bundle. Never Keep all.
+        policy = json.loads(self.preset.read_text())['policy']
+        derived = [item.name for item in PROFILES['green_arabica'].classes
+                   if item.defect and item.severity in policy['reject_severities']]
+        self.assertTrue(derived)
+        self.assertEqual(json.loads((bundle / 'policy.json').read_text()),
+                         {'reject_classes': derived})
+        self.assertEqual(value.preset_config['policy'],
+                         {**policy, 'initial_reject_classes': derived})
+        recorded = json.loads((bundle / 'sources.json').read_text())
+        self.assertEqual(sorted(recorded['files']), sorted(live.BUNDLE_SOURCE_FILES))
+        self.assertLessEqual(set(engine.SOURCE_FILES), set(live.BUNDLE_SOURCE_FILES))
+
+        health = json.loads(asyncio.run(value.health(None)).text)
+        self.assertEqual(health['active_bundle_sha256'], bundle.name)
+        self.assertIs(health['catalog_model_compatible'], True)
+
+        # Job history lives apart from the unit that a rollback restores.
+        with patch.object(item_jobs.ItemJobRunner, 'start'), \
+                contextlib.redirect_stdout(io.StringIO()):
+            value._open_item_jobs()
+        self.addCleanup(value._close_item_jobs)
+        self.assertTrue((self.root / 'history' / 'writer.lock').is_file())
+        self.assertFalse((self.root / 'jobs').exists())
+        self.assertEqual(value.catalog_revision, self.packaged['catalog_revision'])
+        self.assertEqual(value.item_runner.catalog_provider()['active_bundle_sha256'], bundle.name)
+
+    def test_a_model_without_a_recorded_catalog_revision_refuses_the_seed(self):
+        preset = self.write_inputs('unrecorded', None)
+
+        with self.fresh_process_state(), self.assertRaises(ValueError) as refused:
+            live.build_service(StubParser(),
+                               self.arguments('--item-jobs-root', self.root, preset=preset))
+
+        self.assertIn('model_catalog_unrecorded', str(refused.exception))
+        self.assertNotIn(str(self.work), str(refused.exception))
+        self.assertFalse(self.root.exists())
+
+    def test_a_rollback_returns_the_whole_bundle_and_newer_history_stays(self):
+        from test_validate_bundle import CHANGED_LABELS, continuous_bundle_files
+
+        def bind():
+            with self.fresh_process_state():
+                bundle = live.bind_active_bundle(self.preset, self.root)
+                return bundle, self.exported(bundle)
+
+        zero, _ = bind()
+        newer = object_catalog.publish_bundle(self.root / 'active' / 'bundles',
+                                              continuous_bundle_files())
+        object_catalog.write_active_pointer(self.root / 'active', newer)
+        record = self.root / 'history' / 'jobs' / 'newer.json'
+        record.parent.mkdir(parents=True)
+        record.write_bytes(b'{"after": "the snapshot"}')
+        self.assertEqual(bind(), (zero.parent / newer, True))
+        self.assertEqual(object_catalog.catalog_labels(
+            object_catalog.read_active(self.root / 'active')), list(CHANGED_LABELS))
+
+        object_catalog.rollback_active(self.root / 'active', zero.name)
+
+        self.assertEqual(bind(), (zero, True))
+        catalog = object_catalog.read_active(self.root / 'active')
+        self.assertEqual(object_catalog.catalog_labels(catalog),
+                         object_catalog.catalog_labels(self.packaged))
+        # The catalog, its definitions, the model, the manifest, and the preset came back
+        # as the one verified unit, and the newer bundle and the newer history both stay.
+        listed = object_catalog.verify_bundle(zero)['files']
+        for part in ('catalog/active/catalog.json', 'model/live_green_arabica.joblib',
+                     'model/live_green_arabica.manifest.json', 'preset.json', 'policy.json'):
+            self.assertIn(part, listed)
+        self.assertEqual(sum(name.startswith('catalog/definitions/') for name in listed),
+                         len(catalog['definitions']))
+        self.assertEqual(record.read_bytes(), b'{"after": "the snapshot"}')
+        self.assertEqual(sorted(path.name for path in zero.parent.iterdir()),
+                         sorted([zero.name, newer]))
+
+    def test_without_an_item_jobs_root_the_service_starts_as_before(self):
+        with self.fresh_process_state():
+            value = live.build_service(StubParser(), self.arguments())
+            self.assertNotIn(object_catalog.CATALOG_ROOT_ENV, os.environ)
+
+        self.assertIsNone(value.active_bundle)
+        self.assertIsNone(value.history_root)
+        self.assertEqual(value.preset, self.preset)
+        self.assertEqual(value.item_jobs_root, self.work / 'out' / 'item-jobs')
+        health = json.loads(asyncio.run(value.health(None)).text)
+        self.assertIsNone(health['active_bundle_sha256'])
+        self.assertIs(health['catalog_model_compatible'], True)
+        with patch.object(item_jobs.ItemJobRunner, 'start'), \
+                contextlib.redirect_stdout(io.StringIO()):
+            value._open_item_jobs()
+        self.addCleanup(value._close_item_jobs)
+        self.assertTrue((value.item_jobs_root / 'writer.lock').is_file())
+        self.assertEqual(sorted(path.name for path in value.item_jobs_root.iterdir()
+                                if path.name in ('active', 'history')), [])
+        self.assertEqual(value.catalog_root, object_catalog.PACKAGED_CATALOG_ROOT)
+
+    def test_an_object_catalog_root_contradicts_an_item_jobs_root(self):
+        with self.assertRaisesRegex(ValueError, '--object-catalog-root cannot be used'):
+            live.build_service(StubParser(), self.arguments(
+                '--item-jobs-root', self.root, '--object-catalog-root', self.work / 'catalog'))
+        self.assertFalse(self.root.exists())
 
 
 def _string_values(document):
