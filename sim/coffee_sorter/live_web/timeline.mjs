@@ -293,7 +293,7 @@ export function jobActionPath(requestId, action) {
 
 const RESET_ERROR_LABELS = {
   reset_in_progress: 'Another reset is in progress. Try again shortly.',
-  reset_failed: 'The reset failed. The service kept its last confirmed state.',
+  reset_failed: 'The reset failed. Check service status before retrying.',
   origin_required: 'Open the CINTA page from its served address.',
 };
 

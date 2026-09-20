@@ -179,7 +179,7 @@ test('Wall of Fame keeps failed submissions separate from active items', () => {
 
 test('reset errors have clear bounded labels', () => {
   assert.match(resetErrorLabel('reset_in_progress'), /in progress/);
-  assert.match(resetErrorLabel('reset_failed'), /last confirmed state/);
+  assert.match(resetErrorLabel('reset_failed'), /Check service status/);
   assert.match(resetErrorLabel('origin_required'), /served address/);
 });
 

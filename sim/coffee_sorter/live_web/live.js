@@ -1,3 +1,4 @@
+import {createCinematicMode} from './cinematic.mjs';
 import * as THREE from 'three';
 import {OrbitControls} from '/vendor/OrbitControls.js';
 import {RoomEnvironment} from '/vendor/RoomEnvironment.js';
@@ -2059,7 +2060,7 @@ function render3d(now) {
     dummy.scale.set(r, r, len); dummy.updateMatrix(); puffMesh.setMatrixAt(used++, dummy.matrix);
   }
   puffMesh.count = used; puffMesh.instanceMatrix.needsUpdate = true;
-  controls.update();
+  if (!cinematic.update(now)) controls.update();
   for (const a of annotations) {
     _proj.copy(a.pos).project(camera);
     const show = (a.essential || three.labels) && _proj.z < 1 && Math.abs(_proj.x) < .95 && Math.abs(_proj.y) < .9;
@@ -2230,5 +2231,6 @@ document.querySelectorAll('button[data-view]').forEach(button => button.onclick 
 setView('3d');
 initHelpTooltips();
 initThree();
+const cinematic = createCinematicMode({three, getView: () => currentView, setView, setLabels});
 connect();
 requestAnimationFrame(draw);
