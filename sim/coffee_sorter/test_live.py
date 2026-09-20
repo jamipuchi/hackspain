@@ -118,6 +118,19 @@ class AccessRulesTest(unittest.IsolatedAsyncioTestCase):
             with self.subTest(origin=origin), self.assertRaises(ValueError):
                 access_rules(8890, ['hack-growth.dev'], [origin])
 
+    def test_malformed_hosts_and_ports_are_rejected(self):
+        invalid_hosts = (
+            'hack-growth.dev:', 'hack_growth.dev', '-hack-growth.dev',
+            'hack-growth-.dev', '999.1.1.1', 'hack-growth.dev:port',
+            'hack-growth.dev:0', 'hack-growth.dev:65536', '[::1]',
+        )
+        for host in invalid_hosts:
+            with self.subTest(host=host), self.assertRaises(ValueError):
+                access_rules(8890, [host], [])
+        hosts, _ = access_rules(8890, ['hack-growth.dev:443', '142.132.165.127'], [])
+        self.assertIn('hack-growth.dev:443', hosts)
+        self.assertIn('142.132.165.127', hosts)
+
     def test_release_revision_requires_full_sha(self):
         with patch.dict('os.environ', {'CINTA_SOURCE_REVISION': 'a' * 40}):
             self.assertEqual(_configured_source_revision(), 'a' * 40)
@@ -293,11 +306,14 @@ class ContinuousWorkerTest(unittest.TestCase):
         module = types.SimpleNamespace(Engine=FakeEngine)
         with tempfile.TemporaryDirectory() as directory:
             with patch.dict(sys.modules, {'engine': module}), \
+                    patch.dict('os.environ', {'CINTA_SOURCE_REVISION': 'a' * 40}), \
                     patch('live.signal.signal'), patch('live.time.monotonic', side_effect=monotonic):
                 worker('unused.json', states, acks, commands, stop, directory)
 
         running = states.items[0]
         self.assertEqual(running['status'], 'running')
+        self.assertEqual(running['source_revision'], 'a' * 40)
+        self.assertEqual(FakeEngine.instance.source_revision, 'a' * 40)
         self.assertIsNone(running['limits']['sim_seconds'])
         self.assertIn('rolling_scores', running)
         self.assertGreater(FakeEngine.instance.sim.data.time, 0)

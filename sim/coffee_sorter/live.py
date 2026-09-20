@@ -6,6 +6,7 @@ import asyncio
 import contextlib
 from collections import deque
 import hashlib
+import ipaddress
 import json
 import logging
 from logging.handlers import RotatingFileHandler
@@ -30,6 +31,7 @@ MAX_COMMANDS_PER_EPOCH = 256
 COMMAND_EPOCH_SECONDS = 60
 PUMP_STALE_SECONDS = 3.0
 SOURCE_REVISION_PATTERN = re.compile(r'[0-9a-f]{40}')
+DNS_LABEL_PATTERN = re.compile(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?')
 
 
 def _file_hash(path):
@@ -50,7 +52,20 @@ def _normalize_allowed_host(value):
         raise ValueError('Allowed host ports must be between 1 and 65535.') from exc
     if port is not None and not 1 <= port <= 65535:
         raise ValueError('Allowed host ports must be between 1 and 65535.')
-    return f'{parsed.hostname}:{port}' if port is not None else parsed.hostname
+    if ':' in value and port is None:
+        raise ValueError('Allowed host ports must be explicit numbers.')
+    hostname = parsed.hostname
+    try:
+        address = ipaddress.ip_address(hostname)
+    except ValueError:
+        labels = hostname.split('.')
+        if (len(hostname) > 253 or re.fullmatch(r'[0-9.]+', hostname)
+                or any(DNS_LABEL_PATTERN.fullmatch(label) is None for label in labels)):
+            raise ValueError('Allowed hosts must name one valid DNS host or IPv4 address.')
+    else:
+        if address.version != 4:
+            raise ValueError('Allowed hosts must name one valid DNS host or IPv4 address.')
+    return f'{hostname}:{port}' if port is not None else hostname
 
 
 def _normalize_allowed_origin(value):
