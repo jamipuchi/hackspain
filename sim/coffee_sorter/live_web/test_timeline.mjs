@@ -211,6 +211,20 @@ test('a definitive rejection keeps the typed text and unlocks a new request', ()
   assert.match(decision.cue, /1 to 600 characters/);
 });
 
+test('a full history is a definitive rejection that unlocks the form with its own cue', () => {
+  // The server checks the history budget before it creates a job, and an exact retry of an
+  // admitted request still returns that job. So history_full proves that no job exists.
+  const snapshot = freezeItemRequest({requestId: 'id-7', description: 'A token', catalogRevision: 'e'.repeat(64)});
+  const decision = resolvePendingRequest(snapshot, {kind: 'rejected', errorCode: 'history_full'});
+  assert.deepEqual([decision.resolved, decision.failed, decision.adopt], [true, true, false]);
+  assert.equal(decision.cue, jobErrorLabel('history_full'));
+  assert.doesNotMatch(decision.cue, /Unknown error|Waiting/);
+  for (const errorCode of ['queue_full', 'invalid_description', 'invalid_request', 'catalog_revision_conflict', 'origin_required']) {
+    assert.equal(resolvePendingRequest(snapshot, {kind: 'rejected', errorCode}).resolved, true, errorCode);
+  }
+  assert.equal(resolvePendingRequest(snapshot, {kind: 'network'}).resolved, false);
+});
+
 test('a job appearing in the queue resolves a lost response without a resend', () => {
   const snapshot = freezeItemRequest({requestId: 'id-3', description: 'A token', catalogRevision: 'd'.repeat(64)});
   const decision = resolvePendingRequest(snapshot, {kind: 'queue', requestIds: ['other', 'id-3']});

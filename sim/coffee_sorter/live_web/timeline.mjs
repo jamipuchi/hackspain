@@ -178,8 +178,8 @@ const JOB_STATE_NOTES = {
 // A definitive rejection proves the server holds NO job for the pending id. A network
 // error, a timeout, an aborted fetch, or a 5xx proves nothing and never resolves.
 const PENDING_RESOLVING_ERRORS = new Set([
-  'invalid_description', 'invalid_request', 'queue_full', 'catalog_revision_conflict',
-  'origin_required',
+  'invalid_description', 'invalid_request', 'queue_full', 'history_full',
+  'catalog_revision_conflict', 'origin_required',
 ]);
 
 export function jobStateLabel(state) {
