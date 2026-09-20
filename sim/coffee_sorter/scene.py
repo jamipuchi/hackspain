@@ -162,8 +162,8 @@ def build_xml(profile: Profile, L: Layout = Layout(), seed: int = 0) -> str:
     <geom type="box" size="0.16 0.002 0.16" pos="{L.split_x + 0.12:.3f} {-L.belt_w / 2 - 0.022:.4f} {bz - 0.12:.3f}" material="chute" class="visual"/>
     <geom name="bin_accept" type="box" size="0.12 {L.belt_w / 2 + 0.02:.4f} 0.003" pos="{L.split_x + 0.30:.3f} 0 {bz - 0.30:.3f}" rgba="0.2 0.6 0.25 1" class="static"/>
     <geom name="bin_reject" type="box" size="0.12 {L.belt_w / 2 + 0.02:.4f} 0.003" pos="{L.split_x + 0.06:.3f} 0 {bz - 0.42:.3f}" rgba="0.75 0.2 0.15 1" class="static"/>
-    <geom type="box" size="0.003 {L.belt_w / 2 + 0.02:.4f} 0.06" pos="{L.split_x + 0.42:.3f} 0 {bz - 0.24:.3f}" rgba="0.2 0.6 0.25 0.5" class="static"/>
-    <geom type="box" size="0.003 {L.belt_w / 2 + 0.02:.4f} 0.06" pos="{L.split_x + 0.18:.3f} 0 {bz - 0.36:.3f}" rgba="0.75 0.2 0.15 0.5" class="static"/>
+    <geom name="bin_accept_end" type="box" size="0.003 {L.belt_w / 2 + 0.02:.4f} 0.06" pos="{L.split_x + 0.42:.3f} 0 {bz - 0.24:.3f}" rgba="0.2 0.6 0.25 0.5" class="static"/>
+    <geom name="bin_reject_end" type="box" size="0.003 {L.belt_w / 2 + 0.02:.4f} 0.06" pos="{L.split_x + 0.18:.3f} 0 {bz - 0.36:.3f}" rgba="0.75 0.2 0.15 0.5" class="static"/>
 
     <!-- overview cameras for humans -->
     <camera name="overview" pos="0.55 -1.35 {bz + 0.75:.3f}" xyaxes="0.92 0.39 0 -0.17 0.4 0.9" fovy="50"/>
