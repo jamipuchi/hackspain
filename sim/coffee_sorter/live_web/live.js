@@ -1371,6 +1371,12 @@ function updateMachineVisibility() {
 function setView(name) {
   if (!['3d', '2d'].includes(name)) return;
   if (name === '3d' && !three.ready) name = '2d';
+  if (name === '2d' && currentView !== '2d') {
+    measurements.generated_asset_instances = null;
+    measurements.builtin_or_proxy_instances = null;
+    measurements.generated_proxy_instances = null;
+    measurements.render_omitted = null;
+  }
   currentView = name;
   document.body.dataset.view = name;
   document.querySelectorAll('button[data-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.view === name)));
@@ -1563,6 +1569,10 @@ function clearGeneratedAssets() {
   }
   generatedAssetContext = null;
   measurements.generated_assets = generatedAssetMetrics();
+  measurements.generated_asset_instances = null;
+  measurements.builtin_or_proxy_instances = null;
+  measurements.generated_proxy_instances = null;
+  measurements.render_omitted = null;
   if (itemPreview && $('items-dialog').open) refreshItemPreviews();
 }
 
