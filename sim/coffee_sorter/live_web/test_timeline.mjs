@@ -207,6 +207,16 @@ test('reset stays available without routine operator sign-in or paid approval', 
   assert.match(source, /initThree\(\);\s*setCamera\('overview'\);\s*setView\('3d'\);/);
 });
 
+test('queue previews use an accessible image dialog without pending controls', () => {
+  const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('./live.js', import.meta.url), 'utf8');
+  assert.match(html, /id="queue-preview-dialog"[^>]+aria-labelledby="queue-preview-name"/);
+  assert.match(html, /id="queue-preview-close"[^>]*>Close</);
+  assert.match(source, /setAttribute\('aria-label', `Open preview for/);
+  assert.match(source, /event\.key === 'Escape'|addEventListener\('cancel'/);
+  assert.doesNotMatch(source, /queue-preview[^\n]+disabled/);
+});
+
 test('queue signature changes only with visible queue fields', () => {
   const same = jobQueueSignature([summary]);
   assert.equal(jobQueueSignature([{...summary, description: 'unchanged row text'}]), same);

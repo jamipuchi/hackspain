@@ -720,10 +720,18 @@ function jobDetails(job) {
 
 // One head layout for queue rows and Wall of Fame rows. Wall of Fame preview images
 // stay a Phase 4 item, so the helper accepts a null preview.
-function buildJobHead({name, meta, preview = null, failed = false, action = null}) {
+function buildJobHead({name, meta, preview = null, failed = false, action = null, openPreview = null}) {
   const head = document.createElement('div'); head.className = 'job-head';
   const thumb = document.createElement('img'); thumb.className = 'job-thumb'; thumb.alt = '';
   if (preview) thumb.src = preview;
+  const media = document.createElement(preview && openPreview ? 'button' : 'span');
+  media.className = 'job-preview-trigger';
+  if (preview && openPreview) {
+    media.type = 'button';
+    media.setAttribute('aria-label', `Open preview for ${name}`);
+    media.onclick = openPreview;
+  }
+  media.append(thumb);
   const copy = document.createElement('div'); copy.className = 'job-name';
   copy.append(document.createTextNode(name));
   const line = document.createElement('small'); line.className = 'job-meta';
@@ -735,12 +743,28 @@ function buildJobHead({name, meta, preview = null, failed = false, action = null
     slot.type = 'button'; slot.className = 'job-action'; slot.textContent = action.label;
     slot.onclick = action.run;
   }
-  head.append(thumb, copy, slot);
+  head.append(media, copy, slot);
   return head;
+}
+
+function closeQueuePreview() {
+  const dialog = $('queue-preview-dialog');
+  if (dialog.open) dialog.close();
+  $('queue-preview-image').removeAttribute('src');
+}
+
+function openQueuePreview(job) {
+  if (!job.preview) return;
+  $('queue-preview-name').textContent = job.name;
+  const image = $('queue-preview-image');
+  image.src = job.preview;
+  image.alt = `Preview of ${job.name}`;
+  $('queue-preview-dialog').showModal();
 }
 
 function jobRow(job) {
   const row = document.createElement('div'); row.className = 'job-row'; row.dataset.requestId = job.requestId;
+  if (job.preview) row.classList.add('has-preview');
   const action = jobActionPresentation(job.action, job.state, itemJobsPacket()?.provider_mode);
   const activation = jobActivationLabel(job.activation);
   const replacement = jobReplacementLabel(job.replacement);
@@ -753,6 +777,7 @@ function jobRow(job) {
            jobErrorLabel(job.error) || job.progress].filter(Boolean).join(' · '),
     preview: job.preview,
     failed: Boolean(job.error) || activationFailed,
+    openPreview: job.preview ? () => openQueuePreview(job) : null,
     action: action
       ? {label: action.label, run: () => sendJobAction(job, job.action, action.choice)}
       : null,
@@ -765,6 +790,11 @@ function jobRow(job) {
     head.querySelector('.job-name').append(proof);
   }
   row.append(head, jobDetails(job));
+  if (job.preview) {
+    row.onclick = event => {
+      if (!event.target.closest('button, summary, details')) openQueuePreview(job);
+    };
+  }
   return row;
 }
 
@@ -993,6 +1023,11 @@ $('wall-more').onclick = loadWallPage;
 $('reset-defaults').onclick = resetDefaults;
 $('items-close').onclick = closeItems;
 $('items-dialog').addEventListener('cancel', event => { event.preventDefault(); closeItems(); });
+$('queue-preview-close').onclick = closeQueuePreview;
+$('queue-preview-dialog').addEventListener('cancel', event => { event.preventDefault(); closeQueuePreview(); });
+$('queue-preview-dialog').addEventListener('click', event => {
+  if (event.target === $('queue-preview-dialog')) closeQueuePreview();
+});
 $('keep-all').onclick = () => queuePolicySet(false);
 $('reject-all').onclick = () => queuePolicySet(true);
 
