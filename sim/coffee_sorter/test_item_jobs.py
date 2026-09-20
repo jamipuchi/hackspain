@@ -5,6 +5,7 @@ the whole file runs in seconds while still exercising real process groups.
 The provider tests drive the real runner and the real command builders, so an
 argv assertion proves what the service would actually spawn.
 """
+import ast
 import contextlib
 import datetime
 import hashlib
@@ -1554,6 +1555,27 @@ class PhysicsAndTrainingFlowTest(QueueTest):
         self.assertEqual(self.catalog()['catalog_revision'], baseline['catalog_revision'])
         self.assertEqual('policy-1', baseline['policy_version'])
         self.assertEqual(baseline['victim_id'], stored['victim'])
+        # The summary shows the replacement and the active ordering before any activation.
+        catalog = self.catalog()
+        summary = self.store.summary(stored)
+        replacement, identities = summary['replacement'], summary['identities']
+        victim = next(item for item in catalog['definitions']
+                      if item['object_type_id'] == replacement['victim_type_id'])
+        self.assertEqual(victim['classifier_label'], replacement['victim_label'])
+        self.assertEqual(catalog['active_type_ids'], replacement['active_type_ids_before'])
+        survivors = [item for item in catalog['active_type_ids']
+                     if item != replacement['victim_type_id']]
+        self.assertEqual([replacement['new_type_id'], *survivors],
+                         replacement['active_type_ids_after'])
+        self.assertEqual(stored['artifacts']['candidate_validation']['new_label'],
+                         replacement['new_label'])
+        self.assertEqual(catalog['catalog_revision'], identities['baseline_catalog_revision'])
+        self.assertRegex(identities['candidate_catalog_revision'], r'^[0-9a-f]{64}$')
+        self.assertNotEqual(identities['baseline_catalog_revision'],
+                            identities['candidate_catalog_revision'])
+        self.assertEqual('policy-1', identities['baseline_policy_version'])
+        self.assertEqual('policy-1', identities['validation_policy_version'])
+        self.assertEqual({None}, set(summary['activation'].values()))
 
     def test_the_validator_child_gets_the_job_asset_root_and_the_runtime_lock(self):
         job_dir = self.root / 'jobs' / 'x'
@@ -2009,6 +2031,138 @@ class PhysicsAndTrainingFlowTest(QueueTest):
                 seen.add(row['stage'])
                 ordered.append(row)
         return ordered
+
+
+CONTRACT = Path('/private/tmp/cinta-spike/increment-c-summary-contract.md')
+EXISTING_SUMMARY_KEYS = [
+    'request_id', 'display_name', 'description', 'requester_name', 'state', 'error',
+    'updated_at', 'created_at', 'preview', 'attempts', 'progress', 'reason', 'blocked_stage',
+    'primary_action', 'provider_mode', 'provider_cache_hit']
+
+
+def contract_tables(text):
+    """Block name to member names, read from the markdown tables of the frozen contract."""
+    blocks, current = {}, None
+    for line in text.splitlines():
+        if line.startswith('#'):
+            heading = re.match(r'^## `(\w+)`', line)
+            current = heading.group(1) if heading else None
+            if current is not None:
+                blocks[current] = []
+            continue
+        member = re.match(r'^\| `(\w+)` \|', line)
+        if current is not None and member:
+            blocks[current].append(member.group(1))
+    return blocks
+
+
+class SummaryContractTest(QueueTest):
+    """The four additive summary blocks of the frozen server to UI contract."""
+
+    provider_mode = 'cached'
+    ACTIVATION = {'phase': 'active', 'active_objects': 0, 'drain_timeout_seconds': 20.0,
+                  'result': 'active', 'rolled_back': False, 'message': 'activated',
+                  'bundle_sha256': 'b' * 64, 'previous_bundle_sha256': 'a' * 64,
+                  'activation_policy_version': 'policy-3', 'session_id': 'session-2',
+                  'score_epoch_id': 'epoch-2'}
+
+    def test_a_new_job_has_every_block_and_only_null_members(self):
+        summary = self.store.summary(self.submit())
+
+        self.assertEqual(EXISTING_SUMMARY_KEYS + list(item_jobs.SUMMARY_BLOCKS), list(summary))
+        for name, members in item_jobs.SUMMARY_BLOCKS.items():
+            with self.subTest(block=name):
+                self.assertEqual(list(members), list(summary[name]))
+        unknown = {(name, member) for name in item_jobs.SUMMARY_BLOCKS
+                   for member, value in summary[name].items() if value is not None}
+        # The submission state is a string from the first moment. Everything else is unknown.
+        self.assertEqual({('evidence', 'provider_submission')}, unknown)
+        self.assertEqual('not_submitted', summary['evidence']['provider_submission'])
+
+    @unittest.skipUnless(CONTRACT.is_file(), 'the frozen contract is a local coordination file')
+    def test_the_block_and_member_names_equal_the_contract_tables(self):
+        """The file and the code cannot drift silently: the tables are parsed, not copied."""
+        text = CONTRACT.read_text()
+        tables = contract_tables(text)
+        summary = self.store.summary(self.submit())
+
+        self.assertEqual(['replacement', 'activation', 'identities', 'evidence'], list(tables))
+        self.assertEqual(tables, {name: list(summary[name]) for name in tables})
+        self.assertEqual(tables, {name: list(members)
+                                  for name, members in item_jobs.SUMMARY_BLOCKS.items()})
+        # The activator writes ONE record block: the six activation members plus the last
+        # five identities. live.py is read as text, so this test never imports the service.
+        source = (HERE / 'live.py').read_text()
+        declared = re.search(r'^ACTIVATION_MEMBERS = (\([^)]*\))', source, re.MULTILINE)
+        members = ast.literal_eval(declared.group(1))
+        self.assertEqual(11, len(members))
+        self.assertEqual(tables['activation'], list(members[:6]))
+        self.assertLessEqual(set(members[6:]), set(tables['identities']))
+        # Every value the code can produce is a value the contract allows.
+        row = next(line for line in text.splitlines() if line.startswith('| `evidence_kind` |'))
+        allowed = set(re.findall(r'`"(\w+)"`', row.split('|')[2])) | {None}
+        produced = {item_jobs.evidence_kind(mode, hit, source_name)
+                    for mode in ('fake', 'cached', 'paid', None)
+                    for hit in (True, False, None)
+                    for source_name in (*item_jobs.PHYSICS_SOURCES, 'fake', None)}
+        self.assertEqual(allowed, produced)
+
+    def test_the_evidence_kind_follows_the_derivation_table(self):
+        replay, paid = item_jobs.PHYSICS_SOURCES
+        table = [
+            (('fake', None, None), 'fake'),
+            (('fake', False, paid), 'fake'),
+            (('cached', True, replay), 'cached_generation_cached_physics'),
+            (('paid', True, replay), 'cached_generation_cached_physics'),
+            (('paid', False, replay), 'paid_generation_cached_physics'),
+            # A paid physics call never gets a kind that names cached physics.
+            (('paid', False, paid), None),
+            (('paid', True, paid), None),
+            (('cached', True, paid), None),
+            # Anything else, or a stage that has not run.
+            (('cached', False, replay), None),
+            (('cached', True, None), None),
+            (('paid', None, replay), None),
+            ((None, True, replay), None),
+        ]
+        for arguments, expected in table:
+            with self.subTest(arguments=arguments):
+                self.assertEqual(expected, item_jobs.evidence_kind(*arguments))
+
+    def test_the_record_blocks_fill_the_summary_and_survive_a_reopened_store(self):
+        request_id = self.submit()['request_id']
+        physics = {'physics_source': 'cached_llm_replay',
+                   'physics_measurement_status': 'unmeasured_proxy_estimate',
+                   'recipe_sha256': 'c' * 64, 'glb_sha256': 'd' * 64,
+                   'physics_request_sha256': 'e' * 64, 'physics_cache_entry_sha256': 'f' * 64}
+        self.store.record(
+            request_id, generation_cache_hit=True,
+            provider_evidence={'request_sha256': '1' * 64, 'recipe_sha256': 'c' * 64},
+            artifacts={'physics': physics, 'validation_policy': {'policy_version': 'policy-2'},
+                       'candidate_validation': {'artifact_sha256': '2' * 64}},
+            training_baseline={'catalog_revision': '3' * 64, 'policy_version': 'policy-1',
+                               'candidate_catalog_revision': '4' * 64})
+        # The activator reports through the public record, with its eleven members.
+        self.store.record(request_id, activation=dict(self.ACTIVATION))
+        self.store.close()
+        reopened = self.open_store()
+
+        summary = reopened.summary(reopened.get(request_id))
+
+        self.assertEqual({name: self.ACTIVATION[name]
+                          for name in item_jobs.SUMMARY_BLOCKS['activation']},
+                         summary['activation'])
+        self.assertEqual({
+            'baseline_catalog_revision': '3' * 64, 'candidate_catalog_revision': '4' * 64,
+            'model_artifact_sha256': '2' * 64, 'bundle_sha256': 'b' * 64,
+            'previous_bundle_sha256': 'a' * 64, 'baseline_policy_version': 'policy-1',
+            'validation_policy_version': 'policy-2', 'activation_policy_version': 'policy-3',
+            'session_id': 'session-2', 'score_epoch_id': 'epoch-2'}, summary['identities'])
+        self.assertEqual({'evidence_kind': 'cached_generation_cached_physics',
+                          'provider_submission': 'not_submitted',
+                          'recipe_request_sha256': '1' * 64, **physics}, summary['evidence'])
+        # Existing top-level keys keep their values.
+        self.assertEqual('cached', summary['provider_mode'])
 
 
 class ValidationCompletenessTest(unittest.TestCase):

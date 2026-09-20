@@ -189,6 +189,24 @@ TRAINING_LEASE = "training.lease"
 # incomplete, whatever it claims about `passed`.
 VALIDATION_EVIDENCE = ("label_order_ok", "classifier", "anomaly", "keep_outcome", "pulses",
                        "policy", "preset_compatibility")
+# The four additive summary blocks of the frozen server to UI contract. Every block is
+# always present as an object, and a member is null until its owning stage has run. No
+# name here changes without a coordinated notice: a schema test reads the contract tables.
+PHYSICS_SOURCES = ("cached_llm_replay", "paid_llm_call")
+SUMMARY_BLOCKS = {
+    "replacement": ("victim_type_id", "victim_label", "new_type_id", "new_label",
+                    "active_type_ids_before", "active_type_ids_after"),
+    "activation": ("phase", "active_objects", "drain_timeout_seconds", "result",
+                   "rolled_back", "message"),
+    "identities": ("baseline_catalog_revision", "candidate_catalog_revision",
+                   "model_artifact_sha256", "bundle_sha256", "previous_bundle_sha256",
+                   "baseline_policy_version", "validation_policy_version",
+                   "activation_policy_version", "session_id", "score_epoch_id"),
+    "evidence": ("evidence_kind", "provider_submission", "physics_source",
+                 "physics_measurement_status", "recipe_sha256", "glb_sha256",
+                 "recipe_request_sha256", "physics_request_sha256",
+                 "physics_cache_entry_sha256"),
+}
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _PAYLOAD_FIELDS = {"request_id", "description", "requester_name", "expected_catalog_revision"}
@@ -215,6 +233,77 @@ def canonical_json(value: Any) -> bytes:
 
 def primary_action(state: str) -> str | None:
     return PRIMARY_ACTIONS.get(state)
+
+
+def evidence_kind(provider_mode: Any, generation_cache_hit: Any, physics_source: Any) -> str | None:
+    """The exact derivation table of the contract. Null means the neutral UI label.
+
+    A kind never names cached physics for a paid physics call, and a stage that has not
+    run, or whose origin is not recorded, never gets a kind.
+    """
+    if provider_mode == "fake":
+        return "fake"
+    if physics_source != "cached_llm_replay":
+        return None
+    if generation_cache_hit is True and provider_mode in ("cached", "paid"):
+        return "cached_generation_cached_physics"
+    if generation_cache_hit is False and provider_mode == "paid":
+        return "paid_generation_cached_physics"
+    return None
+
+
+def summary_blocks(job: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
+    """Fill the four contract blocks from the job record alone. Unknown stays null."""
+    def block(name: str) -> Mapping[str, Any]:
+        value = job.get(name)
+        return value if isinstance(value, Mapping) else {}
+
+    def part(source: Mapping[str, Any], name: str) -> Mapping[str, Any]:
+        value = source.get(name)
+        return value if isinstance(value, Mapping) else {}
+
+    baseline, activation = block("training_baseline"), block("activation")
+    artifacts, generation = block("artifacts"), block("provider_evidence")
+    physics, validation = part(artifacts, "physics"), part(artifacts, "candidate_validation")
+    values = {
+        "replacement": {
+            "victim_type_id": baseline.get("victim_id"),
+            "victim_label": baseline.get("victim_label"),
+            "new_type_id": baseline.get("new_type_id"),
+            "new_label": baseline.get("new_label"),
+            "active_type_ids_before": baseline.get("active_type_ids"),
+            "active_type_ids_after": baseline.get("candidate_type_ids"),
+        },
+        # The activator owns this record block. The summary only passes it on.
+        "activation": {name: activation.get(name) for name in SUMMARY_BLOCKS["activation"]},
+        "identities": {
+            "baseline_catalog_revision": baseline.get("catalog_revision"),
+            "candidate_catalog_revision": baseline.get("candidate_catalog_revision"),
+            "model_artifact_sha256": validation.get("artifact_sha256"),
+            "baseline_policy_version": baseline.get("policy_version"),
+            "validation_policy_version": part(artifacts, "validation_policy").get("policy_version"),
+            **{name: activation.get(name) for name in (
+                "bundle_sha256", "previous_bundle_sha256", "activation_policy_version",
+                "session_id", "score_epoch_id")},
+        },
+        "evidence": {
+            "evidence_kind": evidence_kind(job.get("provider_mode"),
+                                           job.get("generation_cache_hit"),
+                                           physics.get("physics_source")),
+            "provider_submission": job.get("provider_submission") or "not_submitted",
+            "recipe_sha256": physics.get("recipe_sha256") or generation.get("recipe_sha256"),
+            "recipe_request_sha256": generation.get("request_sha256"),
+            # The contract names two sources. A test fake or an unknown value reads as null.
+            "physics_source": (physics.get("physics_source")
+                               if physics.get("physics_source") in PHYSICS_SOURCES else None),
+            **{name: physics.get(name) for name in (
+                "physics_measurement_status", "glb_sha256", "physics_request_sha256",
+                "physics_cache_entry_sha256")},
+        },
+    }
+    # The contract order, and exactly the contract members.
+    return {name: {member: values[name].get(member) for member in members}
+            for name, members in SUMMARY_BLOCKS.items()}
 
 
 def is_queued_work(job: Mapping[str, Any]) -> bool:
@@ -338,6 +427,7 @@ class ItemJobStore:
             "primary_action": primary_action(job["state"]),
             "provider_mode": job.get("provider_mode"),
             "provider_cache_hit": job.get("provider_cache_hit"),
+            **summary_blocks(job),
         }
 
     def submit(self, payload: Any, current_catalog_revision: str) -> tuple[dict[str, Any], bool]:
@@ -794,6 +884,9 @@ class ItemJobRunner:
                 provider_submission=status.get("provider_submission",
                                                job["provider_submission"]),
                 provider_cache_hit=bool(status.get("cache_hit")),
+                # The physics settle overwrites provider_cache_hit, so the origin of the
+                # recipe keeps a field of its own.
+                generation_cache_hit=bool(status.get("cache_hit")),
                 provider_evidence=_read_json(job_dir / "provider_evidence.json"))
             return
         if code == EXIT_NOT_SUBMITTED:
@@ -1021,8 +1114,17 @@ class ItemJobRunner:
                            & set(object_catalog.catalog_labels(candidate)) - {new_label})
         _write_json(paths["policy"], {"reject_classes": survivors,
                                       "policy_version": policy.get("policy_version")})
+        victim_label = next(value["classifier_label"] for value in catalog["definitions"]
+                            if value["object_type_id"] == victim_id)
         return {"catalog_revision": catalog["catalog_revision"],
                 "active_type_ids": list(catalog["active_type_ids"]),
+                # The replacement this candidate was built for: the new type first, the
+                # survivors in their order, the same count.
+                "victim_label": victim_label,
+                "new_type_id": definition["object_type_id"],
+                "new_label": new_label,
+                "candidate_type_ids": list(candidate["active_type_ids"]),
+                "candidate_catalog_revision": candidate["catalog_revision"],
                 "policy_version": policy.get("policy_version"),
                 # The exact policy the candidate trained for, kept as evidence beside the
                 # policy that validation later observed. Neither one gates activation.
