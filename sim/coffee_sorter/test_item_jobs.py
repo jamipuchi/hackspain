@@ -1721,6 +1721,20 @@ class PhysicsAndTrainingFlowTest(QueueTest):
         self.assertEqual(sorted(self.labels()[2:]), written['reject_classes'])
         self.assertNotIn('star_token', written['reject_classes'])
 
+    def test_default_policy_removes_the_reject_victim_from_training_policy(self):
+        labels = self.labels()
+        runner = self.runner(reject_classes=labels[1:])
+        job = self.submit()
+
+        self.drive(runner, lambda: self.state(job['request_id']) == 'validating_candidate')
+        stored = self.store.get(job['request_id'])
+        written = json.loads(
+            (self.store.job_dir(job['request_id']) / 'training/policy.json').read_text())
+
+        self.assertEqual(labels[-1], stored['training_baseline']['victim_label'])
+        self.assertNotIn(labels[-1], written['reject_classes'])
+        self.assertEqual(sorted(labels[1:-1]), written['reject_classes'])
+
     def test_a_blocked_route_never_reaches_training(self):
         self.scenarios({'physics': ['fail_safe']})
         runner = self.runner()
