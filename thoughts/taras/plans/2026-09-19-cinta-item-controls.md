@@ -668,15 +668,17 @@ Taras owns final functional acceptance.
 ### Measured candidate behavior and owner decisions (2026-09-20)
 
 - A light `Keep` box that replaces `stick` trains in about 25 s. The classifier recognizes it with recall 1.0 over 77 holdout observations.
-- All 77 observations exceed the anomaly threshold (median 401.11 against 14.339). The anomaly reference is the `good` cloud only, and the controller fires on anomaly. Every non-bean `Keep` item is therefore rejected today.
+- All 77 observations of that box exceed the anomaly threshold (median 401.11 against 14.339). The anomaly reference is the `good` cloud only, and the controller fires on anomaly. The controller would therefore fire on this measured box.
+- This result applies only to that one measured light box (8 x 8 x 3 mm, 1200 kg/m3, flat colour 0.80, 0.62, 0.20). No other generated item type was measured. Other shapes, sizes, and colours can score differently, and each candidate needs its own measurement.
 - Phase 3 ships the strict validation gate. No threshold changes. One separate commit later makes the anomaly reference cover every `Keep` type.
 - `good` is never a replacement victim. It is the product class and the anomaly reference.
 
-### Closed-loop Keep smoke gate (accepted by Taras)
+### Closed-loop Keep smoke gate
 
+- The Codex coordinator accepted this gate under the overnight authorization from Taras. Taras did not accept it directly.
 - Gate: at least 30 resolved candidate objects, and a physical `Accept` fraction of at least 0.95, in a closed-loop run with the controller and the air jets on.
 - This gate is a minimum engineering release gate. It is not a statistical claim of 95 percent production accuracy. With 30 objects, the gate only shows that routine rejection of the new `Keep` type does not occur.
-- Classifier recall alone never proves compatibility. The measured box has recall 1.0 and still gets rejected.
+- Classifier recall alone does not prove compatibility. The measured box has recall 1.0, and all of its observations still exceed the anomaly threshold. Its physical outcome was not measured yet.
 - Every tested seed and every resolved count is recorded, including failed runs.
 - Four kinds of evidence stay separate: the no-air route, the anomaly scores, the commanded pulses, and the physical outcomes.
 - The gate is never weakened to force an activation. A candidate that fails it ends as `failed` with `candidate_validation_failed` and the measured evidence.
