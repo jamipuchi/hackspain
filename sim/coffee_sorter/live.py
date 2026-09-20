@@ -1127,6 +1127,34 @@ class LiveService:
         return web.Response(body=data, content_type=object_catalog.GLB_MEDIA_TYPE, headers={
             'ETag': f'"{digest}"', 'Cache-Control': 'public, max-age=31536000, immutable'})
 
+    def _read_wall_preview(self, entry_id, name):
+        """Read the PNG declared by one immutable Needs review entry."""
+        if not re.fullmatch(r'needs-review\.[a-z0-9][a-z0-9._-]{0,79}', entry_id) \
+                or name not in object_catalog.NEEDS_REVIEW_PREVIEWS:
+            return None
+        history = Path(getattr(self, 'history_root', None) or self.catalog_root)
+        wall = history / 'wall-of-fame'
+        try:
+            record = json.loads(object_catalog.read_confined(
+                wall, (entry_id, 'entry.json'), 16 << 10))
+            expected_url = f'/wall-of-fame/{entry_id}/{name}'
+            if not isinstance(record, dict) \
+                    or record.get('entry_kind') != object_catalog.NEEDS_REVIEW_KIND \
+                    or record.get('entry_id') != entry_id \
+                    or record.get('preview_url') != expected_url:
+                return None
+            return object_catalog.read_confined(
+                wall, (entry_id, name), item_jobs.MAX_PREVIEW_BYTES)
+        except (object_catalog.CatalogError, UnicodeDecodeError, ValueError):
+            return None
+
+    async def wall_of_fame_preview(self, request):
+        data = await asyncio.to_thread(
+            self._read_wall_preview, request.match_info['entry_id'], request.match_info['name'])
+        if data is None:
+            return _item_job_response('preview_unavailable')
+        return web.Response(body=data, content_type='image/png')
+
     async def wall_of_fame(self, request):
         try:
             offset = int(request.query.get('offset', 0))
@@ -2241,6 +2269,7 @@ def main():
                     web.get('/item-jobs/{request_id}/previews/{name}', service.item_job_preview),
                     web.get('/catalog-assets/{catalog_revision}/{glb_sha256}.glb',
                             service.catalog_asset),
+                    web.get('/wall-of-fame/{entry_id}/{name}', service.wall_of_fame_preview),
                     web.get('/wall-of-fame', service.wall_of_fame),
                     # The 3D view reuses the replay viewer's vendored three.js build (no network requests).
                     web.static('/vendor', HERE / 'web/vendor', follow_symlinks=False),

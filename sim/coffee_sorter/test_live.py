@@ -1351,6 +1351,52 @@ class ItemJobRouteTest(unittest.IsolatedAsyncioTestCase):
         value.active_bundle = None
         self.assertEqual((await get(revision, sha)).status, 404, 'no active bundle')
 
+    async def test_wall_of_fame_preview_serves_only_the_png_declared_by_the_entry(self):
+        root = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
+        history = root / 'history'
+        request_id = str(uuid.uuid4())
+        job_dir = root / 'jobs' / request_id
+        previews = job_dir / 'previews'
+        previews.mkdir(parents=True)
+        data = b'png fixture'
+        (previews / 'perspective.png').write_bytes(data)
+        job = {
+            'request_id': request_id,
+            'display_name': 'Needs review token',
+            'error': 'invalid_asset',
+            'timestamps': {'created': '2026-09-20T09:00:00Z'},
+            'artifacts': {'previews': {'perspective.png': {
+                'sha256': hashlib.sha256(data).hexdigest(), 'bytes': len(data)}}},
+        }
+        entry = object_catalog.archive_needs_review(history, job, job_dir)
+        entry_id = entry.name
+        value = item_service(self)
+        value.history_root = history
+
+        served = await value.wall_of_fame_preview(
+            FakeRequest(entry_id=entry_id, name='perspective.png'))
+        self.assertEqual((served.status, served.content_type, served.body),
+                         (200, 'image/png', data))
+
+        refused = {
+            'undeclared PNG': (entry_id, 'top.png'),
+            'record': (entry_id, 'entry.json'),
+            'other entry': (f'needs-review.{uuid.uuid4()}', 'perspective.png'),
+            'entry traversal': ('needs-review...outside', 'perspective.png'),
+            'name traversal': (entry_id, '../entry.json'),
+        }
+        for label, pair in refused.items():
+            with self.subTest(label):
+                self.assertEqual((await value.wall_of_fame_preview(
+                    FakeRequest(entry_id=pair[0], name=pair[1]))).status, 404)
+
+        preview = entry / 'perspective.png'
+        preview.unlink()
+        preview.symlink_to(root / 'outside.png')
+        (root / 'outside.png').write_bytes(data)
+        self.assertEqual((await value.wall_of_fame_preview(
+            FakeRequest(entry_id=entry_id, name='perspective.png'))).status, 404)
+
     async def test_new_request_is_refused_with_paid_mode_disabled(self):
         value = item_service(self)
         request_id = str(uuid.uuid4())
