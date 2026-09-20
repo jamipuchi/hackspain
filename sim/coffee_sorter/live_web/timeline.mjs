@@ -285,6 +285,14 @@ export function jobActionLabel(action) {
   return JOB_ACTION_LABELS[action] || null;
 }
 
+export function jobActionPresentation(action, state, providerMode) {
+  const label = jobActionLabel(action);
+  if (!label) return null;
+  if (action !== 'resolve_provider') return {label, choice: null};
+  if (providerMode === 'paid' && state === 'operator_required') return null;
+  return {label: 'Use cached response', choice: 'use_cache'};
+}
+
 export function jobActionPath(requestId, action) {
   const suffix = JOB_ACTION_PATHS[action];
   return suffix && requestId ? `/item-jobs/${encodeURIComponent(requestId)}/${suffix}` : null;

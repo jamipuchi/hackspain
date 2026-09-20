@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
 
-import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, freezeItemRequest, jobActionLabel, jobActionPath, jobActivationLabel, jobErrorLabel, jobEvidenceLabel, jobQueueSignature, jobReplacementLabel, jobStateLabel, jobStateNote, normalizedClassPreview, normalizedCollectionSurfaces, normalizedJobSummary, normalizedWallEntry, profilePreviewScale, queueModeCue, resetErrorLabel, resolvePendingRequest, samePresentationTimeline} from './timeline.mjs';
+import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, freezeItemRequest, jobActionLabel, jobActionPath, jobActionPresentation, jobActivationLabel, jobErrorLabel, jobEvidenceLabel, jobQueueSignature, jobReplacementLabel, jobStateLabel, jobStateNote, normalizedClassPreview, normalizedCollectionSurfaces, normalizedJobSummary, normalizedWallEntry, profilePreviewScale, queueModeCue, resetErrorLabel, resolvePendingRequest, samePresentationTimeline} from './timeline.mjs';
 
 const snapshot = {
   session_id: 'session-a',
@@ -144,6 +144,19 @@ test('queue states and primary actions use one label table', () => {
   assert.equal(jobActionPath('abc', 'delete_everything'), null);
   assert.equal(jobErrorLabel('activation_conflict'),
     'The active catalog changed before activation.');
+});
+
+test('paid jobs skip routine approval but keep cache-only uncertain recovery', () => {
+  assert.equal(jobActionPresentation('resolve_provider', 'operator_required', 'paid'), null);
+  assert.deepEqual(jobActionPresentation('resolve_provider', 'interrupted_uncertain', 'paid'), {
+    label: 'Use cached response', choice: 'use_cache',
+  });
+  assert.deepEqual(jobActionPresentation('resolve_provider', 'operator_required', 'cached'), {
+    label: 'Use cached response', choice: 'use_cache',
+  });
+  assert.deepEqual(jobActionPresentation('confirm_cleanup', 'worker_unavailable', 'paid'), {
+    label: 'Confirm cleanup', choice: null,
+  });
 });
 
 test('queue summaries normalize text and reject foreign preview URLs', () => {

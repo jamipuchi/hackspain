@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import {OrbitControls} from '/vendor/OrbitControls.js';
 import {RoomEnvironment} from '/vendor/RoomEnvironment.js';
 import {GLTFLoader} from '/assets/vendor/loaders/GLTFLoader.js';
-import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, freezeItemRequest, jobActionLabel, jobActionPath, jobActivationLabel, jobErrorLabel, jobEvidenceLabel, jobQueueSignature, jobReplacementLabel, jobStateLabel, jobStateNote, normalizedClassPreview, normalizedCollectionSurfaces, normalizedJobSummary, normalizedWallEntry, profilePreviewScale, queueModeCue, resetErrorLabel, resolvePendingRequest, samePresentationTimeline} from './timeline.mjs';
+import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, freezeItemRequest, jobActionLabel, jobActionPath, jobActionPresentation, jobActivationLabel, jobErrorLabel, jobEvidenceLabel, jobQueueSignature, jobReplacementLabel, jobStateLabel, jobStateNote, normalizedClassPreview, normalizedCollectionSurfaces, normalizedJobSummary, normalizedWallEntry, profilePreviewScale, queueModeCue, resetErrorLabel, resolvePendingRequest, samePresentationTimeline} from './timeline.mjs';
 import {acceptedAssetRegistry, chooseObjectAsset, generatedAssetMetrics, instanceScale, mustResetGeneratedPools, parsedAssetRefusal, planAssetLoads, prepareGeometry} from './generated_assets.mjs';
 
 const $ = id => document.getElementById(id);
@@ -741,8 +741,7 @@ function buildJobHead({name, meta, preview = null, failed = false, action = null
 
 function jobRow(job) {
   const row = document.createElement('div'); row.className = 'job-row'; row.dataset.requestId = job.requestId;
-  const label = jobActionLabel(job.action);
-  const routinePaidApproval = job.action === 'resolve_provider' && itemJobsPacket()?.provider_mode === 'paid';
+  const action = jobActionPresentation(job.action, job.state, itemJobsPacket()?.provider_mode);
   const activation = jobActivationLabel(job.activation);
   const replacement = jobReplacementLabel(job.replacement);
   const evidence = jobEvidenceLabel(job.evidence);
@@ -754,8 +753,8 @@ function jobRow(job) {
            jobErrorLabel(job.error) || job.progress].filter(Boolean).join(' · '),
     preview: job.preview,
     failed: Boolean(job.error) || activationFailed,
-    action: label && !routinePaidApproval
-      ? {label, run: () => sendJobAction(job, job.action, job.action === 'resolve_provider' ? 'use_cache' : null)}
+    action: action
+      ? {label: action.label, run: () => sendJobAction(job, job.action, action.choice)}
       : null,
   });
   const facts = [activation, replacement, evidence].filter(Boolean);
