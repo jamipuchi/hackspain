@@ -106,7 +106,7 @@ RUN python -m py_compile \
       /app/sim/coffee_sorter/bootstrap_model.py \
       /app/sim/coffee_sorter/validate_bundle.py \
     && cd /app/sim/coffee_sorter \
-    && python -c 'import item_jobs, object_catalog, profiles; object_catalog.load_catalog(object_catalog.CATALOG_ROOT)'
+    && python -c 'import item_jobs, object_catalog, profiles; object_catalog.load_catalog(object_catalog.PACKAGED_CATALOG_ROOT)'
 
 COPY deploy/hack-growth.dev/start.sh /app/deploy/start.sh
 COPY deploy/hack-growth.dev/check_live.py /app/deploy/check_live.py
