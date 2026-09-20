@@ -656,3 +656,36 @@ Taras owns final functional acceptance.
 - `profiles.py` is part of the recorded model source hashes. The canonical model still loads. The next `bootstrap_model.py` run retrains instead of reusing the artifact.
 - `require_label_order` has no caller in Phase 1. `live.py` already compares model labels with `profile.names`, which now derive from the catalog. Phase 3 candidate validation calls it for the final newest-first order.
 - `archive_type` assumes one writer. Activation runs inside one service process.
+
+### Phase 1 review fixes
+
+- `9ba7880`: a built-in texture must be an engine material family, and a generated type has no texture. The loader resolves the manifest and each definition and requires that they remain below the catalog root.
+- Enum-like fields are checked as text before set membership. A JSON list in such a field raised `TypeError`. It now raises `CatalogError`.
+- The texture families come from `assets.FAMILIES`. `object_catalog.py` holds no second copy.
+- `class_spec` and `profile_from_catalog` moved to `profiles.py`. The import cycle is gone.
+- Two findings stay open as Phase 4 release gates: archive completeness for generated victims, and verification of `active_bundle_sha256` against the bundle bytes.
+
+### Measured candidate behavior and owner decisions (2026-09-20)
+
+- A light `Keep` box that replaces `stick` trains in about 25 s. The classifier recognizes it with recall 1.0 over 77 holdout observations.
+- All 77 observations exceed the anomaly threshold (median 401.11 against 14.339). The anomaly reference is the `good` cloud only, and the controller fires on anomaly. Every non-bean `Keep` item is therefore rejected today.
+- Phase 3 ships the strict validation gate. No threshold changes. One separate commit later makes the anomaly reference cover every `Keep` type.
+- `good` is never a replacement victim. It is the product class and the anomaly reference.
+
+### Closed-loop Keep smoke gate (accepted by Taras)
+
+- Gate: at least 30 resolved candidate objects, and a physical `Accept` fraction of at least 0.95, in a closed-loop run with the controller and the air jets on.
+- This gate is a minimum engineering release gate. It is not a statistical claim of 95 percent production accuracy. With 30 objects, the gate only shows that routine rejection of the new `Keep` type does not occur.
+- Classifier recall alone never proves compatibility. The measured box has recall 1.0 and still gets rejected.
+- Every tested seed and every resolved count is recorded, including failed runs.
+- Four kinds of evidence stay separate: the no-air route, the anomaly scores, the commanded pulses, and the physical outcomes.
+- The gate is never weakened to force an activation. A candidate that fails it ends as `failed` with `candidate_validation_failed` and the measured evidence.
+
+### Provider and deployment rules (2026-09-20)
+
+- `--live` is never automatic. Every job runs from the provider cache first.
+- A cache miss stops before submission in the blocked state `operator_required` with `provider_cache_miss`. This state and the errors `provider_cache_miss` and `paid_mode_disabled` extend the state and error lists of this plan.
+- Paid mode is off by default. One explicit operator action permits one billable request. No new paid request runs without explicit authorization from Taras.
+- The service never reads provider credentials and never changes its environment. A fake job carries a visible marker and can never activate.
+- The final E2E uses the fake provider or exact cached artifacts, plus real rendering, physics, training, and activation.
+- Final training, final validation, and final model hashes wait for the verified Astra physics fix (`codex/cinta-physics-repair`).
