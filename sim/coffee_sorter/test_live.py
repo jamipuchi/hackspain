@@ -10,6 +10,7 @@ import json
 import shlex
 import shutil
 import os
+import stat
 from pathlib import Path
 from queue import Full
 import sys
@@ -1001,36 +1002,64 @@ class OneEngineTest(unittest.IsolatedAsyncioTestCase):
     EXIT_BOUND_S = ParentDeathTest.EXIT_BOUND_S
     # One service-like parent. It starts the REAL live.worker and never drains the states
     # queue, exactly as the parent-death regression does.
+    # The spawn sits under a main guard, or the spawned child re-executes this module and
+    # never reaches the worker loop. The parent publishes readiness only after the child
+    # PROVES it runs the real loop, and it exits with its own code if the child dies.
+    READY = 'engine-filled'
     SERVICE = (
         'import json, os, sys, time\n'
         'from pathlib import Path\n'
         'import multiprocessing as mp\n'
-        'sys.path.insert(0, sys.argv[1])\n'
         'import live\n'
-        'marker, out, mode, lifetime = sys.argv[2:6]\n'
-        'Path(out).mkdir(parents=True, exist_ok=True)\n'
-        'ctx = mp.get_context("spawn")\n'
-        'states, acks, commands = ctx.Queue(maxsize=8), ctx.Queue(), ctx.Queue()\n'
-        'stop = ctx.Event()\n'
-        'process = ctx.Process(target=live.worker,\n'
-        '                      args=("unused.json", states, acks, commands, stop, out))\n'
-        'process.start()\n'
-        'Path(marker).write_text(json.dumps({"worker_pid": process.pid}))\n'
-        'deadline = time.monotonic() + 60\n'
-        'while time.monotonic() < deadline and not (Path(out) / "engine-filled").exists():\n'
-        '    time.sleep(0.02)\n'
-        'if mode == "hard":\n'
-        '    os._exit(17)\n'
-        'time.sleep(float(lifetime))\n'
-        'os._exit(0)\n')
+        '\n'
+        '\n'
+        'def main():\n'
+        '    marker, out, mode, lifetime = sys.argv[2:6]\n'
+        '    Path(out).mkdir(parents=True, exist_ok=True)\n'
+        '    ctx = mp.get_context("spawn")\n'
+        '    states, acks, commands = ctx.Queue(maxsize=8), ctx.Queue(), ctx.Queue()\n'
+        '    stop = ctx.Event()\n'
+        '    process = ctx.Process(target=live.worker,\n'
+        '                          args=("unused.json", states, acks, commands, stop, out))\n'
+        '    process.start()\n'
+        '    Path(marker).write_text(json.dumps({"worker_pid": process.pid}))\n'
+        '    ready = Path(out) / "engine-filled"\n'
+        '    deadline = time.monotonic() + 60\n'
+        '    while time.monotonic() < deadline and not ready.exists():\n'
+        '        if not process.is_alive():\n'
+        '            os._exit(9)\n'
+        '        time.sleep(0.02)\n'
+        '    if not ready.exists():\n'
+        '        os._exit(10)\n'
+        '    if mode == "hard":\n'
+        '        os._exit(17)\n'
+        '    time.sleep(float(lifetime))\n'
+        '    os._exit(0)\n'
+        '\n'
+        '\n'
+        'if __name__ == "__main__":\n'
+        '    main()\n')
 
     @staticmethod
     def alive(pid):
+        """LIVE, not merely a PID. A zombie has already exited and is never an engine.
+
+        This reuses the queue's own group listing and its zombie rule, so one process
+        state convention covers the runner and this test.
+        """
         try:
-            os.kill(pid, 0)
+            pgid = os.getpgid(pid)
         except (ProcessLookupError, PermissionError):
             return False
-        return True
+        members = item_jobs._group_members(pgid)
+        if members is None:
+            # No listing available. The signal probe is the existing fallback.
+            try:
+                os.kill(pid, 0)
+            except (ProcessLookupError, PermissionError):
+                return False
+            return True
+        return any(member == pid and not state.startswith('Z') for member, state in members)
 
     def kill_later(self, *pids):
         def clean():
@@ -1045,21 +1074,30 @@ class OneEngineTest(unittest.IsolatedAsyncioTestCase):
             time.sleep(0.02)
         return not self.alive(pid)
 
-    def start_service(self, directory, mode, lifetime=0.0):
-        """Start one service-like parent and return its process and its worker pid."""
+    def start_service(self, directory, mode, lifetime=0.0, script_text=None):
+        """Start one service-like parent whose engine PROVED it runs the real loop."""
         marker, out = Path(directory) / 'info.json', Path(directory) / 'out'
         out.mkdir(parents=True, exist_ok=True)
         script = Path(directory) / 'service.py'
-        script.write_text(self.SERVICE)
-        # Read the environment, never mutate it, and never print a value from it.
-        environment = {**os.environ, 'PYTHONPATH': str(self.FAKE_ENGINE),
+        script.write_text(self.SERVICE if script_text is None else script_text)
+        # Read the environment, never mutate it, and never print a value from it. The
+        # spawned grandchild re-imports this script, so its imports must come from the
+        # path, never from an argv that multiprocessing replaces. The fake engine leads,
+        # so `import engine` in the worker finds it and never the real one.
+        environment = {**os.environ,
+                       'PYTHONPATH': os.pathsep.join([str(self.FAKE_ENGINE), str(HERE)]),
                        'CINTA_PARENT_DEATH_OUT': str(out)}
         parent = subprocess.Popen(
             [sys.executable, str(script), str(HERE), str(marker), str(out), mode, str(lifetime)],
             env=environment)
-        deadline = time.monotonic() + 60
-        while time.monotonic() < deadline and not marker.exists():
+        ready, deadline = out / self.READY, time.monotonic() + 90
+        while time.monotonic() < deadline and not ready.exists():
+            if parent.poll() is not None:
+                break
             time.sleep(0.02)
+        # A published PID is not an engine. The readiness marker is written by the real
+        # worker loop, so it is the only proof that one exists.
+        self.assertTrue(ready.exists(), 'the engine never proved that it runs')
         return parent, json.loads(marker.read_text())['worker_pid']
 
     def test_a_restart_after_a_hard_parent_death_leaves_exactly_one_engine(self):
@@ -1077,7 +1115,16 @@ class OneEngineTest(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(self.wait_gone(orphan),
                             'the abandoned engine outlived its dead service')
             # Exactly one engine, counted by liveness of every pid this test started.
+            self.assertTrue(self.alive(engine), 'the restarted engine is not running')
             self.assertEqual([engine], [pid for pid in (orphan, engine) if self.alive(pid)])
+
+    def test_the_restart_proof_fails_without_the_spawn_main_guard(self):
+        """The regression above must be able to go red. Remove the guard and it does."""
+        unguarded = self.SERVICE.replace('if __name__ == "__main__":\n    main()\n', 'main()\n')
+
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(AssertionError, 'never proved that it runs'):
+                self.start_service(directory, 'hard', script_text=unguarded)
 
     async def running_service(self, directory):
         """One real service object with one real spawned worker and its real pump."""
@@ -2041,6 +2088,104 @@ class ActivatorTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(self.service.activating)
         refused = [block for job_id, block in self.jobs.blocks if job_id == 'job-2']
         self.assertEqual(['activation_conflict'], [block['result'] for block in refused])
+
+    async def retry_after(self, removals):
+        """Activate, delete what a crash would have left undone, then retry exactly."""
+        victim_id = self.packaged['active_type_ids'][-1]
+        candidate = self.candidate(victim_id)
+        with self.fake_swap():
+            self.assertEqual('active', await self.service._activate('job-1', candidate))
+        activated, swaps, identity = self.pointer(), list(self.swaps), self.identity()
+        history = self.root / 'history' / 'activations.jsonl'
+        archived = self.root / 'history' / 'wall-of-fame' / victim_id
+        if 'history' in removals:
+            history.unlink()
+        if 'archive' in removals:
+            shutil.rmtree(archived)
+
+        with self.fake_swap():
+            result = await self.service._activate(
+                'job-1', {**candidate, 'bundle_sha256': activated})
+
+        self.assertEqual('active', result)
+        # Never a second swap, never a second epoch, never a second pointer move.
+        self.assertEqual((swaps, identity, activated),
+                         (self.swaps, self.identity(), self.pointer()))
+        rows = [json.loads(line) for line in history.read_text().splitlines()]
+        return victim_id, archived, rows
+
+    async def test_an_exact_retry_completes_a_commit_that_died_before_the_archive(self):
+        victim_id, archived, rows = await self.retry_after({'archive', 'history'})
+
+        self.assertTrue((archived / 'definition.json').is_file())
+        self.assertEqual(1, len(rows))
+        self.assertEqual((victim_id, self.pointer()),
+                         (rows[0]['victim_type_id'], rows[0]['bundle_sha256']))
+        # A repair never saw the capture, so it states no policy version.
+        self.assertIsNone(rows[0]['activation_policy_version'])
+        self.assertIsNone(self.jobs.last['message'])
+
+    async def test_an_exact_retry_completes_a_commit_that_died_before_the_history_row(self):
+        victim_id, archived, rows = await self.retry_after({'history'})
+
+        self.assertTrue((archived / 'definition.json').is_file())
+        self.assertEqual(1, len(rows))
+        self.assertEqual(self.pointer(), rows[0]['bundle_sha256'])
+
+    async def test_an_exact_retry_of_a_complete_commit_writes_nothing_twice(self):
+        victim_id, archived, rows = await self.retry_after(set())
+
+        self.assertEqual(1, len(rows))
+        self.assertEqual(['archive.json', 'definition.json', 'model.manifest.json'],
+                         sorted(path.name for path in archived.iterdir()))
+        self.assertIsNone(self.jobs.last['message'])
+
+    async def test_a_report_failure_after_prepare_never_strands_the_engine(self):
+        """A paused engine with nobody to cancel it is the one unacceptable outcome."""
+        before, identity = self.pointer(), self.identity()
+        real = self.jobs
+
+        def failing(job_id, **fields):
+            if fields['activation']['phase'] == 'draining':
+                raise RuntimeError('job record failed after prepare')
+            return real(job_id, **fields)
+
+        self.service.record = failing
+        with self.fake_swap():
+            result = await self.service._activate('job-1', self.candidate())
+
+        self.assertEqual('activation_failed', result)
+        # The report sits inside the boundary, so the cancel always runs.
+        self.assertEqual(['prepare_activation', 'cancel_activation'],
+                         self.service.commands.kinds)
+        self.assertEqual(30.0, self.engine.sim.rate)
+        self.assertIsNone(self.service.commands.activation)
+        self.assertEqual((before, identity, []), (self.pointer(), self.identity(), self.swaps))
+        self.assertIsNone(self.service.activating)
+
+    async def test_a_pointer_that_moved_despite_a_write_error_stays_active(self):
+        """The pointer decides, never the exception. The two can never name two bundles."""
+        before = self.pointer()
+        real, failed = os.fsync, {'once': False}
+
+        def fsync(descriptor):
+            # The replace already happened. Only its durability step fails.
+            if stat.S_ISDIR(os.fstat(descriptor).st_mode) and not failed['once']:
+                failed['once'] = True
+                raise OSError('the directory fsync failed')
+            return real(descriptor)
+
+        with self.fake_swap(), patch.object(object_catalog.os, 'fsync', fsync):
+            result = await self.service._activate('job-1', self.candidate())
+
+        self.assertEqual('active', result)
+        self.assertTrue(failed['once'])
+        self.assertNotEqual(before, self.pointer())
+        # Pointer, running worker, and the reported bundle all name ONE bundle.
+        self.assertEqual(self.pointer(), self.service.active_bundle.name)
+        self.assertEqual(self.pointer(), self.jobs.last['bundle_sha256'])
+        self.assertEqual(1, len(self.swaps))
+        self.assertIn('durability', self.jobs.last['message'])
 
     async def test_a_pointer_failure_after_the_swap_rolls_back_to_the_old_bundle(self):
         before = self.pointer()

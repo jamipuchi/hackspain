@@ -406,6 +406,49 @@ def _bundle_model_manifest(bundle):
     return found[0] if found else None
 
 
+def _pointer_bundle(active_root):
+    """What the active pointer names RIGHT NOW. An unreadable pointer names nothing."""
+    try:
+        return object_catalog.read_active(Path(active_root))['active_bundle_sha256']
+    except (object_catalog.CatalogError, OSError, ValueError):
+        return None
+
+
+def _activation_recorded(path, job_id, bundle_sha256):
+    """True when this exact activation already has its history row."""
+    try:
+        lines = Path(path).read_text(encoding='utf-8').splitlines()
+    except OSError:
+        return False
+    for line in lines:
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if row.get('job_id') == job_id and row.get('bundle_sha256') == bundle_sha256:
+            return True
+    return False
+
+
+def _retired_definition(active_root, victim_id, active_sha256):
+    """The victim definition, read from a published bundle that still carries it.
+
+    Only a bundle that is NOT the active one can hold a retired type, so this never
+    reads the type back out of the catalog that replaced it.
+    """
+    bundles = Path(active_root) / 'bundles'
+    for bundle in sorted(bundles.iterdir()) if bundles.is_dir() else []:
+        if bundle.name == active_sha256 or bundle.is_symlink() or not bundle.is_dir():
+            continue
+        path = bundle / 'catalog' / 'definitions' / f'{victim_id}.json'
+        if path.is_file():
+            try:
+                return bundle.name, json.loads(path.read_text())
+            except (OSError, json.JSONDecodeError):
+                return None, None
+    return None, None
+
+
 def _activation_message(error):
     """One short operator line. No host path ever reaches a job record."""
     return _without_host_paths(f'{type(error).__name__}: {error}'[:200])
@@ -1463,11 +1506,15 @@ class LiveService:
             return (self.state.get('reject_policy') or {}).get('score_epoch_id')
 
         # An exact retry: the pointer already carries this bundle. No second restart and
-        # no second score epoch.
+        # no second score epoch. The commit step is COMPLETED instead, because a first
+        # attempt that died after the pointer write would otherwise lose its audit trail
+        # forever. Every repair step is idempotent.
         if candidate.get('bundle_sha256') == previous_sha256 and previous_sha256 is not None:
+            audit = self._repair_commit(job_id, candidate, active_root, previous_sha256)
+            self._refresh_active_identity()
             report(phase='active', result='active', active_objects=0, rolled_back=False,
                    bundle_sha256=previous_sha256, session_id=self.state.get('session_id'),
-                   score_epoch_id=epoch(), message='The pointer already carries this bundle.')
+                   score_epoch_id=epoch(), message=audit)
             return 'active'
 
         victim = next((item for item in catalog['definitions']
@@ -1514,11 +1561,13 @@ class LiveService:
                 else 'activation_failed'
             report(phase='failed', result=result, message=ack.get('error'))
             return result
-        report(phase='draining', active_objects=ack.get('active_objects'))
 
-        # From here the engine is paused, so EVERY failure goes through one cleanup
-        # boundary that gives the rate and the policy back.
+        # The engine is paused from this line on, so EVERY statement below sits inside the
+        # one cleanup boundary that gives the rate and the policy back. A reporting
+        # failure aborts the activation: an activation nobody can report is not one, and
+        # the engine must never be left paused with nobody to cancel it.
         try:
+            report(phase='draining', active_objects=ack.get('active_objects'))
             # Steps 2 and 3: drain, then commit under the fence. The worker owns both
             # truths: only it knows the belt is empty, and only a commit sets the fence.
             while True:
@@ -1564,19 +1613,30 @@ class LiveService:
             await self._swap_worker(previous_session_id)
             if self.state.get('status') == 'failed':
                 raise RuntimeError(self.state.get('error') or 'The engine failed to start.')
-            # Step 7: the pointer IS the activation. A failure here is still recoverable,
-            # because the pointer has not moved.
-            object_catalog.write_active_pointer(active_root, bundle_sha256)
         except Exception as error:
             return await self._rollback_activation(
                 report, previous_preset, previous_bundle, policy_version,
                 _activation_message(error))
+
+        # Step 7: the pointer IS the activation. The write replaces the name first and
+        # makes it durable afterwards, so an exception here proves nothing. The POINTER
+        # decides what actually happened, never the exception.
+        durability = None
+        try:
+            object_catalog.write_active_pointer(active_root, bundle_sha256)
+        except Exception as error:
+            durability = _activation_message(error)
+        if _pointer_bundle(active_root) != bundle_sha256:
+            return await self._rollback_activation(
+                report, previous_preset, previous_bundle, policy_version,
+                durability or 'The active pointer did not move.')
         # Admission and the published class list must describe the committed bundle
         # before any success is reported or any later job is accepted.
         self._refresh_active_identity()
         # Nothing below may undo the activation. An audit failure is reported beside the
         # active result, never as a failed activation.
-        audit = None
+        audit = None if durability is None else (
+            f'The activation is committed. Its pointer durability failed: {durability}')
         try:
             retired_at = item_jobs.utc_now()
             retiring = _bundle_model_manifest(active_root / 'bundles' / previous_sha256)
@@ -1617,6 +1677,12 @@ class LiveService:
                 failure = self.state.get('error') or 'The prior bundle did not start.'
         except Exception as error:
             failure = _activation_message(error)
+        # A rollback is a claim about the pointer too. The worker and the pointer must
+        # name ONE bundle, or this is a split, never a rollback.
+        pointer = _pointer_bundle(self.item_jobs_root / 'active')
+        if rolled_back and bundle is not None and pointer != bundle.name:
+            rolled_back = False
+            failure = 'The active pointer names another bundle.'
         if rolled_back:
             # The pointer never moved, so this republishes the bundle that is still
             # active. A compatibility claim follows this proof, never precedes it.
@@ -1632,6 +1698,52 @@ class LiveService:
                activation_policy_version=policy_version, message=message,
                session_id=self.state.get('session_id'), score_epoch_id=epoch)
         return 'activation_failed'
+
+    def _repair_commit(self, job_id, candidate, active_root, bundle_sha256):
+        """Finish the commit step of an activation whose pointer already moved.
+
+        It archives the victim only when its entry is absent, and appends one history
+        row only when no row names this job and this bundle. A retry therefore writes
+        nothing twice, and it never starts a second worker or a second score epoch.
+        """
+        history = Path(self.history_root) / 'activations.jsonl'
+        archived = Path(self.history_root) / 'wall-of-fame' / str(candidate['victim_id'])
+        if archived.is_dir() and _activation_recorded(history, job_id, bundle_sha256):
+            return None
+        retired_sha256, victim = _retired_definition(
+            active_root, candidate['victim_id'], bundle_sha256)
+        if victim is None:
+            return ('The activation is committed. Its audit trail cannot be completed: '
+                    'the retired definition is no longer published.')
+        try:
+            if not archived.is_dir():
+                evidence = {name: Path(path)
+                            for name, path in (candidate.get('evidence') or {}).items()}
+                retiring = _bundle_model_manifest(active_root / 'bundles' / retired_sha256)
+                if retiring is not None:
+                    evidence.setdefault('model.manifest.json', retiring)
+                object_catalog.archive_type(self.history_root, victim, item_jobs.utc_now(),
+                                            evidence)
+            if not _activation_recorded(history, job_id, bundle_sha256):
+                policy = json.loads(
+                    (active_root / 'bundles' / bundle_sha256 / 'policy.json').read_text())
+                self._append_activation_history({
+                    'job_id': job_id, 'activated_at': item_jobs.utc_now(),
+                    'bundle_sha256': bundle_sha256,
+                    'previous_bundle_sha256': retired_sha256,
+                    'victim_type_id': victim['object_type_id'],
+                    'victim_label': victim['classifier_label'],
+                    # A repair never saw the capture, so it states no policy version.
+                    'activation_policy_version': None,
+                    'reject_classes': list((policy or {}).get('reject_classes') or []),
+                    'session_id': self.state.get('session_id'),
+                    'score_epoch_id': (self.state.get('reject_policy') or {}).get(
+                        'score_epoch_id')})
+        except (object_catalog.CatalogError, OSError, ValueError,
+                json.JSONDecodeError) as error:
+            return (f'The activation is committed. Its audit trail failed: '
+                    f'{_activation_message(error)}')
+        return None
 
     def _append_activation_history(self, row):
         """One durable append. The row must survive the power loss that follows it."""
