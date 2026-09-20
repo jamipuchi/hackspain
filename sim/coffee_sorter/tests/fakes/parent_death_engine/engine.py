@@ -43,6 +43,8 @@ class Engine:
         return {'policy_version': self.policy_version, 'score_epoch_id': 'epoch-1'}
 
     def inject(self, class_name):
+        # The command-handled signal for the graceful regression.
+        (self.out / 'engine-injected').write_text('1')
         return 1
 
     def injection_position(self, object_id):

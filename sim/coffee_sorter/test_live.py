@@ -317,6 +317,48 @@ class StartupValidationTest(unittest.TestCase):
         finally:
             path.unlink()
 
+    def test_a_preset_rooted_model_path_resolves_beside_the_preset(self):
+        """A bundle carries its model beside its preset, so it loads from there."""
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        directory = Path(folder.name)
+        (directory / 'candidate.joblib').write_bytes(b'model')
+        preset = {'model_path': 'candidate.joblib', 'model_path_root': 'preset'}
+        path = directory / 'candidate.preset.json'
+
+        resolved = resolve_model_path(preset, path, HERE)
+
+        self.assertEqual(directory / 'candidate.joblib', resolved)
+
+    def test_a_preset_rooted_model_path_cannot_leave_the_preset_directory(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        path = Path(folder.name) / 'nested' / 'candidate.preset.json'
+        path.parent.mkdir()
+        cases = {
+            'parent traversal': '../x.joblib',
+            'deep traversal': '../../../etc/x.joblib',
+            'absolute path': str(Path(folder.name) / 'x.joblib'),
+        }
+        for name, model_path in cases.items():
+            with self.subTest(case=name):
+                preset = {'model_path': model_path, 'model_path_root': 'preset'}
+                with self.assertRaises(ValueError):
+                    resolve_model_path(preset, path, HERE)
+
+    def test_an_unknown_model_path_root_is_refused(self):
+        with self.assertRaisesRegex(ValueError, 'model_path_root'):
+            resolve_model_path({'model_path': 'x.joblib', 'model_path_root': 'source'},
+                               HERE / 'p.json', HERE)
+
+    def test_without_the_field_the_model_path_stays_source_relative(self):
+        self.assertEqual(HERE / 'models/live.joblib',
+                         resolve_model_path({'model_path': 'models/live.joblib'},
+                                            HERE / 'p.json', HERE))
+        self.assertEqual(Path('/tmp/abs.joblib'),
+                         resolve_model_path({'model_path': '/tmp/abs.joblib'},
+                                            HERE / 'p.json', HERE))
+
     def _temp_preset(self, preset):
         path = HERE / f'.test-live-{uuid.uuid4()}.json'
         path.write_text(json.dumps(preset))
@@ -772,9 +814,10 @@ class ParentDeathTest(unittest.TestCase):
     A fake engine module is injected through that subprocess environment only.
     """
 
-    # The runtime harness measured an exit inside 3 s, and the fix exits in well under
-    # 0.1 s. This leaves headroom for a loaded machine without hiding a real hang.
-    EXIT_BOUND_S = 10.0
+    # The fix exits in well under 0.1 s. This bound leaves headroom for a loaded machine,
+    # and it stays clearly BELOW live.ORPHAN_EXIT_SECONDS. So the forced os._exit fallback
+    # can never make this test pass when the feeder cancellation is broken.
+    EXIT_BOUND_S = 4.0
     SCRIPT = HERE / 'tests/fakes/parent_death_service.py'
     FAKE_ENGINE = HERE / 'tests/fakes/parent_death_engine'
 
@@ -809,6 +852,7 @@ class ParentDeathTest(unittest.TestCase):
             worker_pid = info['worker_pid']
             try:
                 self.assertEqual(code, 17)
+                self.assertLessEqual(self.EXIT_BOUND_S * 2, live.ORPHAN_EXIT_SECONDS)
                 # The states queue was never drained and its pipe is full, so a blocked
                 # feeder thread could otherwise keep this process alive after stop.
                 self.assertTrue(info['engine_filled'])
@@ -835,6 +879,10 @@ class ParentDeathTest(unittest.TestCase):
                 self.assertTrue(acknowledgment['ok'])
                 self.assertEqual(acknowledgment['object_id'], 1)
                 self.assertEqual(result['exitcode'], 0)
+                # The parent read the acknowledgment only AFTER the worker had handled the
+                # command, received stop, and exited. So normal queue finalization flushed it.
+                self.assertTrue(result['command_handled_before_stop'])
+                self.assertTrue(result['worker_exited_before_read'])
                 self.assertFalse(self.alive(worker_pid))
             finally:
                 with contextlib.suppress(ProcessLookupError, PermissionError):

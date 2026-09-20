@@ -57,12 +57,21 @@ def main():
         commands.put({'type': 'inject', 'command_id': 'graceful-command',
                       'session_id': 'parent-death-session', 'command_epoch': 'epoch',
                       'class_name': 'stone'})
-        acknowledgment = acknowledgments.get(timeout=30)
+        # Leave the acknowledgment UNREAD. Wait for the engine side effect that proves the
+        # worker handled the command, then stop and join. Only then read the queue, so the
+        # test proves that normal queue finalization flushes a pending acknowledgment.
+        handled_deadline = time.monotonic() + 30
+        while time.monotonic() < handled_deadline and not (out / 'engine-injected').is_file():
+            time.sleep(0.01)
+        handled = (out / 'engine-injected').is_file()
         stop.set()
         process.join(30)
+        exited = process.exitcode is not None
+        acknowledgment = acknowledgments.get(timeout=10)
         draining.set()
         (out / 'graceful.json').write_text(json.dumps({
-            'acknowledgment': acknowledgment, 'exitcode': process.exitcode}))
+            'acknowledgment': acknowledgment, 'exitcode': process.exitcode,
+            'command_handled_before_stop': handled, 'worker_exited_before_read': exited}))
         raise SystemExit(0)
     os._exit(17)
 
