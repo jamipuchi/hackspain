@@ -6,7 +6,9 @@ ARG BLENDER_VERSION=5.2.2
 ARG BLENDER_SHA256=84098912789dc450e95697c4184fb8a90acbe5111c2ba4aede3fecb57806a168
 ARG TARGETARCH
 LABEL org.opencontainers.image.source="https://github.com/tarasyarema/hackspain"
-LABEL org.opencontainers.image.revision="${SOURCE_REVISION}"
+LABEL org.opencontainers.image.revision="${SOURCE_REVISION}" \
+      dev.cinta.blender.version="${BLENDER_VERSION}" \
+      dev.cinta.blender.archive.sha256="${BLENDER_SHA256}"
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -16,6 +18,9 @@ ENV PYTHONUNBUFFERED=1 \
     OPENBLAS_NUM_THREADS=1 \
     MKL_NUM_THREADS=1 \
     VECLIB_MAXIMUM_THREADS=1 \
+    HOME=/tmp \
+    XDG_CONFIG_HOME=/tmp \
+    TMPDIR=/tmp \
     CINTA_SOURCE_REVISION="${SOURCE_REVISION}"
 
 RUN apt-get update \
@@ -37,6 +42,12 @@ RUN test "$TARGETARCH" = amd64 \
     && blender --background --version
 
 WORKDIR /app
+
+RUN dpkg-query -W -f='${binary:Package}=${Version}\n' \
+       ca-certificates curl libgl1 libglfw3 libice6 libosmesa6 libsm6 libxi6 \
+       libxkbcommon0 libxrender1 xz-utils \
+       > /app/blender-packages.txt \
+    && chmod 0444 /app/blender-packages.txt
 
 COPY thoughts/taras/research/coffee-quality/requirements-resolved.txt /app/requirements-resolved.txt
 RUN python -m pip install --no-cache-dir -r /app/requirements-resolved.txt
@@ -79,7 +90,7 @@ RUN printf '%s' "$SOURCE_REVISION" | grep -Eq '^[0-9a-f]{40}$' \
 
 RUN install --directory --owner 10001 --group 10001 /tmp/blender-smoke \
     && su --shell /bin/sh cinta --command \
-       'HOME=/tmp XDG_CONFIG_HOME=/tmp TMPDIR=/tmp blender --background --threads 1 --factory-startup --python /app/deploy/blender_smoke.py -- /tmp/blender-smoke' \
+       'blender --background --threads 1 --factory-startup --python /app/deploy/blender_smoke.py -- /tmp/blender-smoke' \
     && test -s /tmp/blender-smoke/smoke.png \
     && test -s /tmp/blender-smoke/smoke.glb \
     && rm -rf /tmp/blender-smoke

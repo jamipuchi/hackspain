@@ -38,6 +38,7 @@ cube.data.materials.append(material)
 
 bpy.ops.object.camera_add(location=(0.05, -0.05, 0.04))
 camera = bpy.context.object
+camera.data.clip_start = 0.001
 camera.rotation_euler = (-camera.location).to_track_quat("-Z", "Y").to_euler()
 scene.camera = camera
 
@@ -48,6 +49,12 @@ bpy.context.object.data.size = 0.05
 
 scene.render.film_transparent = True
 bpy.ops.render.render(write_still=True)
+render_result = bpy.data.images.get("Render Result")
+if render_result is None:
+    raise RuntimeError("missing Blender render result")
+alpha = list(render_result.pixels)[3::4]
+if sum(value >= 0.5 for value in alpha) < 16:
+    raise RuntimeError("Blender smoke render has no visible object")
 
 bpy.ops.object.select_all(action="DESELECT")
 bpy.context.view_layer.objects.active = cube
