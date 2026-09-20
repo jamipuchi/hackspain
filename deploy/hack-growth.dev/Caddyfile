@@ -11,5 +11,11 @@ hack-s3.agent-swarm.dev {
 }
 
 hack-growth.dev {
+	@operator_gate path /operator /item-jobs/*/resolve-provider /reset-defaults
+	basic_auth @operator_gate {
+		{$CINTA_OPERATOR_USER} {$CINTA_OPERATOR_PASSWORD_HASH}
+	}
+	@operator_page path /operator
+	respond @operator_page "Operator access is ready." 200
 	reverse_proxy coffee:8890
 }

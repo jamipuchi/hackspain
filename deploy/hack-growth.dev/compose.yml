@@ -11,7 +11,9 @@ services:
       CINTA_PUBLIC_ORIGIN: https://hack-growth.dev
       CINTA_RUNS_ROOT: /var/lib/hackspain-coffee/runs
       CINTA_ITEM_CONTROL_ROOT: /var/lib/hackspain-coffee/item-control
-      CINTA_PROVIDER_CACHE_ROOT: /var/lib/hackspain-coffee/item-control/provider-cache
+      CINTA_ITEM_JOBS_PROVIDER: paid
+      CINTA_PROVIDER_CACHE_ROOT: /var/lib/hackspain-coffee/provider-cache
+      CINTA_PROVIDER_ENV: /run/secrets/cinta-provider.env
       CINTA_PHYSICS_REPLAY_ROOT: /run/cinta/provider-replay
       CINTA_RUNTIME_ROOT: /tmp/cinta-runtime
       CINTA_SOURCE_REVISION: ${CINTA_SOURCE_REVISION:?Set the full reviewed release SHA}
@@ -36,8 +38,11 @@ services:
         source: ${CINTA_ITEM_CONTROL_ROOT:-/srv/hackspain-coffee/item-control}
         target: /var/lib/hackspain-coffee/item-control
       - type: bind
-        source: ${CINTA_PROVIDER_CACHE_ROOT:-/srv/hackspain-coffee/item-control/provider-cache}
-        target: /var/lib/hackspain-coffee/item-control/provider-cache
+        source: ${CINTA_PROVIDER_CACHE_ROOT:-/srv/hackspain-coffee/provider-cache}
+        target: /var/lib/hackspain-coffee/provider-cache
+      - type: bind
+        source: ${CINTA_PROVIDER_ENV_FILE:-/srv/hackspain-coffee/secrets/generated-items.env}
+        target: /run/secrets/cinta-provider.env
         read_only: true
       - type: bind
         source: ${CINTA_PHYSICS_REPLAY_ROOT:-/srv/hackspain-coffee/provider-replay}
@@ -62,6 +67,11 @@ services:
       timeout: 15s
       retries: 3
       start_period: 90s
+
+  caddy:
+    environment:
+      CINTA_OPERATOR_USER: ${CINTA_OPERATOR_USER:?Set the operator user}
+      CINTA_OPERATOR_PASSWORD_HASH: ${CINTA_OPERATOR_PASSWORD_HASH:?Set the operator password hash}
 
 networks:
   coffee_shared:

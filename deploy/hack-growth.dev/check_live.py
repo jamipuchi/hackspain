@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import os
 import time
 from urllib.request import urlopen
 
@@ -29,8 +30,9 @@ def main():
         raise SystemExit('health lacks item-job queue status')
     if queue.get('runner_thread_alive') is not True or queue.get('unhealthy_shutdown') is not False:
         raise SystemExit(f'item-job queue is not healthy: {queue!r}')
-    if queue.get('provider_mode') != 'cached':
-        raise SystemExit(f'item-job queue is not in cached mode: {queue!r}')
+    expected_provider = os.environ.get('CINTA_ITEM_JOBS_PROVIDER', 'cached')
+    if queue.get('provider_mode') != expected_provider:
+        raise SystemExit(f'item-job queue has the wrong provider mode: {queue!r}')
     if queue.get('last_fault') is not None:
         raise SystemExit(f'item-job queue has an active fault: {queue!r}')
     children = queue.get('active_children')
