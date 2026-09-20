@@ -1,0 +1,49 @@
+services:
+  coffee:
+    image: ${CINTA_IMAGE:?Set CINTA_IMAGE to the reviewed immutable image ID}
+    container_name: compose-coffee-1
+    init: true
+    restart: unless-stopped
+    read_only: true
+    environment:
+      CINTA_INTERNAL_PORT: "8890"
+      CINTA_PUBLIC_HOST: hack-growth.dev
+      CINTA_PUBLIC_ORIGIN: https://hack-growth.dev
+      CINTA_RUNS_ROOT: /var/lib/hackspain-coffee/runs
+      CINTA_SOURCE_REVISION: ${CINTA_SOURCE_REVISION:?Set the full reviewed release SHA}
+      MUJOCO_GL: osmesa
+      PYOPENGL_PLATFORM: osmesa
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      VECLIB_MAXIMUM_THREADS: "1"
+    expose:
+      - "8890"
+    volumes:
+      - type: bind
+        source: ${CINTA_RUNS_ROOT:-/srv/hackspain-coffee/runs}
+        target: /var/lib/hackspain-coffee/runs
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=1g
+    networks:
+      - coffee_shared
+    cpus: "8.0"
+    mem_limit: 8g
+    pids_limit: 256
+    shm_size: 512m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "python", "/app/deploy/check_live.py", "--window", "8"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 90s
+
+networks:
+  coffee_shared:
+    external: true
+    name: compose_default
