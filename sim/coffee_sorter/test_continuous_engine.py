@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 import unittest
 from collections import deque
@@ -10,9 +11,11 @@ import numpy as np
 
 from controller import Policy
 from engine import HERE, Engine, MAX_COMPLETED_INJECTIONS
-from profiles import PROFILES
+from object_catalog import CATALOG_ROOT_ENV, load_catalog
+from profiles import PROFILES, profile_from_catalog
 from rolling_scores import SETTLING_SECONDS, RollingScoreLedger
 from sim import Fire
+from test_object_catalog import CatalogRootTest, builtin_definition, generated_definition
 
 
 VERSIONS = {
@@ -184,6 +187,7 @@ class ContinuousRetentionTest(unittest.TestCase):
             1: {"injected": False},
             2: {"injected": True},
         }
+        engine._visual_asset_ids = {}
         engine.model = SimpleNamespace(
             classes=list(engine.profile.names),
             set_anomaly_reference=lambda labels: list(labels),
@@ -393,6 +397,7 @@ class ContinuousRetentionTest(unittest.TestCase):
             fired_targets=set(),
         )
         engine._object_records = {}
+        engine._visual_asset_ids = {}
         engine._injected_ids = set()
         engine._active_injections = set()
         engine._score_ledger = RollingScoreLedger(60.0)
@@ -429,6 +434,7 @@ class ContinuousRetentionTest(unittest.TestCase):
                 data=SimpleNamespace(time=1.0),
             )
             engine._object_records = {}
+            engine._visual_asset_ids = {}
             engine._injected_ids = set()
             engine._active_injections = set()
             engine._score_ledger = RollingScoreLedger(60.0)
@@ -650,6 +656,64 @@ class InitialRejectClassesTest(unittest.TestCase):
                         ValueError, rf"policy\.initial_reject_classes: .*{message}"):
                     self.build(initial)
                 self.sim.assert_not_called()
+
+
+class VisualAssetIdTest(CatalogRootTest):
+    """Each object carries the `visual_asset_id` of its actual catalog definition.
+
+    The real constructor runs against a temporary catalog root. Only the simulator, the
+    camera, the model, and the controller are fakes.
+    """
+
+    def build(self, definitions, profile=None, **changes):
+        root = self.make_root()
+        self.write_catalog(root, definitions, **changes)
+        profile = profile or profile_from_catalog(load_catalog(root))
+        directory = self.make_root().resolve()
+        (directory / "candidate.joblib").write_bytes(b"model")
+        preset = json.loads((HERE / "configs/continuous_demo.json").read_text())
+        preset.update(model_path="candidate.joblib", model_path_root="preset",
+                      profile=profile.name)
+        (directory / "preset.json").write_text(json.dumps(preset))
+        model = SimpleNamespace(classes=list(profile.names),
+                                set_anomaly_reference=lambda labels: list(labels))
+        with patch.dict(os.environ, {CATALOG_ROOT_ENV: str(root)}), \
+                patch.dict("engine.PROFILES", {profile.name: profile}), \
+                patch("engine.SorterSim"), patch("engine.Inspector"), \
+                patch("engine.Model.load", return_value=model), patch("engine.Controller"), \
+                patch("engine.subprocess.check_output", return_value="source\n"):
+            return Engine(directory / "preset.json")
+
+    def test_a_generated_object_names_its_asset_and_a_builtin_names_none(self):
+        star = generated_definition()
+        # A built-in stays null even when its definition carries an asset block.
+        good = builtin_definition("good")
+        good["visual"]["asset"] = star["visual"]["asset"]
+        engine = self.build([star, good])
+        engine.sim = SimpleNamespace(body_geom={1: 0, 2: 0}, data=SimpleNamespace(time=1.0),
+                                     model=SimpleNamespace(geom_rgba=np.ones((1, 4))))
+        for uid, label in ((1, "star_token"), (2, "good")):
+            engine._register_bean(SimpleNamespace(
+                uid=uid, cls=label, body=uid, spawn_t=0.5, axes=np.ones(3), outcome=None,
+                resolved_t=None, jet_hits=0), injected=uid == 2)
+
+        self.assertEqual(engine._snapshot_object(1, active=True)["visual_asset_id"],
+                         star["visual"]["asset"]["visual_asset_id"])
+        self.assertIsNone(engine._snapshot_object(2, active=True)["visual_asset_id"])
+
+    def test_a_bound_catalog_that_is_not_this_profile_names_no_asset(self):
+        # The same profile name and the same labels, but other definitions.
+        engine = self.build([generated_definition(), builtin_definition("good")],
+                            profile=profile_from_catalog(load_catalog(self.make_other())),
+                            profile_name="other")
+        self.assertEqual(engine._visual_asset_ids, {})
+
+    def make_other(self):
+        root = self.make_root()
+        star = generated_definition()
+        star["visual"]["rgb"] = [0.1, 0.2, 0.3]
+        self.write_catalog(root, [star, builtin_definition("good")], profile_name="other")
+        return root
 
 
 if __name__ == "__main__":

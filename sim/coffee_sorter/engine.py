@@ -128,6 +128,12 @@ class Engine:
         if profile_name not in PROFILES:
             raise ValueError(f"unsupported profile: {profile_name}")
         self.profile = PROFILES[profile_name]
+        catalog = self._profile_catalog()
+        # Copied from each generated type's actual catalog definition. A built-in has none.
+        self._visual_asset_ids = {
+            item["classifier_label"]: item["visual"]["asset"]["visual_asset_id"]
+            for item in (catalog or {}).get("definitions", ())
+            if item["provenance"]["kind"] == "generated"}
         # A bundle preset states its starting policy. A bad label fails before the sim exists.
         initial_reject_classes = self.preset["policy"].get("initial_reject_classes")
         if initial_reject_classes is not None:
@@ -227,6 +233,20 @@ class Engine:
 
     def _policy_version(self):
         return _json_hash({"base": asdict(self.policy), "reject_classes": self.reject_classes})
+
+    def _profile_catalog(self):
+        """The catalog that this profile came from, or None when the bound root holds another.
+
+        profiles.py keeps no asset block, so the definitions are read again. Both imports
+        stay inside the function, so the module import block is unchanged.
+        """
+        from object_catalog import load_catalog
+        from profiles import class_spec
+        catalog = load_catalog()
+        described = [class_spec(item) for item in catalog["definitions"]]
+        if catalog["profile_name"] != self.profile.name or described != self.profile.classes:
+            return None
+        return catalog
 
     def class_catalog(self):
         catalog = []
@@ -371,6 +391,7 @@ class Engine:
             "spawn_wall": time.perf_counter() if injected else None,
             "spawn_to_outcome_wall_s": None,
             "appearance_key": hashlib.sha256(f"{self.session_id}:{bean.uid}".encode()).hexdigest()[:20],
+            "visual_asset_id": self._visual_asset_ids.get(bean.cls),
             "shape": spec.shape,
             "axes": [float(value) for value in bean.axes],
             "rgb": [float(value) for value in self.sim.model.geom_rgba[geom, :3]],
@@ -664,6 +685,7 @@ class Engine:
             "spawn_to_outcome_wall_s": record["spawn_to_outcome_wall_s"],
             "active": active,
             "appearance_key": record["appearance_key"],
+            "visual_asset_id": record["visual_asset_id"],
             "shape": record["shape"],
             "axes": record["axes"],
             "pos": record["pos"],
