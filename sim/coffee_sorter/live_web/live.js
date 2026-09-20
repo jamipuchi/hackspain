@@ -3,6 +3,7 @@ import {OrbitControls} from '/vendor/OrbitControls.js';
 import {RoomEnvironment} from '/vendor/RoomEnvironment.js';
 import {GLTFLoader} from '/assets/vendor/loaders/GLTFLoader.js';
 import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, freezeItemRequest, jobActionLabel, jobActionPath, jobErrorLabel, jobQueueSignature, jobStateLabel, jobStateNote, queueModeCue, normalizedClassPreview, normalizedJobSummary, profilePreviewScale, resolvePendingRequest, samePresentationTimeline} from './timeline.mjs';
+import {acceptedAssetRegistry, chooseObjectAsset, generatedAssetMetrics, instanceScale, mustResetGeneratedPools, parsedAssetRefusal, planAssetLoads, prepareGeometry} from './generated_assets.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('scene');
@@ -27,6 +28,8 @@ let currentView = '3d';
 let itemPreview = null;
 let selectedPreviewName = null;
 let itemQueueSignature = null;
+let generatedAssetContext = null;
+let generatedAssetGeneration = 0;
 // One frozen snapshot of the request in flight. It never rebuilds from the form.
 let pendingItemRequest = null;
 let wallEntries = [];
@@ -435,11 +438,12 @@ function updateItems() {
   if (!activePolicyRequest && !pendingPolicyIntents.size && !pendingPolicyPresentation) {
     policyDesiredClasses = new Set(policy.classes);
   }
-  const signature = catalog.map(item => `${item.name}:${item.severity}:${JSON.stringify(item.preview || null)}`).join('|');
+  const signature = catalog.map(item => `${item.name}:${item.severity}:${JSON.stringify(item.preview || null)}:${JSON.stringify(item.render_asset || null)}`).join('|');
   if (signature !== itemCatalogSignature) {
     itemCatalogSignature = signature;
     $('items').replaceChildren(...catalog.map(item => {
       const row = document.createElement('div'); row.className = 'item-row'; row.dataset.className = item.name; row.tabIndex = 0; row.setAttribute('role', 'option'); row.setAttribute('aria-selected', 'false');
+      row.dataset.visualSource = item.render_asset ? 'proxy' : 'builtin';
       const thumb = document.createElement('img'); thumb.className = 'item-thumb'; thumb.alt = ''; thumb.dataset.previewName = item.name;
       const name = document.createElement('span'); name.className = 'item-name';
       const dot = document.createElement('i'); dot.dataset.severity = item.severity;
@@ -498,31 +502,42 @@ function previewItem(name) {
   return (state?.class_catalog || []).find(item => item.name === name) || null;
 }
 
+function disposePreviewMesh(mesh) {
+  if (!mesh) return;
+  mesh.geometry.dispose();
+  for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) material?.dispose();
+}
+
 function setPreviewMesh(item) {
   if (!itemPreview) return false;
   const preview = normalizedClassPreview(item);
-  const pool = item?.name === 'black' && three.pools?.black ? three.pools.black : three.pools?.[preview?.shape];
+  const assetId = item?.render_asset?.visual_asset_id;
+  const generated = assetId ? generatedAssetContext?.loaded.get(assetId) : null;
+  const pool = generated?.pool || (item?.name === 'black' && three.pools?.black ? three.pools.black : three.pools?.[preview?.shape]);
   if (!preview || (preview.shape !== 'half' && !pool?.geometry)) return false;
   if (itemPreview.mesh) {
     itemPreview.scene.remove(itemPreview.mesh);
-    itemPreview.mesh.geometry.dispose();
-    itemPreview.mesh.material.dispose();
+    disposePreviewMesh(itemPreview.mesh);
   }
   // The profile half shape is a hemisphere. Its z value is the full cut-half
   // thickness, while x and y are parent ellipsoid semi-axes.
-  const geometry = preview.shape === 'half'
+  const geometry = generated ? pool.geometry.clone() : preview.shape === 'half'
     ? new THREE.SphereGeometry(1, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2)
     : pool.geometry.clone();
-  if (preview.shape === 'half') geometry.rotateX(Math.PI / 2);
+  if (!generated && preview.shape === 'half') geometry.rotateX(Math.PI / 2);
   geometry.computeBoundingBox();
-  geometry.center();
-  const material = new THREE.MeshStandardMaterial({color: new THREE.Color().setRGB(...preview.rgb), roughness: .58, metalness: .03});
+  if (!generated) geometry.center();
+  const material = generated
+    ? (Array.isArray(pool.material) ? pool.material.map(value => value.clone()) : pool.material.clone())
+    : new THREE.MeshStandardMaterial({color: new THREE.Color().setRGB(...preview.rgb), roughness: .58, metalness: .03});
   const mesh = new THREE.Mesh(geometry, material);
-  mesh.scale.fromArray(profilePreviewScale(preview));
+  mesh.scale.fromArray(generated ? [1, 1, 1] : profilePreviewScale(preview));
   mesh.rotation.set(.38, 0, -.25);
   itemPreview.scene.add(mesh);
   itemPreview.mesh = mesh;
-  return true;
+  itemPreview.visualSource = generated ? 'generated' : item?.render_asset ? 'proxy' : 'builtin';
+  $('items-preview-stage').dataset.visualSource = itemPreview.visualSource;
+  return itemPreview.visualSource;
 }
 
 function renderPreviewThumbnail(item) {
@@ -537,17 +552,26 @@ function renderPreviewThumbnail(item) {
 
 function selectItemPreview(name) {
   const item = previewItem(name);
-  if (!item || !itemPreview || !setPreviewMesh(item)) return;
+  if (!item || !itemPreview) return;
+  const visualSource = setPreviewMesh(item);
+  if (!visualSource) return;
   selectedPreviewName = name;
-  for (const row of $('items').children) row.setAttribute('aria-selected', String(row.dataset.className === name));
+  for (const row of $('items').children) {
+    row.setAttribute('aria-selected', String(row.dataset.className === name));
+    if (row.dataset.className === name) row.dataset.visualSource = visualSource;
+  }
   const preview = normalizedClassPreview(item);
   $('items-preview-name').textContent = item.name;
   const millimetres = preview.axes.map(value => (value * 1000).toFixed(1));
-  $('items-preview-meta').textContent = preview.shape === 'half'
+  const physical = preview.shape === 'half'
     ? `Profile semi-axes ${millimetres[0]} × ${millimetres[1]} mm. Cut-half thickness ${millimetres[2]} mm.`
     : preview.shape === 'capsule'
       ? `Profile half-length ${millimetres[0]} mm. Radius ${millimetres[1]} mm.`
       : `Profile half-extents ${millimetres.join(' × ')} mm.`;
+  const source = visualSource === 'generated'
+    ? `Rendered asset ${item.render_asset.visual_asset_id.slice(7, 19)}.`
+    : visualSource === 'proxy' ? 'Physical proxy shown while the render asset is unavailable.' : 'Built-in visual.';
+  $('items-preview-meta').textContent = `${source} ${physical}`;
   resizeItemPreview();
 }
 
@@ -563,9 +587,11 @@ function resizeItemPreview() {
 function refreshItemPreviews() {
   if (!itemPreview) return;
   for (const item of state?.class_catalog || []) {
-    const image = $(`items`)?.querySelector(`img[data-preview-name="${CSS.escape(item.name)}"]`);
+    const row = $('items')?.querySelector(`[data-class-name="${CSS.escape(item.name)}"]`);
+    const image = row?.querySelector('img');
     const dataUrl = renderPreviewThumbnail(item);
     if (image && dataUrl) image.src = dataUrl;
+    if (row && itemPreview.visualSource) row.dataset.visualSource = itemPreview.visualSource;
   }
   const selected = previewItem(selectedPreviewName) ? selectedPreviewName : state?.class_catalog?.[0]?.name;
   if (selected) selectItemPreview(selected);
@@ -586,6 +612,7 @@ function openItems() {
   const light = new THREE.DirectionalLight('#fff2dc', 3); light.position.set(-.03, -.04, .07); scene.add(light);
   $('items-preview-stage').replaceChildren(renderer.domElement);
   itemPreview = {renderer, scene, camera, mesh: null, raf: null, previous: performance.now()};
+  reconcileGeneratedAssets();
   refreshItemPreviews();
   const animate = now => {
     if (!itemPreview || !$('items-dialog').open) return;
@@ -602,8 +629,7 @@ function closeItems() {
   if (!itemPreview) return;
   cancelAnimationFrame(itemPreview.raf);
   if (itemPreview.mesh) {
-    itemPreview.mesh.geometry.dispose();
-    itemPreview.mesh.material.dispose();
+    disposePreviewMesh(itemPreview.mesh);
   }
   itemPreview.renderer.dispose();
   itemPreview.renderer.forceContextLoss();
@@ -999,6 +1025,7 @@ function setMetric(id, text) {
 
 function update() {
   if (!state) return;
+  reconcileGeneratedAssets();
   const commandState = liveState || state;
   const status = commandState.status;
   const connected = socket?.readyState === WebSocket.OPEN;
@@ -1209,7 +1236,8 @@ function displayedPose(object, outPos, outQuat) {
   outQuat.set(object.quat[1], object.quat[2], object.quat[3], object.quat[0]).normalize();
   if (!displayFrame.after || displayFrame.alpha <= 0) return;
   const next = displayFrame.afterById.get(object.object_id);
-  if (!hasAuthoritativeRenderFields(next) || next.appearance_key !== object.appearance_key) return;
+  if (!hasAuthoritativeRenderFields(next) || next.appearance_key !== object.appearance_key
+      || next.visual_asset_id !== object.visual_asset_id) return;
   const a = object.pos, b = next.pos, alpha = displayFrame.alpha;
   outPos.set(a[0] + (b[0] - a[0]) * alpha, a[1] + (b[1] - a[1]) * alpha, a[2] + (b[2] - a[2]) * alpha);
   _qa.set(object.quat[1], object.quat[2], object.quat[3], object.quat[0]).normalize();
@@ -1488,6 +1516,174 @@ function disposeOwnedFallbackMachine(root) {
   for (const material of materials) material.dispose();
 }
 
+function disposeGeneratedPool(record) {
+  if (!record?.pool) return;
+  three.scene?.remove(record.pool);
+  record.pool.geometry.dispose();
+  for (const material of Array.isArray(record.pool.material) ? record.pool.material : [record.pool.material]) {
+    if (!material) continue;
+    for (const value of Object.values(material)) if (value?.isTexture) value.dispose();
+    material.dispose();
+  }
+}
+
+function clearGeneratedAssets() {
+  generatedAssetGeneration++;
+  if (generatedAssetContext) {
+    for (const record of generatedAssetContext.loaded.values()) disposeGeneratedPool(record);
+  }
+  generatedAssetContext = null;
+  measurements.generated_assets = generatedAssetMetrics();
+  if (itemPreview && $('items-dialog').open) refreshItemPreviews();
+}
+
+function updateGeneratedAssetMetrics() {
+  if (!generatedAssetContext) {
+    measurements.generated_assets = generatedAssetMetrics();
+    return;
+  }
+  measurements.generated_assets = generatedAssetMetrics({
+    catalogRevision: generatedAssetContext.identity.catalog_revision,
+    records: [...generatedAssetContext.records.values()],
+  });
+}
+
+function generatedPoolCapacity() {
+  const count = Object.entries(state?.layout || {})
+    .filter(([key, value]) => key.startsWith('n_') && Number.isInteger(value))
+    .reduce((sum, [, value]) => sum + value, 0);
+  return Math.max(96, count, (state?.objects?.length || 0) + 64);
+}
+
+function disposeParsedScene(root, disposeTextures) {
+  root?.traverse(object => {
+    object.geometry?.dispose();
+    for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+      if (!material) continue;
+      if (disposeTextures) {
+        for (const value of Object.values(material)) if (value?.isTexture) value.dispose();
+      }
+      material.dispose();
+    }
+  });
+}
+
+function parsedMeshEvidence(gltf, byteLength) {
+  gltf.scene.updateMatrixWorld(true);
+  const meshes = [];
+  gltf.scene.traverse(object => { if (object.isMesh) meshes.push(object); });
+  let primitiveCount = 0;
+  let triangleCount = 0;
+  for (const mesh of meshes) {
+    const materials = Array.isArray(mesh.material) ? mesh.material.length : 1;
+    primitiveCount += Math.max(1, materials);
+    const count = mesh.geometry.index?.count || mesh.geometry.attributes.position?.count || 0;
+    triangleCount += count / 3;
+  }
+  return {meshes, meshCount: meshes.length, primitiveCount, triangleCount, byteLength};
+}
+
+async function loadGeneratedAsset(asset, context, generation) {
+  const record = context.records.get(asset.visualAssetId);
+  const loadStarted = performance.now();
+  let gltf = null;
+  let ownedGeometry = null;
+  let ownedMaterial = null;
+  try {
+    const response = await fetch(asset.url, {cache: 'force-cache'});
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const bytes = await response.arrayBuffer();
+    record.etag = response.headers.get('etag');
+    record.byteLength = bytes.byteLength;
+    record.loadMs = performance.now() - loadStarted;
+    const parseStarted = performance.now();
+    const basePath = asset.url.slice(0, asset.url.lastIndexOf('/') + 1);
+    gltf = await new GLTFLoader().parseAsync(bytes, basePath);
+    record.parseMs = performance.now() - parseStarted;
+    const parsed = parsedMeshEvidence(gltf, bytes.byteLength);
+    const refusal = parsedAssetRefusal(asset, parsed);
+    const mesh = parsed.meshes[0];
+    const positions = mesh?.geometry?.attributes?.position?.array;
+    const prepared = refusal ? null : prepareGeometry(positions, mesh.matrixWorld.elements, asset.quaternionWxyz);
+    if (refusal || !prepared) throw new Error(refusal || 'invalid_geometry');
+    if (generation !== generatedAssetGeneration || context !== generatedAssetContext) {
+      disposeParsedScene(gltf.scene, true);
+      return;
+    }
+    const sourceMaterial = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+    if (!sourceMaterial?.isMaterial) throw new Error('invalid_material');
+    ownedGeometry = mesh.geometry.clone();
+    ownedGeometry.applyMatrix4(mesh.matrixWorld);
+    const correction = new THREE.Quaternion(asset.quaternionWxyz[1], asset.quaternionWxyz[2], asset.quaternionWxyz[3], asset.quaternionWxyz[0]);
+    ownedGeometry.applyQuaternion(correction);
+    ownedGeometry.translate(-prepared.center[0], -prepared.center[1], -prepared.center[2]);
+    ownedGeometry.computeBoundingBox();
+    ownedGeometry.computeBoundingSphere();
+    ownedMaterial = sourceMaterial.clone();
+    if ('envMapIntensity' in ownedMaterial) ownedMaterial.envMapIntensity = .72;
+    const anisotropy = three.renderer.capabilities.getMaxAnisotropy();
+    for (const mapName of ['map', 'normalMap', 'roughnessMap', 'metalnessMap']) {
+      if (ownedMaterial[mapName]) ownedMaterial[mapName].anisotropy = anisotropy;
+    }
+    ownedMaterial.needsUpdate = true;
+    const pool = new THREE.InstancedMesh(ownedGeometry, ownedMaterial, generatedPoolCapacity());
+    pool.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    pool.frustumCulled = false;
+    pool.count = 0;
+    pool.userData.textured = true;
+    pool.userData.visualAssetId = asset.visualAssetId;
+    three.scene.add(pool);
+    const loaded = {asset, pool, preparedSize: prepared.size};
+    context.loaded.set(asset.visualAssetId, loaded);
+    ownedGeometry = ownedMaterial = null;
+    disposeParsedScene(gltf.scene, false);
+    gltf = null;
+    record.loaded = true;
+    record.fallbackReason = null;
+    updateGeneratedAssetMetrics();
+    if ($('items-dialog').open) refreshItemPreviews();
+  } catch (error) {
+    ownedGeometry?.dispose();
+    ownedMaterial?.dispose();
+    if (gltf) disposeParsedScene(gltf.scene, true);
+    if (generation !== generatedAssetGeneration || context !== generatedAssetContext) return;
+    record.fallbackReason = error.message || 'parse_failed';
+    context.fallbacks.set(asset.visualAssetId, record.fallbackReason);
+    updateGeneratedAssetMetrics();
+  }
+}
+
+function reconcileGeneratedAssets() {
+  if (!three.ready || !three.machineBuilt || !state) return;
+  const identity = {session_id: state.session_id, catalog_revision: state.catalog_revision};
+  if (generatedAssetContext && !mustResetGeneratedPools(generatedAssetContext.identity, identity)) return;
+  clearGeneratedAssets();
+  const registry = acceptedAssetRegistry(state, state.catalog_revision);
+  const plan = planAssetLoads(registry.accepted);
+  const records = new Map();
+  for (const [visualAssetId, reason] of registry.refusedAssets) {
+    records.set(visualAssetId, {visualAssetId, loaded: false, fallbackReason: reason});
+  }
+  for (const [visualAssetId, reason] of plan.fallbacks) {
+    records.set(visualAssetId, {visualAssetId, loaded: false, fallbackReason: reason});
+  }
+  for (const asset of plan.load) {
+    records.set(asset.visualAssetId, {visualAssetId: asset.visualAssetId, loaded: false, fallbackReason: null});
+  }
+  const context = {
+    identity,
+    accepted: registry.accepted,
+    refusedAssets: registry.refusedAssets,
+    fallbacks: new Map(plan.fallbacks),
+    loaded: new Map(),
+    records,
+  };
+  generatedAssetContext = context;
+  const generation = ++generatedAssetGeneration;
+  updateGeneratedAssetMetrics();
+  for (const asset of plan.load) loadGeneratedAsset(asset, context, generation);
+}
+
 async function loadBlenderAssets(L) {
   const loader = new GLTFLoader();
   const {scene} = three;
@@ -1549,12 +1745,16 @@ function render3d(now) {
     if (!state?.layout) return;
     buildMachine(state.layout);
   }
+  reconcileGeneratedAssets();
   const {pools, puffMesh, ring, ring2, selectedShadow, selectedShadowMaterial, dummy, camera, controls, renderer, scene} = three;
   const counts = {ellipsoid: 0, half: 0, box: 0, capsule: 0, black: 0};
+  const generatedCounts = new Map();
   let ringShown = false;
   let shadowShown = false;
   let invalid = 0;
   let omitted = 0;
+  let generatedVisible = 0;
+  let proxyVisible = 0;
   for (const o of state?.objects || []) {
     if (!o.active && o.object_id !== selected) continue;
     if (!hasAuthoritativeRenderFields(o)) {
@@ -1562,24 +1762,38 @@ function render3d(now) {
       continue;
     }
     const rgb = o.rgb;
+    const choice = chooseObjectAsset(o, generatedAssetContext || undefined);
+    const generated = choice.source === 'generated' ? generatedAssetContext.loaded.get(choice.assetId) : null;
     let shape = o.shape;
-    if (shape === 'ellipsoid' && pools.black && (rgb[0] + rgb[1] + rgb[2]) / 3 < .25) shape = 'black';
-    const mesh = pools[shape];
-    if (counts[shape] >= mesh.instanceMatrix.count) {
+    if (!generated && shape === 'ellipsoid' && pools.black && (rgb[0] + rgb[1] + rgb[2]) / 3 < .25) shape = 'black';
+    const mesh = generated?.pool || pools[shape];
+    const countKey = generated ? choice.assetId : shape;
+    const count = generated ? (generatedCounts.get(countKey) || 0) : counts[countKey];
+    if (!mesh || count >= mesh.instanceMatrix.count) {
       omitted++;
       continue;
     }
     displayedPose(o, _p, _q);
     dummy.position.copy(_p); dummy.quaternion.copy(_q);
     const ax = o.axes;
-    if (shape === 'capsule') dummy.scale.set(ax[1], ax[1], ax[0] + ax[1]);
-    else dummy.scale.set(ax[0], ax[1], ax[2]);
+    if (generated) {
+      const scale = instanceScale(o.shape, ax, choice.asset.referenceAxes);
+      if (!scale) { invalid++; continue; }
+      dummy.scale.fromArray(scale);
+      generatedVisible++;
+    } else {
+      if (shape === 'capsule') dummy.scale.set(ax[1], ax[1], ax[0] + ax[1]);
+      else dummy.scale.set(ax[0], ax[1], ax[2]);
+      if (choice.source === 'proxy') proxyVisible++;
+    }
     dummy.updateMatrix();
-    const slot = counts[shape]++;
+    const slot = count;
+    if (generated) generatedCounts.set(countKey, count + 1);
+    else counts[countKey]++;
     mesh.setMatrixAt(slot, dummy.matrix);
     if (mesh.userData.textured) {
       // Baked textures carry the colour; keep only the engine's per-object deviation from the mean good bean.
-      if (shape === 'black') _c.setRGB(1, 1, 1);
+      if (generated || shape === 'black') _c.setRGB(1, 1, 1);
       else _c.setRGB(...rgb.slice(0, 3).map((v, i) => THREE.MathUtils.clamp(v / GOOD_MEAN_RGB[i], .55, 1.45)));
       if (o.outcome === 'accept') _c.multiplyScalar(.7);
     } else {
@@ -1602,9 +1816,20 @@ function render3d(now) {
       }
     }
   }
-  setRenderRow(`${Object.values(counts).reduce((sum, count) => sum + count, 0)} visible · ${invalid} invalid omitted · ${omitted} over cap`);
+  const visible = Object.values(counts).reduce((sum, count) => sum + count, 0)
+    + [...generatedCounts.values()].reduce((sum, count) => sum + count, 0);
+  setRenderRow(`${visible} visible · ${generatedVisible} generated · ${proxyVisible} proxy · ${invalid} invalid omitted · ${omitted} over cap`);
+  measurements.generated_asset_instances = Object.fromEntries(generatedCounts);
+  measurements.builtin_or_proxy_instances = visible - generatedVisible;
+  measurements.generated_proxy_instances = proxyVisible;
+  measurements.render_omitted = omitted;
   for (const [shape, mesh] of Object.entries(pools)) {
     mesh.count = counts[shape] || 0; mesh.instanceMatrix.needsUpdate = true; if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  }
+  for (const [assetId, record] of generatedAssetContext?.loaded || []) {
+    record.pool.count = generatedCounts.get(assetId) || 0;
+    record.pool.instanceMatrix.needsUpdate = true;
+    if (record.pool.instanceColor) record.pool.instanceColor.needsUpdate = true;
   }
   ring.visible = ring2.visible = ringShown;
   selectedShadow.visible = shadowShown;

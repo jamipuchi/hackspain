@@ -9,6 +9,10 @@ const HEX64 = /^[0-9a-f]{64}$/;
 const numbers = (value, count, positive = false) => Array.isArray(value) && value.length === count
   && value.every(item => Number.isFinite(item) && (!positive || item > 0));
 
+const finiteSequence = (value, count = null) => (Array.isArray(value) || ArrayBuffer.isView(value))
+  && (count === null || value.length === count)
+  && [...value].every(Number.isFinite);
+
 const counted = value => Number.isInteger(value) && value >= 1;
 
 // The one approved correction: asset +X to engine +X, +Y to +Z, +Z to minus Y. The
@@ -39,6 +43,7 @@ function assetRefusal(asset, revision) {
   if (asset.visual_asset_id !== `sha256:${hash}`) return 'asset_id_mismatch';
   // A row that names any other path is refused, including one that only looks close.
   if (asset.url !== assetUrl(revision, hash)) return 'url_mismatch';
+  if (asset.media_type !== 'model/gltf-binary') return 'unsupported_media_type';
   if (!counted(asset.byte_length) || !counted(asset.primitive_count)
       || !counted(asset.triangle_count)) return 'invalid_declaration';
   // Version 1 renders one mesh. A primitive count never proves a mesh count.
@@ -210,6 +215,8 @@ function applyQuaternion([w, qx, qy, qz], x, y, z) {
 // Prepare one mesh primitive for instancing: T(-center) * Q * M * vertex. The result
 // stays in metres. Dimensions are never normalized, only the origin moves.
 export function prepareGeometry(positions, nodeMatrix, quaternionWxyz) {
+  if (!finiteSequence(positions) || positions.length % 3 !== 0
+      || !finiteSequence(nodeMatrix, 16) || !finiteSequence(quaternionWxyz, 4)) return null;
   const count = Math.floor(positions.length / 3);
   if (count === 0) return {positions: [], center: [0, 0, 0], size: [0, 0, 0]};
   const prepared = new Array(count * 3);

@@ -85,6 +85,7 @@ test('the registry refuses a stale revision, a bad hash, a foreign path, and a m
   assert.equal(refuse({url: assetUrl(hashFor(3), STAR)}), 'url_mismatch');
   assert.equal(refuse({url: `/catalog-assets/${REVISION}/../../item-jobs/x/${STAR}.glb`}), 'url_mismatch');
   assert.equal(refuse({url: `/assets/${STAR}.glb`}), 'url_mismatch');
+  assert.equal(refuse({media_type: 'application/octet-stream'}), 'unsupported_media_type');
   assert.equal(refuse({byte_length: 0}), 'invalid_declaration');
   assert.equal(refuse({triangle_count: 276.5}), 'invalid_declaration');
   assert.equal(refuse({reference_axes_m: [.008474803, 0, .001]}), 'invalid_declaration');
@@ -252,6 +253,15 @@ test('the prepared geometry applies the node matrix, then the correction, then o
   near([0, 1, 2].map(axis => (positions[axis] + positions[3 + axis]) / 2), [0, 0, 0], 1e-12);
   // Correction before node matrix would put the centre 1 mm higher on y. Order is load bearing.
   assert.ok(Math.abs(center[1] - (0.851047277 * NODE_SCALE + NODE_TRANSLATE_Y)) > 1e-6);
+});
+
+test('geometry preparation refuses non-finite or incomplete transform data', () => {
+  assert.equal(prepareGeometry([0, 0, Number.NaN], NODE_MATRIX, STAR_QUATERNION), null);
+  assert.equal(prepareGeometry([0, 0], NODE_MATRIX, STAR_QUATERNION), null);
+  assert.equal(prepareGeometry(new Float32Array([0, 0, 0]), [...NODE_MATRIX.slice(0, 15), Infinity], STAR_QUATERNION), null);
+  assert.equal(prepareGeometry([0, 0, 0], NODE_MATRIX, [1, 0, 0]), null);
+  assert.deepEqual(prepareGeometry(new Float32Array(), NODE_MATRIX, STAR_QUATERNION),
+    {positions: [], center: [0, 0, 0], size: [0, 0, 0]});
 });
 
 test('the correction maps asset x to x, asset y to z, and asset z to minus y', () => {
