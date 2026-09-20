@@ -72,9 +72,11 @@ class ResetLiveStateTest(unittest.TestCase):
         (self.active / reset_live_state.SEED_MARKER).write_text(json.dumps(
             {"bundle_sha256": self.baseline}) + "\n")
 
-        job = self.jobs / "11111111-1111-4111-8111-111111111111"
+        self.active_request_id = "11111111-1111-4111-8111-111111111111"
+        job = self.jobs / self.active_request_id
         (job / "previews").mkdir(parents=True)
-        (job / "job.json").write_text('{"state":"training"}\n')
+        (job / "job.json").write_text(json.dumps({
+            "request_id": self.active_request_id, "state": "training"}) + "\n")
         (job / "definition.json").write_text(json.dumps(
             {"object_type_id": generated["object_type_id"]}) + "\n")
         (job / "previews" / "object.glb").write_bytes(glb)
@@ -146,7 +148,7 @@ class ResetLiveStateTest(unittest.TestCase):
                 reset_live_state.reset_state(self.root, apply=True)
 
     def test_missing_generated_archive_evidence_is_refused_before_mutation(self):
-        (self.jobs / "11111111-1111-4111-8111-111111111111" /
+        (self.jobs / self.active_request_id /
          "previews" / "top.png").unlink()
         before = snapshot(self.root)
 
@@ -169,6 +171,77 @@ class ResetLiveStateTest(unittest.TestCase):
             self.candidate,
             object_catalog.read_active(self.active)["active_bundle_sha256"])
         self.assertEqual([], list((self.root / reset_live_state.BACKUPS).iterdir()))
+
+    def test_terminal_invalid_jobs_require_the_needs_review_archiver(self):
+        request_id = "22222222-2222-4222-8222-222222222222"
+        job_dir = self.jobs / request_id
+        job_dir.mkdir()
+        (job_dir / "job.json").write_text(json.dumps(
+            {"request_id": request_id, "state": "failed"}) + "\n")
+        before = snapshot(self.root)
+
+        with mock.patch.object(object_catalog, "archive_needs_review", None,
+                               create=True):
+            with self.assertRaisesRegex(reset_live_state.ResetError,
+                                        "does not support Needs review"):
+                reset_live_state.reset_state(self.root, apply=True)
+
+        self.assertEqual(before, snapshot(self.root))
+
+    def test_terminal_invalid_jobs_enter_needs_review_before_jobs_reset(self):
+        request_ids = (
+            "22222222-2222-4222-8222-222222222222",
+            "33333333-3333-4333-8333-333333333333",
+        )
+        states = ("failed", "physics_blocked")
+        for request_id, state in zip(request_ids, states):
+            job_dir = self.jobs / request_id
+            (job_dir / "previews").mkdir(parents=True)
+            preview = f"preview-{request_id}".encode()
+            (job_dir / "previews" / "perspective.png").write_bytes(preview)
+            (job_dir / "job.json").write_text(json.dumps({
+                "request_id": request_id,
+                "state": state,
+                "display_name": None,
+                "description": "An invalid token",
+                "error": "generation_failed",
+                "timestamps": {"created": "2026-09-20T08:00:00Z"},
+                "artifacts": {"previews": {"perspective.png": {
+                    "sha256": hashlib.sha256(preview).hexdigest(),
+                    "bytes": len(preview),
+                }}},
+            }) + "\n")
+
+        def archive_needs_review(history_root, job, job_dir):
+            self.assertEqual(job_dir.parent, self.jobs)
+            preview = (job_dir / "previews" / "perspective.png").read_bytes()
+            recorded = job["artifacts"]["previews"]["perspective.png"]
+            self.assertEqual(recorded["sha256"], hashlib.sha256(preview).hexdigest())
+            target = Path(history_root) / "wall-of-fame" / \
+                f"needs-review.{job['request_id']}"
+            target.mkdir(parents=True)
+            (target / "archive.json").write_text(json.dumps({
+                "entry_kind": "needs_review",
+                "entry_id": target.name,
+                "request_id": job["request_id"],
+                "display_name": None,
+                "status": "needs_review",
+                "failure_reason": job["error"],
+                "created_at": job["timestamps"]["created"],
+                "preview_url": "perspective.png",
+            }) + "\n")
+            (target / "perspective.png").write_bytes(preview)
+            return target
+
+        with mock.patch.object(object_catalog, "archive_needs_review",
+                               side_effect=archive_needs_review, create=True):
+            result = reset_live_state.reset_state(self.root, apply=True)
+
+        self.assertEqual(list(request_ids), result["needs_review_request_ids"])
+        for request_id in request_ids:
+            archive = self.history / "wall-of-fame" / f"needs-review.{request_id}"
+            self.assertTrue((archive / "archive.json").is_file())
+            self.assertTrue((archive / "perspective.png").is_file())
 
     def test_post_replace_pointer_failure_restores_the_authoritative_pointer(self):
         before = snapshot(self.root)

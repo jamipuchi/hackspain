@@ -34,6 +34,7 @@ ALLOWED_ROOT_NAMES = {
 ALLOWED_HISTORY_NAMES = {
     "activations.jsonl", "jobs", "training.lease", "wall-of-fame", "writer.lock",
 }
+NEEDS_REVIEW_STATES = {"failed", "physics_blocked"}
 
 
 class ResetError(RuntimeError):
@@ -192,7 +193,33 @@ def _generated_archive_plan(layout: dict) -> list[dict]:
     return plans
 
 
-def _validate_archive_plan(layout: dict, plans: list[dict], retired_at: str) -> None:
+def _needs_review_plan(layout: dict) -> list[dict]:
+    plans = []
+    for job_dir in sorted(layout["jobs"].iterdir()):
+        if job_dir.is_symlink() or not job_dir.is_dir():
+            raise ResetError(f"jobs root contains an invalid entry: {job_dir.name}")
+        job = _json(job_dir / "job.json", f"job record {job_dir.name}")
+        if job.get("request_id") != job_dir.name:
+            raise ResetError(f"job identity does not match its directory: {job_dir.name}")
+        if job.get("state") in NEEDS_REVIEW_STATES:
+            plans.append({"job": job, "job_dir": job_dir})
+    if plans and not callable(getattr(object_catalog, "archive_needs_review", None)):
+        raise ResetError("runtime does not support Needs review archives")
+    return plans
+
+
+def _tree_bytes(root: Path) -> dict[str, bytes]:
+    files = {}
+    for path in sorted(root.rglob("*")):
+        if path.is_symlink():
+            raise ResetError(f"archive entry contains a symlink: {root.name}")
+        if path.is_file():
+            files[path.relative_to(root).as_posix()] = path.read_bytes()
+    return files
+
+
+def _validate_archive_plan(layout: dict, plans: list[dict], reviews: list[dict],
+                           retired_at: str) -> None:
     wall = layout["history"] / "wall-of-fame"
     if wall.exists():
         _directory(wall, "Wall of Fame root")
@@ -212,13 +239,25 @@ def _validate_archive_plan(layout: dict, plans: list[dict], retired_at: str) -> 
             else:
                 object_catalog.archive_type(
                     scratch, plan["definition"], retired_at, plan["evidence"])
+        for review in reviews:
+            staged = object_catalog.archive_needs_review(
+                scratch, review["job"], review["job_dir"])
+            existing = wall / staged.name
+            if existing.exists():
+                _directory(existing, f"Wall of Fame entry {staged.name}")
+                if _tree_bytes(existing) != _tree_bytes(staged):
+                    raise ResetError(f"Needs review entry is immutable: {staged.name}")
 
 
-def _stage_archives(backup: Path, plans: list[dict], retired_at: str) -> Path:
+def _stage_archives(backup: Path, plans: list[dict], reviews: list[dict],
+                    retired_at: str) -> Path:
     staged = backup / "generated-history"
     for plan in plans:
         object_catalog.archive_type(
             staged, plan["definition"], retired_at, plan["evidence"])
+    for review in reviews:
+        object_catalog.archive_needs_review(
+            staged, review["job"], review["job_dir"])
     return staged
 
 
@@ -259,7 +298,7 @@ def _copy_file(source: Path, target: Path) -> None:
     os.chmod(target, stat.S_IMODE(source.stat().st_mode))
 
 
-def _apply(layout: dict, plans: list[dict], retired_at: str) -> Path:
+def _apply(layout: dict, plans: list[dict], reviews: list[dict], retired_at: str) -> Path:
     root = layout["root"]
     backups = layout["backups"]
     backups.mkdir(mode=0o700, exist_ok=True)
@@ -281,8 +320,10 @@ def _apply(layout: dict, plans: list[dict], retired_at: str) -> Path:
             "seed_marker_sha256": _file_sha256(layout["marker"]),
             "archived_active_type_ids": [
                 plan["definition"]["object_type_id"] for plan in plans],
+            "needs_review_request_ids": [
+                review["job"]["request_id"] for review in reviews],
         })
-        staged_archives = _stage_archives(backup, plans, retired_at)
+        staged_archives = _stage_archives(backup, plans, reviews, retired_at)
         if layout["training_lease"].exists():
             _copy_file(layout["training_lease"], backup / "training.lease")
         os.replace(jobs, old_jobs)
@@ -327,7 +368,7 @@ def _apply(layout: dict, plans: list[dict], retired_at: str) -> Path:
 def reset_state(root: Path, *, apply: bool) -> dict:
     root = Path(root)
 
-    def result(layout, plans, lock_available):
+    def result(layout, plans, reviews, lock_available):
         value = {
             "mode": "apply" if apply else "dry-run",
             "previous_bundle_sha256": layout["current_sha"],
@@ -335,6 +376,8 @@ def reset_state(root: Path, *, apply: bool) -> dict:
             "retained_job_count": sum(path.is_dir() for path in layout["jobs"].iterdir()),
             "active_generated_type_ids": [
                 plan["definition"]["object_type_id"] for plan in plans],
+            "needs_review_request_ids": [
+                review["job"]["request_id"] for review in reviews],
             "writer_lock_available": lock_available,
             "backup": None,
         }
@@ -344,14 +387,15 @@ def reset_state(root: Path, *, apply: bool) -> dict:
         layout = _validate_layout(root)
         retired_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         plans = _generated_archive_plan(layout)
-        _validate_archive_plan(layout, plans, retired_at)
+        reviews = _needs_review_plan(layout)
+        _validate_archive_plan(layout, plans, reviews, retired_at)
         available = True
         with layout["writer_lock"].open("r+") as lock:
             try:
                 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except OSError:
                 available = False
-        return result(layout, plans, available)
+        return result(layout, plans, reviews, available)
 
     _directory(root, "item-control root")
     writer_lock = root / "history" / "writer.lock"
@@ -364,9 +408,10 @@ def reset_state(root: Path, *, apply: bool) -> dict:
         layout = _validate_layout(root)
         retired_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         plans = _generated_archive_plan(layout)
-        _validate_archive_plan(layout, plans, retired_at)
-        value = result(layout, plans, True)
-        value["backup"] = _apply(layout, plans, retired_at).name
+        reviews = _needs_review_plan(layout)
+        _validate_archive_plan(layout, plans, reviews, retired_at)
+        value = result(layout, plans, reviews, True)
+        value["backup"] = _apply(layout, plans, reviews, retired_at).name
         return value
 
 
