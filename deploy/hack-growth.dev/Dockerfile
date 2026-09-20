@@ -20,7 +20,7 @@ ENV PYTHONUNBUFFERED=1 \
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       ca-certificates curl libgl1 libglfw3 libosmesa6 xz-utils \
+       ca-certificates curl libgl1 libglfw3 libosmesa6 libxrender1 xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
 RUN test "$TARGETARCH" = amd64 \
@@ -32,8 +32,8 @@ RUN test "$TARGETARCH" = amd64 \
     && mv "/opt/blender-${BLENDER_VERSION}-linux-x64" /opt/blender \
     && ln -s /opt/blender/blender /usr/local/bin/blender \
     && rm /tmp/blender.tar.xz \
-    && blender --background --version \
-    && if ldd /opt/blender/blender | grep -q 'not found'; then ldd /opt/blender/blender; exit 1; fi
+    && if ldd /opt/blender/blender | grep -q 'not found'; then ldd /opt/blender/blender; exit 1; fi \
+    && blender --background --version
 
 WORKDIR /app
 
@@ -78,7 +78,7 @@ RUN printf '%s' "$SOURCE_REVISION" | grep -Eq '^[0-9a-f]{40}$' \
 
 RUN install --directory --owner 10001 --group 10001 /tmp/blender-smoke \
     && su --shell /bin/sh cinta --command \
-       'HOME=/tmp XDG_CONFIG_HOME=/tmp TMPDIR=/tmp blender --background --factory-startup --python /app/deploy/blender_smoke.py -- /tmp/blender-smoke' \
+       'HOME=/tmp XDG_CONFIG_HOME=/tmp TMPDIR=/tmp blender --background --threads 1 --factory-startup --python /app/deploy/blender_smoke.py -- /tmp/blender-smoke' \
     && test -s /tmp/blender-smoke/smoke.png \
     && test -s /tmp/blender-smoke/smoke.glb \
     && rm -rf /tmp/blender-smoke

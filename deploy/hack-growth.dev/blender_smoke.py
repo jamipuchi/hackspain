@@ -16,7 +16,9 @@ def output_root() -> pathlib.Path:
 
 root = output_root()
 scene = bpy.context.scene
-scene.render.engine = "BLENDER_EEVEE_NEXT"
+scene.render.engine = "CYCLES"
+scene.cycles.device = "CPU"
+scene.cycles.samples = 1
 scene.render.resolution_x = 64
 scene.render.resolution_y = 64
 scene.render.resolution_percentage = 100
