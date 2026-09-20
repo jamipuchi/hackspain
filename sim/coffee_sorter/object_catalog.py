@@ -30,6 +30,8 @@ SEVERITIES = frozenset({"none", "minor", "major", "foreign"})
 ACTIVE_LIFECYCLE = "active_ready"
 ARCHIVED_LIFECYCLE = "archived"
 MASS_BASIS = "density_times_contact_proxy_volume"
+# The material families that the engine compiles (sim.py). Another name fails during spawn.
+TEXTURE_FAMILIES = ("good", "faded", "black", "sour", "insect", "roast")
 _ID_RE = re.compile(r"^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
 _LABEL_RE = re.compile(r"^[a-z][a-z0-9_]{0,79}$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -121,8 +123,10 @@ def validate_type_definition(value: Any) -> None:
         raise CatalogError("visual.rgb must contain three values in [0, 1]")
     if not 0 <= _number(visual["rgb_jitter"], "visual.rgb_jitter") <= 1:
         raise CatalogError("visual.rgb_jitter must be in [0, 1]")
-    if visual["texture"] is not None:
-        _text(visual["texture"], "visual.texture", 40)
+    # The inspection camera sees a generated type as a flat colour proxy, so it has no texture.
+    texture = visual["texture"]
+    if texture is not None and (kind == "generated" or texture not in TEXTURE_FAMILIES):
+        raise CatalogError("visual.texture must be null or a built-in engine material family")
     _validate_asset(visual["asset"], kind)
 
     physics = _mapping(value["physics"], "physics")
@@ -154,7 +158,7 @@ def load_catalog(root: Path = CATALOG_ROOT, manifest: str = "active/catalog.json
     if not isinstance(manifest, str) or not _MANIFEST_RE.fullmatch(manifest):
         raise CatalogError("catalog manifest path must stay inside the catalog root")
     try:
-        catalog = json.loads((root / manifest).read_text())
+        catalog = json.loads(_inside(root, root / manifest).read_text())
     except (OSError, json.JSONDecodeError) as error:
         raise CatalogError(f"catalog manifest cannot be read: {manifest}") from error
     catalog = dict(_mapping(catalog, "catalog"))
@@ -183,7 +187,7 @@ def load_catalog(root: Path = CATALOG_ROOT, manifest: str = "active/catalog.json
     definitions = []
     for type_id in ids:
         _sha256(hashes[type_id], f"definition_sha256[{type_id}]")
-        definition = load_definition(root / "definitions" / f"{type_id}.json", hashes[type_id])
+        definition = load_definition(_inside(root, root / "definitions" / f"{type_id}.json"), hashes[type_id])
         if definition["object_type_id"] != type_id:
             raise CatalogError(f"definition identifier does not match its file name: {type_id}")
         if definition["lifecycle_state"] != ACTIVE_LIFECYCLE:
@@ -297,6 +301,14 @@ def wall_of_fame_page(root: Path = CATALOG_ROOT, offset: int = 0, limit: int = M
     entries.sort(key=lambda entry: (entry["retired_at"], entry["object_type_id"]), reverse=True)
     return {"total": len(entries), "unreadable": unreadable, "offset": offset, "limit": limit,
             "entries": entries[offset:offset + limit]}
+
+
+def _inside(root: Path, path: Path) -> Path:
+    """Follow symlinks, then require that the file remains below the catalog root."""
+    resolved = path.resolve()
+    if not resolved.is_relative_to(root.resolve()):
+        raise CatalogError(f"catalog path leaves the catalog root: {path.name}")
+    return resolved
 
 
 def _validate_asset(asset: Any, kind: str) -> None:

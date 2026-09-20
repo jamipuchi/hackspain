@@ -624,6 +624,70 @@ class ReviewRegressionTest(CatalogRootTest):
             validate_type_definition(value)
 
 
+class TextureFamilyTest(unittest.TestCase):
+    """An unknown material family passed validation and raised KeyError during spawn."""
+
+    def test_a_builtin_texture_must_be_an_engine_material_family(self):
+        validate_type_definition(builtin_definition("good"))
+        for texture in ("missing_family", "", 5, ["good"]):
+            value = builtin_definition("good")
+            value["visual"]["texture"] = texture
+            with self.subTest(texture=texture), self.assertRaisesRegex(CatalogError, "material family"):
+                validate_type_definition(value)
+
+    def test_a_generated_type_has_no_texture(self):
+        value = generated_definition()
+        self.assertIsNone(value["visual"]["texture"])
+        value["visual"]["texture"] = "good"
+        with self.assertRaisesRegex(CatalogError, "material family"):
+            validate_type_definition(value)
+
+    def test_the_families_equal_the_tuple_that_the_engine_compiles(self):
+        import re
+        source = (Path(object_catalog.__file__).parent / "sim.py").read_text()  # importing sim needs mujoco
+        families = re.search(r"for fam in \(([^)]*)\):\s*\n\s*self\.material_ids\[fam\]", source).group(1)
+        self.assertEqual(object_catalog.TEXTURE_FAMILIES, tuple(re.findall(r'"([a-z]+)"', families)))
+
+
+class CatalogRootContainmentTest(CatalogRootTest):
+    """A safe name is not enough. A symlink below the root can still read a file outside it."""
+
+    def outside_copy(self, root, relative):
+        outside = self.make_root() / Path(relative).name
+        outside.write_bytes((root / relative).read_bytes())
+        (root / relative).unlink()
+        return outside
+
+    def test_a_definition_symlink_cannot_leave_the_catalog_root(self):
+        root = self.make_catalog(("good", "stone"))
+        relative = "definitions/builtin.test.good.json"
+        (root / relative).symlink_to(self.outside_copy(root, relative))
+        with self.assertRaisesRegex(CatalogError, "leaves the catalog root"):
+            load_catalog(root)
+
+    def test_a_manifest_symlink_cannot_leave_the_catalog_root(self):
+        root = self.make_catalog(("good", "stone"))
+        (root / "active/catalog.json").symlink_to(self.outside_copy(root, "active/catalog.json"))
+        with self.assertRaisesRegex(CatalogError, "leaves the catalog root"):
+            load_catalog(root)
+
+    def test_a_symlinked_definitions_directory_cannot_leave_the_catalog_root(self):
+        root = self.make_catalog(("good", "stone"))
+        outside = self.make_root() / "definitions"
+        (root / "definitions").rename(outside)
+        (root / "definitions").symlink_to(outside, target_is_directory=True)
+        with self.assertRaisesRegex(CatalogError, "leaves the catalog root"):
+            load_catalog(root)
+
+    def test_a_symlink_that_stays_below_the_root_still_loads(self):
+        root = self.make_catalog(("good", "stone"))
+        relative = "definitions/builtin.test.good.json"
+        (root / "kept.json").write_bytes((root / relative).read_bytes())
+        (root / relative).unlink()
+        (root / relative).symlink_to(root / "kept.json")
+        self.assertEqual(["good", "stone"], catalog_labels(load_catalog(root)))
+
+
 class RepoWallOfFameTest(unittest.TestCase):
     def test_the_repo_wall_starts_empty(self):
         self.assertEqual(0, wall_of_fame_page(object_catalog.CATALOG_ROOT)["total"])
