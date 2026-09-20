@@ -1,0 +1,51 @@
+{
+  "classifier_label": "quaker",
+  "display_name": "Roasted quaker",
+  "feed": {
+    "prior": 0.04
+  },
+  "lifecycle_state": "active_ready",
+  "object_type_id": "builtin.roasted.quaker",
+  "physics": {
+    "contact_shape": "ellipsoid",
+    "density_kg_m3": 600,
+    "mass_basis": "density_times_contact_proxy_volume",
+    "measurement_status": "unmeasured_estimate"
+  },
+  "provenance": {
+    "kind": "builtin",
+    "source": "profiles.py migration at afad65b",
+    "source_sha256": null
+  },
+  "schema_version": 1,
+  "truth": {
+    "defect": true,
+    "severity": "major"
+  },
+  "validation_status": "validated",
+  "visual": {
+    "asset": null,
+    "rgb": [
+      0.72,
+      0.56,
+      0.36
+    ],
+    "rgb_jitter": 0.05,
+    "shape": "ellipsoid",
+    "size_mm": [
+      [
+        4.6,
+        6.0
+      ],
+      [
+        3.5,
+        4.4
+      ],
+      [
+        2.6,
+        3.2
+      ]
+    ],
+    "texture": "faded"
+  }
+}

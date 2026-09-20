@@ -1,0 +1,36 @@
+{
+  "active_bundle_sha256": null,
+  "active_type_ids": [
+    "builtin.green_arabica.good",
+    "builtin.green_arabica.faded",
+    "builtin.green_arabica.black",
+    "builtin.green_arabica.sour",
+    "builtin.green_arabica.insect",
+    "builtin.green_arabica.broken",
+    "builtin.green_arabica.shell",
+    "builtin.green_arabica.husk",
+    "builtin.green_arabica.stone",
+    "builtin.green_arabica.stick"
+  ],
+  "belt_rgb": [
+    0.1,
+    0.22,
+    0.62
+  ],
+  "catalog_revision": "b91d966b740f90299a786c3d2ecac973a8089ef81851c5ad6137d1d29f90c7bc",
+  "definition_sha256": {
+    "builtin.green_arabica.black": "d2358fd2b237ade121cb73b9f3c175951c437392c11e4a15047a5517952e3bca",
+    "builtin.green_arabica.broken": "0e5adcc99acdb2dfbdb5d9e309ac7112144a36829a1505e131a39ba5790f4e06",
+    "builtin.green_arabica.faded": "57fdc6249c1297ce61d379399190b168e966c2136a6b28fc84d4140d3d9ab991",
+    "builtin.green_arabica.good": "b560d60e8f1a6b6be19f87b99fb0ed350f62c3ae673719a1ba82a7d91d4934d0",
+    "builtin.green_arabica.husk": "0ebfbd332a6c8461ec870dbf4c0c02b420bcb039422931efad8660e834f16766",
+    "builtin.green_arabica.insect": "d6aec7ae54c772bf3b7c9d3b42946ad2f7929a0f74054da3a34c67eddf8b400a",
+    "builtin.green_arabica.shell": "007aaa8cf8c271c10fcc271dd5b455d06d9106c2bd4016f5e741f594064a07d1",
+    "builtin.green_arabica.sour": "f63680951d8c9a86bacbb8ce5ebfcb16caa510a5c300a440313747d115573c4b",
+    "builtin.green_arabica.stick": "31303f8cc419e3f49844cbc9d45cad3f5e7c2cf25e9f04cff92db144aba11358",
+    "builtin.green_arabica.stone": "f6a3f1f13ec1aced593076779c2aa4d0967db9c2d5a40254d455ab5d33caa5de"
+  },
+  "max_active_types": 10,
+  "profile_name": "green_arabica",
+  "schema_version": 1
+}

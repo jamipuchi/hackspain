@@ -2,9 +2,11 @@
 date: 2026-09-20
 owner: taras
 planner: Codex
-status: ready
+status: in-progress
 baseline_revision: baa797f50561679412a1b25321588ca87eca1f00
-implementation_branch: future-from-main
+implementation_branch: codex/cinta-generated-items
+implementation_base: afad65b58159573990d4d3d0ac644aba64b83802
+implementer: Claude Code
 ---
 
 # CINTA generated-item controls implementation plan
@@ -630,3 +632,27 @@ Taras verifies these points:
 18. Candidate evidence includes classifier-label and anomaly validation.
 
 Taras owns final functional acceptance.
+
+## Implementation log
+
+### Base gate and baseline (2026-09-20)
+
+- Implementation base: `afad65b58159573990d4d3d0ac644aba64b83802`. The verified release `d26952ddc6e7cccdd36dd9d1519df577e49c9057` is an ancestor, and both trees are identical.
+- `test_generalization.py` fails 3 subtests on the untouched base. `controller.py`, `vision.py`, and `sim.py` changed after its reference commit `511f104`. This work does not edit that test.
+- The canonical model is a gitignored artifact. Its hash is `89513398373c6e0e81286419962feb3e312742de14a76d02dd0d819ad5264a5a`.
+
+### Object spike
+
+- Measured: free-flight vertical acceleration equals -9.81 m/s2 multiplied by (sampled mass / 0.00015 kg).
+- Cause: `SorterSim.spawn()` writes `body_mass` at runtime. MuJoCo takes the inertia of these simple free bodies from the compile-time `dof_M0`. Setting `dof_M0` to the sampled mass gives -9.8 m/s2 for every mass.
+- Effect: the seeded no-air route gate acts as a mass gate. Bodies above about 0.3 g fall under the splitter. The built-in stone fails the isolated route 4 of 4 times.
+- `sim.py` stays unchanged. It is a protected source, and the canonical model was trained on this behavior.
+- The `generated_box` fixture uses a light box that passes honestly: 8 x 8 x 3 mm, 1200 kg/m3, 0.23 g.
+
+### Phase 1 decisions
+
+- `roasted` uses a static second manifest, `object_catalog/builtin/roasted.catalog.json`. It uses the same validator and loader. Activation never touches it.
+- `profiles.py` keeps `PROFILES`, `GREEN_ARABICA`, `ROASTED`, and `BEAN` as derived adapters. 19 modules import them.
+- `profiles.py` is part of the recorded model source hashes. The canonical model still loads. The next `bootstrap_model.py` run retrains instead of reusing the artifact.
+- `require_label_order` has no caller in Phase 1. `live.py` already compares model labels with `profile.names`, which now derive from the catalog. Phase 3 candidate validation calls it for the final newest-first order.
+- `archive_type` assumes one writer. Activation runs inside one service process.

@@ -1,0 +1,51 @@
+{
+  "classifier_label": "good",
+  "display_name": "Green arabica good",
+  "feed": {
+    "prior": 0.86
+  },
+  "lifecycle_state": "active_ready",
+  "object_type_id": "builtin.green_arabica.good",
+  "physics": {
+    "contact_shape": "ellipsoid",
+    "density_kg_m3": 1150.0,
+    "mass_basis": "density_times_contact_proxy_volume",
+    "measurement_status": "unmeasured_estimate"
+  },
+  "provenance": {
+    "kind": "builtin",
+    "source": "profiles.py migration at afad65b",
+    "source_sha256": null
+  },
+  "schema_version": 1,
+  "truth": {
+    "defect": false,
+    "severity": "none"
+  },
+  "validation_status": "validated",
+  "visual": {
+    "asset": null,
+    "rgb": [
+      0.5,
+      0.6,
+      0.46
+    ],
+    "rgb_jitter": 0.06,
+    "shape": "ellipsoid",
+    "size_mm": [
+      [
+        4.2,
+        5.6
+      ],
+      [
+        3.1,
+        4.0
+      ],
+      [
+        2.2,
+        2.9
+      ]
+    ],
+    "texture": "good"
+  }
+}

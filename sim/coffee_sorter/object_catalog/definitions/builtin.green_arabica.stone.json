@@ -1,0 +1,51 @@
+{
+  "classifier_label": "stone",
+  "display_name": "Green arabica stone",
+  "feed": {
+    "prior": 0.005
+  },
+  "lifecycle_state": "active_ready",
+  "object_type_id": "builtin.green_arabica.stone",
+  "physics": {
+    "contact_shape": "box",
+    "density_kg_m3": 2600,
+    "mass_basis": "density_times_contact_proxy_volume",
+    "measurement_status": "unmeasured_estimate"
+  },
+  "provenance": {
+    "kind": "builtin",
+    "source": "profiles.py migration at afad65b",
+    "source_sha256": null
+  },
+  "schema_version": 1,
+  "truth": {
+    "defect": true,
+    "severity": "foreign"
+  },
+  "validation_status": "validated",
+  "visual": {
+    "asset": null,
+    "rgb": [
+      0.45,
+      0.44,
+      0.42
+    ],
+    "rgb_jitter": 0.08,
+    "shape": "box",
+    "size_mm": [
+      [
+        2.5,
+        5.0
+      ],
+      [
+        2.0,
+        4.0
+      ],
+      [
+        1.5,
+        3.5
+      ]
+    ],
+    "texture": null
+  }
+}
