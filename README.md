@@ -2,7 +2,7 @@
 
 CINTA means **Class-agnostic INline Transport Analyzer**. It simulates an optical coffee sorter from feed to physical outcome.
 
-MuJoCo moves ten item classes through a camera, classifier, anomaly detector, air jets, and two output paths. The browser shows the same authoritative objects, poses, commands, contacts, and outcomes.
+Choose how CINTA handles each item class, watch the conveyor, and compare every decision with its physical outcome.
 
 ```text
 feed -> inspection camera -> classifier and anomaly detector -> air jets -> Keep or Reject
@@ -82,7 +82,7 @@ Stop the service with `Ctrl+C`. Shutdown writes the retained report and final st
 - Some stones can reach Reject without jet contact because of their passive physical trajectory. Stone routing remains unresolved.
 - Recycling is fixed in the current runtime. The live scores still describe a simulation, not a production sorter.
 - Manual test stones do not enter rolling feed scores.
-- The local service accepts loopback connections only. A public deployment is not verified.
+- The local command above accepts loopback connections only. A public deployment is not verified.
 - Generated-item activation is planned, not delivered. The current Items gallery is limited to the active catalog.
 
 ## Technical documentation
