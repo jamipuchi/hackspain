@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
 
-import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, freezeItemRequest, jobActionLabel, jobActionPath, jobErrorLabel, jobQueueSignature, jobStateLabel, jobStateNote, normalizedClassPreview, normalizedCollectionSurfaces, normalizedJobSummary, profilePreviewScale, queueModeCue, resolvePendingRequest, samePresentationTimeline} from './timeline.mjs';
+import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, freezeItemRequest, jobActionLabel, jobActionPath, jobActivationLabel, jobErrorLabel, jobEvidenceLabel, jobQueueSignature, jobReplacementLabel, jobStateLabel, jobStateNote, normalizedClassPreview, normalizedCollectionSurfaces, normalizedJobSummary, profilePreviewScale, queueModeCue, resolvePendingRequest, samePresentationTimeline} from './timeline.mjs';
 
 const snapshot = {
   session_id: 'session-a',
@@ -166,8 +166,114 @@ test('queue signature changes only with visible queue fields', () => {
   assert.equal(jobQueueSignature([{...summary, description: 'unchanged row text'}]), same);
   assert.notEqual(jobQueueSignature([{...summary, state: 'failed'}]), same);
   assert.notEqual(jobQueueSignature([{...summary, error: 'render_failed'}]), same);
+  assert.notEqual(jobQueueSignature([{...summary, activation: {phase: 'draining'}}]), same);
+  assert.notEqual(jobQueueSignature([{...summary, evidence: {provider_submission: 'completed'}}]), same);
   assert.notEqual(jobQueueSignature([summary, summary]), same);
   assert.equal(jobQueueSignature(null), '');
+});
+
+test('missing Increment C blocks stay unknown and do not invent compact evidence', () => {
+  const job = normalizedJobSummary(summary);
+  assert.deepEqual(job.replacement, {
+    victimTypeId: null, victimLabel: null, newTypeId: null, newLabel: null,
+    activeTypeIdsBefore: null, activeTypeIdsAfter: null,
+  });
+  assert.deepEqual(job.activation, {
+    phase: null, activeObjects: null, drainTimeoutSeconds: null,
+    result: null, rolledBack: null, message: null,
+  });
+  assert.equal(job.identities.bundleSha256, null);
+  assert.equal(job.evidence.physicsSource, null);
+  assert.equal(jobEvidenceLabel(job.evidence), null);
+  assert.equal(jobReplacementLabel(job.replacement), null);
+  assert.equal(jobActivationLabel(job.activation), null);
+  const malformed = normalizedJobSummary({...summary,
+    replacement: {active_type_ids_before: Array(65).fill('type')},
+    activation: {phase: 'future_phase', active_objects: -1, drain_timeout_seconds: Infinity},
+  });
+  assert.equal(malformed.replacement.activeTypeIdsBefore, null);
+  assert.equal(malformed.activation.phase, null);
+  assert.equal(malformed.activation.activeObjects, null);
+  assert.equal(malformed.activation.drainTimeoutSeconds, null);
+});
+
+test('cached evidence uses the exact label only when kind and physics source agree', () => {
+  const cached = normalizedJobSummary({...summary, evidence: {
+    evidence_kind: 'cached_generation_cached_physics',
+    provider_submission: 'not_submitted',
+    physics_source: 'cached_llm_replay',
+    physics_measurement_status: 'unmeasured_proxy_estimate',
+    recipe_sha256: 'a'.repeat(64), glb_sha256: 'b'.repeat(64),
+    recipe_request_sha256: 'c'.repeat(64), physics_request_sha256: 'd'.repeat(64),
+    physics_cache_entry_sha256: 'e'.repeat(64),
+  }});
+  assert.equal(jobEvidenceLabel(cached.evidence),
+    'Real cached generation + cached physics estimate');
+  assert.equal(cached.evidence.glbSha256, 'b'.repeat(64));
+
+  const mismatch = normalizedJobSummary({...summary, evidence: {
+    evidence_kind: 'cached_generation_cached_physics',
+    provider_submission: 'completed', physics_source: 'paid_llm_call',
+  }});
+  assert.equal(jobEvidenceLabel(mismatch.evidence), 'Provider physics estimate');
+  assert.notEqual(jobEvidenceLabel(mismatch.evidence),
+    'Real cached generation + cached physics estimate');
+
+  const unknown = normalizedJobSummary({...summary, evidence: {
+    evidence_kind: 'future_kind', provider_submission: 'unknown_state',
+    physics_source: 'future_source', recipe_sha256: 'not-a-digest',
+  }});
+  assert.equal(unknown.evidence.kind, null);
+  assert.equal(unknown.evidence.physicsSource, null);
+  assert.equal(unknown.evidence.recipeSha256, null);
+  assert.equal(jobEvidenceLabel(unknown.evidence), 'Provider evidence available');
+});
+
+test('Increment C fixtures cover draining, active, rollback, and failure states', () => {
+  const replacement = {
+    victim_type_id: 'builtin.stick', victim_label: 'stick',
+    new_type_id: 'generated.star', new_label: 'gold_star',
+    active_type_ids_before: ['builtin.good', 'builtin.stick'],
+    active_type_ids_after: ['generated.star', 'builtin.good'],
+  };
+  const draining = normalizedJobSummary({...summary, replacement, activation: {
+    phase: 'draining', active_objects: 3, drain_timeout_seconds: 20,
+    result: null, rolled_back: null, message: null,
+  }});
+  assert.equal(jobActivationLabel(draining.activation), 'Draining · 3 on belt');
+  assert.equal(jobReplacementLabel(draining.replacement), 'gold_star replaces stick');
+  assert.deepEqual(draining.replacement.activeTypeIdsAfter,
+    ['generated.star', 'builtin.good']);
+
+  const active = normalizedJobSummary({...summary, replacement, activation: {
+    phase: 'active', active_objects: 0, drain_timeout_seconds: 20,
+    result: 'active', rolled_back: false, message: 'Activated.',
+  }, identities: {
+    baseline_catalog_revision: '1'.repeat(64), candidate_catalog_revision: '2'.repeat(64),
+    model_artifact_sha256: '3'.repeat(64), bundle_sha256: '4'.repeat(64),
+    previous_bundle_sha256: '5'.repeat(64), baseline_policy_version: 'policy-a',
+    validation_policy_version: 'policy-b', activation_policy_version: 'policy-c',
+    session_id: 'session-new', score_epoch_id: 'score-new',
+  }});
+  assert.equal(jobActivationLabel(active.activation), 'Active');
+  assert.equal(active.identities.bundleSha256, '4'.repeat(64));
+  assert.equal(active.identities.sessionId, 'session-new');
+
+  const rollback = normalizedJobSummary({...summary, activation: {
+    phase: 'failed', active_objects: 0, drain_timeout_seconds: 20,
+    result: 'activation_failed', rolled_back: true,
+    message: 'Previous bundle restored.',
+  }});
+  assert.equal(jobActivationLabel(rollback.activation),
+    'Activation failed · previous bundle restored');
+
+  const failure = normalizedJobSummary({...summary, activation: {
+    phase: 'failed', active_objects: null, drain_timeout_seconds: null,
+    result: 'replacement_conflict', rolled_back: false,
+    message: 'Replacement changed.',
+  }});
+  assert.equal(jobActivationLabel(failure.activation), 'Activation failed');
+  assert.equal(failure.activation.message, 'Replacement changed.');
 });
 
 test('queue rows and archived rows share one head builder', () => {

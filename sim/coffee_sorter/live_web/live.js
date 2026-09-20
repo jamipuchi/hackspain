@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {OrbitControls} from '/vendor/OrbitControls.js';
 import {RoomEnvironment} from '/vendor/RoomEnvironment.js';
 import {GLTFLoader} from '/assets/vendor/loaders/GLTFLoader.js';
-import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, freezeItemRequest, jobActionLabel, jobActionPath, jobErrorLabel, jobQueueSignature, jobStateLabel, jobStateNote, queueModeCue, normalizedClassPreview, normalizedCollectionSurfaces, normalizedJobSummary, profilePreviewScale, resolvePendingRequest, samePresentationTimeline} from './timeline.mjs';
+import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, freezeItemRequest, jobActionLabel, jobActionPath, jobActivationLabel, jobErrorLabel, jobEvidenceLabel, jobQueueSignature, jobReplacementLabel, jobStateLabel, jobStateNote, queueModeCue, normalizedClassPreview, normalizedCollectionSurfaces, normalizedJobSummary, profilePreviewScale, resolvePendingRequest, samePresentationTimeline} from './timeline.mjs';
 import {acceptedAssetRegistry, chooseObjectAsset, generatedAssetMetrics, instanceScale, mustResetGeneratedPools, parsedAssetRefusal, planAssetLoads, prepareGeometry} from './generated_assets.mjs';
 
 const $ = id => document.getElementById(id);
@@ -660,13 +660,51 @@ function jobDetails(job) {
   const summary = document.createElement('summary'); summary.textContent = 'Details';
   const list = document.createElement('dl');
   const attempts = Object.entries(job.attempts).map(([stage, count]) => `${stage} ${count}`).join(' · ');
+  const known = item => item || 'Unknown';
+  const order = items => items ? items.join(' · ') || 'Empty' : 'Unknown';
+  const source = job.evidence.physicsSource === 'cached_llm_replay' ? 'Cached physics replay'
+    : job.evidence.physicsSource === 'paid_llm_call' ? 'Provider physics call' : 'Unknown';
+  const measurement = job.evidence.physicsMeasurementStatus
+    ? job.evidence.physicsMeasurementStatus.replaceAll('_', ' ') : 'Unknown';
+  const activationResult = job.activation.result === 'active' ? 'Active'
+    : jobErrorLabel(job.activation.result) || 'Unknown';
+  const rolledBack = job.activation.rolledBack === null ? 'Unknown'
+    : job.activation.rolledBack ? 'Yes' : 'No';
   for (const [term, value] of [
     ['Request', job.requestId], ['Description', job.description || 'Not recorded'],
     ['Requester', job.requester || 'Not given'], ['State', jobStateLabel(job.state)],
     ['Created', job.createdAt || 'Unknown'], ['Updated', job.updatedAt || 'Unknown'],
     ['Attempts', attempts || 'None'], ['Progress', job.progress || 'None reported'],
     ['Error', jobErrorLabel(job.error) || 'None'],
-    ['Provider', job.providerMode ? `${job.providerMode}${job.cacheHit === true ? ', cache hit' : job.cacheHit === false ? ', live request' : ''}` : 'Unknown'],
+    ['Provider', job.providerMode ? `${job.providerMode}${job.cacheHit === true ? ', cache hit' : job.cacheHit === false ? ', cache miss' : ''}` : 'Unknown'],
+    ['Provider submission', known(job.evidence.providerSubmission)],
+    ['Evidence', jobEvidenceLabel(job.evidence) || 'Unknown'],
+    ['Physics source', source], ['Physics measurement', measurement],
+    ['Replacement', jobReplacementLabel(job.replacement) || 'Unknown'],
+    ['Removed type', known(job.replacement.victimTypeId)],
+    ['Generated type', known(job.replacement.newTypeId)],
+    ['Active order before', order(job.replacement.activeTypeIdsBefore)],
+    ['Active order after', order(job.replacement.activeTypeIdsAfter)],
+    ['Activation', jobActivationLabel(job.activation) || 'Unknown'],
+    ['Drain limit', job.activation.drainTimeoutSeconds === null ? 'Unknown'
+      : `${job.activation.drainTimeoutSeconds} wall seconds`],
+    ['Activation result', activationResult], ['Rolled back', rolledBack],
+    ['Activation message', known(job.activation.message)],
+    ['Catalog baseline', known(job.identities.baselineCatalogRevision)],
+    ['Catalog candidate', known(job.identities.candidateCatalogRevision)],
+    ['Model artifact', known(job.identities.modelArtifactSha256)],
+    ['Previous bundle', known(job.identities.previousBundleSha256)],
+    ['Active bundle', known(job.identities.bundleSha256)],
+    ['Baseline policy', known(job.identities.baselinePolicyVersion)],
+    ['Validation policy', known(job.identities.validationPolicyVersion)],
+    ['Activation policy', known(job.identities.activationPolicyVersion)],
+    ['New session', known(job.identities.sessionId)],
+    ['New score epoch', known(job.identities.scoreEpochId)],
+    ['Recipe artifact', known(job.evidence.recipeSha256)],
+    ['Rendered GLB', known(job.evidence.glbSha256)],
+    ['Recipe request', known(job.evidence.recipeRequestSha256)],
+    ['Physics request', known(job.evidence.physicsRequestSha256)],
+    ['Physics cache entry', known(job.evidence.physicsCacheEntrySha256)],
     ['What happens next', jobStateNote(job.state) || 'The queue continues without an operator.'],
     ['Recovery', jobActionLabel(job.action) || 'None required'],
   ]) {
@@ -710,14 +748,26 @@ function buildJobHead({name, meta, preview = null, failed = false, action = null
 function jobRow(job) {
   const row = document.createElement('div'); row.className = 'job-row'; row.dataset.requestId = job.requestId;
   const label = jobActionLabel(job.action);
+  const activation = jobActivationLabel(job.activation);
+  const replacement = jobReplacementLabel(job.replacement);
+  const evidence = jobEvidenceLabel(job.evidence);
+  const activationFailed = job.activation.phase === 'failed'
+    || ['replacement_conflict', 'activation_conflict', 'activation_failed'].includes(job.activation.result);
   const head = buildJobHead({
     name: job.name,
     meta: [jobStateLabel(job.state), job.updatedAt, job.requester && `by ${job.requester}`,
            jobErrorLabel(job.error) || job.progress].filter(Boolean).join(' · '),
     preview: job.preview,
-    failed: Boolean(job.error),
+    failed: Boolean(job.error) || activationFailed,
     action: label && {label, run: () => sendJobAction(job, job.action, job.action === 'resolve_provider' ? 'use_cache' : null)},
   });
+  const facts = [activation, replacement, evidence].filter(Boolean);
+  if (facts.length) {
+    const proof = document.createElement('small'); proof.className = 'job-proof';
+    proof.classList.toggle('error', activationFailed);
+    proof.textContent = facts.join(' · ');
+    head.querySelector('.job-name').append(proof);
+  }
   row.append(head, jobDetails(job));
   return row;
 }

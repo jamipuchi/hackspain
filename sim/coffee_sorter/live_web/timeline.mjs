@@ -289,12 +289,69 @@ export function jobActionPath(requestId, action) {
   return suffix && requestId ? `/item-jobs/${encodeURIComponent(requestId)}/${suffix}` : null;
 }
 
+const ACTIVATION_PHASES = new Set(['draining', 'activating', 'active', 'failed']);
+const ACTIVATION_RESULTS = new Set([
+  'active', 'replacement_conflict', 'activation_conflict', 'activation_failed',
+]);
+const EVIDENCE_KINDS = new Set([
+  'cached_generation_cached_physics', 'paid_generation_cached_physics', 'fake',
+]);
+const PHYSICS_SOURCES = new Set(['cached_llm_replay', 'paid_llm_call']);
+
+export function jobEvidenceLabel(evidence) {
+  if (evidence?.kind === 'cached_generation_cached_physics'
+      && evidence?.physicsSource === 'cached_llm_replay') {
+    return 'Real cached generation + cached physics estimate';
+  }
+  if (evidence?.kind === 'fake') return 'Fake test adapter';
+  if (evidence?.kind === 'paid_generation_cached_physics'
+      && evidence?.physicsSource === 'cached_llm_replay') {
+    return 'Provider generation + cached physics estimate';
+  }
+  if (evidence?.physicsSource === 'paid_llm_call') return 'Provider physics estimate';
+  if (evidence?.providerSubmission || evidence?.physicsSource || evidence?.kind) {
+    return 'Provider evidence available';
+  }
+  return null;
+}
+
+export function jobReplacementLabel(replacement) {
+  if (replacement?.newLabel && replacement?.victimLabel) {
+    return `${replacement.newLabel} replaces ${replacement.victimLabel}`;
+  }
+  if (replacement?.newLabel) return `New class ${replacement.newLabel}`;
+  if (replacement?.victimLabel) return `Replaces ${replacement.victimLabel}`;
+  return null;
+}
+
+export function jobActivationLabel(activation) {
+  if (activation?.phase === 'draining') {
+    return Number.isInteger(activation.activeObjects)
+      ? `Draining · ${activation.activeObjects} on belt` : 'Draining';
+  }
+  if (activation?.phase === 'activating') return 'Activating';
+  if (activation?.phase === 'active' || activation?.result === 'active') return 'Active';
+  if (activation?.phase === 'failed' || activation?.result) {
+    return activation?.rolledBack === true ? 'Activation failed · previous bundle restored'
+      : 'Activation failed';
+  }
+  return null;
+}
+
 // The server owns queue truth. This keeps one presentation shape and rejects anything else.
 export function normalizedJobSummary(value) {
   const requestId = value?.request_id;
   // An unknown state is shown verbatim with a cue. Dropping the row would hide a job.
   if (typeof requestId !== 'string' || typeof value.state !== 'string' || !value.state) return null;
   const text = (item, limit) => typeof item === 'string' && item.trim() ? item.trim().slice(0, limit) : null;
+  const digest = item => typeof item === 'string' && /^[0-9a-f]{64}$/.test(item) ? item : null;
+  const textList = item => Array.isArray(item) && item.length <= 64
+    && item.every(entry => typeof entry === 'string' && entry.length > 0)
+    ? item.map(entry => entry.slice(0, 200)) : null;
+  const replacement = value.replacement && typeof value.replacement === 'object' ? value.replacement : {};
+  const activation = value.activation && typeof value.activation === 'object' ? value.activation : {};
+  const identities = value.identities && typeof value.identities === 'object' ? value.identities : {};
+  const evidence = value.evidence && typeof value.evidence === 'object' ? value.evidence : {};
   const previewPrefix = `/item-jobs/${requestId}/previews/`;
   return {
     requestId,
@@ -311,13 +368,57 @@ export function normalizedJobSummary(value) {
     action: JOB_ACTION_LABELS[value.primary_action] ? value.primary_action : null,
     providerMode: text(value.provider_mode, 16),
     cacheHit: typeof value.provider_cache_hit === 'boolean' ? value.provider_cache_hit : null,
+    replacement: {
+      victimTypeId: text(replacement.victim_type_id, 200),
+      victimLabel: text(replacement.victim_label, 120),
+      newTypeId: text(replacement.new_type_id, 200),
+      newLabel: text(replacement.new_label, 120),
+      activeTypeIdsBefore: textList(replacement.active_type_ids_before),
+      activeTypeIdsAfter: textList(replacement.active_type_ids_after),
+    },
+    activation: {
+      phase: ACTIVATION_PHASES.has(activation.phase) ? activation.phase : null,
+      activeObjects: Number.isInteger(activation.active_objects) && activation.active_objects >= 0
+        ? activation.active_objects : null,
+      drainTimeoutSeconds: typeof activation.drain_timeout_seconds === 'number'
+        && Number.isFinite(activation.drain_timeout_seconds) && activation.drain_timeout_seconds >= 0
+        ? activation.drain_timeout_seconds : null,
+      result: ACTIVATION_RESULTS.has(activation.result) ? activation.result : null,
+      rolledBack: typeof activation.rolled_back === 'boolean' ? activation.rolled_back : null,
+      message: text(activation.message, 240),
+    },
+    identities: {
+      baselineCatalogRevision: digest(identities.baseline_catalog_revision),
+      candidateCatalogRevision: digest(identities.candidate_catalog_revision),
+      modelArtifactSha256: digest(identities.model_artifact_sha256),
+      bundleSha256: digest(identities.bundle_sha256),
+      previousBundleSha256: digest(identities.previous_bundle_sha256),
+      baselinePolicyVersion: text(identities.baseline_policy_version, 200),
+      validationPolicyVersion: text(identities.validation_policy_version, 200),
+      activationPolicyVersion: text(identities.activation_policy_version, 200),
+      sessionId: text(identities.session_id, 200),
+      scoreEpochId: text(identities.score_epoch_id, 200),
+    },
+    evidence: {
+      kind: EVIDENCE_KINDS.has(evidence.evidence_kind) ? evidence.evidence_kind : null,
+      providerSubmission: text(evidence.provider_submission, 80),
+      physicsSource: PHYSICS_SOURCES.has(evidence.physics_source) ? evidence.physics_source : null,
+      physicsMeasurementStatus: text(evidence.physics_measurement_status, 80),
+      recipeSha256: digest(evidence.recipe_sha256),
+      glbSha256: digest(evidence.glb_sha256),
+      recipeRequestSha256: digest(evidence.recipe_request_sha256),
+      physicsRequestSha256: digest(evidence.physics_request_sha256),
+      physicsCacheEntrySha256: digest(evidence.physics_cache_entry_sha256),
+    },
   };
 }
 
 export function jobQueueSignature(summaries) {
   return (Array.isArray(summaries) ? summaries : []).map(item =>
     [item?.request_id, item?.state, item?.error, item?.updated_at, item?.preview,
-     item?.progress, item?.primary_action].join(':')).join('|');
+     item?.progress, item?.primary_action, JSON.stringify(item?.replacement || null),
+     JSON.stringify(item?.activation || null), JSON.stringify(item?.identities || null),
+     JSON.stringify(item?.evidence || null)].join(':')).join('|');
 }
 
 export function compareExpectedOutcome(expected, outcome) {
