@@ -1223,6 +1223,29 @@ def render_command(job: Mapping[str, Any], job_dir: Path, *, runtime_lock: Path,
             "--blender", blender]
 
 
+def physics_proposal_command(job: Mapping[str, Any], job_dir: Path, *, mode: str,
+                             provider_cache: Path, replay_dir: Path | None = None,
+                             env_file: Path | None = None) -> list[str]:
+    """Build the physics proposal argv. The provider rules equal the generation rules.
+
+    The FULL job description is always passed. Reviewed replay metadata may substitute a
+    shorter physics description inside the wrapper, and only when it binds to this job's
+    own artifacts. No request field and no public route can reach this argv.
+    """
+    argv = [sys.executable, str(HERE / "item_job_physics.py"),
+            "--job-dir", str(job_dir),
+            "--description", job["description"],
+            "--mode", mode,
+            "--provider-cache", str(provider_cache)]
+    if replay_dir is not None:
+        argv += ["--replay-dir", str(replay_dir)]
+    if mode == "paid":
+        argv += ["--env-file", str(env_file)]
+        if live_permitted(job, mode):
+            argv.append("--live")
+    return argv
+
+
 def physics_command(job: Mapping[str, Any], job_dir: Path, *, preset: Path,
                     runtime_lock: Path) -> list[str]:
     """Validate the draft against the seeded no-air route in a child process.
@@ -1251,6 +1274,7 @@ def training_command(job: Mapping[str, Any], job_dir: Path, *, preset: Path,
 
 
 def real_commands(*, mode: str, provider_cache: Path, runtime_lock: Path, preset: Path,
+                  physics_replay: Path | None = None,
                   generator_root: Path = GENERATOR_ROOT, env_file: Path | None = None,
                   blender: str = "blender",
                   source_revision: str | None = None) -> dict[str, Callable[..., list[str]]]:
@@ -1262,6 +1286,9 @@ def real_commands(*, mode: str, provider_cache: Path, runtime_lock: Path, preset
         "render": lambda job, job_dir: render_command(
             job, job_dir, runtime_lock=runtime_lock, blender=blender,
             generator_root=generator_root),
+        "physics_proposal": lambda job, job_dir: physics_proposal_command(
+            job, job_dir, mode=mode, provider_cache=provider_cache,
+            replay_dir=physics_replay, env_file=env_file),
         "physics": lambda job, job_dir: physics_command(
             job, job_dir, preset=preset, runtime_lock=runtime_lock),
         "training": lambda job, job_dir: training_command(

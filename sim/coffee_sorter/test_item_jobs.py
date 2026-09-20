@@ -26,6 +26,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
+import item_job_physics
 import item_jobs
 import object_catalog
 from item_jobs import (MAX_ATTEMPTS, MAX_QUEUED_JOBS, MAX_SUMMARIES, ItemJobError,
@@ -1485,6 +1486,20 @@ class PhysicsAndTrainingFlowTest(QueueTest):
         self.assertIn('runtime lock busy', stored['progress'])
         self.assertEqual(0, stored['attempts']['training'])
 
+    def test_the_physics_proposal_argv_carries_the_full_description_and_never_live(self):
+        job_dir = self.root / 'jobs' / 'x'
+        long_description = 'A small five-point gold star token with a polished rim'
+        argv = item_jobs.physics_proposal_command(
+            {'description': long_description, 'attempts': {'physics_proposal': 1},
+             'provider_permission': None}, job_dir,
+            mode='cached', provider_cache=self.root / 'provider-cache',
+            replay_dir=self.root.parent / 'replay')
+
+        self.assertEqual(long_description, argv[argv.index('--description') + 1])
+        self.assertEqual(str(self.root.parent / 'replay'), argv[argv.index('--replay-dir') + 1])
+        self.assertNotIn('--live', argv)
+        self.assertNotIn('--env-file', argv)
+
     def starts_in_order(self):
         path = self.root / 'worker_runs.jsonl'
         rows = [json.loads(line) for line in path.read_text().splitlines()]
@@ -1494,6 +1509,206 @@ class PhysicsAndTrainingFlowTest(QueueTest):
                 seen.add(row['stage'])
                 ordered.append(row)
         return ordered
+
+
+class PhysicsReplayTest(unittest.TestCase):
+    """Cached physics replay. No credential, no network, and no provider call."""
+
+    STAR_BOUNDS_M = [0.01694960594177246, 0.016120851516723635, 0.002]
+    SHORT = 'A small five-point gold star token, about 18 mm wide and 2 mm thick.'
+    # The original star job description, unchanged. The generation request keeps it whole.
+    FULL = ('A small five-point gold star token, about 18 mm wide and 2 mm thick. Make one '
+            'continuous solid with five clear points and five concave valleys. Lay the '
+            'silhouette in the XY plane.')
+    SHORT_DIGEST = '0778635c802a96bd0bca95805dec15812fb4bd239ad777aa41f45a1177e7d5dc'
+    FULL_DIGEST = 'ea53b1ebd9c76560277528c7135a9cd26c4b70db6d42b4c5767563812f78fcc3'
+    CACHE_SHA256 = '19d3195ff370978bee73d957326668d4239b5e05fed28a2e544e51089e23d4cd'
+    AUTHENTIC = Path('/private/tmp/cache') / f'{SHORT_DIGEST}.json'
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+        self.replay = self.root / 'replay'
+        self.replay.mkdir()
+
+    def metadata(self, recipe_sha256='a' * 64, glb_sha256='b' * 64, **changes):
+        value = {'schema_version': 1,
+                 'binding': {'recipe_sha256': recipe_sha256, 'glb_sha256': glb_sha256},
+                 'physics_description': self.SHORT,
+                 'expected_request_sha256': self.SHORT_DIGEST,
+                 'cache_entry_sha256': self.CACHE_SHA256}
+        value.update(changes)
+        path = self.replay / f'{value["binding"]["recipe_sha256"]}.json'
+        path.write_text(json.dumps(value, indent=2, sort_keys=True))
+        return path
+
+    def test_the_bound_replay_description_reproduces_the_recorded_request_digest(self):
+        """Identity, with no credential and no network."""
+        from object_definitions import physics_request
+
+        _, digest = physics_request(description=self.SHORT,
+                                    visual_dimensions_m=self.STAR_BOUNDS_M)
+
+        self.assertEqual(self.SHORT_DIGEST, digest)
+
+    def test_the_full_description_reproduces_a_different_uncached_digest(self):
+        """A user prompt is never truncated, so the default request is the full one."""
+        from object_definitions import physics_request
+
+        _, digest = physics_request(description=self.FULL,
+                                    visual_dimensions_m=self.STAR_BOUNDS_M)
+
+        self.assertEqual(self.FULL_DIGEST, digest)
+        self.assertNotEqual(self.SHORT_DIGEST, digest)
+
+    def test_metadata_bound_to_this_job_is_used(self):
+        self.metadata(recipe_sha256='c' * 64, glb_sha256='d' * 64)
+
+        found = item_job_physics.load_replay(self.replay, 'c' * 64, 'd' * 64)
+
+        self.assertEqual(self.SHORT, found['physics_description'])
+        self.assertEqual(64, len(found['metadata_sha256']))
+
+    def test_metadata_bound_to_another_asset_is_ignored_without_an_error(self):
+        self.metadata(recipe_sha256='c' * 64, glb_sha256='d' * 64)
+
+        self.assertIsNone(item_job_physics.load_replay(self.replay, 'c' * 64, 'e' * 64))
+        self.assertIsNone(item_job_physics.load_replay(self.replay, 'f' * 64, 'd' * 64))
+        self.assertIsNone(item_job_physics.load_replay(None, 'c' * 64, 'd' * 64))
+
+    def test_malformed_bound_metadata_is_refused(self):
+        cases = {
+            'extra field': {'note': 'x'},
+            'missing binding field': {'binding': {'recipe_sha256': 'c' * 64}},
+            'bad digest': {'expected_request_sha256': 'nope'},
+            'unknown version': {'schema_version': 2},
+            'empty description': {'physics_description': '  '},
+        }
+        for name, change in cases.items():
+            with self.subTest(case=name):
+                self.metadata(recipe_sha256='c' * 64, glb_sha256='d' * 64, **change)
+                with self.assertRaises(item_job_physics.ReplayError):
+                    item_job_physics.load_replay(self.replay, 'c' * 64, 'd' * 64)
+
+    def test_a_changed_cache_file_is_cache_entry_invalid_and_never_a_miss(self):
+        cache = self.root / 'cache'
+        cache.mkdir()
+        (cache / f'{self.SHORT_DIGEST}.json').write_text('{"tampered": true}')
+
+        with self.assertRaisesRegex(item_job_physics.ReplayError, 'cache entry bytes'):
+            item_job_physics.verify_cache_entry(cache, self.SHORT_DIGEST, self.CACHE_SHA256)
+
+    def test_an_absent_cache_entry_is_not_an_error(self):
+        cache = self.root / 'cache'
+        cache.mkdir()
+
+        self.assertEqual('', item_job_physics.verify_cache_entry(
+            cache, self.SHORT_DIGEST, self.CACHE_SHA256))
+
+    @unittest.skipUnless(AUTHENTIC.is_file(),
+                         'the authentic cached physics entry is a local artifact')
+    def test_the_authentic_cache_entry_verifies_against_the_recorded_hash(self):
+        """Read only. The entry is never modified and never copied into the repo."""
+        cache = self.root / 'cache'
+        cache.mkdir()
+        (cache / f'{self.SHORT_DIGEST}.json').write_bytes(self.AUTHENTIC.read_bytes())
+
+        actual = item_job_physics.verify_cache_entry(
+            cache, self.SHORT_DIGEST, self.CACHE_SHA256)
+
+        self.assertEqual(self.CACHE_SHA256, actual)
+
+    def star_job(self):
+        """One job directory holding the real star recipe and its rendered asset."""
+        star = HERE.parents[1] / ('thoughts/taras/research/coffee-quality/'
+                                  'object-generation/results/gemini/star')
+        job = self.root / 'jobs' / 'star'
+        (job / 'previews').mkdir(parents=True)
+        shutil.copy(star / 'recipe.json', job / 'recipe.json')
+        shutil.copy(star / 'render/object.glb', job / 'previews/object.glb')
+        record = json.loads((star / 'render/render.json').read_text())
+        (job / 'previews/render.json').write_text(json.dumps(record))
+        return job, item_job_physics.sha256_file(job / 'recipe.json'), \
+            item_job_physics.sha256_file(job / 'previews/object.glb')
+
+    def run_wrapper(self, job, replay_dir, cache_root):
+        return item_job_physics.main([
+            '--job-dir', str(job), '--description', self.FULL, '--mode', 'cached',
+            '--provider-cache', str(cache_root),
+            *(['--replay-dir', str(replay_dir)] if replay_dir else [])])
+
+    @unittest.skipUnless(AUTHENTIC.is_file(),
+                         'the authentic cached physics entry is a local artifact')
+    def test_a_bound_replay_rebuilds_the_definition_from_the_cached_entry(self):
+        """The whole path, with no credential and no network."""
+        job, recipe_sha256, glb_sha256 = self.star_job()
+        self.metadata(recipe_sha256=recipe_sha256, glb_sha256=glb_sha256)
+        cache_root = self.root / 'provider-cache'
+        (cache_root / 'cache').mkdir(parents=True)
+        (cache_root / 'cache' / f'{self.SHORT_DIGEST}.json').write_bytes(
+            self.AUTHENTIC.read_bytes())
+
+        code = self.run_wrapper(job, self.replay, cache_root)
+        physics = json.loads((job / 'physics.json').read_text())
+        definition = json.loads((job / 'definition.json').read_text())
+
+        self.assertEqual(0, code)
+        self.assertEqual('cached_llm_replay', physics['physics_source'])
+        self.assertEqual('operator_replay_metadata', physics['physics_description_source'])
+        self.assertEqual(self.SHORT_DIGEST, physics['physics_request_sha256'])
+        self.assertEqual(self.CACHE_SHA256, physics['physics_cache_entry_sha256'])
+        self.assertEqual('unmeasured_proxy_estimate', physics['physics_measurement_status'])
+        # Provenance is rebuilt through the real adapter on this job's own artifacts.
+        self.assertEqual('llm', definition['physics']['proposal_provenance']['kind'])
+        self.assertEqual(self.SHORT_DIGEST,
+                         definition['physics']['proposal_provenance']['request_sha256'])
+        self.assertEqual('previews/object.glb', definition['visual']['uri'])
+        self.assertEqual(f'sha256:{glb_sha256}', definition['visual']['visual_asset_id'])
+
+    @unittest.skipUnless(AUTHENTIC.is_file(),
+                         'the authentic cached physics entry is a local artifact')
+    def test_without_metadata_the_full_description_misses_and_never_submits(self):
+        job, _, _ = self.star_job()
+        cache_root = self.root / 'provider-cache'
+        (cache_root / 'cache').mkdir(parents=True)
+        (cache_root / 'cache' / f'{self.SHORT_DIGEST}.json').write_bytes(
+            self.AUTHENTIC.read_bytes())
+
+        code = self.run_wrapper(job, None, cache_root)
+        status = json.loads((job / 'provider_status.json').read_text())
+
+        self.assertEqual(item_jobs.EXIT_NOT_SUBMITTED, code)
+        self.assertEqual('not_submitted', status['provider_submission'])
+        self.assertEqual(self.FULL_DIGEST, status['request_sha256'])
+        self.assertEqual('job_description', status['physics_description_source'])
+        self.assertFalse((job / 'definition.json').exists())
+
+    @unittest.skipUnless(AUTHENTIC.is_file(),
+                         'the authentic cached physics entry is a local artifact')
+    def test_a_wrong_expected_digest_is_cache_entry_invalid(self):
+        job, recipe_sha256, glb_sha256 = self.star_job()
+        self.metadata(recipe_sha256=recipe_sha256, glb_sha256=glb_sha256,
+                      expected_request_sha256='9' * 64)
+        cache_root = self.root / 'provider-cache'
+        (cache_root / 'cache').mkdir(parents=True)
+
+        code = self.run_wrapper(job, self.replay, cache_root)
+        status = json.loads((job / 'provider_status.json').read_text())
+
+        self.assertEqual(item_jobs.EXIT_CACHE_ENTRY_INVALID, code)
+        self.assertIn('recomputed request digest', status['reason'])
+        self.assertFalse((job / 'definition.json').exists())
+
+    def test_a_request_body_can_never_carry_a_physics_description_or_a_replay(self):
+        store = ItemJobStore(self.root / 'jobs', provider_mode='cached')
+        self.addCleanup(store.close)
+        for field in ('physics_description', 'replay_dir', 'physics_replay', 'live'):
+            with self.subTest(field=field):
+                with self.assertRaises(ItemJobError) as raised:
+                    store.submit({'request_id': str(uuid.uuid4()), 'description': 'A token',
+                                  'expected_catalog_revision': REVISION, field: 'x'}, REVISION)
+                self.assertEqual('invalid_request', raised.exception.code)
 
 
 if __name__ == '__main__':

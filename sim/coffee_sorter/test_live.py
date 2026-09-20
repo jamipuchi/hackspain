@@ -243,6 +243,7 @@ def item_service(test, provider_mode='cached'):
     value.generator_root = item_jobs.GENERATOR_ROOT
     # The physics and training children receive the reviewed preset the service runs.
     value.preset = HERE / 'configs/continuous_demo.json'
+    value.physics_replay = None
     value.item_jobs = item_jobs.ItemJobStore(value.item_jobs_root, provider_mode=provider_mode)
     test.addCleanup(value.item_jobs.close)
     value.runtime_lock = value.item_jobs_root / 'render.lock'
@@ -258,7 +259,7 @@ def item_service(test, provider_mode='cached'):
 
 def item_arguments(**overrides):
     values = {'host': '127.0.0.1', 'item_jobs_provider': 'cached', 'item_jobs_provider_cache': None,
-              'item_jobs_provider_env': None,
+              'item_jobs_provider_env': None, 'item_jobs_physics_replay': None,
               'item_jobs_generator_root': item_jobs.GENERATOR_ROOT}
     return types.SimpleNamespace(**{**values, **overrides})
 

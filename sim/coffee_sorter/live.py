@@ -177,9 +177,16 @@ def _validate_item_job_arguments(parser, args, item_jobs_root):
     for name, value, check in (
             ('--item-jobs-provider-cache', args.item_jobs_provider_cache, 'is_dir'),
             ('--item-jobs-generator-root', args.item_jobs_generator_root, 'is_dir'),
+            ('--item-jobs-physics-replay', args.item_jobs_physics_replay, 'is_dir'),
             ('--item-jobs-provider-env', args.item_jobs_provider_env, 'is_file')):
         if value is not None and not getattr(Path(value), check)():
             parser.error(f'{name} does not exist: {value}')
+    # Reviewed replay metadata is an operator input. It may never live where the service
+    # writes, or a job could plant its own replay.
+    if args.item_jobs_physics_replay is not None:
+        replay = args.item_jobs_physics_replay.resolve()
+        if replay == item_jobs_root or item_jobs_root in replay.parents:
+            parser.error('--item-jobs-physics-replay must stay outside --item-jobs-root.')
     # The local default applies only when it really exists. A packaged image without a
     # provider cache must refuse to start instead of dead-ending every job.
     if mode in ('cached', 'paid') and args.item_jobs_provider_cache is None \
@@ -473,7 +480,7 @@ def worker(preset, states, acknowledgments, commands, stop, out):
 class LiveService:
     def __init__(self, preset, out, *, item_jobs_root=None, item_jobs_provider='cached',
                  catalog_root=None, provider_cache=None, provider_env=None,
-                 generator_root=None, runtime_lock=None):
+                 generator_root=None, runtime_lock=None, physics_replay=None):
         self.ctx = mp.get_context('spawn')
         self.preset = Path(preset)
         self.preset_config = load_preset(self.preset)
@@ -506,6 +513,8 @@ class LiveService:
         self.provider_env = Path(provider_env) if provider_env else None
         self.generator_root = Path(generator_root) if generator_root else item_jobs.GENERATOR_ROOT
         self.runtime_lock = Path(runtime_lock) if runtime_lock else DEFAULT_RUNTIME_LOCK
+        # Reviewed replay metadata. One explicit operator input, read-only, never a route.
+        self.physics_replay = Path(physics_replay) if physics_replay else None
         self.catalog_root = (Path(catalog_root) if catalog_root
                              else self.item_jobs_root / 'object_catalog')
         self.item_jobs = None
@@ -566,6 +575,7 @@ class LiveService:
             mode=self.item_jobs_provider, provider_cache=self.provider_cache,
             runtime_lock=self.runtime_lock, generator_root=self.generator_root,
             preset=self.preset, env_file=self.provider_env,
+            physics_replay=self.physics_replay,
             source_revision=os.environ.get('CINTA_SOURCE_REVISION'))
 
     def _close_item_jobs(self):
@@ -1320,6 +1330,9 @@ def build_parser():
                         help='Directory holding probe.py and render_suite.py.')
     parser.add_argument('--item-jobs-runtime-lock', type=Path, default=DEFAULT_RUNTIME_LOCK,
                         help='Shared render lock path. A deployment passes a writable path.')
+    parser.add_argument('--item-jobs-physics-replay', type=Path, default=None,
+                        help='Read-only directory of reviewed physics replay metadata, one '
+                             '<recipe_sha256>.json per replay. No request or route can select it.')
     return parser
 
 
@@ -1343,7 +1356,9 @@ def main():
         provider_cache=args.item_jobs_provider_cache.resolve() if args.item_jobs_provider_cache else None,
         provider_env=args.item_jobs_provider_env.resolve() if args.item_jobs_provider_env else None,
         generator_root=args.item_jobs_generator_root.resolve(),
-        runtime_lock=args.item_jobs_runtime_lock.resolve())
+        runtime_lock=args.item_jobs_runtime_lock.resolve(),
+        physics_replay=args.item_jobs_physics_replay.resolve()
+        if args.item_jobs_physics_replay else None)
 
     async def page(request):
         return web.FileResponse(HERE / 'live_web/index.html')
