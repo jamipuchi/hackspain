@@ -170,9 +170,9 @@ for force in 0.06 0.075 0.09
 do
   for seed in 11 17 23 31
   do
-    "$PYTHON" "$SCRIPT" isolated --force "$force" --seed "$seed" \
+    "$PYTHON" "$SCRIPT" isolated --force "$force" --lead-ms 1.5 --seed "$seed" \
       --output "$OUT/isolated-force-$force-seed-$seed.json"
-    "$PYTHON" "$SCRIPT" feed --force "$force" --seed "$seed" --seconds 4 \
+    "$PYTHON" "$SCRIPT" feed --force "$force" --lead-ms 1.5 --seed "$seed" --seconds 4 \
       --output "$OUT/feed-force-$force-seed-$seed.json"
   done
 done
@@ -207,10 +207,169 @@ Record `t_fire`, `t_available`, actual `t_on`, region entry, region exit, impuls
 Compare only 1.5 ms and 3.0 ms lead settings.
 Run held-out cases only when the 3.0 ms candidate passes every tuning gate.
 
+## Timing comparison result
+
+The bounded timing comparison kept force at 0.060 N.
+It kept pulse duration and every production file unchanged.
+The baseline used 1.5 ms lead.
+The candidate used 3.0 ms lead.
+
+Both settings used tuning seeds 11, 17, 23, and 31.
+Each mixed-feed run requested 500 objects per simulated second for four simulated seconds.
+The combined scoring cohort contains 5,200 resolved objects per setting.
+
+| Quantity | 1.5 ms baseline | 3.0 ms candidate |
+| --- | ---: | ---: |
+| Isolated Stone Reject | 2/8 | 3/8 |
+| Mixed Stone Reject | 6/21 | 10/21 |
+| Reject capture | 678/760, 89.21% | 683/760, 89.87% |
+| Keep loss | 185/4,440, 4.17% | 184/4,440, 4.14% |
+| Spill | 7/5,200, 0.135% | 8/5,200, 0.154% |
+| Late reject decisions | 0/1,230 | 1/1,230 |
+| Own contact pairs | 1,243 | 1,250 |
+| Collateral contact pairs | 103 | 102 |
+| Summed active wall time | 77.36 s | 81.68 s |
+| Maximum peak memory | 302.19 MB | 301.33 MB |
+
+All eight isolated objects were predicted as Stone under both settings.
+Every isolated reject decision was scheduled and received its own pulse contact.
+The candidate increased mean isolated delivered impulse from 360 to 465 microN s.
+
+The baseline commanded pulse start averaged 1.462 ms after jet entry.
+Physics-step activation averaged 2.000 ms after entry.
+The candidate commanded pulse start averaged 0.038 ms before entry.
+Physics-step activation averaged 0.625 ms after entry.
+
+The candidate improved both measured Stone outcomes.
+Aggregate reject capture improved by 0.66 percentage points.
+Keep loss fell by 0.02 percentage points.
+Spill rose by 0.02 percentage points.
+
+The original candidate measurement did not clear the wall-cost gate.
+It increased summed active wall time by 5.59%.
+Concurrent host load can affect this measurement.
+
+Seed 17 also produced one late Black reject decision with no scheduled pulse.
+That object received no pulse and reached Accept.
+The event does not violate the physical Reject evidence gate.
+
+The paired baseline made the same decision at 3.188 simulated seconds.
+Its predicted fire time was 3.260793 seconds.
+Its result became available at 3.200698 seconds.
+The controller therefore had 62.095 ms before its late deadline.
+
+The candidate predicted fire at 3.260782 seconds.
+Its result became available at 3.264311 seconds.
+It missed the 3.262782-second deadline by 1.529 ms.
+The candidate availability latency was 76.311 ms.
+The baseline availability latency was 12.698 ms.
+
+The controller late check does not use pulse lead.
+The paired fire prediction changed by only 0.011 ms.
+Entry pose and velocity were also nearly identical.
+The evidence attributes the late flag to a compute delay, not earlier lead.
+
+### Counterbalanced repeat
+
+The repeat reused the four tuning seeds.
+It is a repeated measurement, not independent seed coverage.
+It ran mixed-feed cases only.
+
+The run order was baseline then candidate for seed 11.
+Seed 17 used candidate then baseline.
+Seed 23 used baseline then candidate.
+Seed 31 used candidate then baseline.
+
+Each case used a separate process and lock window.
+No case waited materially for the shared lock.
+Recorded one-minute load averages ranged from 8.24 to 11.29.
+
+| Quantity | Repeat baseline | Repeat candidate | Combined baseline | Combined candidate |
+| --- | ---: | ---: | ---: | ---: |
+| Mixed Stone Reject | 6/21 | 10/21 | 12/42 | 20/42 |
+| Reject capture | 678/760, 89.21% | 683/760, 89.87% | 1,356/1,520, 89.21% | 1,366/1,520, 89.87% |
+| Keep loss | 185/4,440, 4.17% | 185/4,440, 4.17% | 370/8,880, 4.17% | 369/8,880, 4.16% |
+| Spill | 7/5,200, 0.135% | 8/5,200, 0.154% | 14/10,400, 0.135% | 16/10,400, 0.154% |
+| Late reject decisions | 0 | 1 | 0 | 2 |
+| Active wall time | 75.76 s | 81.33 s | 153.12 s | 163.02 s |
+| Execution wall time | 78.23 s | 83.80 s | 158.08 s | 168.00 s |
+
+The repeat candidate increased active wall time by 7.35%.
+The combined repeated measurements increased active wall time by 6.46%.
+Both exceed the unchanged 5% gate.
+
+Repeat process CPU time rose by only 1.79%.
+The seed 31 candidate interval caused most of the wall difference.
+Its active wall time was 23.19 seconds.
+The paired baseline took 18.91 seconds.
+This supports a host scheduling contribution.
+It does not satisfy the operational wall gate.
+
+The repeat candidate also recorded one late Broken decision.
+Its measured availability latency was 115.589 ms.
+The paired baseline availability latency was 12.298 ms.
+The late condition remains independent of pulse lead.
+
+The held-out seeds 43, 59, 71, and 83 were not run or inspected.
+The 3.0 ms candidate is not selected.
+The production recommendation remains 1.5 ms lead and 0.060 N force.
+Final rollout validation must use the newly trained release model.
+The current evidence uses the frozen trusted model.
+
+The compact result is in `evidence/cinta-rejection-calibration/timing-tuning-summary.json`.
+The original raw evidence is in `evidence/cinta-rejection-calibration/timing-tuning-raw.tar.gz`.
+The repeat raw evidence is in `evidence/cinta-rejection-calibration/timing-repeat-raw.tar.gz`.
+
+### Timing commands
+
+```bash
+PYTHON=/Users/taras/Documents/code/hackspain/.venv-coffee/bin/python
+SCRIPT=thoughts/taras/qa/evidence/cinta_rejection_calibration.py
+OUT=/private/tmp/cinta-rejection-calibration/timing-tuning
+
+for lead in 1.5 3.0
+do
+  for seed in 11 17 23 31
+  do
+    "$PYTHON" "$SCRIPT" isolated --force 0.06 --lead-ms "$lead" \
+      --seed "$seed" --output "$OUT/isolated-lead-$lead-seed-$seed.json"
+    "$PYTHON" "$SCRIPT" feed --force 0.06 --lead-ms "$lead" \
+      --seed "$seed" --seconds 4 \
+      --output "$OUT/feed-lead-$lead-seed-$seed.json"
+  done
+done
+```
+
+Do not run the held-out seeds while the wall-cost gate remains unresolved.
+
+The counterbalanced repeat used these command pairs:
+
+```bash
+OUT=/private/tmp/cinta-rejection-calibration/timing-repeat
+"$PYTHON" "$SCRIPT" feed --force 0.06 --lead-ms 1.5 --seed 11 --seconds 4 \
+  --run-label order-01-baseline-seed-11 --output "$OUT/feed-order-01-lead-1.5-seed-11.json"
+"$PYTHON" "$SCRIPT" feed --force 0.06 --lead-ms 3.0 --seed 11 --seconds 4 \
+  --run-label order-02-candidate-seed-11 --output "$OUT/feed-order-02-lead-3.0-seed-11.json"
+"$PYTHON" "$SCRIPT" feed --force 0.06 --lead-ms 3.0 --seed 17 --seconds 4 \
+  --run-label order-03-candidate-seed-17 --output "$OUT/feed-order-03-lead-3.0-seed-17.json"
+"$PYTHON" "$SCRIPT" feed --force 0.06 --lead-ms 1.5 --seed 17 --seconds 4 \
+  --run-label order-04-baseline-seed-17 --output "$OUT/feed-order-04-lead-1.5-seed-17.json"
+"$PYTHON" "$SCRIPT" feed --force 0.06 --lead-ms 1.5 --seed 23 --seconds 4 \
+  --run-label order-05-baseline-seed-23 --output "$OUT/feed-order-05-lead-1.5-seed-23.json"
+"$PYTHON" "$SCRIPT" feed --force 0.06 --lead-ms 3.0 --seed 23 --seconds 4 \
+  --run-label order-06-candidate-seed-23 --output "$OUT/feed-order-06-lead-3.0-seed-23.json"
+"$PYTHON" "$SCRIPT" feed --force 0.06 --lead-ms 3.0 --seed 31 --seconds 4 \
+  --run-label order-07-candidate-seed-31 --output "$OUT/feed-order-07-lead-3.0-seed-31.json"
+"$PYTHON" "$SCRIPT" feed --force 0.06 --lead-ms 1.5 --seed 31 --seconds 4 \
+  --run-label order-08-baseline-seed-31 --output "$OUT/feed-order-08-lead-1.5-seed-31.json"
+```
+
 ## Validation
 
 The diagnostic wrapper compiled with the prepared Python 3.13 environment.
 All 24 tuning cases completed and produced valid JSON.
+All 16 timing comparison cases completed and produced valid JSON.
+All eight counterbalanced repeat cases completed and produced valid JSON.
 The focused physics suite passed 12 tests.
 
 ```bash
@@ -246,6 +405,9 @@ The current failure occurs after correct classification, scheduling, activation,
 | `runs/tuning-sweep/force-0.12/metrics.json` | `49b13f08c3b0ac82d99cc19fe878cb17004066cb2c45ad788c5aa9a1c626c331` |
 | `evidence/cinta-rejection-calibration/tuning-summary.json` | `3a2f75955c3f4a9943bb6d69bdfa21bc9984610407cf207c6a53e37112476e0b` |
 | `evidence/cinta-rejection-calibration/tuning-raw.tar.gz` | `220e21a972548a0d27f1b412686c741b28b20ebbeb27ff8c7740f0eabd470e85` |
+| `evidence/cinta-rejection-calibration/timing-tuning-summary.json` | `f9260c810f61d3750ae7f3f846950b5a0603e23c2cab52719c1fa4c62822e848` |
+| `evidence/cinta-rejection-calibration/timing-tuning-raw.tar.gz` | `36cbd3d443b236db5ebdc0677a4975c5f8e9b2a0884bb0c08afb8ecc221201b0` |
+| `evidence/cinta-rejection-calibration/timing-repeat-raw.tar.gz` | `80ed42b29f8444f74d071ada6aaee9f4c01415ea8932ffe54abb75f4bfe5c02a` |
 
 The full corrected audit supersedes the earlier reduced-pool 3 of 8 result.
 Run the screen only from the accepted two-commit physics chain.
