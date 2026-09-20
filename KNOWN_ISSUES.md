@@ -34,9 +34,21 @@ The estimate does not measure the real object. It also does not model the star's
 
 The visual GLB and the physics proxy serve different purposes. Final evidence must identify which representation each view uses.
 
-The last accepted mixed-feed model QA reported `92.24%` reject capture, `3.96%` Keep loss, and `11` spills across four runs.
+Earlier baseline compatibility QA reported `92.24%` reject capture, `3.96%` Keep loss, and `11` spills across four runs.
 
-Those results are compatibility evidence. They do not approve the replacement geometry, final model, or public rollout.
+Those older results are not current candidate metrics. They do not approve the replacement geometry, final model, or public rollout.
+
+Collection candidate 4 failed the Keep-loss gate. It lost `194/3579`, or `5.4205%`, of Keep objects.
+
+The baseline lost `145/3582`, or `4.0480%`. Candidate 4 increased loss by `1.3725` percentage points, above the `1.0` point limit.
+
+No further physics tuning is authorized. The failed candidate remains evidence, not a release configuration.
+
+The current activator also remains blocked. A drain-report failure can leave the engine rate at `0.0`.
+
+A pointer `fsync` failure can split the active pointer from the running worker. Exact retry does not yet repair missing archive or history records.
+
+The spawned failed-start and rollback path still needs a valid process proof. The activator stays excluded until focused corrections pass both reviews.
 
 The candidate still needs final agent-browser recordings. These recordings must cover desktop, mobile, cached recovery, activation, rollback, and the generated GLB.
 
