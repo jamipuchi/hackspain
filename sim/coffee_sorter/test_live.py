@@ -1,5 +1,8 @@
 import asyncio
 import builtins
+import subprocess
+import signal
+import contextlib
 from collections import deque
 import hashlib
 import json
@@ -759,6 +762,83 @@ class BoundedCommandTest(unittest.IsolatedAsyncioTestCase):
         await value._handle_command(payload, ws)
         self.assertNotIn(canonical_id, value.requests)
         self.assertIn('queue is full', ws.packets[-1]['error'])
+
+
+class ParentDeathTest(unittest.TestCase):
+    """The engine worker must not outlive a hard exit of the service process.
+
+    These run the REAL live.worker in a spawned child of a service-like parent
+    subprocess, so this test process is the grandparent and survives to observe it.
+    A fake engine module is injected through that subprocess environment only.
+    """
+
+    # The runtime harness measured an exit inside 3 s, and the fix exits in well under
+    # 0.1 s. This leaves headroom for a loaded machine without hiding a real hang.
+    EXIT_BOUND_S = 10.0
+    SCRIPT = HERE / 'tests/fakes/parent_death_service.py'
+    FAKE_ENGINE = HERE / 'tests/fakes/parent_death_engine'
+
+    def run_service(self, directory, mode=None):
+        marker, out = Path(directory) / 'info.json', Path(directory) / 'out'
+        out.mkdir()
+        # Read the environment, never mutate it, and never print a value from it.
+        environment = {**os.environ, 'PYTHONPATH': str(self.FAKE_ENGINE),
+                       'CINTA_PARENT_DEATH_OUT': str(out)}
+        command = [sys.executable, str(self.SCRIPT), str(marker), str(out)]
+        if mode:
+            command.append(mode)
+        parent = subprocess.Popen(command, env=environment)
+        try:
+            code = parent.wait(timeout=120)
+        except subprocess.TimeoutExpired:
+            parent.kill()
+            raise
+        return code, json.loads(marker.read_text()), out
+
+    @staticmethod
+    def alive(pid):
+        try:
+            os.kill(pid, 0)
+        except (ProcessLookupError, PermissionError):
+            return False
+        return True
+
+    def test_a_hard_parent_exit_stops_the_engine_worker(self):
+        with tempfile.TemporaryDirectory() as directory:
+            code, info, _ = self.run_service(directory)
+            worker_pid = info['worker_pid']
+            try:
+                self.assertEqual(code, 17)
+                # The states queue was never drained and its pipe is full, so a blocked
+                # feeder thread could otherwise keep this process alive after stop.
+                self.assertTrue(info['engine_filled'])
+                deadline = time.monotonic() + self.EXIT_BOUND_S
+                while time.monotonic() < deadline and self.alive(worker_pid):
+                    time.sleep(0.02)
+                self.assertFalse(self.alive(worker_pid),
+                                 'the engine worker outlived its service process')
+            finally:
+                # A failing assertion must never leave an engine behind.
+                with contextlib.suppress(ProcessLookupError, PermissionError):
+                    os.kill(worker_pid, signal.SIGKILL)
+
+    def test_a_graceful_stop_still_delivers_a_final_acknowledgment(self):
+        with tempfile.TemporaryDirectory() as directory:
+            code, info, out = self.run_service(directory, mode='graceful')
+            worker_pid = info['worker_pid']
+            try:
+                self.assertEqual(code, 0)
+                result = json.loads((out / 'graceful.json').read_text())
+                acknowledgment = result['acknowledgment']
+                self.assertEqual(acknowledgment['type'], 'ack')
+                self.assertEqual(acknowledgment['command_id'], 'graceful-command')
+                self.assertTrue(acknowledgment['ok'])
+                self.assertEqual(acknowledgment['object_id'], 1)
+                self.assertEqual(result['exitcode'], 0)
+                self.assertFalse(self.alive(worker_pid))
+            finally:
+                with contextlib.suppress(ProcessLookupError, PermissionError):
+                    os.kill(worker_pid, signal.SIGKILL)
 
 
 class ItemJobRouteTest(unittest.IsolatedAsyncioTestCase):
