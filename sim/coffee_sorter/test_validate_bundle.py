@@ -26,7 +26,7 @@ from object_catalog import (BUNDLE_CATALOG, BUNDLE_MANIFEST, BUNDLE_PRESET, CATA
                             catalog_revision, definition_sha256, ensure_active_bundle,
                             load_catalog, publish_bundle, read_active, rollback_active,
                             seed_bundle_files, verify_bundle, write_active_pointer,
-                            write_bundle_manifest, VISUAL_REGISTRY)
+                            write_bundle_manifest, VISUAL_REGISTRY, read_visual_registry)
 from test_object_catalog import (CatalogRootTest, builtin_definition, generated_definition,
                                  tiny_glb)
 
@@ -671,6 +671,15 @@ class VisualRegistryTest(BundleFixture, CatalogRootTest):
         # The draft uri is a host path. It never enters the bundle.
         for path in directory.rglob("*.json"):
             self.assertNotIn(str(self.root), path.read_text(), path.name)
+
+    def test_the_rows_read_back_and_a_bundle_without_the_file_has_none(self):
+        files = self.seed(self.assets())
+        self.assertEqual(read_visual_registry(self.publish(files)[1]),
+                         json.loads(files[VISUAL_REGISTRY])["assets"])
+        self.assertEqual(read_visual_registry(self.publish(bundle_files())[1]), [])
+        (self.root / VISUAL_REGISTRY).write_bytes(b'{"schema_version": 2, "assets": []}')
+        with self.assertRaises(CatalogError):
+            read_visual_registry(self.root)
 
     def test_a_type_without_draft_evidence_gets_no_row(self):
         partial = {name: value for name, value in self.evidence.items()

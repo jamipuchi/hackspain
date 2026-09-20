@@ -71,8 +71,9 @@ _ASSET_FIELDS = ("visual_asset_id", "glb_sha256", "units", "source_up_axis", "en
                  "sim_from_asset_quaternion_wxyz")
 _EVIDENCE_FIELDS = ("media_type", "bounds_dimensions_m", "runtime_lod_reviewed")
 _MEASURED_FIELDS = ("byte_length", "mesh_count", "primitive_count", "triangle_count")
-_VISUAL_ROW_FIELDS = {"object_type_id", "classifier_label", "path", "reference_axes_m",
-                      *_ASSET_FIELDS, *_EVIDENCE_FIELDS, *_MEASURED_FIELDS}
+# The state publishes these members of a row, and one rebuilt `url`.
+_RENDER_FIELDS = (*_ASSET_FIELDS, *_EVIDENCE_FIELDS, *_MEASURED_FIELDS, "reference_axes_m")
+_VISUAL_ROW_FIELDS = {"object_type_id", "classifier_label", "path", *_RENDER_FIELDS}
 # A generated victim carries its rendered asset and the model that recognised it.
 GENERATED_EVIDENCE = ("object.glb", "perspective.png", "top.png", "model.manifest.json")
 _CHUNK_BYTES = 1 << 20
@@ -794,6 +795,29 @@ def visual_bundle_files(catalog: Mapping[str, Any],
         })
     files[VISUAL_REGISTRY] = _pretty({"schema_version": VISUAL_REGISTRY_VERSION, "assets": rows})
     return files
+
+
+def read_visual_registry(bundle_dir: Path) -> list[dict[str, Any]]:
+    """The registry rows of one bundle. A bundle without the file has none.
+
+    Only a verified bundle is ever bound or served, so the rows are not verified again.
+    """
+    try:
+        registry = json.loads((Path(bundle_dir) / VISUAL_REGISTRY).read_bytes())
+    except FileNotFoundError:
+        return []
+    except (OSError, ValueError) as error:
+        raise CatalogError("the visual registry cannot be read") from error
+    rows = _mapping(registry, "visual registry").get("assets")
+    if registry.get("schema_version") != VISUAL_REGISTRY_VERSION or not isinstance(rows, list):
+        raise CatalogError("visual registry is unsupported")
+    return [dict(_mapping(row, "visual registry row")) for row in rows]
+
+
+def render_asset(row: Mapping[str, Any], revision: str) -> dict[str, Any]:
+    """One registry row as the state contract publishes it. The URL is rebuilt, never stored."""
+    return {**{name: row[name] for name in _RENDER_FIELDS},
+            "url": f"/catalog-assets/{revision}/{row['glb_sha256']}.glb"}
 
 
 def seed_bundle_files(catalog_root: Path, model_path: Path, model_manifest_path: Path,

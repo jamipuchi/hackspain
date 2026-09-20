@@ -128,12 +128,13 @@ class Engine:
         if profile_name not in PROFILES:
             raise ValueError(f"unsupported profile: {profile_name}")
         self.profile = PROFILES[profile_name]
-        catalog = self._profile_catalog()
+        self._catalog = self._profile_catalog()
         # Copied from each generated type's actual catalog definition. A built-in has none.
         self._visual_asset_ids = {
             item["classifier_label"]: item["visual"]["asset"]["visual_asset_id"]
-            for item in (catalog or {}).get("definitions", ())
+            for item in (self._catalog or {}).get("definitions", ())
             if item["provenance"]["kind"] == "generated"}
+        self._class_assets = self._generated_class_assets()
         # A bundle preset states its starting policy. A bad label fails before the sim exists.
         initial_reject_classes = self.preset["policy"].get("initial_reject_classes")
         if initial_reject_classes is not None:
@@ -248,11 +249,34 @@ class Engine:
             return None
         return catalog
 
+    def _generated_class_assets(self):
+        """The contract members of each generated class row, by label.
+
+        The registry sits beside the bound bundle catalog. A generated type without a row
+        for its own asset states a null `render_asset`, and the browser shows the proxy.
+        """
+        from object_catalog import default_catalog_root, read_visual_registry, render_asset
+        if self._catalog is None:
+            return {}
+        rows = {row.get("object_type_id"): row
+                for row in read_visual_registry(default_catalog_root().parent)}
+        revision, assets = self._catalog["catalog_revision"], {}
+        for item in self._catalog["definitions"]:
+            if item["provenance"]["kind"] != "generated":
+                continue
+            row = rows.get(item["object_type_id"])
+            named = row and row.get("visual_asset_id") == item["visual"]["asset"]["visual_asset_id"]
+            assets[item["classifier_label"]] = {
+                "object_type_id": item["object_type_id"],
+                "render_asset": render_asset(row, revision) if named else None}
+        return assets
+
     def class_catalog(self):
         catalog = []
         for item in self.profile.classes:
             axes_m = [round((low + high) * 0.5e-3, 9) for low, high in item.size_mm]
             catalog.append({
+                **self._class_assets.get(item.name, {}),
                 "name": item.name,
                 "defect": bool(item.defect),
                 "severity": item.severity,
@@ -742,6 +766,8 @@ class Engine:
             "objects": [self._snapshot_object(uid, uid in active_ids) for uid in sorted(retained)
                         if uid in self._object_records],
             "events": list(self._events)[-50:],
+            # None when the bound catalog does not describe this profile.
+            "catalog_revision": (self._catalog or {}).get("catalog_revision"),
             "class_catalog": self.class_catalog(),
             "reject_policy": self.reject_policy(),
             "spawn_region": self.spawn_region(),

@@ -1,5 +1,8 @@
+import hashlib
 import json
+import math
 import os
+import re
 import tempfile
 import unittest
 from collections import deque
@@ -11,11 +14,13 @@ import numpy as np
 
 from controller import Policy
 from engine import HERE, Engine, MAX_COMPLETED_INJECTIONS
-from object_catalog import CATALOG_ROOT_ENV, load_catalog
+from object_catalog import CATALOG_ROOT_ENV, load_catalog, visual_bundle_files
 from profiles import PROFILES, profile_from_catalog
 from rolling_scores import SETTLING_SECONDS, RollingScoreLedger
+from scene import Layout
 from sim import Fire
-from test_object_catalog import CatalogRootTest, builtin_definition, generated_definition
+from test_object_catalog import (CatalogRootTest, builtin_definition, generated_definition,
+                                 tiny_glb)
 
 
 VERSIONS = {
@@ -203,6 +208,7 @@ class ContinuousRetentionTest(unittest.TestCase):
     def test_class_catalog_previews_use_profile_midpoints_and_shape_axes(self):
         engine = Engine.__new__(Engine)
         engine.profile = PROFILES["green_arabica"]
+        engine._class_assets = {}
 
         catalog = {item["name"]: item for item in engine.class_catalog()}
 
@@ -658,6 +664,40 @@ class InitialRejectClassesTest(unittest.TestCase):
                 self.sim.assert_not_called()
 
 
+def browser_refusal(asset, revision):
+    """The rules of `assetRefusal` in live_web/generated_assets.mjs, in the same order."""
+    def numbers(value, count, positive=False):
+        return isinstance(value, list) and len(value) == count and all(
+            type(item) in (int, float) and math.isfinite(item) and (not positive or item > 0)
+            for item in value)
+
+    digest = asset.get("glb_sha256")
+    if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+        return "invalid_hash"
+    if asset.get("visual_asset_id") != f"sha256:{digest}":
+        return "asset_id_mismatch"
+    if asset.get("url") != f"/catalog-assets/{revision}/{digest}.glb":
+        return "url_mismatch"
+    if any(type(asset.get(name)) is not int or asset[name] < 1
+           for name in ("byte_length", "primitive_count", "triangle_count")):
+        return "invalid_declaration"
+    if asset.get("mesh_count") != 1:
+        return "unsupported_mesh_count"
+    if (asset.get("units"), asset.get("source_up_axis"), asset.get("engine_up_axis")) != (
+            "m", "+Y", "+Z"):
+        return "unsupported_convention"
+    quaternion = asset.get("sim_from_asset_quaternion_wxyz")
+    if not numbers(quaternion, 4) or any(
+            abs(value - approved) > 1e-6
+            for value, approved in zip(quaternion, (0.70710678, 0.70710678, 0, 0))):
+        return "unsupported_correction"
+    if not numbers(asset.get("bounds_dimensions_m"), 3, positive=True):
+        return "invalid_bounds"
+    if not numbers(asset.get("reference_axes_m"), 3, positive=True):
+        return "invalid_declaration"
+    return None
+
+
 class VisualAssetIdTest(CatalogRootTest):
     """Each object carries the `visual_asset_id` of its actual catalog definition.
 
@@ -665,13 +705,19 @@ class VisualAssetIdTest(CatalogRootTest):
     camera, the model, and the controller are fakes.
     """
 
-    def build(self, definitions, profile=None, **changes):
-        root = self.make_root()
+    def build(self, definitions, profile=None, assets=None, **changes):
+        """A bundle shaped root: `catalog/`, and with `assets` the real registry beside it."""
+        bundle = self.make_root()
+        root = self.catalog_root = bundle / "catalog"
         self.write_catalog(root, definitions, **changes)
+        if assets is not None:
+            for name, data in visual_bundle_files(load_catalog(root), assets).items():
+                (bundle / name).parent.mkdir(parents=True, exist_ok=True)
+                (bundle / name).write_bytes(data)
         profile = profile or profile_from_catalog(load_catalog(root))
         directory = self.make_root().resolve()
         (directory / "candidate.joblib").write_bytes(b"model")
-        preset = json.loads((HERE / "configs/continuous_demo.json").read_text())
+        preset = self.preset = json.loads((HERE / "configs/continuous_demo.json").read_text())
         preset.update(model_path="candidate.joblib", model_path_root="preset",
                       profile=profile.name)
         (directory / "preset.json").write_text(json.dumps(preset))
@@ -707,6 +753,57 @@ class VisualAssetIdTest(CatalogRootTest):
                             profile=profile_from_catalog(load_catalog(self.make_other())),
                             profile_name="other")
         self.assertEqual(engine._visual_asset_ids, {})
+        self.assertIsNone(self.state(engine)["catalog_revision"])
+
+    def state(self, engine):
+        """One real snapshot, as the browser receives it after the JSON transport."""
+        engine.sim = SimpleNamespace(bean_of={}, data=SimpleNamespace(time=1.0), n_spawned=0,
+                                     fires=[], L=Layout(**self.preset["layout"]))
+        return json.loads(json.dumps(engine.snapshot()))
+
+    def test_a_server_built_state_row_passes_the_browser_predicate(self):
+        glb = tiny_glb(index_count=6)
+        sha = hashlib.sha256(glb).hexdigest()
+        star = generated_definition()
+        star["visual"]["asset"].update(visual_asset_id=f"sha256:{sha}", glb_sha256=sha)
+        source = self.make_root() / "object.glb"
+        source.write_bytes(glb)
+        evidence = {"media_type": "model/gltf-binary", "runtime_lod_reviewed": False,
+                    "bounds_dimensions_m": [0.017, 0.016, 0.002]}
+        # The moon type has no draft evidence, so the real builder writes no row for it.
+        engine = self.build(
+            [star, generated_definition("moon_token"), builtin_definition("good")],
+            assets={star["object_type_id"]: {"glb": source, "evidence": evidence}})
+
+        state = self.state(engine)
+        revision = state["catalog_revision"]
+        rows = {row["name"]: row for row in state["class_catalog"]}
+        asset = rows["star_token"]["render_asset"]
+
+        self.assertEqual(revision, load_catalog(self.catalog_root)["catalog_revision"])
+        self.assertEqual(rows["star_token"]["object_type_id"], star["object_type_id"])
+        # Exactly the contract members, plus the `glb_sha256` that the predicate reads.
+        self.assertEqual(set(asset), {
+            "visual_asset_id", "glb_sha256", "url", "media_type", "byte_length", "mesh_count",
+            "primitive_count", "triangle_count", "units", "source_up_axis", "engine_up_axis",
+            "bounds_dimensions_m", "reference_axes_m", "sim_from_asset_quaternion_wxyz",
+            "runtime_lod_reviewed"})
+        self.assertIsNone(browser_refusal(asset, revision))
+        self.assertEqual(asset["url"], f"/catalog-assets/{revision}/{sha}.glb")
+        self.assertEqual(asset["reference_axes_m"], rows["star_token"]["preview"]["axes_m"])
+        # The mirror is not vacuous: a stale revision and a foreign path are both refused.
+        self.assertEqual(browser_refusal(asset, "0" * 64), "url_mismatch")
+        self.assertEqual(browser_refusal({**asset, "mesh_count": 2}, revision),
+                         "unsupported_mesh_count")
+        # A generated type without a row says so. A built-in row is unchanged.
+        self.assertEqual(rows["moon_token"]["object_type_id"], "generated.moon_token")
+        self.assertIsNone(rows["moon_token"]["render_asset"])
+        self.assertEqual(set(rows["good"]), {"name", "defect", "severity", "preview"})
+
+    def test_a_bundle_without_a_registry_reads_as_empty(self):
+        engine = self.build([generated_definition(), builtin_definition("good")])
+        rows = {row["name"]: row for row in self.state(engine)["class_catalog"]}
+        self.assertIsNone(rows["star_token"]["render_asset"])
 
     def make_other(self):
         root = self.make_root()
