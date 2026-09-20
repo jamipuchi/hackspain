@@ -128,6 +128,13 @@ class Engine:
         if profile_name not in PROFILES:
             raise ValueError(f"unsupported profile: {profile_name}")
         self.profile = PROFILES[profile_name]
+        # A bundle preset states its starting policy. A bad label fails before the sim exists.
+        initial_reject_classes = self.preset["policy"].get("initial_reject_classes")
+        if initial_reject_classes is not None:
+            try:
+                initial_reject_classes = self._canonical_reject_classes(initial_reject_classes)
+            except ValueError as error:
+                raise ValueError(f"policy.initial_reject_classes: {error}") from None
         layout = Layout(**self.preset["layout"])
         self.sim = SorterSim(self.profile, layout, rate=float(self.preset["requested_rate"]),
                              seed=int(self.preset["seed"]))
@@ -155,6 +162,8 @@ class Engine:
             item.name for item in self.profile.classes
             if item.defect and item.severity in self.policy.reject_severities
         )
+        if initial_reject_classes is not None:
+            self.reject_classes = initial_reject_classes
         # The anomaly reference follows the live policy: every label the policy keeps.
         self.anomaly_reference_labels = self.model.set_anomaly_reference(
             [name for name in self.model.classes if name not in self.reject_classes])
@@ -163,6 +172,10 @@ class Engine:
             jet_force=float(self.preset["jet_force_n"]), continuous=self.continuous,
             timing_limit=timing_limit,
         )
+        if initial_reject_classes is not None:
+            # The controller derives its mask from the severities. No track exists yet, so
+            # this only replaces that mask. The session epoch below stays the only epoch.
+            self.controller.set_reject_classes(self.reject_classes)
         self.model_version = _file_hash(self.model_path)
         self.policy_version = self._policy_version()
         self.score_epoch_id = self.session_id
@@ -255,10 +268,8 @@ class Engine:
             "random": True,
         }
 
-    def set_reject_classes(self, reject_classes):
-        """Apply a class policy at a physics boundary and start a score epoch."""
-        if not self.continuous:
-            raise ValueError("reject policy changes require continuous mode")
+    def _canonical_reject_classes(self, reject_classes):
+        """Validate a class policy and return it in catalog order."""
         if not isinstance(reject_classes, list) or any(
             not isinstance(name, str) for name in reject_classes
         ):
@@ -270,7 +281,13 @@ class Engine:
         if unknown:
             raise ValueError(f"unsupported reject classes: {', '.join(sorted(unknown))}")
         selected = set(reject_classes)
-        canonical = tuple(item.name for item in self.profile.classes if item.name in selected)
+        return tuple(item.name for item in self.profile.classes if item.name in selected)
+
+    def set_reject_classes(self, reject_classes):
+        """Apply a class policy at a physics boundary and start a score epoch."""
+        if not self.continuous:
+            raise ValueError("reject policy changes require continuous mode")
+        canonical = self._canonical_reject_classes(reject_classes)
         if canonical == self.reject_classes:
             return {
                 **self.reject_policy(), "changed": False,

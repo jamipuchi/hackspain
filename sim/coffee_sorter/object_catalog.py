@@ -24,7 +24,10 @@ from assets import FAMILIES as TEXTURE_FAMILIES  # the material families that th
 from object_definitions import SIM_FROM_ASSET_QUATERNION_WXYZ, SUPPORTED_PROXY_SHAPES
 
 SCHEMA_VERSION = 1
-CATALOG_ROOT = Path(__file__).resolve().parent / "object_catalog"
+PACKAGED_CATALOG_ROOT = Path(__file__).resolve().parent / "object_catalog"
+CATALOG_ROOT_ENV = "COFFEE_OBJECT_CATALOG_ROOT"
+# The service exports the active bundle catalog before any profiles import. Read once.
+CATALOG_ROOT = Path(os.environ.get(CATALOG_ROOT_ENV) or PACKAGED_CATALOG_ROOT)
 MAX_WALL_PAGE = 24
 BUILTIN_SHAPES = frozenset({"ellipsoid", "half", "box", "capsule"})
 SEVERITIES = frozenset({"none", "minor", "major", "foreign"})
@@ -167,18 +170,24 @@ def load_definition(path: Path, expected_sha256: str | None = None) -> dict[str,
     return definition
 
 
-def load_catalog(root: Path = CATALOG_ROOT, manifest: str = "active/catalog.json",
+def load_catalog(root: Path | None = None, manifest: str = "active/catalog.json",
                  bundles_root: Path | None = None) -> dict[str, Any]:
     """Load one validated manifest and only the definitions that it selects.
 
     A non-null active_bundle_sha256 is a promise about bytes, not a syntax field. It
     requires a bundles root, a verifying bundle, and an inner catalog that agrees with
     this pointer. The definitions then come from that bundle, never from the root.
+
+    Without an explicit root the active manifest follows CATALOG_ROOT, which can be a
+    bundle catalog. A bundle carries no builtin manifest, so a builtin one, such as
+    roasted, then loads whole from the packaged root. One catalog, one root.
     """
-    root = Path(root)
     # Safe relative segments only. An absolute or parent path would leave the catalog root.
     if not isinstance(manifest, str) or not _MANIFEST_RE.fullmatch(manifest):
         raise CatalogError("catalog manifest path must stay inside the catalog root")
+    if root is None:
+        root = PACKAGED_CATALOG_ROOT if manifest.startswith("builtin/") else CATALOG_ROOT
+    root = Path(root)
     try:
         catalog = json.loads(_inside(root, root / manifest).read_text())
     except (OSError, json.JSONDecodeError) as error:
@@ -694,11 +703,33 @@ def seed_bundle_files(catalog_root: Path, model_path: Path, model_manifest_path:
     seeded = dict(_mapping(preset, "preset"))
     seeded["model_path"] = f"model/{model_path.name}"
     seeded["model_path_root"] = "preset"
-    seeded["policy"] = {"initial_reject_classes": reject_classes}
+    # The engine reads its whole policy block from the preset, so the block is kept.
+    seeded["policy"] = {**dict(_mapping(seeded.get("policy", {}), "preset.policy")),
+                        "initial_reject_classes": reject_classes}
     files[BUNDLE_PRESET] = _pretty(seeded)
     files["policy.json"] = _pretty(dict(_mapping(policy, "policy")))
     files["sources.json"] = _pretty(dict(_mapping(sources, "sources")))
     return files
+
+
+def ensure_active_bundle(active_root: Path, *, catalog_root: Path, model_path: Path,
+                         model_manifest_path: Path, preset: Mapping[str, Any],
+                         policy: Mapping[str, Any], sources: Mapping[str, Any]) -> Path:
+    """Return the verified active bundle directory. An empty root first gets bundle zero.
+
+    The service calls this before any profiles import, so the catalog and the model start
+    as one verified unit. A root that holds anything is never reseeded: a lost pointer is
+    an error, never a silent return to the packaged default. The packaged tree is only read.
+    """
+    active_root = Path(active_root)
+    if not active_root.is_dir() or not any(active_root.iterdir()):
+        files = seed_bundle_files(catalog_root, model_path, model_manifest_path,
+                                  preset, policy, sources)
+        write_active_pointer(active_root, publish_bundle(active_root / "bundles", files))
+    bundle_sha256 = read_active(active_root)["active_bundle_sha256"]
+    if bundle_sha256 is None:
+        raise CatalogError("the active pointer names no bundle")
+    return active_root / "bundles" / bundle_sha256
 
 
 def _verified_bundle(active_root: Path, bundle_sha256: Any) -> Path:

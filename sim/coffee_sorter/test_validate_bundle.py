@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import os
 import shutil
 import subprocess
 import sys
@@ -20,14 +21,19 @@ from pathlib import Path
 import joblib
 
 import object_catalog
-from object_catalog import (BUNDLE_CATALOG, BUNDLE_MANIFEST, BUNDLE_PRESET, CatalogError,
-                            catalog_revision, definition_sha256, load_catalog,
-                            publish_bundle, read_active, rollback_active, seed_bundle_files,
-                            verify_bundle, write_active_pointer, write_bundle_manifest)
+from object_catalog import (BUNDLE_CATALOG, BUNDLE_MANIFEST, BUNDLE_PRESET, CATALOG_ROOT_ENV,
+                            PACKAGED_CATALOG_ROOT, CatalogError, catalog_labels,
+                            catalog_revision, definition_sha256, ensure_active_bundle,
+                            load_catalog, publish_bundle, read_active, rollback_active,
+                            seed_bundle_files, verify_bundle, write_active_pointer,
+                            write_bundle_manifest)
 from test_object_catalog import builtin_definition
 
 HERE = Path(__file__).resolve().parent
 REVISION = "c" * 40
+CONTINUOUS_PRESET = HERE / "configs" / "continuous_demo.json"
+# A label set that differs from the packaged one: a new type first, then two survivors.
+CHANGED_LABELS = ("star_token", "good", "stone")
 
 
 def pretty(value) -> bytes:
@@ -76,6 +82,52 @@ def bundle_files(labels=("good", "stone"), model_classes=None, reject_classes=("
     files["policy.json"] = pretty({"reject_classes": list(reject_classes)})
     files["sources.json"] = pretty({"source_revision": REVISION, "files": {}})
     return files
+
+
+def continuous_bundle_files(labels=CHANGED_LABELS, trained_rate=None):
+    """A bundle with the real continuous preset, so live.load_preset runs every check.
+
+    The model stays a tiny picklable object. Its meta and its manifest record what the
+    trainers record: the catalog revision, the profile, the labels, and the physical preset.
+    """
+    from vision import FEATURES
+
+    files = bundle_files(labels=labels)
+    catalog = json.loads(files[BUNDLE_CATALOG])
+    preset = {**json.loads(CONTINUOUS_PRESET.read_text()), "profile": catalog["profile_name"],
+              "model_path": "model/candidate.joblib", "model_path_root": "preset"}
+    layout, capture_every = preset["layout"], preset["camera_every_steps"]
+    rate = preset["requested_rate"] if trained_rate is None else trained_rate
+    provenance = {"config": {
+        "catalog_revision": catalog["catalog_revision"], "profile": preset["profile"],
+        "rate": rate, "capture_every": capture_every,
+        "physical_preset": {"layout": layout, "requested_rate": rate,
+                            "camera_every_steps": capture_every,
+                            "capture_hz": 1.0 / (float(layout["timestep"]) * capture_every)}}}
+    meta = {"profile": preset["profile"], "classes": list(labels), "features": FEATURES,
+            "provenance": provenance}
+    with tempfile.TemporaryDirectory() as folder:
+        model = Path(folder) / "candidate.joblib"
+        joblib.dump(types.SimpleNamespace(classes=list(labels), meta=meta), model)
+        files["model/candidate.joblib"] = model.read_bytes()
+    files["model/candidate.manifest.json"] = pretty({
+        "artifact_sha256": hashlib.sha256(files["model/candidate.joblib"]).hexdigest(),
+        "features": FEATURES, "provenance": provenance})
+    files[BUNDLE_PRESET] = pretty(preset)
+    return files
+
+
+def run_python(code, *arguments, catalog_root=None):
+    """Run one fresh interpreter. The catalog root variable is set or absent, never inherited."""
+    environment = {name: value for name, value in os.environ.items() if name != CATALOG_ROOT_ENV}
+    if catalog_root is not None:
+        environment[CATALOG_ROOT_ENV] = str(catalog_root)
+    result = subprocess.run([sys.executable, "-c", code, *map(str, arguments)],
+                            capture_output=True, text=True, cwd=str(HERE), env=environment,
+                            timeout=120)
+    if result.returncode != 0:
+        raise AssertionError(f"the child interpreter failed: {result.stderr[-400:]}")
+    return json.loads(result.stdout)
 
 
 class BundleFixture:
@@ -547,11 +599,185 @@ class SeedBundleTest(BundleFixture, unittest.TestCase):
         self.assertEqual(len(catalog["definitions"]), catalog["max_active_types"])
 
 
+class CatalogRootEnvironmentTest(BundleFixture, unittest.TestCase):
+    """CATALOG_ROOT is read once at import, so every case runs in a fresh interpreter.
+
+    The rule lives in load_catalog, because profiles.py is a hashed model source and
+    stays unchanged. Without an explicit root the active manifest follows the root, and a
+    builtin manifest, such as roasted, loads whole from the packaged root. One catalog,
+    one root.
+    """
+
+    ROOT = ("import json, object_catalog as oc; print(json.dumps({"
+            "'packaged': oc.CATALOG_ROOT == oc.PACKAGED_CATALOG_ROOT,"
+            "'labels': oc.catalog_labels(oc.load_catalog())}))")
+    ACTIVE_ONLY = ("import json, object_catalog as oc\n"
+                   "try:\n    oc.load_catalog(); refused = False\n"
+                   "except oc.CatalogError:\n    refused = True\n"
+                   "print(json.dumps({'refused': refused}))")
+    PROFILES = ("import json, {order}; print(json.dumps({{"
+                "'active': profiles.GREEN_ARABICA.names, 'roasted': profiles.ROASTED.names,"
+                "'profiles': list(profiles.PROFILES)}}))")
+
+    def test_an_unset_or_empty_variable_keeps_the_packaged_root(self):
+        packaged = catalog_labels(load_catalog(PACKAGED_CATALOG_ROOT))
+        for catalog_root in (None, ""):
+            with self.subTest(variable="unset" if catalog_root is None else "empty"):
+                seen = run_python(self.ROOT, catalog_root=catalog_root)
+                self.assertEqual(seen, {"packaged": True, "labels": packaged})
+
+    def test_a_set_variable_selects_the_bundle_catalog(self):
+        _, directory = self.publish(bundle_files(labels=CHANGED_LABELS))
+
+        seen = run_python(self.ROOT, catalog_root=directory / "catalog")
+
+        self.assertEqual(seen, {"packaged": False, "labels": list(CHANGED_LABELS)})
+
+    def test_the_active_catalog_never_falls_back_to_the_packaged_root(self):
+        """Only a builtin manifest may come from the packaged root. The active one never."""
+        empty = self.root / "no-catalog"
+        empty.mkdir()
+
+        self.assertEqual(run_python(self.ACTIVE_ONLY, catalog_root=empty), {"refused": True})
+
+    def test_an_explicit_root_never_mixes_with_the_packaged_root(self):
+        _, directory = self.publish(bundle_files(labels=CHANGED_LABELS))
+
+        with self.assertRaises(CatalogError):
+            load_catalog(directory / "catalog", manifest="builtin/roasted.catalog.json")
+
+    def test_profiles_loads_the_bundle_catalog_and_the_packaged_roasted_catalog(self):
+        _, directory = self.publish(bundle_files(labels=CHANGED_LABELS))
+        roasted = catalog_labels(load_catalog(PACKAGED_CATALOG_ROOT,
+                                              manifest="builtin/roasted.catalog.json"))
+        # The bundle carries no roasted file, so roasted can only come from the packaged root.
+        self.assertFalse((directory / "catalog" / "builtin").exists())
+
+        for order in ("object_catalog, profiles", "profiles, object_catalog"):
+            with self.subTest(order=order):
+                seen = run_python(self.PROFILES.format(order=order),
+                                  catalog_root=directory / "catalog")
+                self.assertEqual(seen["active"], list(CHANGED_LABELS))
+                self.assertEqual(seen["roasted"], roasted)
+                self.assertEqual(seen["profiles"], ["bundle test", "roasted"])
+
+
+class EnsureActiveBundleTest(BundleFixture, unittest.TestCase):
+    """Startup resolves one verified active bundle before any profiles import."""
+
+    CHILD = ("import json, sys; from pathlib import Path; import object_catalog as oc\n"
+             "root, model, preset = (Path(value) for value in sys.argv[1:4])\n"
+             "bundle = oc.ensure_active_bundle(root, catalog_root=oc.PACKAGED_CATALOG_ROOT,"
+             " model_path=model, model_manifest_path=model.with_suffix('.manifest.json'),"
+             " preset=json.loads(preset.read_text()), policy={'reject_classes': []},"
+             " sources={'source_revision': 'c' * 40, 'files': {}})\n"
+             "print(json.dumps({'bundle': bundle.name, 'loaded': sorted("
+             "{'profiles', 'live', 'engine'} & set(sys.modules))}))")
+
+    def setUp(self):
+        super().setUp()
+        self.active = self.root / "active"
+        # A tiny temporary model, so no test depends on the gitignored packaged one.
+        self.model = self.root / "packaged" / "live_green_arabica.joblib"
+        self.model.parent.mkdir()
+        joblib.dump(types.SimpleNamespace(classes=["good"], meta={}), self.model)
+        self.model.with_suffix(".manifest.json").write_bytes(pretty({"artifact_sha256": "a" * 64}))
+
+    def ensure(self, active_root=None):
+        return ensure_active_bundle(
+            active_root or self.active, catalog_root=PACKAGED_CATALOG_ROOT,
+            model_path=self.model, model_manifest_path=self.model.with_suffix(".manifest.json"),
+            preset=json.loads(CONTINUOUS_PRESET.read_text()),
+            policy={"reject_classes": ["stone", "stick"]},
+            sources={"source_revision": REVISION, "files": {}})
+
+    def tree(self, *roots):
+        return {str(path): path.read_bytes() for root in roots
+                for path in sorted(Path(root).rglob("*")) if path.is_file()}
+
+    def test_an_empty_root_seeds_bundle_zero_once_and_points_at_it(self):
+        existing = self.root / "empty"
+        existing.mkdir()
+        digests = set()
+        for active_root in (self.active, existing):
+            with self.subTest(root=active_root.name):
+                bundle = self.ensure(active_root)
+
+                self.assertEqual(bundle.parent, active_root / "bundles")
+                self.assertEqual(verify_bundle(bundle)["bundle_sha256"], bundle.name)
+                catalog = read_active(active_root)
+                self.assertEqual(catalog["active_bundle_sha256"], bundle.name)
+                self.assertEqual(catalog_labels(catalog),
+                                 catalog_labels(load_catalog(PACKAGED_CATALOG_ROOT)))
+                # A second start finds the pointer and publishes nothing new.
+                self.assertEqual(self.ensure(active_root), bundle)
+                self.assertEqual([path.name for path in (active_root / "bundles").iterdir()],
+                                 [bundle.name])
+                digests.add(bundle.name)
+        self.assertEqual(len(digests), 1)
+
+    def test_the_seeded_preset_keeps_the_engine_policy_and_states_the_initial_classes(self):
+        original = json.loads(CONTINUOUS_PRESET.read_text())["policy"]
+
+        seeded = json.loads((self.ensure() / BUNDLE_PRESET).read_text())
+
+        self.assertEqual(seeded["policy"],
+                         {**original, "initial_reject_classes": ["stone", "stick"]})
+        self.assertEqual(seeded["model_path"], "model/live_green_arabica.joblib")
+
+    def test_seeding_leaves_the_packaged_tree_byte_identical(self):
+        before = self.tree(PACKAGED_CATALOG_ROOT, self.model.parent, CONTINUOUS_PRESET.parent)
+
+        self.ensure()
+
+        self.assertEqual(self.tree(PACKAGED_CATALOG_ROOT, self.model.parent,
+                                   CONTINUOUS_PRESET.parent), before)
+
+    def test_a_non_empty_root_returns_its_pointed_bundle_and_is_never_reseeded(self):
+        digest = publish_bundle(self.active / "bundles", bundle_files(labels=CHANGED_LABELS))
+        write_active_pointer(self.active, digest)
+
+        bundle = self.ensure()
+
+        self.assertEqual(bundle, self.active / "bundles" / digest)
+        self.assertEqual([path.name for path in (self.active / "bundles").iterdir()], [digest])
+        self.assertEqual(catalog_labels(read_active(self.active)), list(CHANGED_LABELS))
+
+    def test_a_root_that_does_not_verify_is_refused_and_never_reseeded(self):
+        def damaged(root):
+            digest = publish_bundle(root / "bundles", bundle_files())
+            write_active_pointer(root, digest)
+            (root / "bundles" / digest / "policy.json").write_bytes(pretty({"reject_classes": []}))
+
+        def lost_pointer(root):
+            write_active_pointer(root, publish_bundle(root / "bundles", bundle_files()))
+            (root / "active" / "catalog.json").unlink()
+
+        def null_pointer(root):
+            shutil.copytree(PACKAGED_CATALOG_ROOT, root)
+
+        for case in (damaged, lost_pointer, null_pointer):
+            with self.subTest(case=case.__name__):
+                root = self.root / case.__name__
+                case(root)
+                before = self.tree(root)
+                with self.assertRaises(CatalogError):
+                    self.ensure(root)
+                self.assertEqual(self.tree(root), before)
+
+    def test_it_never_imports_profiles_live_or_engine(self):
+        seen = run_python(self.CHILD, self.active, self.model, CONTINUOUS_PRESET)
+
+        self.assertEqual(seen["loaded"], [])
+        self.assertEqual(verify_bundle(self.active / "bundles" / seen["bundle"])["bundle_sha256"],
+                         seen["bundle"])
+
+
 class ValidateBundleCommandTest(BundleFixture, unittest.TestCase):
-    def run_cli(self, directory, extra=()):
+    def run_cli(self, directory, extra=(), env=None):
         result = subprocess.run(
             [sys.executable, str(HERE / "validate_bundle.py"), "--bundle", str(directory), *extra],
-            capture_output=True, text=True, cwd=str(HERE), timeout=120)
+            capture_output=True, text=True, cwd=str(HERE), timeout=120, env=env)
         payload = json.loads(result.stdout) if result.stdout.strip() else None
         return result.returncode, payload, result.stdout + result.stderr
 
@@ -613,6 +839,51 @@ class ValidateBundleCommandTest(BundleFixture, unittest.TestCase):
             self.assertTrue(any(failure.startswith(code) for failure in payload["failures"]),
                             f"{kwargs}: {payload['failures']}")
             self.assertNotIn(str(self.root), output)
+
+    def test_a_changed_label_bundle_loads_through_the_real_service_loader(self):
+        """The child binds the candidate catalog itself, whatever its parent exported."""
+        self.assertNotEqual(list(CHANGED_LABELS),
+                            catalog_labels(load_catalog(PACKAGED_CATALOG_ROOT)))
+        _, directory = self.publish(continuous_bundle_files())
+        # A service parent has its own active catalog exported. The child must not use it.
+        _, active = self.publish(bundle_files(labels=("good", "stick")),
+                                 bundles=self.root / "active")
+        for name, exported in (("unset", None), ("another bundle", active / "catalog"),
+                               ("packaged", PACKAGED_CATALOG_ROOT)):
+            env = {key: value for key, value in os.environ.items() if key != CATALOG_ROOT_ENV}
+            if exported is not None:
+                env[CATALOG_ROOT_ENV] = str(exported)
+            with self.subTest(parent=name):
+                code, payload, output = self.run_cli(directory, env=env)
+
+                self.assertEqual(payload["failures"], [])
+                self.assertEqual(code, 0)
+                self.assertEqual(payload["labels"], list(CHANGED_LABELS))
+
+    def test_a_loader_refusal_is_one_sanitized_failure_code(self):
+        """Labels and revision agree, so only the real loader can see the other feed rate."""
+        _, directory = self.publish(continuous_bundle_files(trained_rate=1.0))
+
+        code, payload, output = self.run_cli(directory)
+
+        self.assertEqual(code, 1)
+        self.assertEqual(len(payload["failures"]), 1, payload["failures"])
+        self.assertRegex(payload["failures"][0], r"^preset_incompatible: .*feed rate")
+        self.assertNotIn("Traceback", output)
+        for path in (self.root, self.root.resolve(), HERE):
+            self.assertNotIn(str(path), output)
+
+    def test_a_process_that_did_not_bind_the_bundle_catalog_is_refused(self):
+        """validate() inside a process with a cached catalog root must never pass."""
+        _, directory = self.publish(continuous_bundle_files())
+        code = ("import json, sys, object_catalog, validate_bundle; from pathlib import Path; "
+                "print(json.dumps(validate_bundle.validate(Path(sys.argv[1]))))")
+
+        payload = run_python(code, directory)
+
+        self.assertFalse(payload["ok"])
+        self.assertEqual([failure.split(":")[0] for failure in payload["failures"]],
+                         ["preset_catalog_unbound"])
 
     def test_malformed_model_bytes_stay_inside_the_json_contract(self):
         """An empty and a truncated artifact each return one sanitized model failure."""

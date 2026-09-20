@@ -1,8 +1,10 @@
+import json
 import tempfile
 import unittest
 from collections import deque
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import numpy as np
 
@@ -496,6 +498,78 @@ class ModelPathRootTest(unittest.TestCase):
             engine._resolve_model_path()
 
         self.assertEqual(HERE / "models/absent.joblib", engine.model_path)
+
+
+class InitialRejectClassesTest(unittest.TestCase):
+    """A bundle preset starts the engine with its policy inside the one session epoch.
+
+    The real constructor runs. Only the simulator, the camera, the model, and the
+    controller are fakes, so no physics and no trained artifact is needed.
+    """
+
+    def build(self, initial=None):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        directory = Path(folder.name).resolve()
+        (directory / "candidate.joblib").write_bytes(b"model")
+        preset = json.loads((HERE / "configs/continuous_demo.json").read_text())
+        preset.update(model_path="candidate.joblib", model_path_root="preset")
+        if initial is not None:
+            preset["policy"]["initial_reject_classes"] = initial
+        (directory / "preset.json").write_text(json.dumps(preset))
+        self.controller = SimpleNamespace(applied=[])
+        self.controller.set_reject_classes = (
+            lambda values: self.controller.applied.append(tuple(values)) or 0)
+        model = SimpleNamespace(classes=list(PROFILES["green_arabica"].names),
+                                set_anomaly_reference=lambda labels: list(labels))
+        with patch("engine.SorterSim") as self.sim, patch("engine.Inspector"), \
+                patch("engine.Model.load", return_value=model), \
+                patch("engine.Controller", return_value=self.controller), \
+                patch("engine.subprocess.check_output", return_value="source\n"):
+            return Engine(directory / "preset.json")
+
+    def test_the_engine_starts_with_exactly_that_set_in_its_one_epoch(self):
+        engine = self.build(["stone", "black"])
+
+        self.assertEqual(engine.reject_classes, ("black", "stone"))
+        self.assertEqual(self.controller.applied, [("black", "stone")])
+        self.assertEqual(engine.anomaly_reference_labels,
+                         [name for name in engine.profile.names if name not in ("black", "stone")])
+        # One epoch: the session epoch at time zero, and no policy change event.
+        self.assertEqual(engine.score_epoch_id, engine.session_id)
+        self.assertEqual(engine.score_epoch_started_sim_time_s, 0.0)
+        self.assertEqual(engine.policy_applied_sim_time_s, 0.0)
+        self.assertEqual(list(engine._events), [])
+        self.assertEqual(engine.policy_version, engine._policy_version())
+        self.assertNotEqual(engine.policy_version, self.build().policy_version)
+
+    def test_an_empty_list_keeps_every_class(self):
+        engine = self.build([])
+
+        self.assertEqual(engine.reject_classes, ())
+        self.assertEqual(self.controller.applied, [()])
+        self.assertEqual(engine.score_epoch_id, engine.session_id)
+
+    def test_an_absent_field_keeps_the_severity_default_and_the_controller_untouched(self):
+        engine = self.build()
+
+        self.assertEqual(engine.reject_classes, tuple(
+            item.name for item in engine.profile.classes
+            if item.defect and item.severity in engine.policy.reject_severities))
+        self.assertEqual(self.controller.applied, [])
+        self.assertEqual(engine.score_epoch_id, engine.session_id)
+
+    def test_an_invalid_field_is_a_clear_error_before_the_simulator_exists(self):
+        cases = {"unknown label": (["stone", "star_token"],
+                                   "unsupported reject classes: star_token"),
+                 "duplicate": (["stone", "stone"], "must not contain duplicates"),
+                 "not a list": ("stone", "must be a list")}
+        for name, (initial, message) in cases.items():
+            with self.subTest(case=name):
+                with self.assertRaisesRegex(
+                        ValueError, rf"policy\.initial_reject_classes: .*{message}"):
+                    self.build(initial)
+                self.sim.assert_not_called()
 
 
 if __name__ == "__main__":
