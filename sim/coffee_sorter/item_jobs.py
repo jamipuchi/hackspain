@@ -184,8 +184,11 @@ STAGES: dict[str, dict[str, Any]] = {
         "prepare": "_prepare_training",
         "provider_backed": False,
         "lock_busy_exit": EXIT_RENDER_LOCK,
+        # The only child that receives the runner's quality gate. Strict passes no flag.
+        "quality_gated": True,
     },
 }
+QUALITY_GATES = ("strict", "demo")
 TRAINING_LEASE = "training.lease"
 # Every evidence block a completed trainer run writes. A record missing any of them is
 # incomplete, whatever it claims about `passed`.
@@ -582,7 +585,13 @@ class ItemJobRunner:
                  catalog_provider: Callable[[], Mapping[str, Any]] | None = None,
                  policy_provider: Callable[[], Mapping[str, Any]] | None = None,
                  activator: Callable[[str, Mapping[str, Any]], str] | None = None,
-                 active_bundle_sha256: Callable[[], str | None] | None = None):
+                 active_bundle_sha256: Callable[[], str | None] | None = None,
+                 quality_gate: str = "strict"):
+        if quality_gate not in QUALITY_GATES:
+            raise ValueError(f"quality_gate must be one of {', '.join(QUALITY_GATES)}")
+        # Strict is the default everywhere. Demo only moves the trainer's quality codes to
+        # warnings. Every hard failure, and the rule in `_validate_candidate`, stays.
+        self.quality_gate = quality_gate
         self.store = store
         # The service owns the engine, the bundle, and the pointer. The queue only calls
         # `activator(job_id, candidate)` and reads the pointer sha through this callable.
@@ -758,6 +767,8 @@ class ItemJobRunner:
                     (job_dir / "provider_status.json").unlink()
             try:
                 argv = self.commands[stage](pending, job_dir)
+                if table.get("quality_gated") and self.quality_gate != "strict":
+                    argv = [*argv, "--quality-gate", self.quality_gate]
             except Exception as error:
                 if stage != "training":
                     raise
@@ -1202,7 +1213,16 @@ class ItemJobRunner:
                                 reason="validation_missing",
                                 progress="the trainer wrote no validation")
             return
+        # The whole verdict is recorded, so `quality_gate`, `quality_warnings`, and
+        # `review_status` of a demo run show in the job record beside every metric.
         artifacts = {**job["artifacts"], "candidate_validation": validation}
+        if validation.get("quality_gate", "strict") != self.quality_gate:
+            # A demo verdict must never pass a strict runner, whatever it claims.
+            self.store.transition(request_id, "failed", token=token,
+                                  error="candidate_validation_failed", worker=None,
+                                  artifacts=artifacts, reason="quality_gate_mismatch",
+                                  progress="the verdict was written for another quality gate")
+            return
         missing = incomplete_validation(validation)
         if missing:
             # A partial record never counts as passed. Absence of evidence is not evidence.

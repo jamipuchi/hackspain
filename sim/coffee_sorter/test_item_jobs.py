@@ -2438,6 +2438,82 @@ class ActivationRunnerTest(QueueTest):
         evidence = runner._victim_evidence(stored['training_baseline']['new_type_id'])
         self.assertEqual(sorted(item_jobs.PREVIEW_DOWNLOADS), sorted(evidence))
 
+    def gates_seen(self):
+        rows = [json.loads(line) for line in
+                (self.root / 'worker_runs.jsonl').read_text().splitlines()]
+        return {row['stage']: row['quality_gate'] for row in rows if row['event'] == 'start'}
+
+    def test_the_strict_default_passes_no_quality_flag_to_any_child(self):
+        runner = self.open()
+        self.assertEqual('strict', runner.quality_gate)
+        request_id = self.submit()['request_id']
+
+        self.drive(runner, lambda: self.state(request_id) == 'active')
+
+        self.assertEqual(dict.fromkeys(self.STAGES), self.gates_seen())
+        validation = self.store.get(request_id)['artifacts']['candidate_validation']
+        self.assertNotIn('quality_gate', validation)
+
+    def test_the_demo_gate_reaches_the_trainer_only_and_its_warnings_are_recorded(self):
+        # A quality code misses. Strict would fail this candidate. Demo warns and proceeds.
+        self.scenarios({'training': ['fail_safe']})
+        runner = self.open(quality_gate='demo')
+        request_id = self.submit()['request_id']
+
+        self.drive(runner, lambda: self.state(request_id) == 'active')
+
+        self.assertEqual({**dict.fromkeys(self.STAGES), 'training': 'demo'}, self.gates_seen())
+        validation = self.store.get(request_id)['artifacts']['candidate_validation']
+        self.assertEqual(('demo', ['anomaly_fraction'], 'needs_review', True, []),
+                         (validation['quality_gate'], validation['quality_warnings'],
+                          validation['review_status'], validation['passed'],
+                          validation['failures']))
+        self.assertEqual(1, len(self.calls))
+
+    def test_a_quality_miss_under_the_strict_gate_still_blocks(self):
+        self.scenarios({'training': ['fail_safe']})
+        runner = self.open()
+        request_id = self.submit()['request_id']
+
+        self.drive(runner, lambda: self.state(request_id) == 'failed')
+
+        self.assertEqual('candidate_validation_failed', self.store.get(request_id)['error'])
+        self.assertEqual([], self.calls)
+
+    def test_a_hard_failure_under_the_demo_gate_still_blocks(self):
+        self.scenarios({'training': ['hard_gate']})
+        runner = self.open(quality_gate='demo')
+        request_id = self.submit()['request_id']
+
+        self.drive(runner, lambda: self.state(request_id) == 'failed')
+
+        stored = self.store.get(request_id)
+        self.assertEqual(('candidate_validation_failed', 'candidate_gate_failed'),
+                         (stored['error'], stored['reason']))
+        self.assertEqual(['new_label_recall'],
+                         stored['artifacts']['candidate_validation']['failures'])
+        self.assertEqual([], self.calls)
+
+    def test_a_demo_verdict_never_passes_a_strict_runner(self):
+        runner = self.open()
+        job = self.validated('validating_candidate')
+        out = self.store.job_dir(job['request_id']) / 'training' / 'out'
+        out.mkdir(parents=True)
+        (out / 'validation.json').write_text(json.dumps({
+            'passed': True, 'failures': [], 'quality_gate': 'demo',
+            'quality_warnings': ['anomaly_fraction'], 'review_status': 'needs_review'}))
+
+        runner._validate_candidate(job, self.store.job_dir(job['request_id']), None)
+
+        stored = self.store.get(job['request_id'])
+        self.assertEqual(('failed', 'candidate_validation_failed', 'quality_gate_mismatch'),
+                         (stored['state'], stored['error'], stored['reason']))
+
+    def test_an_unknown_quality_gate_is_refused(self):
+        for value in ('lenient', '', None, 'DEMO'):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                self.open(quality_gate=value)
+
     def test_a_replacement_also_leaves_waiting_for_replacement(self):
         runner = self.open()
         waiting = self.validated('waiting_for_replacement')

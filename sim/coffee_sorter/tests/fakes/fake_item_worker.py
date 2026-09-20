@@ -22,7 +22,8 @@ from item_jobs import (EXIT_CACHE_ENTRY_INVALID, EXIT_RESPONSE_RECEIVED, EXIT_FA
                        EXIT_NOT_SUBMITTED, EXIT_OK, EXIT_RENDER_LOCK, EXIT_UNCERTAIN)
 
 SCENARIOS = ("ok", "fail_safe", "fail_hard", "uncertain", "lock_busy", "hang",
-             "cache_entry_invalid", "answer_unsaved", "answer_unsaved_without_status")
+             "cache_entry_invalid", "answer_unsaved", "answer_unsaved_without_status",
+             "hard_gate")
 PREVIEW_IMAGES = ("perspective.png", "top.png", "object.glb")
 HANG_SECONDS = 60
 # The recorded star render bounds, so the fake render reports measured-looking numbers.
@@ -35,7 +36,11 @@ def main() -> int:
     parser.add_argument("--stage", required=True)
     parser.add_argument("--attempt", type=int, required=True)
     parser.add_argument("--fixtures", type=Path, required=True)
+    # Only the trainer command ever carries this flag. Any other stage would refuse it.
+    parser.add_argument("--quality-gate", choices=("strict", "demo"), default=None)
     args = parser.parse_args()
+    if args.quality_gate is not None and args.stage != "training":
+        parser.error("--quality-gate belongs to the trainer only")
 
     root = args.job_dir.parent.parent
     scenario = _scenario(root / "fake_scenario.json", args.stage, args.attempt,
@@ -194,15 +199,27 @@ def _training(args, scenario: str) -> int:
         return EXIT_FAILED
     out = args.job_dir / "training" / "out"
     out.mkdir(parents=True, exist_ok=True)
-    passed = scenario != "fail_safe"
+    # `fail_safe` misses a QUALITY code and `hard_gate` misses a HARD one. The demo gate
+    # moves only the quality code to the warnings, exactly as the real trainer does.
+    failures = {"fail_safe": ["anomaly_fraction"], "hard_gate": ["new_label_recall"]}.get(
+        scenario, [])
+    demo = {}
+    if args.quality_gate == "demo":
+        warnings = [code for code in failures if code == "anomaly_fraction"]
+        failures = [code for code in failures if code not in warnings]
+        demo = {"quality_gate": "demo", "quality_warnings": warnings,
+                "review_status": "needs_review" if warnings else None}
+    passed = not failures
     (out / "validation.json").write_text(json.dumps({
+        **demo,
         "passed": passed,
-        "failures": [] if passed else ["anomaly_fraction"],
+        "failures": failures,
         "labels": ["star_token", "good"],
         "new_label": "star_token",
         "label_order_ok": True,
         "classifier": {"holdout_accuracy": 0.97, "new_label_recall": 1.0},
-        "anomaly": {"fraction_above_threshold": 0.0 if passed else 1.0, "threshold": 14.339},
+        "anomaly": {"fraction_above_threshold": 1.0 if scenario == "fail_safe" else 0.0,
+                    "threshold": 14.339},
         "policy": {"applied_reject_classes": [], "new_label_policy": "keep",
                    "policy_source": "baseline_file"},
         "pulses": {"runs": [{"seed": 8, "commanded": 0}]},
@@ -232,6 +249,7 @@ def _hang() -> int:
 
 def _record(root: Path, args, event: str, scenario: str, code: int = EXIT_OK) -> int:
     line = json.dumps({"event": event, "stage": args.stage, "attempt": args.attempt,
+                       "quality_gate": args.quality_gate,
                        "scenario": scenario, "pid": os.getpid(), "at": time.time(),
                        "request_id": args.job_dir.name}) + "\n"
     with (root / "worker_runs.jsonl").open("a") as handle:
