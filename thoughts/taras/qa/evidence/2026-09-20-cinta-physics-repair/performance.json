@@ -1,0 +1,75 @@
+{
+  "python": "3.13.12",
+  "platform": "macOS-26.6-arm64-arm-64bit-Mach-O",
+  "mujoco": "3.13.0",
+  "rows": [
+    {
+      "version": "before",
+      "pool": 488,
+      "source_sha256": "a89f5665fa14bc14314892b7d40943531ae06a381e2c64759d22006434559c73",
+      "init_s": 0.279533667024225,
+      "spawn_mean_us": 46.92385147791356,
+      "spawn_p50_us": 40.291459299623966,
+      "spawn_p95_us": 87.62275101616967,
+      "physics_2_sim_seconds_wall_s": 2.28888004203327,
+      "physics_sim_seconds_per_wall_second": 0.8737897850790597,
+      "spawned_during_feed": 1000,
+      "starved": 0
+    },
+    {
+      "version": "after",
+      "pool": 488,
+      "source_sha256": "9382e659b308eae550822d1638cc2e7a1db81f9e52b1897ff0eaad12138bd86d",
+      "init_s": 0.24115287489257753,
+      "spawn_mean_us": 184.21466229483485,
+      "spawn_p50_us": 167.43794549256563,
+      "spawn_p95_us": 273.25233677402133,
+      "full_refresh_ms": 89.00408283807337,
+      "oracle_max_abs": {
+        "dof_M0": 1.4889251025954498e-23,
+        "dof_invweight0": 5.960464477539063e-08,
+        "body_invweight0": 5.960464477539063e-08,
+        "body_subtreemass": 5.115907697472721e-13,
+        "dof_length": 1.1796119636642288e-16
+      },
+      "physics_2_sim_seconds_wall_s": 2.607089624973014,
+      "physics_sim_seconds_per_wall_second": 0.7671389509751518,
+      "spawned_during_feed": 1000,
+      "starved": 0
+    },
+    {
+      "version": "before",
+      "pool": 1238,
+      "source_sha256": "a89f5665fa14bc14314892b7d40943531ae06a381e2c64759d22006434559c73",
+      "init_s": 1.3629479168448597,
+      "spawn_mean_us": 41.799870086833835,
+      "spawn_p50_us": 39.25058990716934,
+      "spawn_p95_us": 52.901962772011736,
+      "physics_2_sim_seconds_wall_s": 3.9668455407954752,
+      "physics_sim_seconds_per_wall_second": 0.5041789450664969,
+      "spawned_during_feed": 1000,
+      "starved": 0
+    },
+    {
+      "version": "after",
+      "pool": 1238,
+      "source_sha256": "9382e659b308eae550822d1638cc2e7a1db81f9e52b1897ff0eaad12138bd86d",
+      "init_s": 1.6806746670044959,
+      "spawn_mean_us": 345.4663447337225,
+      "spawn_p50_us": 276.7709083855152,
+      "spawn_p95_us": 698.0042438954109,
+      "full_refresh_ms": 580.3539170883596,
+      "oracle_max_abs": {
+        "dof_M0": 1.4889251025954498e-23,
+        "dof_invweight0": 5.960464477539063e-08,
+        "body_invweight0": 5.960464477539063e-08,
+        "body_subtreemass": 5.115907697472721e-13,
+        "dof_length": 1.1796119636642288e-16
+      },
+      "physics_2_sim_seconds_wall_s": 4.131150583038107,
+      "physics_sim_seconds_per_wall_second": 0.484126627630497,
+      "spawned_during_feed": 1000,
+      "starved": 0
+    }
+  ]
+}

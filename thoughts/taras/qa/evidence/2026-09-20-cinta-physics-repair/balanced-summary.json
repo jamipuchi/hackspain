@@ -1,0 +1,310 @@
+{
+  "before": {
+    "source_sha256": "a89f5665fa14bc14314892b7d40943531ae06a381e2c64759d22006434559c73",
+    "model_sha256": "89513398373c6e0e81286419962feb3e312742de14a76d02dd0d819ad5264a5a",
+    "seeds": [
+      7,
+      8,
+      9,
+      42
+    ],
+    "uses_per_body": 2,
+    "isolated_pool_bodies": 5,
+    "by_class": {
+      "good": {
+        "objects": 8,
+        "decisions": 8,
+        "correct_class": 6,
+        "outcomes": {
+          "accept": 6,
+          "reject": 2
+        },
+        "contacted_objects": 2,
+        "classifications": {
+          "good": 6,
+          "faded": 1,
+          "insect": 1
+        },
+        "anomaly_decisions": 0
+      },
+      "faded": {
+        "objects": 8,
+        "decisions": 8,
+        "correct_class": 6,
+        "outcomes": {
+          "reject": 6,
+          "accept": 2
+        },
+        "contacted_objects": 6,
+        "classifications": {
+          "faded": 6,
+          "good": 2
+        },
+        "anomaly_decisions": 0
+      },
+      "black": {
+        "objects": 8,
+        "decisions": 8,
+        "correct_class": 8,
+        "outcomes": {
+          "reject": 8
+        },
+        "contacted_objects": 8,
+        "classifications": {
+          "black": 8
+        },
+        "anomaly_decisions": 8
+      },
+      "sour": {
+        "objects": 8,
+        "decisions": 8,
+        "correct_class": 8,
+        "outcomes": {
+          "reject": 8
+        },
+        "contacted_objects": 8,
+        "classifications": {
+          "sour": 8
+        },
+        "anomaly_decisions": 8
+      },
+      "insect": {
+        "objects": 8,
+        "decisions": 8,
+        "correct_class": 8,
+        "outcomes": {
+          "reject": 8
+        },
+        "contacted_objects": 8,
+        "classifications": {
+          "insect": 8
+        },
+        "anomaly_decisions": 8
+      },
+      "broken": {
+        "objects": 8,
+        "decisions": 8,
+        "correct_class": 8,
+        "outcomes": {
+          "reject": 8
+        },
+        "contacted_objects": 8,
+        "classifications": {
+          "broken": 8
+        },
+        "anomaly_decisions": 0
+      },
+      "shell": {
+        "objects": 8,
+        "decisions": 8,
+        "correct_class": 8,
+        "outcomes": {
+          "reject": 8
+        },
+        "contacted_objects": 8,
+        "classifications": {
+          "shell": 8
+        },
+        "anomaly_decisions": 0
+      },
+      "husk": {
+        "objects": 8,
+        "decisions": 8,
+        "correct_class": 8,
+        "outcomes": {
+          "reject": 8
+        },
+        "contacted_objects": 8,
+        "classifications": {
+          "husk": 8
+        },
+        "anomaly_decisions": 6
+      },
+      "stone": {
+        "objects": 8,
+        "decisions": 8,
+        "correct_class": 8,
+        "outcomes": {
+          "spilled": 5,
+          "reject": 3
+        },
+        "contacted_objects": 8,
+        "classifications": {
+          "stone": 8
+        },
+        "anomaly_decisions": 8
+      },
+      "stick": {
+        "objects": 8,
+        "decisions": 8,
+        "correct_class": 8,
+        "outcomes": {
+          "reject": 5,
+          "accept": 3
+        },
+        "contacted_objects": 8,
+        "classifications": {
+          "stick": 8
+        },
+        "anomaly_decisions": 8
+      }
+    },
+    "correct_physical": 68,
+    "spills": 5,
+    "late_decisions": 0
+  },
+  "after": {
+    "source_sha256": "d398dd98ac49c88d7fa18e1d6046c348a3a0a0d7f01eb5de39e085e89b73ed28",
+    "model_sha256": "89513398373c6e0e81286419962feb3e312742de14a76d02dd0d819ad5264a5a",
+    "seeds": [
+      7,
+      8,
+      9,
+      42
+    ],
+    "uses_per_body": 2,
+    "isolated_pool_bodies": 5,
+    "by_class": {
+      "good": {
+        "objects": 8,
+        "decisions": 8,
+        "correct_class": 6,
+        "outcomes": {
+          "accept": 6,
+          "reject": 2
+        },
+        "contacted_objects": 2,
+        "classifications": {
+          "good": 6,
+          "faded": 1,
+          "insect": 1
+        },
+        "anomaly_decisions": 0
+      },
+      "faded": {
+        "objects": 8,
+        "decisions": 8,
+        "correct_class": 6,
+        "outcomes": {
+          "reject": 6,
+          "accept": 2
+        },
+        "contacted_objects": 6,
+        "classifications": {
+          "faded": 6,
+          "good": 2
+        },
+        "anomaly_decisions": 0
+      },
+      "black": {
+        "objects": 8,
+        "decisions": 8,
+        "correct_class": 8,
+        "outcomes": {
+          "reject": 8
+        },
+        "contacted_objects": 8,
+        "classifications": {
+          "black": 8
+        },
+        "anomaly_decisions": 8
+      },
+      "sour": {
+        "objects": 8,
+        "decisions": 8,
+        "correct_class": 8,
+        "outcomes": {
+          "reject": 8
+        },
+        "contacted_objects": 8,
+        "classifications": {
+          "sour": 8
+        },
+        "anomaly_decisions": 8
+      },
+      "insect": {
+        "objects": 8,
+        "decisions": 8,
+        "correct_class": 8,
+        "outcomes": {
+          "reject": 8
+        },
+        "contacted_objects": 8,
+        "classifications": {
+          "insect": 8
+        },
+        "anomaly_decisions": 7
+      },
+      "broken": {
+        "objects": 8,
+        "decisions": 8,
+        "correct_class": 8,
+        "outcomes": {
+          "reject": 8
+        },
+        "contacted_objects": 8,
+        "classifications": {
+          "broken": 8
+        },
+        "anomaly_decisions": 0
+      },
+      "shell": {
+        "objects": 8,
+        "decisions": 8,
+        "correct_class": 8,
+        "outcomes": {
+          "reject": 8
+        },
+        "contacted_objects": 8,
+        "classifications": {
+          "shell": 8
+        },
+        "anomaly_decisions": 0
+      },
+      "husk": {
+        "objects": 8,
+        "decisions": 8,
+        "correct_class": 8,
+        "outcomes": {
+          "reject": 8
+        },
+        "contacted_objects": 8,
+        "classifications": {
+          "husk": 8
+        },
+        "anomaly_decisions": 7
+      },
+      "stone": {
+        "objects": 8,
+        "decisions": 8,
+        "correct_class": 8,
+        "outcomes": {
+          "accept": 5,
+          "reject": 3
+        },
+        "contacted_objects": 8,
+        "classifications": {
+          "stone": 8
+        },
+        "anomaly_decisions": 8
+      },
+      "stick": {
+        "objects": 8,
+        "decisions": 8,
+        "correct_class": 8,
+        "outcomes": {
+          "reject": 7,
+          "accept": 1
+        },
+        "contacted_objects": 8,
+        "classifications": {
+          "stick": 8
+        },
+        "anomaly_decisions": 8
+      }
+    },
+    "correct_physical": 70,
+    "spills": 0,
+    "late_decisions": 0
+  }
+}
