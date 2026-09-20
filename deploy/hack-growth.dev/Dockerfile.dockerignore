@@ -4,6 +4,7 @@
 !deploy/hack-growth.dev/
 !deploy/hack-growth.dev/start.sh
 !deploy/hack-growth.dev/check_live.py
+!deploy/hack-growth.dev/blender_smoke.py
 
 !sim/
 !sim/coffee_sorter/

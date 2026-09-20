@@ -10,6 +10,7 @@ fi
 
 tag="hackspain-coffee:${revision}"
 docker build \
+  --platform linux/amd64 \
   --file "$root/deploy/hack-growth.dev/Dockerfile" \
   --build-arg "SOURCE_REVISION=$revision" \
   --label "org.opencontainers.image.revision=$revision" \

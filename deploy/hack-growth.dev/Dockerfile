@@ -2,6 +2,9 @@
 FROM python:3.13-slim-bookworm@sha256:2325bb286ec344af3e5898cc224b5844e2707ac6e26b1632516fd3edc84a5e26
 
 ARG SOURCE_REVISION
+ARG BLENDER_VERSION=5.2.2
+ARG BLENDER_SHA256=84098912789dc450e95697c4184fb8a90acbe5111c2ba4aede3fecb57806a168
+ARG TARGETARCH
 LABEL org.opencontainers.image.source="https://github.com/tarasyarema/hackspain"
 LABEL org.opencontainers.image.revision="${SOURCE_REVISION}"
 
@@ -17,8 +20,20 @@ ENV PYTHONUNBUFFERED=1 \
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       ca-certificates libgl1 libglfw3 libosmesa6 \
+       ca-certificates curl libgl1 libglfw3 libosmesa6 xz-utils \
     && rm -rf /var/lib/apt/lists/*
+
+RUN test "$TARGETARCH" = amd64 \
+    && curl --fail --location --show-error \
+       "https://download.blender.org/release/Blender5.2/blender-${BLENDER_VERSION}-linux-x64.tar.xz" \
+       --output /tmp/blender.tar.xz \
+    && printf '%s  %s\n' "$BLENDER_SHA256" /tmp/blender.tar.xz | sha256sum -c - \
+    && tar --extract --xz --file /tmp/blender.tar.xz --directory /opt \
+    && mv "/opt/blender-${BLENDER_VERSION}-linux-x64" /opt/blender \
+    && ln -s /opt/blender/blender /usr/local/bin/blender \
+    && rm /tmp/blender.tar.xz \
+    && blender --background --version \
+    && if ldd /opt/blender/blender | grep -q 'not found'; then ldd /opt/blender/blender; exit 1; fi
 
 WORKDIR /app
 
@@ -53,11 +68,20 @@ RUN mkdir -p /app/sim/coffee_sorter/models \
 
 COPY deploy/hack-growth.dev/start.sh /app/deploy/start.sh
 COPY deploy/hack-growth.dev/check_live.py /app/deploy/check_live.py
+COPY deploy/hack-growth.dev/blender_smoke.py /app/deploy/blender_smoke.py
 RUN printf '%s' "$SOURCE_REVISION" | grep -Eq '^[0-9a-f]{40}$' \
     && printf '%s\n' "$SOURCE_REVISION" > /app/source-revision.txt \
     && chmod 0555 /app/deploy/start.sh /app/deploy/check_live.py \
+    && chmod 0444 /app/deploy/blender_smoke.py \
     && groupadd --gid 10001 cinta \
     && useradd --uid 10001 --gid 10001 --no-create-home --home-dir /nonexistent cinta
+
+RUN install --directory --owner 10001 --group 10001 /tmp/blender-smoke \
+    && su --shell /bin/sh cinta --command \
+       'HOME=/tmp XDG_CONFIG_HOME=/tmp TMPDIR=/tmp blender --background --factory-startup --python /app/deploy/blender_smoke.py -- /tmp/blender-smoke' \
+    && test -s /tmp/blender-smoke/smoke.png \
+    && test -s /tmp/blender-smoke/smoke.glb \
+    && rm -rf /tmp/blender-smoke
 
 USER 10001:10001
 WORKDIR /app/sim/coffee_sorter
