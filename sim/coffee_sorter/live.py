@@ -150,6 +150,13 @@ def _item_job_response(error_code):
 
 _PRIVATE_WORKER_FIELDS = ('token', 'log')
 _PRIVATE_ARTIFACTS = ('runtime_lock',)
+# Evidence carries nested trainer and validator records, so a top-level deny-list cannot
+# see every path. Any absolute path in a published value becomes this marker.
+_REDACTED_PATH = '<path>'
+_ABSOLUTE_PATH = re.compile(r'(?<![\w.~-])(?:/[^\s"\',;:)\]}]+)+')
+# The queue builds this one URL itself from a validated request id. It is a route of this
+# service, not a host path, and the Items modal loads the early preview from it.
+_PREVIEW_ROUTE = re.compile(r'/item-jobs/[0-9a-f-]{36}/previews/[a-z]+\.png')
 
 
 def _public_worker(worker):
@@ -159,11 +166,29 @@ def _public_worker(worker):
     return {key: value for key, value in worker.items() if key not in _PRIVATE_WORKER_FIELDS}
 
 
+def _without_host_paths(value):
+    """Walk any published value and redact absolute paths, at any depth.
+
+    A job record now carries trainer and validator evidence written by children, so the
+    only safe rule is structural: no published string may contain an absolute path.
+    """
+    if isinstance(value, str):
+        if _PREVIEW_ROUTE.fullmatch(value):
+            return value
+        return _ABSOLUTE_PATH.sub(_REDACTED_PATH, value)
+    if isinstance(value, dict):
+        return {key: _without_host_paths(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_without_host_paths(item) for item in value]
+    return value
+
+
 def _public_job(job):
     """One job record for a public response. No value may carry a host path."""
     artifacts = {key: value for key, value in (job.get('artifacts') or {}).items()
                  if key not in _PRIVATE_ARTIFACTS}
-    return {**job, 'worker': _public_worker(job.get('worker')), 'artifacts': artifacts}
+    public = {**job, 'worker': _public_worker(job.get('worker')), 'artifacts': artifacts}
+    return _without_host_paths(public)
 
 
 def _validate_item_job_arguments(parser, args, item_jobs_root):
@@ -557,13 +582,18 @@ class LiveService:
         """The policy the live engine applies right now, read from the latest state packet.
 
         A training baseline must bind the policy in force when its turn begins, not the
-        one that held at admission. An unknown policy keeps the reject set empty, so no
-        job can silently train against a guessed policy.
+        one that held at admission. None means the engine has published no authoritative
+        policy yet, and the queue then WAITS. An absent policy must never read as an empty
+        reject set, because that would silently bind Keep all.
         """
         state = self.state or {}
-        policy = state.get('reject_policy') or {}
+        if state.get('status') in (None, 'starting'):
+            return None
+        policy = state.get('reject_policy')
+        if not isinstance(policy, dict) or policy.get('policy_version') is None:
+            return None
         return {'reject_classes': list(policy.get('reject_classes') or []),
-                'policy_version': policy.get('policy_version')}
+                'policy_version': policy['policy_version']}
 
     def _item_commands(self):
         """Fake mode runs fixtures. Cached and paid modes never pass an automatic --live."""
@@ -593,7 +623,8 @@ class LiveService:
             self.item_jobs = None
 
     def _item_jobs_packet(self):
-        return {'summaries': self.item_jobs.summaries(),
+        # A summary carries free text from a child, so it takes the same redaction.
+        return {'summaries': _without_host_paths(self.item_jobs.summaries()),
                 'limits': {'max_queued_jobs': item_jobs.MAX_QUEUED_JOBS,
                            'max_retained_open_jobs': item_jobs.MAX_RETAINED_OPEN_JOBS,
                            'max_retained_jobs': item_jobs.MAX_RETAINED_JOBS,

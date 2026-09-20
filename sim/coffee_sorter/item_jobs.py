@@ -104,7 +104,7 @@ ERRORS = frozenset({
     "worker_unavailable", "physics_unsupported", "training_failed",
     "candidate_validation_failed", "replacement_conflict", "activation_failed",
     "catalog_revision_conflict", "provider_cache_miss", "paid_mode_disabled",
-    "history_full",
+    "physics_proposal_failed", "history_full",
 })
 TERMINAL = frozenset({"active", "failed"})
 BLOCKED = frozenset({
@@ -153,7 +153,7 @@ STAGES: dict[str, dict[str, Any]] = {
         "running_state": "proposing_physics",
         "waiting_state": "preview_ready",
         "retry_state": "proposing_physics",
-        "failure_error": "generation_failed",
+        "failure_error": "physics_proposal_failed",
         "settle": "_settle_physics_proposal",
         "provider_backed": True,
         "lock_busy_exit": None,
@@ -185,6 +185,10 @@ STAGES: dict[str, dict[str, Any]] = {
     },
 }
 TRAINING_LEASE = "training.lease"
+# Every evidence block a completed trainer run writes. A record missing any of them is
+# incomplete, whatever it claims about `passed`.
+VALIDATION_EVIDENCE = ("label_order_ok", "classifier", "anomaly", "keep_outcome", "pulses",
+                       "policy", "preset_compatibility")
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _PAYLOAD_FIELDS = {"request_id", "description", "requester_name", "expected_catalog_revision"}
@@ -224,9 +228,15 @@ def is_open(job: Mapping[str, Any]) -> bool:
     return job["state"] not in TERMINAL
 
 
-def live_permitted(job: Mapping[str, Any], provider_mode: str) -> bool:
-    """The only source of `--live`. There is no automatic path and no fallthrough."""
-    return provider_mode == "paid" and job.get("provider_permission") == "new_request"
+def live_permitted(job: Mapping[str, Any], provider_mode: str, stage: str) -> bool:
+    """The only source of `--live`. There is no automatic path and no fallthrough.
+
+    A grant is bound to the stage the operator saw. An approval of a PHYSICS request can
+    never authorize a GENERATION request, so one stage never spends another's grant.
+    """
+    if provider_mode != "paid" or job.get("provider_permission") != "new_request":
+        return False
+    return job.get("provider_permission_stage") == stage
 
 
 class ItemJobStore:
@@ -322,6 +332,9 @@ class ItemJobStore:
             "preview": f"/item-jobs/{request_id}/previews/perspective.png" if previewed else None,
             "attempts": dict(job["attempts"]),
             "progress": job.get("progress"),
+            # A short stable code beside the free text, so no caller parses prose.
+            "reason": job.get("reason"),
+            "blocked_stage": job.get("blocked_stage"),
             "primary_action": primary_action(job["state"]),
             "provider_mode": job.get("provider_mode"),
             "provider_cache_hit": job.get("provider_cache_hit"),
@@ -372,9 +385,14 @@ class ItemJobStore:
                 "provider_submission": "not_submitted",
                 "provider_submission_history": ["not_submitted"],
                 "provider_permission": None,
+                # A one-time grant belongs to one stage, and so does the block it answers.
+                "provider_permission_stage": None,
+                "blocked_stage": None,
                 "provider_cache_hit": None,
                 "provider_evidence": None,
-                "lock_busy_count": 0,
+                # Per stage, so one stage's lock backoff never lengthens another's.
+                "lock_busy_count": {},
+                "reason": None,
                 "timestamps": {"created": now, "queued": now, "updated": now},
                 "history": [{"state": "queued", "at": now}],
                 "worker": None,
@@ -473,8 +491,9 @@ class ItemJobRunner:
         # The latest catalog and the latest live policy, read when a training turn begins.
         # live.py injects the engine's current reject classes; tests inject a fake.
         self.catalog_provider = catalog_provider or object_catalog.load_catalog
-        self.policy_provider = policy_provider or (lambda: {"reject_classes": [],
-                                                            "policy_version": None})
+        # None means no authoritative policy. A runner without an injected provider never
+        # trains, rather than training against a guessed Keep all.
+        self.policy_provider = policy_provider or (lambda: None)
         # The queue never takes this lock. render_suite.py does, and the queue reads exit 75.
         self.runtime_lock_path = Path(runtime_lock_path)
         self.lease_s = float(lease_s)
@@ -618,11 +637,16 @@ class ItemJobRunner:
         # The builder reads the record as it stands before this launch, so it can see an
         # unconsumed operator grant. Nothing else can produce `--live`.
         pending = {**job, "attempts": attempts}
-        fields: dict[str, Any] = {"attempts": attempts, "progress": None}
+        fields: dict[str, Any] = {"attempts": attempts, "progress": None, "reason": None}
         if table["provider_backed"]:
-            fields["provider_permission"] = None
-            if live_permitted(pending, self.provider_mode):
+            # Only the stage the grant names consumes it. Another stage leaves it alone.
+            if live_permitted(pending, self.provider_mode, stage):
                 fields["provider_submission"] = "in_flight"
+                fields["provider_permission"] = None
+                fields["provider_permission_stage"] = None
+            elif job.get("provider_permission_stage") in (None, stage):
+                fields["provider_permission"] = None
+                fields["provider_permission_stage"] = None
             # A stale status from a hard-killed attempt must never label this one.
             with contextlib.suppress(OSError):
                 (job_dir / "provider_status.json").unlink()
@@ -659,6 +683,9 @@ class ItemJobRunner:
         except ItemJobError:
             # Recovery cannot confirm ownership without this record, so health must show it.
             self._fault(f"{stage}_ownership_write_failed")
+        if stage == "training":
+            # Bind the group to the lease, so a contest confirms liveness, not a clock.
+            self._record_training_pgid(request_id, pgid, child.pid)
 
     def _reap(self) -> None:
         with self._guard:
@@ -705,12 +732,17 @@ class ItemJobRunner:
         return self._terminate(pgid, child, pid), True
 
     def _block_stage(self, request_id: str, entry: Mapping[str, Any], reason: str) -> None:
-        """Keep the slot, expose worker_unavailable, and start no replacement."""
+        """Keep the slot, expose worker_unavailable, and start no replacement.
+
+        The training lease stays with this job on purpose: its group is unconfirmed, so a
+        second trainer must never start.
+        """
         with self._guard:
             self.unavailable[entry["stage"]] = request_id
             self.blocked_children[request_id] = entry
         self.store.transition(request_id, "worker_unavailable", token=entry["token"],
-                              error="worker_unavailable", progress=reason)
+                              error="worker_unavailable", reason="worker_unconfirmed",
+                              progress=reason)
 
     def _release(self, request_id: str, entry: Mapping[str, Any], *, free_slot: bool) -> None:
         with contextlib.suppress(Exception):
@@ -775,15 +807,20 @@ class ItemJobRunner:
         takes it, and the queue only reacts to this exit code with a bounded backoff.
         """
         request_id = job["request_id"]
-        count = min(job.get("lock_busy_count", 0) + 1, len(self.lock_backoff_s))
+        counts = dict(job.get("lock_busy_count") or {})
+        count = min(counts.get(stage, 0) + 1, len(self.lock_backoff_s))
+        counts[stage] = count
         wait = self.lock_backoff_s[count - 1]
         with self._guard:
             self.backoff[request_id] = time.monotonic() + wait
         attempts = {**job["attempts"], stage: max(0, job["attempts"].get(stage, 0) - 1)}
         artifacts = {**job["artifacts"], "runtime_lock": str(self.runtime_lock_path)}
+        if stage == "training":
+            # The turn is given back while this job waits, so another job may train.
+            self._release_training_lease(request_id)
         self.store.transition(request_id, STAGES[stage]["waiting_state"], token=token,
                               error=None, worker=None, attempts=attempts, artifacts=artifacts,
-                              lock_busy_count=count,
+                              lock_busy_count=counts, reason="runtime_lock_busy",
                               progress=f"runtime lock busy, retrying in {wait:g} s")
 
     def _settle_render(self, job: Mapping[str, Any], job_dir: Path,
@@ -808,7 +845,8 @@ class ItemJobRunner:
         status = _read_json(job_dir / "provider_status.json") or {}
         if code == EXIT_OK:
             if not (job_dir / "definition.json").is_file():
-                self._stage_failure(job, "physics_proposal", "generation_failed", token,
+                self._stage_failure(job, "physics_proposal", "physics_proposal_failed", token,
+                                    reason="definition_missing",
                                     progress="the physics stage produced no definition")
                 return
             self.store.transition(
@@ -829,11 +867,12 @@ class ItemJobRunner:
                                   error="credentials_missing", worker=None)
             return
         if code == EXIT_CACHE_ENTRY_INVALID:
-            self._stage_failure(job, "physics_proposal", "generation_failed", token,
-                                progress="cache_entry_invalid")
+            self._stage_failure(job, "physics_proposal", "physics_proposal_failed", token,
+                                reason="cache_entry_invalid")
             return
         if status.get("provider_submission") == "not_submitted":
-            self._stage_failure(job, "physics_proposal", "generation_failed", token)
+            self._stage_failure(job, "physics_proposal", "physics_proposal_failed", token,
+                                reason="physics_proposal_failed")
             return
         self._unconsumed(job, "physics_proposal", token, "interrupted_uncertain",
                          "provider_interrupted", provider_submission="uncertain")
@@ -849,20 +888,23 @@ class ItemJobRunner:
         if code != EXIT_OK or not isinstance(result, Mapping):
             # A crashed validator gets the one safe retry, then a retained failure.
             self._stage_failure(job, "physics", "physics_unsupported", token,
-                                progress="validator_error")
+                                reason="validator_error",
+                                progress="the route validator did not report a verdict")
             return
         artifacts = {**job["artifacts"], "physics_route": result}
         if result.get("verdict") != "accept":
             self.store.transition(request_id, "physics_blocked", token=token,
                                   error="physics_unsupported", worker=None,
                                   artifacts=artifacts,
-                                  progress=str(result.get("reason") or "physics_unsupported"))
+                                  reason=str(result.get("reason") or "physics_unsupported"),
+                                  progress=str(result.get("detail") or "") or None)
             return
         if job.get("provider_mode") == "fake":
             # A fake job never reaches activation, and the store refuses that state anyway.
             self.store.transition(request_id, "failed", token=token, error="generation_failed",
                                   worker=None, artifacts=artifacts,
-                                  progress="fake_provider_not_activatable")
+                                  reason="fake_provider_not_activatable",
+                                  progress="a fake provider job can never activate")
             return
         self.store.transition(request_id, "selecting_training_baseline", token=token,
                               error=None, worker=None, artifacts=artifacts)
@@ -876,11 +918,25 @@ class ItemJobRunner:
         """
         request_id = job["request_id"]
         if not self._take_training_lease(request_id):
+            # Another job holds the turn. Say so, or the job looks stalled with no reason.
+            if job.get("reason") != "waiting_for_training_turn":
+                self.store.record(request_id, reason="waiting_for_training_turn",
+                                  progress="waiting for the training turn")
             return None
         if job["state"] not in ("selecting_training_baseline", "waiting_for_replacement"):
             return dict(job)
+        policy = self.policy_provider()
+        if policy is None:
+            # No authoritative engine policy yet. Waiting is the only honest option: an
+            # absent policy must never bind Keep all, and no attempt is consumed.
+            self._release_training_lease(request_id)
+            if job.get("reason") != "waiting_for_engine_policy":
+                self.store.record(request_id, reason="waiting_for_engine_policy",
+                                  progress="waiting for the live policy")
+            return None
         try:
-            baseline = self._select_baseline(job, job_dir)
+            # One policy read per turn, so the baseline binds exactly what was checked.
+            baseline = self._select_baseline(job, job_dir, policy)
         except Exception as error:
             self._release_training_lease(request_id)
             self._fault(f"training_baseline_failed_{type(error).__name__}")
@@ -888,23 +944,25 @@ class ItemJobRunner:
             attempts = {**job["attempts"], "training": job["attempts"].get("training", 0) + 1}
             self.store.record(request_id, attempts=attempts)
             self._stage_failure(self.store.get(request_id), "training", "training_failed",
-                                None, progress="the training baseline could not be bound")
+                                None, reason="training_baseline_failed",
+                                progress=_short_reason(error))
             return None
         if baseline is None:
             # No Keep type is free. Release the turn so the next job continues.
             self._release_training_lease(request_id)
             self.store.transition(request_id, "waiting_for_replacement", error=None,
-                                  worker=None,
+                                  worker=None, reason="no_keep_victim",
                                   progress="no Keep type is available to replace")
             return None
         return self.store.transition(request_id, "queued_for_training", error=None,
-                                     worker=None, training_baseline=baseline,
+                                     worker=None, reason=None, progress=None,
+                                     training_baseline=baseline,
                                      victim=baseline["victim_id"])
 
-    def _select_baseline(self, job: Mapping[str, Any], job_dir: Path) -> dict[str, Any] | None:
-        """Bind the latest catalog and the latest policy, and build the candidate catalog."""
+    def _select_baseline(self, job: Mapping[str, Any], job_dir: Path,
+                         policy: Mapping[str, Any]) -> dict[str, Any] | None:
+        """Bind the latest catalog and the given policy, and build the candidate catalog."""
         catalog = self.catalog_provider()
-        policy = self.policy_provider()
         reject_classes = [str(name) for name in (policy.get("reject_classes") or [])]
         victim_id = object_catalog.select_victim(catalog, reject_classes)
         if victim_id is None:
@@ -917,19 +975,24 @@ class ItemJobRunner:
             draft, rgb=object_catalog.recipe_rgb(recipe), prior=CANDIDATE_PRIOR,
             source_sha256=hashlib.sha256((job_dir / "recipe.json").read_bytes()).hexdigest())
         candidate = object_catalog.candidate_catalog(catalog, definition, victim_id)
-        root = job_dir / "training" / "catalog"
-        if root.exists():
-            shutil.rmtree(root)
-        object_catalog.write_catalog(root, candidate)
-        # The queue writes the policy the closed-loop run must apply: the survivors'
-        # reject classes, never the new label.
-        survivors = sorted(set(reject_classes) & set(object_catalog.catalog_labels(candidate)))
-        _write_json(job_dir / "training" / "policy.json",
-                    {"reject_classes": survivors,
-                     "policy_version": policy.get("policy_version")})
+        paths = _training_paths(job_dir)
+        if paths["catalog"].exists():
+            shutil.rmtree(paths["catalog"])
+        object_catalog.write_catalog(paths["catalog"], candidate)
+        # The queue writes the policy the closed-loop run must apply: the survivors' reject
+        # classes. The new label is subtracted explicitly, because activation always adds
+        # it as Keep, even when the live policy happens to name that label today.
+        new_label = definition["classifier_label"]
+        survivors = sorted(set(reject_classes)
+                           & set(object_catalog.catalog_labels(candidate)) - {new_label})
+        _write_json(paths["policy"], {"reject_classes": survivors,
+                                      "policy_version": policy.get("policy_version")})
         return {"catalog_revision": catalog["catalog_revision"],
                 "active_type_ids": list(catalog["active_type_ids"]),
                 "policy_version": policy.get("policy_version"),
+                # The exact policy, not only its name: a changed reject set with an
+                # unchanged victim still invalidates what the candidate trained for.
+                "reject_classes": sorted(reject_classes),
                 "victim_id": victim_id}
 
     def _settle_training(self, job: Mapping[str, Any], job_dir: Path,
@@ -951,31 +1014,64 @@ class ItemJobRunner:
                             token: str | None) -> None:
         """Read the trainer verdict, then re-check the baseline that it was trained for."""
         request_id = job["request_id"]
-        validation = _read_json(job_dir / "training" / "out" / "validation.json")
+        validation = _read_json(_training_paths(job_dir)["validation"])
         if not isinstance(validation, Mapping):
             self._stage_failure(job, "training", "training_failed", token,
+                                reason="validation_missing",
                                 progress="the trainer wrote no validation")
             return
         artifacts = {**job["artifacts"], "candidate_validation": validation}
-        if not validation.get("passed"):
+        missing = incomplete_validation(validation)
+        if missing:
+            # A partial record never counts as passed. Absence of evidence is not evidence.
             self.store.transition(request_id, "failed", token=token,
                                   error="candidate_validation_failed", worker=None,
-                                  artifacts=artifacts,
+                                  artifacts=artifacts, reason="validation_incomplete",
+                                  progress=f"missing evidence: {', '.join(missing)}")
+            return
+        # `passed` is honoured only with an empty failure list beside it.
+        if validation.get("passed") is not True or list(validation.get("failures") or []):
+            self.store.transition(request_id, "failed", token=token,
+                                  error="candidate_validation_failed", worker=None,
+                                  artifacts=artifacts, reason="candidate_gate_failed",
                                   progress=", ".join(validation.get("failures") or []) or None)
             return
         baseline = job.get("training_baseline") or {}
         catalog = self.catalog_provider()
         policy = self.policy_provider()
-        reject_classes = [str(name) for name in (policy.get("reject_classes") or [])]
-        victim_id = object_catalog.select_victim(catalog, reject_classes)
-        if (catalog["catalog_revision"] != baseline.get("catalog_revision")
-                or victim_id != baseline.get("victim_id")):
+        if policy is None:
+            # The engine published no policy, so nothing can confirm the baseline holds.
             self.store.transition(request_id, "activation_conflict", token=token,
                                   error="replacement_conflict", worker=None,
-                                  artifacts=artifacts,
-                                  progress="the catalog or the victim changed since training")
+                                  artifacts=artifacts, reason="engine_policy_unavailable",
+                                  progress="the live policy is unavailable")
             return
-        self.store.record(request_id, token=token, artifacts=artifacts)
+        reject_classes = [str(name) for name in (policy.get("reject_classes") or [])]
+        victim_id = object_catalog.select_victim(catalog, reject_classes)
+        # The policy the candidate trained for must still be the live one, by identity AND
+        # by content. An unchanged victim does not prove an unchanged policy.
+        if (policy.get("policy_version") != baseline.get("policy_version")
+                or sorted(reject_classes) != list(baseline.get("reject_classes") or [])):
+            self.store.transition(request_id, "activation_conflict", token=token,
+                                  error="replacement_conflict", worker=None,
+                                  artifacts=artifacts, reason="policy_changed",
+                                  progress="the reject policy changed since training")
+            return
+        # The plan names both: a moved catalog is an activation conflict, a moved victim
+        # is a replacement conflict.
+        if catalog["catalog_revision"] != baseline.get("catalog_revision"):
+            self.store.transition(request_id, "activation_conflict", token=token,
+                                  error="catalog_revision_conflict", worker=None,
+                                  artifacts=artifacts, reason="stale_catalog_revision",
+                                  progress="the active catalog changed since training")
+            return
+        if victim_id != baseline.get("victim_id"):
+            self.store.transition(request_id, "activation_conflict", token=token,
+                                  error="replacement_conflict", worker=None,
+                                  artifacts=artifacts, reason="victim_no_longer_eligible",
+                                  progress="the replacement victim changed since training")
+            return
+        self.store.record(request_id, token=token, artifacts=artifacts, reason=None)
 
     # Training turn ------------------------------------------------------
 
@@ -983,21 +1079,53 @@ class ItemJobRunner:
         return self.store.root / TRAINING_LEASE
 
     def _take_training_lease(self, request_id: str) -> bool:
-        """One trainer across every job and every process, beside the in-process slot."""
-        now = time.time()
-        current = _read_json(self._lease_path())
-        if isinstance(current, Mapping) and current.get("owner") not in (None, request_id):
-            if float(current.get("deadline") or 0) > now:
-                return False
-        _write_json(self._lease_path(),
-                    {"owner": request_id, "deadline": now + self.lease_s})
+        """One trainer across every job and every process, beside the in-process slot.
+
+        A contested lease is never taken on a clock alone. The previous owner's process
+        group must be CONFIRMED gone with the same settle used for a worker lease, so a
+        still-alive trainer never loses its turn to a second trainer. An unconfirmed group
+        keeps the lease and exposes `worker_unavailable` for the training stage.
+
+        The deadline is wall time on purpose: the lease must outlive a service restart,
+        and `time.monotonic()` does not survive one. It only bounds an ABANDONED lease
+        whose owner left no process group to confirm.
+        """
+        path = self._lease_path()
+        with self._guard:
+            current = _read_json(path)
+            if isinstance(current, Mapping) and current.get("owner") not in (None, request_id):
+                pgid = current.get("pgid")
+                if pgid is not None:
+                    gone, _ = self._settle_group(int(pgid), pid=current.get("pid"))
+                    if not gone:
+                        self.unavailable["training"] = current["owner"]
+                        self._fault("training_lease_owner_unconfirmed")
+                        return False
+                elif float(current.get("deadline") or 0) > time.time():
+                    # No group to confirm yet. Only the bound may release it.
+                    return False
+            self.unavailable.pop("training", None)
+            # The group is bound by `_record_training_pgid` once the child exists. No store
+            # read happens under this guard: the store lock is always taken first elsewhere,
+            # and taking them in the other order here could deadlock an HTTP thread.
+            _write_json(path, {"owner": request_id, "deadline": time.time() + self.lease_s,
+                               "pgid": None, "pid": None})
         return True
 
+    def _record_training_pgid(self, request_id: str, pgid: int, pid: int) -> None:
+        """Bind the running group to the lease, so a contest can confirm liveness."""
+        with self._guard:
+            current = _read_json(self._lease_path())
+            if isinstance(current, Mapping) and current.get("owner") == request_id:
+                _write_json(self._lease_path(), {**current, "pgid": pgid, "pid": pid})
+
     def _release_training_lease(self, request_id: str) -> None:
-        current = _read_json(self._lease_path())
-        if isinstance(current, Mapping) and current.get("owner") == request_id:
-            with contextlib.suppress(OSError):
-                self._lease_path().unlink()
+        """The one way the turn goes back. Every path that ends or pauses training calls it."""
+        with self._guard:
+            current = _read_json(self._lease_path())
+            if isinstance(current, Mapping) and current.get("owner") == request_id:
+                with contextlib.suppress(OSError):
+                    self._lease_path().unlink()
 
     def _previews_valid(self, job: Mapping[str, Any], job_dir: Path) -> bool:
         previews = job_dir / "previews"
@@ -1017,17 +1145,24 @@ class ItemJobRunner:
     def _stage_failure(self, job: Mapping[str, Any], stage: str, error: str,
                        token: str | None, **fields: Any) -> None:
         """The single automatic retry, then a retained terminal failure."""
-        retry = job["attempts"][stage] < MAX_ATTEMPTS
+        retry = job["attempts"].get(stage, 0) < MAX_ATTEMPTS
         state = STAGES[stage]["retry_state"] if retry else "failed"
+        if stage == "training":
+            # The turn goes back whether this ends in a retry or a failure.
+            self._release_training_lease(job["request_id"])
         self.store.transition(job["request_id"], state, token=token, error=error,
                               worker=None, **fields)
 
     def _unconsumed(self, job: Mapping[str, Any], stage: str, token: str | None,
                     state: str, error: str, **fields: Any) -> None:
-        """Block the job without consuming its one automatic retry."""
-        attempts = {**job["attempts"], stage: max(0, job["attempts"][stage] - 1)}
+        """Block the job without consuming its one automatic retry.
+
+        The blocking stage is recorded, so an operator decision resumes THAT stage and a
+        one-time grant can only be spent there.
+        """
+        attempts = {**job["attempts"], stage: max(0, job["attempts"].get(stage, 0) - 1)}
         self.store.transition(job["request_id"], state, token=token, error=error,
-                              worker=None, attempts=attempts, **fields)
+                              worker=None, attempts=attempts, blocked_stage=stage, **fields)
 
     # Process group ownership --------------------------------------------
 
@@ -1140,7 +1275,12 @@ class ItemJobRunner:
     # Operator actions ---------------------------------------------------
 
     def resolve_provider(self, request_id: str, action: str) -> dict[str, Any]:
-        """use_cache re-checks the cache. new_request permits one billable call in paid mode."""
+        """use_cache re-checks the cache. new_request permits one billable call in paid mode.
+
+        The job returns to the stage that blocked it, never to an earlier one. An operator
+        who approved a physics request therefore resumes the physics proposal, and no other
+        stage can spend that grant.
+        """
         if action not in ("use_cache", "new_request"):
             raise ItemJobError("invalid_action")
         if action == "new_request" and self.provider_mode != "paid":
@@ -1149,9 +1289,14 @@ class ItemJobRunner:
             job = self.store.get(request_id)
             if job["state"] not in ("operator_required", "interrupted_uncertain"):
                 raise ItemJobError("not_available")
+            stage = job.get("blocked_stage") or "generation"
+            if stage not in STAGES:
+                raise ItemJobError("not_available", f"unknown blocked stage: {stage}")
+            grant = action == "new_request"
             return self.store.transition(
-                request_id, "generating_recipe", error=None, progress=None,
-                provider_permission="new_request" if action == "new_request" else None)
+                request_id, STAGES[stage]["waiting_state"], error=None, progress=None,
+                reason=None, provider_permission="new_request" if grant else None,
+                provider_permission_stage=stage if grant else None)
 
     def resolve_replacement(self, request_id: str, action: str | None = None) -> dict[str, Any]:
         """Reserved for Phase 4. The job keeps its replacement conflict until then."""
@@ -1209,7 +1354,7 @@ def generation_command(job: Mapping[str, Any], job_dir: Path, *, mode: str, prov
         argv += ["--source-revision", source_revision]
     if mode == "paid":
         argv += ["--env-file", str(env_file)]
-        if live_permitted(job, mode):
+        if live_permitted(job, mode, "generation"):
             argv.append("--live")
     return argv
 
@@ -1241,7 +1386,7 @@ def physics_proposal_command(job: Mapping[str, Any], job_dir: Path, *, mode: str
         argv += ["--replay-dir", str(replay_dir)]
     if mode == "paid":
         argv += ["--env-file", str(env_file)]
-        if live_permitted(job, mode):
+        if live_permitted(job, mode, "physics_proposal"):
             argv.append("--live")
     return argv
 
@@ -1265,11 +1410,12 @@ def physics_command(job: Mapping[str, Any], job_dir: Path, *, preset: Path,
 def training_command(job: Mapping[str, Any], job_dir: Path, *, preset: Path,
                      runtime_lock: Path) -> list[str]:
     """Train one candidate against the catalog and the policy the queue just bound."""
+    paths = _training_paths(job_dir)
     return [sys.executable, str(HERE / "train_candidate.py"),
-            "--catalog-root", str(job_dir / "training" / "catalog"),
+            "--catalog-root", str(paths["catalog"]),
             "--preset", str(preset),
-            "--out", str(job_dir / "training" / "out"),
-            "--policy", str(job_dir / "training" / "policy.json"),
+            "--out", str(paths["out"]),
+            "--policy", str(paths["policy"]),
             "--runtime-lock", str(runtime_lock)]
 
 
@@ -1326,6 +1472,33 @@ def _apply_submission(job: dict[str, Any]) -> None:
         history.append(requested)
     job["provider_submission"] = requested
     job["provider_submission_history"] = history[-MAX_HISTORY:]
+
+
+def _training_paths(job_dir: Path) -> dict[str, Path]:
+    """The one place that names the trainer's files under a job directory."""
+    training = Path(job_dir) / "training"
+    return {"root": training, "catalog": training / "catalog", "policy": training / "policy.json",
+            "out": training / "out", "validation": training / "out" / "validation.json"}
+
+
+def incomplete_validation(validation: Mapping[str, Any]) -> list[str]:
+    """The evidence blocks a completed trainer run always writes.
+
+    A record that lacks any of them is incomplete and can never be honoured as passed: a
+    partial file must not become an activation. A COMPLETE record that reports failures is
+    a different outcome, and the gate check reports that instead.
+    """
+    missing = [name for name in VALIDATION_EVIDENCE if validation.get(name) is None]
+    if validation.get("failures") is None:
+        missing.append("failures")
+    return sorted(set(missing))
+
+
+def _short_reason(error: BaseException, limit: int = 160) -> str:
+    """One bounded line for an operator. It names the failure, never a host path."""
+    text = " ".join(str(error).split())
+    text = re.sub(r"(/[^\s'\"]+)+", "<path>", text)
+    return f"{type(error).__name__}: {text}"[:limit] if text else type(error).__name__
 
 
 def _canonical_request_id(value: Any) -> str:

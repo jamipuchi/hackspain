@@ -177,8 +177,14 @@ def _physics(args, scenario: str) -> int:
 
 
 def _training(args, scenario: str) -> int:
-    """Write the trainer verdict. `fail_safe` passes the gate, `fail_hard` fails it."""
-    if scenario == "uncertain":
+    """Write the trainer verdict.
+
+    `fail_safe` writes a COMPLETE record that FAILS the gate, so the queue reports a
+    candidate validation failure. `fail_hard` and `uncertain` exit non-zero, so the queue
+    reports a training failure. Every written record carries the full evidence a real
+    trainer writes: a partial record is a different defect that the queue refuses itself.
+    """
+    if scenario in ("uncertain", "fail_hard"):
         return EXIT_FAILED
     out = args.job_dir / "training" / "out"
     out.mkdir(parents=True, exist_ok=True)
@@ -188,9 +194,12 @@ def _training(args, scenario: str) -> int:
         "failures": [] if passed else ["anomaly_fraction"],
         "labels": ["star_token", "good"],
         "new_label": "star_token",
+        "label_order_ok": True,
         "classifier": {"holdout_accuracy": 0.97, "new_label_recall": 1.0},
         "anomaly": {"fraction_above_threshold": 0.0 if passed else 1.0, "threshold": 14.339},
-        "pulses": {"runs": []},
+        "policy": {"applied_reject_classes": [], "new_label_policy": "keep",
+                   "policy_source": "baseline_file"},
+        "pulses": {"runs": [{"seed": 8, "commanded": 0}]},
         "keep_outcome": {"runs": [{"seed": 8, "resolved": 34, "accepted": 34,
                                    "accept_fraction": 1.0}]},
         "preset_compatibility": {"loaded": True, "reason": None},

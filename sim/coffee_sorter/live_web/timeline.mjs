@@ -167,6 +167,7 @@ const JOB_ACTION_PATHS = {
   confirm_cleanup: 'confirm-cleanup',
 };
 const JOB_ERROR_LABELS = {
+  physics_proposal_failed: 'The physics estimate could not be prepared.',
   history_full: 'The item history is full. An operator must archive it.',
   invalid_description: 'Use 1 to 600 characters for the description.',
   invalid_request: 'The service does not accept those request fields.',

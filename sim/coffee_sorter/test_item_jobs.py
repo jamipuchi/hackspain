@@ -147,6 +147,21 @@ class QueueTest(unittest.TestCase):
     def settled(self, request_id):
         return self.store.get(request_id).get('worker') is None
 
+    def wait_gone(self, pgid, timeout=20.0):
+        """Wait for an observable condition, never for a fixed wall time.
+
+        Termination of a signalled group is asynchronous. Under load it can outlast the
+        state change that follows it, so the test waits for the group itself.
+        """
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            try:
+                os.killpg(pgid, 0)
+            except ProcessLookupError:
+                return
+            time.sleep(0.01)
+        self.fail('the owned process group did not leave in time')
+
     def state(self, request_id):
         return self.store.get(request_id)['state']
 
@@ -519,7 +534,7 @@ class RenderRetryTest(QueueTest):
         stored = self.store.get(request_id)
         self.assertEqual(stored['state'], 'waiting_for_render')
         self.assertEqual(stored['attempts']['render'], 0)
-        self.assertEqual(stored['lock_busy_count'], 1)
+        self.assertEqual(stored['lock_busy_count'], {'render': 1})
         self.assertIn('runtime lock busy', stored['progress'])
         self.assertIn('retrying in', stored['progress'])
         self.assertIsNone(stored['error'])
@@ -538,11 +553,18 @@ class WorkerOwnershipTest(QueueTest):
         job = self.submit()
         request_id = job['request_id']
         runner = self.open_runner(lease_s=TINY_WAIT_S)
+        # The lease expiry is what this test exercises. Killing a group that ignores
+        # SIGTERM is asynchronous, so the terminate budget waits for the observable exit
+        # instead of assuming a fixed wall time: a short budget only makes the test flaky.
+        runner.term_wait_s = runner.kill_wait_s = 1.0
 
         self.drive(runner, lambda: (self.store.get(request_id).get('worker') or {}).get('pgid'))
         pgid = self.store.get(request_id)['worker']['pgid']
-        self.drive(runner, lambda: self.state(request_id) == 'preview_ready')
+        self.drive(runner, lambda: self.state(request_id) == 'preview_ready', timeout=40.0)
+        # The replacement record is written by the second worker, so wait for it too.
+        self.drive(runner, lambda: len(self.starts('render')) == 2, timeout=40.0)
 
+        self.wait_gone(pgid)
         with self.assertRaises(ProcessLookupError):
             os.killpg(pgid, 0)
         starts = self.starts('render')
@@ -1385,7 +1407,7 @@ class PhysicsAndTrainingFlowTest(QueueTest):
         stored = self.store.get(job['request_id'])
 
         self.assertEqual('physics_unsupported', stored['error'])
-        self.assertEqual('route_not_accepted', stored['progress'])
+        self.assertEqual('route_not_accepted', stored['reason'])
         self.assertEqual([], self.starts('training'))
 
     def test_a_physics_cache_miss_stops_at_operator_required_without_an_attempt(self):
@@ -1440,9 +1462,9 @@ class PhysicsAndTrainingFlowTest(QueueTest):
         self.drive(runner, lambda: self.state(job['request_id']) == 'activation_conflict')
         stored = self.store.get(job['request_id'])
 
-        self.assertEqual('replacement_conflict', stored['error'])
+        self.assertEqual('catalog_revision_conflict', stored['error'])
+        self.assertEqual('stale_catalog_revision', stored['reason'])
         self.assertTrue(stored['artifacts']['candidate_validation']['passed'])
-        self.assertIn('changed since training', stored['progress'])
 
     def test_a_failed_candidate_validation_fails_the_job_with_its_evidence(self):
         self.scenarios({'training': ['fail_safe']})
@@ -1453,6 +1475,7 @@ class PhysicsAndTrainingFlowTest(QueueTest):
         stored = self.store.get(job['request_id'])
 
         self.assertEqual('candidate_validation_failed', stored['error'])
+        self.assertEqual('candidate_gate_failed', stored['reason'])
         self.assertIn('anomaly_fraction', stored['progress'])
         self.assertFalse(stored['artifacts']['candidate_validation']['passed'])
 
@@ -1500,6 +1523,99 @@ class PhysicsAndTrainingFlowTest(QueueTest):
         self.assertNotIn('--live', argv)
         self.assertNotIn('--env-file', argv)
 
+    def test_the_policy_file_never_names_the_new_label(self):
+        """F4: a live policy that names the new label must not reject it in training."""
+        runner = self.runner(reject_classes=[*self.labels()[2:], 'star_token'])
+        job = self.submit()
+
+        self.drive(runner, lambda: self.state(job['request_id']) == 'validating_candidate')
+        written = json.loads(
+            (self.store.job_dir(job['request_id']) / 'training/policy.json').read_text())
+
+        self.assertNotIn('star_token', written['reject_classes'])
+        self.assertEqual(sorted(self.labels()[2:]), written['reject_classes'])
+
+    def test_training_never_starts_without_an_authoritative_policy(self):
+        """S4: a recovered baseline job waits instead of binding Keep all."""
+        runner = self.open_runner(stages=self.STAGES, catalog_provider=self.catalog,
+                                  policy_provider=lambda: None)
+        job = self.submit()
+
+        self.drive(runner, lambda: self.store.get(job['request_id']).get('reason')
+                   == 'waiting_for_engine_policy')
+        stored = self.store.get(job['request_id'])
+
+        self.assertEqual('selecting_training_baseline', stored['state'])
+        self.assertEqual('waiting for the live policy', stored['progress'])
+        self.assertEqual(0, stored['attempts']['training'])
+        self.assertIsNone(stored['training_baseline'])
+        self.assertEqual([], self.starts('training'))
+        self.assertFalse((self.root / item_jobs.TRAINING_LEASE).exists())
+
+    def test_a_changed_reject_policy_blocks_activation_with_the_same_victim(self):
+        """S3: policy identity is rechecked, not only the catalog and the victim."""
+        seen = {'count': 0}
+
+        def moving_policy():
+            seen['count'] += 1
+            reject = list(self.labels()[2:])
+            # The victim stays the same. Only the policy identity and content move.
+            return {'reject_classes': reject if seen['count'] == 1 else reject[:-1],
+                    'policy_version': 'policy-1' if seen['count'] == 1 else 'policy-2'}
+
+        runner = self.open_runner(stages=self.STAGES, catalog_provider=self.catalog,
+                                  policy_provider=moving_policy)
+        job = self.submit()
+
+        self.drive(runner, lambda: self.state(job['request_id']) == 'activation_conflict')
+        stored = self.store.get(job['request_id'])
+
+        self.assertEqual('policy_changed', stored['reason'])
+        self.assertEqual('replacement_conflict', stored['error'])
+        self.assertTrue(stored['artifacts']['candidate_validation']['passed'])
+
+    def test_a_launch_failure_gives_the_training_turn_back_at_once(self):
+        """F1 and S5: no later job waits out the lease for a trainer that never ran."""
+        def broken(job, job_dir):
+            return [str(self.root / 'absent-binary')]
+
+        commands = {**fake_commands(stages=self.STAGES), 'training': broken}
+        runner = self.open_runner(commands=commands, catalog_provider=self.catalog,
+                                  policy_provider=self.policy())
+        first = self.submit()
+
+        self.drive(runner, lambda: self.state(first['request_id']) == 'failed')
+
+        self.assertEqual('training_failed', self.store.get(first['request_id'])['error'])
+        self.assertFalse((self.root / item_jobs.TRAINING_LEASE).exists())
+        # A later job takes the turn immediately, not after the lease deadline.
+        runner.commands['training'] = fake_commands(stages=('training',))['training']
+        second = self.submit(description='Another token')
+        self.drive(runner, lambda: self.state(second['request_id']) == 'validating_candidate')
+
+    def test_the_lock_backoff_counts_per_stage(self):
+        """F7: a render lock-busy must not lengthen the first physics backoff."""
+        self.scenarios({'render': ['lock_busy', 'ok'], 'physics': ['lock_busy', 'ok']})
+        runner = self.runner()
+        job = self.submit()
+
+        self.drive(runner, lambda: self.state(job['request_id']) == 'validating_candidate')
+        counts = self.store.get(job['request_id'])['lock_busy_count']
+
+        self.assertEqual({'render': 1, 'physics': 1}, counts)
+
+    def test_a_hard_physics_failure_is_retried_once_then_retained(self):
+        """Minor: fail_hard was untested and silently passed before."""
+        self.scenarios({'physics_proposal': ['fail_hard', 'fail_hard']})
+        runner = self.runner()
+        job = self.submit()
+
+        self.drive(runner, lambda: self.state(job['request_id']) == 'failed')
+        stored = self.store.get(job['request_id'])
+
+        self.assertEqual('physics_proposal_failed', stored['error'])
+        self.assertEqual(MAX_ATTEMPTS, stored['attempts']['physics_proposal'])
+
     def starts_in_order(self):
         path = self.root / 'worker_runs.jsonl'
         rows = [json.loads(line) for line in path.read_text().splitlines()]
@@ -1509,6 +1625,43 @@ class PhysicsAndTrainingFlowTest(QueueTest):
                 seen.add(row['stage'])
                 ordered.append(row)
         return ordered
+
+
+class ValidationCompletenessTest(unittest.TestCase):
+    """F3: a partial trainer record must never count as passed."""
+
+    def validation(self, **changes):
+        value = {
+            'passed': True, 'failures': [], 'label_order_ok': True,
+            'classifier': {'holdout_accuracy': 0.97},
+            'anomaly': {'fraction_above_threshold': 0.0},
+            'keep_outcome': {'runs': [{'resolved': 34, 'accept_fraction': 1.0}]},
+            'pulses': {'runs': []},
+            'policy': {'applied_reject_classes': [], 'new_label_policy': 'keep'},
+            'preset_compatibility': {'loaded': True},
+        }
+        value.update(changes)
+        return value
+
+    def test_a_complete_record_is_accepted(self):
+        self.assertEqual([], item_jobs.incomplete_validation(self.validation()))
+
+    def test_every_missing_evidence_block_is_named(self):
+        for name in item_jobs.VALIDATION_EVIDENCE:
+            with self.subTest(missing=name):
+                value = self.validation()
+                del value[name]
+                self.assertEqual([name], item_jobs.incomplete_validation(value))
+
+    def test_a_bare_passed_record_is_incomplete(self):
+        missing = item_jobs.incomplete_validation({'passed': True})
+
+        self.assertEqual(sorted((*item_jobs.VALIDATION_EVIDENCE, 'failures')), missing)
+
+    def test_a_complete_record_that_reports_failures_is_not_incomplete(self):
+        """A failed gate is a different outcome from a partial file."""
+        self.assertEqual([], item_jobs.incomplete_validation(self.validation(
+            passed=False, failures=['anomaly_fraction'])))
 
 
 class PhysicsReplayTest(unittest.TestCase):
@@ -1699,6 +1852,72 @@ class PhysicsReplayTest(unittest.TestCase):
         self.assertEqual(item_jobs.EXIT_CACHE_ENTRY_INVALID, code)
         self.assertIn('recomputed request digest', status['reason'])
         self.assertFalse((job / 'definition.json').exists())
+
+    @unittest.skipUnless(AUTHENTIC.is_file(),
+                         'the authentic cached physics entry is a local artifact')
+    def test_use_cache_resumes_the_physics_proposal_not_generation(self):
+        """F6 and S6: the real wrapper, a real miss, then a real recovery.
+
+        The operator sees a PHYSICS block and answers it. The job must resume the physics
+        proposal with the same request, never fall back to generation.
+        """
+        store = ItemJobStore(self.root / 'store', provider_mode='cached')
+        self.addCleanup(store.close)
+        revision = object_catalog.load_catalog()['catalog_revision']
+        job, _ = store.submit({'request_id': str(uuid.uuid4()), 'description': self.FULL,
+                               'expected_catalog_revision': revision}, revision)
+        request_id = job['request_id']
+        job_dir = store.job_dir(request_id)
+        star = HERE.parents[1] / ('thoughts/taras/research/coffee-quality/'
+                                  'object-generation/results/gemini/star')
+        (job_dir / 'previews').mkdir(parents=True, exist_ok=True)
+        shutil.copy(star / 'recipe.json', job_dir / 'recipe.json')
+        shutil.copy(star / 'render/object.glb', job_dir / 'previews/object.glb')
+        shutil.copy(star / 'render/render.json', job_dir / 'previews/render.json')
+        recipe_sha256 = item_job_physics.sha256_file(job_dir / 'recipe.json')
+        glb_sha256 = item_job_physics.sha256_file(job_dir / 'previews/object.glb')
+        cache_root = self.root / 'provider-cache'
+        (cache_root / 'cache').mkdir(parents=True)
+        store.transition(request_id, 'preview_ready')
+
+        runner = ItemJobRunner(
+            store,
+            {'physics_proposal': lambda value, directory: item_jobs.physics_proposal_command(
+                value, directory, mode='cached', provider_cache=cache_root,
+                replay_dir=self.replay)},
+            runtime_lock_path=self.root / 'r.lock')
+        self.addCleanup(runner.shutdown)
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline and store.get(request_id)['state'] != 'operator_required':
+            runner.step()
+            time.sleep(0.02)
+        blocked = store.get(request_id)
+
+        self.assertEqual('operator_required', blocked['state'])
+        self.assertEqual('physics_proposal', blocked['blocked_stage'])
+        self.assertEqual('provider_cache_miss', blocked['error'])
+        self.assertEqual(0, blocked['attempts']['generation'])
+
+        # The operator stages the reviewed replay and its cache entry, then answers.
+        self.metadata(recipe_sha256=recipe_sha256, glb_sha256=glb_sha256)
+        (cache_root / 'cache' / f'{self.SHORT_DIGEST}.json').write_bytes(
+            self.AUTHENTIC.read_bytes())
+        resumed = runner.resolve_provider(request_id, 'use_cache')
+
+        self.assertEqual('preview_ready', resumed['state'])
+        self.assertNotEqual('generating_recipe', resumed['state'])
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline and store.get(request_id)['state'] != 'validating_physics':
+            runner.step()
+            time.sleep(0.02)
+        done = store.get(request_id)
+        physics = json.loads((job_dir / 'physics.json').read_text())
+
+        self.assertEqual('validating_physics', done['state'])
+        self.assertEqual(0, done['attempts']['generation'])
+        self.assertEqual(recipe_sha256, physics['recipe_sha256'])
+        self.assertEqual(glb_sha256, physics['glb_sha256'])
+        self.assertEqual(self.SHORT_DIGEST, physics['physics_request_sha256'])
 
     def test_a_request_body_can_never_carry_a_physics_description_or_a_replay(self):
         store = ItemJobStore(self.root / 'jobs', provider_mode='cached')

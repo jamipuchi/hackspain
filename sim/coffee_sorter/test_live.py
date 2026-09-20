@@ -1117,8 +1117,31 @@ class ItemJobRouteTest(unittest.IsolatedAsyncioTestCase):
             'stage': 'render', 'pid': 1, 'pgid': 1, 'token': 'secret',
             'lease_deadline': '2026-09-20T09:00:00Z', 'started': '2026-09-20T09:00:00Z',
             'pid_start': None, 'log': str(value.item_jobs_root / 'jobs' / request_id / 'render.log')})
+        job_dir = value.item_jobs.job_dir(request_id)
+        # F5: every Phase 3 record field, populated with realistic values that DO carry
+        # absolute paths. A top-level deny-list cannot see inside nested child evidence.
         value.item_jobs.record(request_id, token='secret', artifacts={
-            'runtime_lock': str(value.runtime_lock), 'previews': {}})
+            'runtime_lock': str(value.runtime_lock),
+            'previews': {},
+            'physics': {'physics_source': 'cached_llm_replay',
+                        'physics_measurement_status': 'unmeasured_proxy_estimate',
+                        'cache': str(job_dir / 'physics' / 'cache')},
+            'physics_route': {'verdict': 'accept', 'reason': None,
+                              'definition_sha256': 'a' * 64,
+                              'detail': f'read {job_dir}/definition.json'},
+            'candidate_validation': {
+                'passed': True, 'failures': [],
+                'source': {'sim.py': 'b' * 64},
+                'policy': {'applied_reject_classes': ['stone']},
+                'report': str(job_dir / 'training' / 'out' / 'candidate.report.json'),
+                'runs': [{'model': str(job_dir / 'training' / 'out' / 'candidate.joblib')}]},
+        })
+        value.item_jobs.record(request_id, token='secret', reason='route_not_accepted',
+                               progress=f'the validator wrote {job_dir}/physics/result.json',
+                               blocked_stage='physics_proposal', training_baseline={
+                                   'catalog_revision': 'c' * 64, 'victim_id': 'builtin.x',
+                                   'policy_version': 'policy-1', 'reject_classes': ['stone'],
+                                   'catalog_root': str(job_dir / 'training' / 'catalog')})
         value.item_jobs_state = value._item_jobs_packet()
 
         body = json.loads((await value.get_item_job(FakeRequest(request_id=request_id))).text)
@@ -1135,7 +1158,25 @@ class ItemJobRouteTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn('secret', json.dumps(body))
         self.assertIsNone(body['job']['worker'].get('log'))
         self.assertNotIn('runtime_lock', body['job']['artifacts'])
+        # The evidence survives, with its paths redacted rather than the record dropped.
+        self.assertEqual('accept', body['job']['artifacts']['physics_route']['verdict'])
+        self.assertTrue(body['job']['artifacts']['candidate_validation']['passed'])
+        self.assertEqual('route_not_accepted', body['job']['reason'])
+        self.assertEqual('physics_proposal', body['job']['blocked_stage'])
+        self.assertIn('<path>', body['job']['progress'])
 
+    def test_the_preview_route_survives_the_host_path_redaction(self):
+        """The summary preview is a route of this service. Redacting it blanks the thumbnail."""
+        request_id = str(uuid.uuid4())
+        route = f'/item-jobs/{request_id}/previews/perspective.png'
+
+        public = live._without_host_paths(
+            {'preview': route, 'progress': f'wrote /var/lib/jobs/{request_id}/perspective.png',
+             'forged': f'{route}/../../../etc/passwd'})
+
+        self.assertEqual(route, public['preview'])
+        self.assertNotIn('/var/lib', public['progress'])
+        self.assertNotIn('passwd', public['forged'])
 
     def test_every_documented_launch_command_is_accepted(self):
         """A documented command the real parser refuses is a broken document."""
