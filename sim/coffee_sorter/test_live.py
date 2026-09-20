@@ -989,6 +989,131 @@ class ParentDeathTest(unittest.TestCase):
                     os.kill(worker_pid, signal.SIGKILL)
 
 
+class OneEngineTest(unittest.IsolatedAsyncioTestCase):
+    """Exactly ONE engine exists after a restart and after an activation swap.
+
+    Engines are counted by process id and liveness, never by log text. The fake engine
+    module of the parent-death regression is reused through the child import path, so no
+    mujoco, no model, and no catalog is needed. Every worker is killed in `finally`.
+    """
+
+    FAKE_ENGINE = ParentDeathTest.FAKE_ENGINE
+    EXIT_BOUND_S = ParentDeathTest.EXIT_BOUND_S
+    # One service-like parent. It starts the REAL live.worker and never drains the states
+    # queue, exactly as the parent-death regression does.
+    SERVICE = (
+        'import json, os, sys, time\n'
+        'from pathlib import Path\n'
+        'import multiprocessing as mp\n'
+        'sys.path.insert(0, sys.argv[1])\n'
+        'import live\n'
+        'marker, out, mode, lifetime = sys.argv[2:6]\n'
+        'Path(out).mkdir(parents=True, exist_ok=True)\n'
+        'ctx = mp.get_context("spawn")\n'
+        'states, acks, commands = ctx.Queue(maxsize=8), ctx.Queue(), ctx.Queue()\n'
+        'stop = ctx.Event()\n'
+        'process = ctx.Process(target=live.worker,\n'
+        '                      args=("unused.json", states, acks, commands, stop, out))\n'
+        'process.start()\n'
+        'Path(marker).write_text(json.dumps({"worker_pid": process.pid}))\n'
+        'deadline = time.monotonic() + 60\n'
+        'while time.monotonic() < deadline and not (Path(out) / "engine-filled").exists():\n'
+        '    time.sleep(0.02)\n'
+        'if mode == "hard":\n'
+        '    os._exit(17)\n'
+        'time.sleep(float(lifetime))\n'
+        'os._exit(0)\n')
+
+    @staticmethod
+    def alive(pid):
+        try:
+            os.kill(pid, 0)
+        except (ProcessLookupError, PermissionError):
+            return False
+        return True
+
+    def kill_later(self, *pids):
+        def clean():
+            for pid in pids:
+                with contextlib.suppress(ProcessLookupError, PermissionError):
+                    os.kill(pid, signal.SIGKILL)
+        self.addCleanup(clean)
+
+    def wait_gone(self, pid, bound=None):
+        deadline = time.monotonic() + (self.EXIT_BOUND_S if bound is None else bound)
+        while time.monotonic() < deadline and self.alive(pid):
+            time.sleep(0.02)
+        return not self.alive(pid)
+
+    def start_service(self, directory, mode, lifetime=0.0):
+        """Start one service-like parent and return its process and its worker pid."""
+        marker, out = Path(directory) / 'info.json', Path(directory) / 'out'
+        out.mkdir(parents=True, exist_ok=True)
+        script = Path(directory) / 'service.py'
+        script.write_text(self.SERVICE)
+        # Read the environment, never mutate it, and never print a value from it.
+        environment = {**os.environ, 'PYTHONPATH': str(self.FAKE_ENGINE),
+                       'CINTA_PARENT_DEATH_OUT': str(out)}
+        parent = subprocess.Popen(
+            [sys.executable, str(script), str(HERE), str(marker), str(out), mode, str(lifetime)],
+            env=environment)
+        deadline = time.monotonic() + 60
+        while time.monotonic() < deadline and not marker.exists():
+            time.sleep(0.02)
+        return parent, json.loads(marker.read_text())['worker_pid']
+
+    def test_a_restart_after_a_hard_parent_death_leaves_exactly_one_engine(self):
+        with tempfile.TemporaryDirectory() as first, tempfile.TemporaryDirectory() as second:
+            killed, orphan = self.start_service(first, 'hard')
+            self.kill_later(orphan)
+            self.assertEqual(17, killed.wait(timeout=120))
+
+            # The service restarts while the abandoned engine may still be running.
+            restarted, engine = self.start_service(second, 'live', lifetime=self.EXIT_BOUND_S * 3)
+            self.kill_later(engine)
+            self.addCleanup(restarted.kill)
+
+            self.assertNotEqual(orphan, engine)
+            self.assertTrue(self.wait_gone(orphan),
+                            'the abandoned engine outlived its dead service')
+            # Exactly one engine, counted by liveness of every pid this test started.
+            self.assertEqual([engine], [pid for pid in (orphan, engine) if self.alive(pid)])
+
+    async def running_service(self, directory):
+        """One real service object with one real spawned worker and its real pump."""
+        out = Path(directory) / 'out'
+        out.mkdir(parents=True, exist_ok=True)
+        # The constructor already built the first worker handle.
+        value = LiveService(HERE / 'configs' / 'continuous_demo.json', out)
+        value.process.start()
+        value.task = asyncio.create_task(value.pump())
+        await asyncio.wait_for(value.state_ready.wait(), timeout=30)
+        return value
+
+    async def test_one_real_swap_leaves_exactly_one_engine(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ):
+            # The spawned child imports the fake engine through its own path.
+            os.environ['PYTHONPATH'] = str(self.FAKE_ENGINE)
+            os.environ['CINTA_PARENT_DEATH_OUT'] = str(Path(directory) / 'out')
+            value = await self.running_service(directory)
+            before = value.process.pid
+            self.kill_later(before)
+            try:
+                await value._swap_worker(value.state.get('session_id'))
+                after = value.process.pid
+                self.kill_later(after)
+
+                self.assertNotEqual(before, after)
+                self.assertTrue(self.wait_gone(before),
+                                'the replaced engine outlived its swap')
+                self.assertTrue(self.alive(after))
+                self.assertEqual([after], [pid for pid in (before, after) if self.alive(pid)])
+            finally:
+                await value._cancel_pump()
+                await value._stop_worker()
+                value._close_queues()
+
+
 class ItemJobRouteTest(unittest.IsolatedAsyncioTestCase):
     async def test_submit_retry_returns_the_same_job_and_a_changed_payload_conflicts(self):
         value = item_service(self)
@@ -1543,15 +1668,25 @@ class RecordingJobs:
 
 
 class ActivationLoopback:
-    """The REAL worker command logic, driven here instead of in a child process."""
+    """The REAL worker command logic behind the REAL worker envelope.
 
-    def __init__(self, service, engine):
+    `live.worker` reads `session_id` from every command before it dispatches, so this
+    applies the same check. A command that omits it raises here exactly as it would
+    raise in the worker loop.
+    """
+
+    def __init__(self, service, engine, withhold=()):
         self.service, self.engine = service, engine
         self.activation = None
         self.sent = []
+        self.withhold = set(withhold)
 
     def put_nowait(self, payload):
         self.sent.append(payload)
+        if payload['session_id'] != self.engine.session_id:
+            raise AssertionError('an internal command carries a foreign session id')
+        if payload['type'] in self.withhold:
+            return
         ack = {'type': 'ack', 'command_id': payload['command_id']}
         self.activation = live._apply_activation_command(
             self.engine, payload, self.activation, ack)
@@ -1585,6 +1720,7 @@ class ActivatorTest(unittest.IsolatedAsyncioTestCase):
         self.service = self.build_service()
         os.environ[object_catalog.CATALOG_ROOT_ENV] = str(self.service.active_bundle / 'catalog')
         self.engine = ActivationEngine(active=0)
+        self.engine.session_id = 'session-before'
         self.service.commands = ActivationLoopback(self.service, self.engine)
         self.service.state = {'status': 'running', 'session_id': 'session-before',
                               'reject_policy': self.engine.reject_policy()}
@@ -1660,7 +1796,8 @@ class ActivatorTest(unittest.IsolatedAsyncioTestCase):
             if error is not None or len(self.swaps) in failing_swaps:
                 raise error or RuntimeError('the new engine did not start')
             self.engine.score_epoch_id = f'epoch-{len(self.swaps) + 1}'
-            service.state = {'status': 'running', 'session_id': f'session-{len(self.swaps)}',
+            self.engine.session_id = f'session-{len(self.swaps)}'
+            service.state = {'status': 'running', 'session_id': self.engine.session_id,
                              'previous_session_id': previous_session_id,
                              'reject_policy': self.engine.reject_policy()}
 
@@ -1710,12 +1847,17 @@ class ActivatorTest(unittest.IsolatedAsyncioTestCase):
         archived = self.root / 'history' / 'wall-of-fame' / victim_id
         self.assertTrue((archived / 'definition.json').is_file())
         self.assertTrue((archived / 'model.manifest.json').is_file())
-        rows = [json.loads(line) for line in
-                (self.root / 'history' / 'activations.jsonl').read_text().splitlines()]
+        history = (self.root / 'history' / 'activations.jsonl').read_text()
+        rows = [json.loads(line) for line in history.splitlines()]
         self.assertEqual(1, len(rows))
         self.assertEqual((before, self.pointer(), victim_id),
                          (rows[0]['previous_bundle_sha256'], rows[0]['bundle_sha256'],
                           rows[0]['victim_type_id']))
+        # The history is durable public evidence. No host path may reach it.
+        for value in _string_values(rows[0]):
+            with self.subTest(value=value):
+                self.assertEqual(value, live._without_host_paths(value))
+        self.assertNotIn(str(self.work), history)
 
     async def test_the_final_policy_drops_the_victim_and_is_written_once(self):
         victim_id = self.packaged['active_type_ids'][-1]
@@ -1832,6 +1974,127 @@ class ActivatorTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual('replacement_conflict', result)
         self.assertEqual([], self.service.commands.kinds)
+
+    async def test_every_internal_command_carries_the_active_session(self):
+        """The worker loop reads session_id from every command before it dispatches."""
+        with self.fake_swap():
+            self.assertEqual('active', await self.service._activate('job-1', self.candidate()))
+
+        self.assertTrue(self.service.commands.sent)
+        for payload in self.service.commands.sent:
+            with self.subTest(command=payload['type']):
+                self.assertEqual('session-before', payload['session_id'])
+                self.assertIn(payload['type'], live.ACTIVATION_COMMANDS)
+
+    async def test_an_unacknowledged_prepare_is_cancelled_before_it_reports(self):
+        """A lost acknowledgment must never leave a paused engine behind."""
+        before, identity = self.pointer(), self.identity()
+        self.service.commands.withhold = {'prepare_activation'}
+
+        with self.fake_swap(), patch.object(live, 'DRAIN_TIMEOUT_S', 0.05):
+            result = await self.service._activate('job-1', self.candidate())
+
+        self.assertEqual('activation_failed', result)
+        self.assertEqual(['prepare_activation', 'cancel_activation'],
+                         self.service.commands.kinds)
+        self.assertEqual(30.0, self.engine.sim.rate)
+        self.assertEqual((before, identity, []), (self.pointer(), self.identity(), self.swaps))
+
+    async def test_an_unacknowledged_commit_is_cancelled_inside_the_drain_budget(self):
+        """One budget bounds the drain AND every acknowledgment wait."""
+        self.service.commands.withhold = {'commit_activation'}
+
+        started = time.monotonic()
+        with self.fake_swap(), patch.object(live, 'DRAIN_TIMEOUT_S', 0.2):
+            result = await self.service._activate('job-1', self.candidate())
+        elapsed = time.monotonic() - started
+
+        self.assertEqual('activation_failed', result)
+        self.assertEqual('cancel_activation', self.service.commands.kinds[-1])
+        self.assertEqual(30.0, self.engine.sim.rate)
+        # A per command wait would have run to ACTIVATION_ACK_TIMEOUT_S instead.
+        self.assertLess(elapsed, live.ACTIVATION_ACK_TIMEOUT_S)
+
+    async def test_a_cancel_that_is_never_acknowledged_takes_the_fatal_path(self):
+        self.service.commands.withhold = {'commit_activation', 'cancel_activation'}
+
+        with self.fake_swap(), patch.object(live, 'DRAIN_TIMEOUT_S', 0.05), \
+                patch.object(live, 'ACTIVATION_CANCEL_TIMEOUT_S', 0.05):
+            result = await self.service._activate('job-1', self.candidate())
+
+        self.assertEqual('activation_failed', result)
+        self.assertEqual('failed', self.service.state['status'])
+        self.assertIn('unconfirmed', self.jobs.last['message'])
+
+    async def test_a_second_activation_never_starts_a_second_drain(self):
+        first, second = self.candidate(), self.candidate(
+            self.packaged['active_type_ids'][-2])
+
+        with self.fake_swap():
+            results = await asyncio.gather(
+                self.service._activate('job-1', first),
+                self.service._activate('job-2', second))
+
+        self.assertEqual(['active', 'activation_conflict'], results)
+        self.assertEqual(1, len(self.swaps))
+        self.assertEqual(1, self.service.commands.kinds.count('prepare_activation'))
+        self.assertIsNone(self.service.activating)
+        refused = [block for job_id, block in self.jobs.blocks if job_id == 'job-2']
+        self.assertEqual(['activation_conflict'], [block['result'] for block in refused])
+
+    async def test_a_pointer_failure_after_the_swap_rolls_back_to_the_old_bundle(self):
+        before = self.pointer()
+        self.service._refresh_active_identity()
+        revision = self.service.catalog_revision
+
+        def refuse(active_root, bundle_sha256):
+            raise object_catalog.CatalogError('the pointer cannot be written')
+
+        with self.fake_swap(), patch.object(object_catalog, 'write_active_pointer', refuse):
+            result = await self.service._activate('job-1', self.candidate())
+
+        self.assertEqual('activation_failed', result)
+        self.assertEqual(True, self.jobs.last['rolled_back'])
+        # The pointer never moved, and the service runs the bundle it still names.
+        self.assertEqual(before, self.pointer())
+        self.assertEqual(before, self.service.active_bundle.name)
+        self.assertEqual(revision, self.service.catalog_revision)
+        self.assertEqual(2, len(self.swaps))
+        self.assertFalse((self.root / 'history' / 'activations.jsonl').exists())
+
+    async def test_an_audit_failure_after_the_pointer_keeps_the_activation_active(self):
+        before = self.pointer()
+
+        def refuse(root, definition, retired_at, evidence=None):
+            raise object_catalog.CatalogError('the wall of fame is unwritable')
+
+        with self.fake_swap(), patch.object(object_catalog, 'archive_type', refuse):
+            result = await self.service._activate('job-1', self.candidate())
+
+        # The pointer IS the activation, so an audit failure never undoes it.
+        self.assertEqual('active', result)
+        self.assertEqual('active', self.jobs.last['result'])
+        self.assertNotEqual(before, self.pointer())
+        self.assertEqual(self.pointer(), self.jobs.last['bundle_sha256'])
+        self.assertEqual(self.pointer(), self.service.active_bundle.name)
+        self.assertIn('audit trail failed', self.jobs.last['message'])
+        self.assertEqual(1, len(self.swaps))
+
+    async def test_a_rollback_that_does_not_come_back_is_not_a_rollback(self):
+        before = self.pointer()
+
+        with self.fake_swap(failing_swaps=(1, 2)):
+            result = await self.service._activate('job-1', self.candidate())
+
+        self.assertEqual('activation_failed', result)
+        self.assertNotEqual(True, self.jobs.last['rolled_back'])
+        self.assertEqual('failed', self.service.state['status'])
+        # A compatibility claim follows a proof. Nothing verified anything here.
+        health = json.loads((await self.service.health(None)).text)
+        self.assertNotEqual(True, health['catalog_model_compatible'])
+        self.assertEqual('failed', health['status'])
+        self.assertEqual(before, self.pointer())
+        self.assertIn('rollback failed', self.jobs.last['message'])
 
     async def test_an_activation_republishes_the_identity_the_pointer_names(self):
         self.service._refresh_active_identity()

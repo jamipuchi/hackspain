@@ -51,6 +51,8 @@ VALIDATE_BUNDLE_TIMEOUT_S = 120.0
 ACTIVATION_COMMANDS = ('prepare_activation', 'commit_activation', 'cancel_activation')
 DRAIN_TIMEOUT_S = 20.0
 ACTIVATION_ACK_TIMEOUT_S = 30.0
+# Cleanup gets its own short bound. It runs after the drain budget is already spent.
+ACTIVATION_CANCEL_TIMEOUT_S = 5.0
 ACTIVATION_POLL_S = 0.05
 # The frozen record block of the increment C contract. Every member is always present.
 # The two catalog revisions and the model artifact come from the training side, not here.
@@ -721,6 +723,8 @@ class LiveService:
         # touches the queue store. Without it the activation still runs and reports nothing.
         self.record = record if record is not None else (lambda job_id, **fields: None)
         self.loop = None
+        # One activation at a time. The loop sets this before its first await.
+        self.activating = None
         self.preset = Path(preset)
         self.preset_config = load_preset(self.preset)
         self.continuous = self.preset_config.get('mode') == 'continuous'
@@ -1378,24 +1382,52 @@ class LiveService:
         return asyncio.run_coroutine_threadsafe(
             self._activate(job_id, candidate), self.loop).result()
 
-    async def _activation_command(self, kind, job_id, **fields):
+    async def _activation_command(self, kind, job_id, deadline=None, **fields):
         """Send one internal command and wait for the worker acknowledgment.
 
-        The entry is marked sent, so an internal acknowledgment never reaches a browser.
+        The envelope is the SHARED one, session id included, because the worker loop
+        checks that field for every command. The entry is marked sent, so an internal
+        acknowledgment never reaches a browser. `deadline` is the one shared budget, so
+        no single wait can push an activation past its declared drain bound.
         """
         command_id = str(uuid.uuid4())
-        payload = {'type': kind, 'command_id': command_id, 'job_id': job_id, **fields}
+        payload = {'type': kind, 'command_id': command_id, 'job_id': job_id,
+                   'session_id': self.state.get('session_id'), **fields}
         if self.continuous:
             payload['command_epoch'] = self.command_epoch
         self.requests[command_id] = {'payload': payload, 'ack_sent': True}
         self.commands.put_nowait(payload)
-        deadline = time.monotonic() + ACTIVATION_ACK_TIMEOUT_S
-        while time.monotonic() < deadline:
+        limit = time.monotonic() + ACTIVATION_ACK_TIMEOUT_S if deadline is None else deadline
+        while True:
             entry = self.requests.get(command_id)
             if entry is not None and entry.get('ack'):
                 return entry['ack']
+            if time.monotonic() >= limit:
+                raise TimeoutError(f'the engine did not acknowledge {kind}')
             await asyncio.sleep(ACTIVATION_POLL_S)
-        raise TimeoutError(f'the engine did not acknowledge {kind}')
+
+    async def _abandon_activation(self, job_id, report, message, **fields):
+        """Give the engine its rate and its policy back, then report one failure.
+
+        This is the ONE way a prepared activation ends before the worker is replaced. A
+        cancel that is not acknowledged leaves the worker state unknown, so the existing
+        fatal path owns it and no report ever claims a recovered session.
+        """
+        confirmed = False
+        try:
+            ack = await self._activation_command(
+                'cancel_activation', job_id,
+                deadline=time.monotonic() + ACTIVATION_CANCEL_TIMEOUT_S)
+            confirmed = bool(ack.get('ok'))
+        except (TimeoutError, Full, OSError, ValueError) as error:
+            message = f'{message} The cancel failed: {_activation_message(error)}'
+        if not confirmed:
+            message = f'{message} The engine state is unconfirmed.'
+            await self._cleanup_restart_failure(
+                'An activation could not be cancelled, so the engine state is unknown.')
+        with contextlib.suppress(Exception):
+            report(phase='failed', result='activation_failed', message=message, **fields)
+        return 'activation_failed'
 
     def _candidate_bundle_files(self, candidate, reject_classes):
         return object_catalog.seed_bundle_files(
@@ -1405,6 +1437,19 @@ class LiveService:
             {'reject_classes': list(reject_classes)}, _bundle_sources())
 
     async def _activate(self, job_id, candidate):
+        """One activation at a time. A second call never starts a second drain."""
+        if self.activating is not None:
+            self.record(job_id, activation=activation_block(
+                phase='failed', result='activation_conflict',
+                message='Another activation is in progress.'))
+            return 'activation_conflict'
+        self.activating = job_id
+        try:
+            return await self._run_activation(job_id, candidate)
+        finally:
+            self.activating = None
+
+    async def _run_activation(self, job_id, candidate):
         """Spec section 2 in order. Nothing is rewritten after the verification."""
         active_root = self.item_jobs_root / 'active'
         catalog = object_catalog.read_active(active_root)
@@ -1437,7 +1482,13 @@ class LiveService:
         # never judges a bundle against its own cached profiles.
         provisional = [name for name in ((self.state.get('reject_policy') or {})
                                          .get('reject_classes') or []) if name != victim_label]
+        evidence = {name: Path(path) for name, path in (candidate.get('evidence') or {}).items()}
         try:
+            # Every archive input is read here, before anything pauses or stops, so a
+            # missing evidence file can never strand a committed activation.
+            for path in evidence.values():
+                if not path.is_file():
+                    raise OSError(f'the archive evidence file is missing: {path.name}')
             files = self._candidate_bundle_files(candidate, provisional)
             with tempfile.TemporaryDirectory() as scratch:
                 draft = object_catalog.publish_bundle(scratch, files)
@@ -1446,10 +1497,17 @@ class LiveService:
             report(phase='failed', result='activation_failed', message=_activation_message(error))
             return 'activation_failed'
 
-        # Step 1: prepare. A conflict pauses nothing.
-        ack = await self._activation_command(
-            'prepare_activation', job_id, victim_label=victim_label,
-            expected_catalog_revision=candidate['expected_catalog_revision'])
+        # One budget bounds the prepare, the whole drain, and every acknowledgment, so an
+        # activation can never run past the drain bound it declares.
+        deadline = time.monotonic() + DRAIN_TIMEOUT_S
+        # Step 1: prepare. A conflict pauses nothing, so it never needs a cancel.
+        try:
+            ack = await self._activation_command(
+                'prepare_activation', job_id, deadline=deadline, victim_label=victim_label,
+                expected_catalog_revision=candidate['expected_catalog_revision'])
+        except (TimeoutError, Full, OSError, ValueError) as error:
+            # The prepare may have been applied, so the rate may already be zero.
+            return await self._abandon_activation(job_id, report, _activation_message(error))
         if not ack.get('ok'):
             code = ack.get('error_code')
             result = code if code in ('activation_conflict', 'replacement_conflict') \
@@ -1458,44 +1516,43 @@ class LiveService:
             return result
         report(phase='draining', active_objects=ack.get('active_objects'))
 
-        # Steps 2 and 3: drain, then commit under the fence. The worker owns both truths:
-        # only it knows the belt is empty, and only a successful commit sets the fence.
-        deadline = time.monotonic() + DRAIN_TIMEOUT_S
-        while True:
-            ack = await self._activation_command('commit_activation', job_id)
-            if ack.get('ok'):
-                break
-            code = ack.get('error_code')
-            if code != 'activation_not_drained':
-                result = code if code in ('activation_conflict', 'replacement_conflict') \
-                    else 'activation_failed'
-                report(phase='failed', result=result, active_objects=ack.get('active_objects'),
-                       message=ack.get('error'))
-                return result
-            report(phase='draining', active_objects=ack.get('active_objects'))
-            if time.monotonic() >= deadline:
-                await self._activation_command('cancel_activation', job_id)
-                report(phase='failed', result='activation_failed',
-                       active_objects=ack.get('active_objects'),
-                       message='The belt did not drain before the timeout.')
-                return 'activation_failed'
-            await asyncio.sleep(ACTIVATION_POLL_S)
-
-        # Steps 4 and 5: the captured survivors minus the label that leaves, written once
-        # by the staging of the bundle, then verified in a child. Nothing is rewritten.
-        captured = [name for name in (ack.get('reject_classes') or []) if name != victim_label]
-        policy_version = ack.get('policy_version')
-        report(phase='activating', active_objects=0, activation_policy_version=policy_version)
+        # From here the engine is paused, so EVERY failure goes through one cleanup
+        # boundary that gives the rate and the policy back.
         try:
+            # Steps 2 and 3: drain, then commit under the fence. The worker owns both
+            # truths: only it knows the belt is empty, and only a commit sets the fence.
+            while True:
+                ack = await self._activation_command('commit_activation', job_id,
+                                                     deadline=deadline)
+                if ack.get('ok'):
+                    break
+                code = ack.get('error_code')
+                if code != 'activation_not_drained':
+                    result = code if code in ('activation_conflict', 'replacement_conflict') \
+                        else 'activation_failed'
+                    report(phase='failed', result=result,
+                           active_objects=ack.get('active_objects'), message=ack.get('error'))
+                    return result
+                report(phase='draining', active_objects=ack.get('active_objects'))
+                if time.monotonic() >= deadline:
+                    return await self._abandon_activation(
+                        job_id, report, 'The belt did not drain before the timeout.',
+                        active_objects=ack.get('active_objects'))
+                await asyncio.sleep(ACTIVATION_POLL_S)
+
+            # Steps 4 and 5: the captured survivors minus the label that leaves, written
+            # once by the staging of the bundle, then verified in a child.
+            captured = [name for name in (ack.get('reject_classes') or [])
+                        if name != victim_label]
+            policy_version = ack.get('policy_version')
+            report(phase='activating', active_objects=0,
+                   activation_policy_version=policy_version)
             files = self._candidate_bundle_files(candidate, captured)
             bundle_sha256 = object_catalog.publish_bundle(active_root / 'bundles', files)
             bundle = active_root / 'bundles' / bundle_sha256
             await asyncio.to_thread(validate_bundle_child, bundle)
-        except (object_catalog.CatalogError, OSError, ValueError, KeyError) as error:
-            await self._activation_command('cancel_activation', job_id)
-            report(phase='failed', result='activation_failed',
-                   activation_policy_version=policy_version, message=_activation_message(error))
-            return 'activation_failed'
+        except Exception as error:
+            return await self._abandon_activation(job_id, report, _activation_message(error))
 
         # Step 6: the swap. From here the old session is gone, so a failure can never
         # claim score continuity.
@@ -1505,33 +1562,40 @@ class LiveService:
         self.preset, self.active_bundle = bundle / object_catalog.BUNDLE_PRESET, bundle
         try:
             await self._swap_worker(previous_session_id)
+            if self.state.get('status') == 'failed':
+                raise RuntimeError(self.state.get('error') or 'The engine failed to start.')
+            # Step 7: the pointer IS the activation. A failure here is still recoverable,
+            # because the pointer has not moved.
+            object_catalog.write_active_pointer(active_root, bundle_sha256)
         except Exception as error:
             return await self._rollback_activation(
                 report, previous_preset, previous_bundle, policy_version,
                 _activation_message(error))
-        if self.state.get('status') == 'failed':
-            return await self._rollback_activation(
-                report, previous_preset, previous_bundle, policy_version,
-                self.state.get('error') or 'The engine failed to start.')
-
-        # Step 7: commit the pointer, then the history. The pointer is the activation.
-        object_catalog.write_active_pointer(active_root, bundle_sha256)
+        # Admission and the published class list must describe the committed bundle
+        # before any success is reported or any later job is accepted.
         self._refresh_active_identity()
-        retired_at = item_jobs.utc_now()
-        evidence = {name: Path(path) for name, path in (candidate.get('evidence') or {}).items()}
-        retiring = _bundle_model_manifest(active_root / 'bundles' / previous_sha256)
-        if retiring is not None:
-            evidence.setdefault('model.manifest.json', retiring)
-        object_catalog.archive_type(self.history_root, victim, retired_at, evidence)
-        self._append_activation_history({
-            'job_id': job_id, 'activated_at': retired_at, 'bundle_sha256': bundle_sha256,
-            'previous_bundle_sha256': previous_sha256,
-            'victim_type_id': victim['object_type_id'], 'victim_label': victim_label,
-            'activation_policy_version': policy_version, 'reject_classes': captured,
-            'session_id': self.state.get('session_id'), 'score_epoch_id': epoch()})
+        # Nothing below may undo the activation. An audit failure is reported beside the
+        # active result, never as a failed activation.
+        audit = None
+        try:
+            retired_at = item_jobs.utc_now()
+            retiring = _bundle_model_manifest(active_root / 'bundles' / previous_sha256)
+            if retiring is not None:
+                evidence.setdefault('model.manifest.json', retiring)
+            object_catalog.archive_type(self.history_root, victim, retired_at, evidence)
+            self._append_activation_history({
+                'job_id': job_id, 'activated_at': retired_at, 'bundle_sha256': bundle_sha256,
+                'previous_bundle_sha256': previous_sha256,
+                'victim_type_id': victim['object_type_id'], 'victim_label': victim_label,
+                'activation_policy_version': policy_version, 'reject_classes': captured,
+                'session_id': self.state.get('session_id'), 'score_epoch_id': epoch()})
+        except (object_catalog.CatalogError, OSError, ValueError) as error:
+            audit = f'The activation is committed. Its audit trail failed: ' \
+                    f'{_activation_message(error)}'
         report(phase='active', result='active', active_objects=0, rolled_back=False,
                bundle_sha256=bundle_sha256, activation_policy_version=policy_version,
-               session_id=self.state.get('session_id'), score_epoch_id=epoch())
+               session_id=self.state.get('session_id'), score_epoch_id=epoch(),
+               message=audit)
         return 'active'
 
     async def _rollback_activation(self, report, preset, bundle, policy_version, message):
@@ -1542,15 +1606,27 @@ class LiveService:
         self.preset, self.active_bundle = preset, bundle
         if bundle is not None:
             os.environ[object_catalog.CATALOG_ROOT_ENV] = str(bundle / 'catalog')
-        # The pointer never moved, so this republishes the bundle that is still active.
-        self._refresh_active_identity()
-        rolled_back = True
+        rolled_back, failure = False, None
         try:
             await self._swap_worker(self.state.get('session_id'))
+            # A worker that publishes `failed` still releases this wait, so the returned
+            # state decides, never the absence of an exception.
+            if self.state.get('status') in ('ready', 'running'):
+                rolled_back = True
+            else:
+                failure = self.state.get('error') or 'The prior bundle did not start.'
         except Exception as error:
-            # The existing fatal path owns a start that cannot come back.
-            rolled_back = False
-            await self._cleanup_restart_failure(_activation_message(error))
+            failure = _activation_message(error)
+        if rolled_back:
+            # The pointer never moved, so this republishes the bundle that is still
+            # active. A compatibility claim follows this proof, never precedes it.
+            self._refresh_active_identity()
+        else:
+            # A rollback that did not come back is not a rollback. The existing fatal
+            # path owns it, and nothing here may claim a verified catalog or model.
+            self.catalog_model_compatible = None
+            await self._cleanup_restart_failure(failure)
+            message = f'{message} The rollback failed: {failure}'
         epoch = (self.state.get('reject_policy') or {}).get('score_epoch_id')
         report(phase='failed', result='activation_failed', rolled_back=rolled_back,
                activation_policy_version=policy_version, message=message,
@@ -1558,10 +1634,18 @@ class LiveService:
         return 'activation_failed'
 
     def _append_activation_history(self, row):
+        """One durable append. The row must survive the power loss that follows it."""
         path = Path(self.history_root) / 'activations.jsonl'
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open('a', encoding='utf-8') as stream:
             stream.write(json.dumps(row, sort_keys=True) + '\n')
+            stream.flush()
+            os.fsync(stream.fileno())
+        directory = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
 
     async def restart(self, request):
         if self.continuous:
@@ -1829,7 +1913,7 @@ def build_parser():
     return parser
 
 
-def build_service(parser, args, record=None):
+def build_service(parser, args):
     """The startup order. The arguments are parsed. Then the verified active bundle is
     resolved, then its catalog is exported, and only then does LiveService call
     load_preset, which imports profiles. Without --item-jobs-root no bundle exists and the
@@ -1855,7 +1939,7 @@ def build_service(parser, args, record=None):
         runtime_lock=args.item_jobs_runtime_lock.resolve(),
         physics_replay=args.item_jobs_physics_replay.resolve()
         if args.item_jobs_physics_replay else None,
-        active_bundle=active_bundle, record=record)
+        active_bundle=active_bundle)
 
 
 def main():
