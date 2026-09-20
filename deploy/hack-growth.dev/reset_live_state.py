@@ -360,7 +360,8 @@ def _apply(layout: dict, plans: list[dict], reviews: list[dict], retired_at: str
             except BaseException as rollback_error:
                 rollback.append(f"jobs rollback failed: {rollback_error}")
         if rollback:
-            raise ResetError(f"reset failed: {error}; {'; '.join(rollback)}") from error
+            details = ". ".join(rollback)
+            raise ResetError(f"reset failed: {error}. {details}") from error
         shutil.rmtree(backup, ignore_errors=True)
         raise
 
