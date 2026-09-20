@@ -134,7 +134,7 @@ PART_FIELDS = {
     "size_mm": vector(3, 0.1, 80),
     "color": vector(3, 0, 1),
     "metallic": {"type": "number", "minimum": 0, "maximum": 1},
-    "roughness": {"type": "number", "minimum": 0.08, "maximum": 1},
+    "roughness": {"type": "number", "minimum": 0, "maximum": 1},
     "tube_mm": {"type": "number", "minimum": 0, "maximum": 20},
     "outline": {"type": "array", "items": vector(2, -0.5, 0.5), "maxItems": 32},
     "text": {"type": "string", "maxLength": 32},
