@@ -355,7 +355,7 @@ class CandidateGateTest(unittest.TestCase):
         value = {
             "labels": ["star_token", "good", "stone"],
             "new_label": "star_token",
-            "new_label_is_keep": True,
+            "new_label_truth": {"defect": False, "severity": "none"},
             "label_order_ok": True,
             "classifier": {
                 "holdout_accuracy": 0.97,
@@ -417,13 +417,24 @@ class CandidateGateTest(unittest.TestCase):
         self.assertEqual(["keep_outcome_resolved"], gate_failures(few))
         self.assertEqual(["keep_outcome_accept_fraction"], gate_failures(low))
 
-    def test_a_keep_candidate_without_a_closed_loop_run_fails(self):
+    def test_a_candidate_without_a_closed_loop_run_fails(self):
         self.assertEqual(["keep_outcome_missing"],
                          gate_failures(self.validation(keep_outcome=None)))
 
-    def test_a_reject_candidate_is_not_gated_on_keep_evidence(self):
-        value = self.validation(new_label_is_keep=False, keep_outcome=None, pulses=None,
-                                anomaly={"fraction_above_threshold": 1.0})
+    def test_a_defect_truth_candidate_is_gated_exactly_like_any_other(self):
+        """Keep or Reject is a policy. Physical truth never switches a gate off."""
+        value = self.validation(new_label_truth={"defect": True, "severity": "major"},
+                                anomaly={"fraction_above_threshold": 1.0},
+                                keep_outcome={"required": True, "runs": [
+                                    {"seed": 8, "sim_seconds": 9.0, "resolved": 30, "accepted": 0,
+                                     "rejected": 30, "spilled": 0, "accept_fraction": 0.0}]})
+
+        self.assertEqual(["anomaly_fraction", "keep_outcome_accept_fraction"],
+                         gate_failures(value))
+        self.assertEqual({"defect": True, "severity": "major"}, value["new_label_truth"])
+
+    def test_a_defect_truth_candidate_with_clean_evidence_passes(self):
+        value = self.validation(new_label_truth={"defect": True, "severity": "foreign"})
 
         self.assertEqual([], gate_failures(value))
 
@@ -565,6 +576,113 @@ class TrainerRuntimeLockTest(unittest.TestCase):
         self.assertFalse((work / "out").exists())
 
 
+class CandidatePolicyTest(unittest.TestCase):
+    """Every candidate is validated as Keep, and the closed-loop run applies that policy."""
+
+    def setUp(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.work = Path(folder.name)
+        self.preset = json.loads(PRESET.read_text())
+        self.catalog = load_catalog()
+        self.profile = SimpleNamespace(
+            names=["star_token", *[item.name for item in profiles.GREEN_ARABICA.classes]],
+            classes=[SimpleNamespace(name="star_token", defect=True, severity="major"),
+                     *profiles.GREEN_ARABICA.classes])
+
+    def policy_file(self, value):
+        path = self.work / "policy.json"
+        path.write_text(json.dumps(value))
+        return path
+
+    def test_the_default_policy_rejects_the_survivors_and_never_the_new_label(self):
+        reject, version, source = train_candidate.resolve_policy(
+            self.profile, "star_token", self.preset, None)
+        severities = set(self.preset["policy"]["reject_severities"])
+        engine_default = sorted(item.name for item in profiles.GREEN_ARABICA.classes
+                                if item.defect and item.severity in severities)
+
+        self.assertEqual(engine_default, reject)
+        self.assertNotIn("star_token", reject)
+        self.assertIsNone(version)
+        self.assertEqual("derived_default", source)
+
+    def test_a_baseline_policy_file_is_used_and_recorded(self):
+        path = self.policy_file({"reject_classes": ["stone", "black"],
+                                 "policy_version": "policy-7"})
+
+        reject, version, source = train_candidate.resolve_policy(
+            self.profile, "star_token", self.preset, path)
+
+        self.assertEqual(["black", "stone"], reject)
+        self.assertEqual("policy-7", version)
+        self.assertEqual("baseline_file", source)
+
+    def test_a_policy_that_rejects_the_new_label_is_refused(self):
+        path = self.policy_file({"reject_classes": ["stone", "star_token"]})
+
+        with self.assertRaisesRegex(ValueError, "always activates as Keep"):
+            train_candidate.resolve_policy(self.profile, "star_token", self.preset, path)
+
+    def test_a_policy_with_an_unknown_label_is_refused(self):
+        path = self.policy_file({"reject_classes": ["stone", "gravel"]})
+
+        with self.assertRaisesRegex(ValueError, "outside the candidate catalog"):
+            train_candidate.resolve_policy(self.profile, "star_token", self.preset, path)
+
+    def test_a_malformed_policy_file_is_refused(self):
+        for value in ({"reject_classes": "stone"}, {"reject_classes": [1]}, {},
+                      {"reject_classes": [], "policy_version": 7}):
+            with self.subTest(policy=value):
+                with self.assertRaises(ValueError):
+                    train_candidate.resolve_policy(self.profile, "star_token", self.preset,
+                                                   self.policy_file(value))
+
+    def test_the_closed_loop_run_applies_the_policy_before_its_first_step(self):
+        calls = []
+        profile = SimpleNamespace(name="green_arabica")
+        validation = {}
+        run = {"seed": 8, "sim_seconds": 9.0,
+               "outcomes": {"resolved": 30, "accepted": 0, "rejected": 30, "spilled": 0,
+                            "accept_fraction": 0.0},
+               "pulses": {"commanded": 30, "activated": 30, "jet_hits": 30}}
+
+        def build_engine(preset, model_path, directory):
+            engine = SimpleNamespace(sim=SimpleNamespace(dt=0.001, bean_of={}),
+                                     close=lambda: None, steps=0)
+            engine.set_reject_classes = lambda values: (
+                calls.append(("policy", tuple(values), engine.steps))
+                or {"policy_version": "engine-policy-9"})
+            engine.step = lambda: calls.append(("step", engine.steps))
+            return engine
+
+        with patch.object(train_candidate, "build_engine", side_effect=build_engine), \
+                patch.object(train_candidate, "keep_outcome", return_value=run):
+            version = train_candidate.record_keep_outcome(
+                validation, {"seed": 8, "profile": "green_arabica"}, Path("candidate.joblib"),
+                profile, "star_token", ["black", "stone"])
+
+        self.assertEqual("engine-policy-9", version)
+        self.assertEqual(("policy", ("black", "stone"), 0), calls[0])
+        self.assertNotIn("star_token", calls[0][1])
+        self.assertEqual(0.0, validation["keep_outcome"]["runs"][0]["accept_fraction"])
+        self.assertEqual(30, validation["pulses"]["runs"][0]["commanded"])
+
+    def test_a_defect_truth_candidate_keeps_its_truth_in_the_catalog(self):
+        definition = type_definition_from_draft(
+            star_draft(sorting_proposal={"class_name": "star_token", "defect": True,
+                                         "severity": "major", "proposed_action": "reject"}),
+            rgb=[0.82, 0.68, 0.21], prior=0.03, source_sha256="c" * 64)
+        candidate = candidate_catalog(self.catalog, definition, select_victim(self.catalog, []))
+        write_catalog(self.work / "candidate", candidate)
+        loaded = load_catalog(self.work / "candidate")
+
+        self.assertEqual({"defect": True, "severity": "major"}, definition["truth"])
+        self.assertEqual({"defect": True, "severity": "major"},
+                         loaded["definitions"][0]["truth"])
+        self.assertEqual("star_token", loaded["definitions"][0]["classifier_label"])
+
+
 class CandidateProfileBindingTest(unittest.TestCase):
     """The closed-loop run binds the candidate under a distinct key and always removes it."""
 
@@ -581,7 +699,7 @@ class CandidateProfileBindingTest(unittest.TestCase):
                 patch.object(train_candidate, "keep_outcome", return_value=run):
             train_candidate.record_keep_outcome(
                 validation, {"seed": 8, "profile": "green_arabica"},
-                Path("candidate.joblib"), profile, "star_token")
+                Path("candidate.joblib"), profile, "star_token", ["stone"])
         return validation, profile
 
     def assert_profiles_restored(self):
@@ -595,7 +713,8 @@ class CandidateProfileBindingTest(unittest.TestCase):
 
         def build_engine(preset, model_path, directory):
             seen.update(profile=preset["profile"], bound=dict(profiles.PROFILES))
-            return SimpleNamespace(sim=SimpleNamespace(dt=0.001, bean_of={}), close=lambda: None)
+            return SimpleNamespace(sim=SimpleNamespace(dt=0.001, bean_of={}), close=lambda: None,
+                                   set_reject_classes=lambda values: {"policy_version": "p"})
 
         validation, profile = self.record(build_engine)
 
@@ -661,7 +780,7 @@ class BundledArtifactTest(unittest.TestCase):
 
         with patch.object(train_candidate, "collect_partition", side_effect=partition), \
                 patch.object(train_candidate, "fit_model", side_effect=fit), \
-                patch.object(train_candidate, "record_keep_outcome"), \
+                patch.object(train_candidate, "record_keep_outcome", return_value="engine-policy"), \
                 contextlib.redirect_stdout(io.StringIO()):
             code = train_candidate.main([
                 "--catalog-root", str(root), "--preset", str(PRESET), "--out", str(work / "out"),
@@ -705,7 +824,8 @@ class TrainerInputTest(unittest.TestCase):
     def test_the_trainer_accepts_only_catalog_preset_output_and_lock_inputs(self):
         dests = {action.dest for action in train_candidate.build_parser()._actions}
 
-        self.assertEqual({"help", "catalog_root", "preset", "out", "seconds", "runtime_lock"}, dests)
+        self.assertEqual({"help", "catalog_root", "preset", "out", "seconds", "runtime_lock",
+                          "policy"}, dests)
 
     def test_recorded_source_files_contain_no_preview_or_render_path(self):
         for name in bootstrap_model.SOURCE_FILES:

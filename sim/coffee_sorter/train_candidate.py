@@ -184,21 +184,51 @@ def gate_failures(validation: Mapping[str, Any]) -> list[str]:
         failures.append("holdout_accuracy")
     if classifier["new_label_recall"] < MIN_RECALL:
         failures.append("new_label_recall")
-    if validation["new_label_is_keep"]:
-        # Label confidence alone never proves compatibility: the anomaly path and the
-        # physical outcomes gate a Keep type as well.
-        if validation["anomaly"]["fraction_above_threshold"] > MAX_KEEP_ANOMALY_FRACTION:
-            failures.append("anomaly_fraction")
-        runs = (validation["keep_outcome"] or {}).get("runs") or []
-        if not runs:
-            failures.append("keep_outcome_missing")
-        else:
-            latest = runs[-1]
-            if latest["resolved"] < MIN_KEEP_RESOLVED:
-                failures.append("keep_outcome_resolved")
-            if latest["accept_fraction"] < MIN_KEEP_ACCEPT_FRACTION:
-                failures.append("keep_outcome_accept_fraction")
+    # Keep or Reject is a policy, not physical truth. Activation always adds the new label
+    # as Keep, so the anomaly path and the physical outcomes gate EVERY candidate, whatever
+    # its truth.defect and truth.severity say. Label confidence alone proves nothing.
+    if validation["anomaly"]["fraction_above_threshold"] > MAX_KEEP_ANOMALY_FRACTION:
+        failures.append("anomaly_fraction")
+    runs = (validation["keep_outcome"] or {}).get("runs") or []
+    if not runs:
+        failures.append("keep_outcome_missing")
+    else:
+        latest = runs[-1]
+        if latest["resolved"] < MIN_KEEP_RESOLVED:
+            failures.append("keep_outcome_resolved")
+        if latest["accept_fraction"] < MIN_KEEP_ACCEPT_FRACTION:
+            failures.append("keep_outcome_accept_fraction")
     return failures
+
+
+def resolve_policy(profile, new_label: str, preset: Mapping[str, Any],
+                   policy_path: Path | None) -> tuple[list[str], str | None, str]:
+    """The reject classes the closed-loop run applies. The new label is never rejected.
+
+    The queue writes the baseline policy file from the training baseline. Without it the
+    default derives from the preset severities over the SURVIVORS only. Returns
+    (applied_reject_classes, baseline_policy_version, policy_source).
+    """
+    labels = set(profile.names)
+    if policy_path is None:
+        reject_severities = set(preset["policy"]["reject_severities"])
+        derived = [item.name for item in profile.classes
+                   if item.name != new_label and item.defect
+                   and item.severity in reject_severities]
+        return sorted(derived), None, "derived_default"
+    value = json.loads(Path(policy_path).read_text())
+    reject_classes = value.get("reject_classes") if isinstance(value, Mapping) else None
+    if not isinstance(reject_classes, list) or any(not isinstance(name, str) for name in reject_classes):
+        raise ValueError("policy reject_classes must be a list of candidate catalog labels")
+    unknown = sorted(set(reject_classes) - labels)
+    if unknown:
+        raise ValueError(f"policy names labels outside the candidate catalog: {', '.join(unknown)}")
+    if new_label in reject_classes:
+        raise ValueError(f"the candidate always activates as Keep and can never be rejected: {new_label}")
+    version = value.get("policy_version")
+    if version is not None and not isinstance(version, str):
+        raise ValueError("policy_version must be text or absent")
+    return sorted(set(reject_classes)), version, "baseline_file"
 
 
 def acquire_lock(path: Path):
@@ -217,6 +247,8 @@ def build_engine(preset: Mapping[str, Any], model_path: Path, directory: Path):
 
     `engine.py` resolves a relative `model_path` against the source directory and this
     module never edits it. The temporary preset is never hashed and never bundled.
+    The integration owner replaces this mechanism when relative model paths land, so that
+    final validation loads the actual immutable `candidate.preset.json`.
     """
     from engine import Engine
 
@@ -232,6 +264,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--seconds", type=float, default=4.0)
     parser.add_argument("--runtime-lock", type=Path, default=RUNTIME_LOCK)
+    parser.add_argument("--policy", type=Path,
+                        help='training baseline policy: {"reject_classes": [...], "policy_version": "..."}')
     return parser
 
 
@@ -256,20 +290,26 @@ def main(argv: list[str] | None = None) -> int:
     if profile.name != preset.get("profile"):
         parser.error("the candidate catalog profile does not match the preset profile")
     new_label = profile.names[0]  # newest first: the candidate leads the catalog order
+    # Refuse a wrong policy before the lock and before any heavy work.
+    try:
+        policy = resolve_policy(profile, new_label, preset, args.policy)
+    except (OSError, ValueError) as error:
+        parser.error(f"--policy is invalid: {error}")
 
     handle = acquire_lock(args.runtime_lock)
     if handle is None:
         print(f"runtime lock is occupied: {args.runtime_lock}. No training started.", file=sys.stderr)
         return LOCK_BUSY_EXIT
     try:
-        return train(args, preset, preset_path, layout, rate, capture_every, catalog, profile, new_label)
+        return train(args, preset, preset_path, layout, rate, capture_every, catalog, profile,
+                     new_label, policy)
     finally:
         fcntl.flock(handle, fcntl.LOCK_UN)
         handle.close()
 
 
 def train(args, preset, preset_path: Path, layout: Layout, rate: float, capture_every: int,
-          catalog, profile, new_label: str) -> int:
+          catalog, profile, new_label: str, policy: tuple[list[str], str | None, str]) -> int:
     out = args.out
     out.mkdir(parents=True, exist_ok=True)
     started = time.perf_counter()
@@ -343,11 +383,13 @@ def train(args, preset, preset_path: Path, layout: Layout, rate: float, capture_
     write_progress(out, "validate", 0.85)
     probabilities, anomaly = model.predict(X_holdout)
     metrics = holdout_metrics(profile.names, y_holdout, probabilities, new_label)
-    is_keep = not profile.by_name(new_label).defect
+    applied_reject_classes, baseline_version, policy_source = policy
+    truth = profile.by_name(new_label)
     validation = {
         "labels": profile.names,
         "new_label": new_label,
-        "new_label_is_keep": is_keep,
+        # Recorded, never rewritten: physical truth is independent of the Keep policy.
+        "new_label_truth": {"defect": bool(truth.defect), "severity": truth.severity},
         "label_order_ok": label_order_ok(catalog, model.classes),
         "classifier": {
             "holdout_accuracy": metrics["holdout_accuracy"],
@@ -366,6 +408,14 @@ def train(args, preset, preset_path: Path, layout: Layout, rate: float, capture_
         },
         "pulses": None,
         "keep_outcome": None,
+        "policy": {
+            "applied_reject_classes": applied_reject_classes,
+            "baseline_policy_version": baseline_version,
+            "engine_policy_version": None,
+            "policy_source": policy_source,
+            "new_label_policy": "keep",
+            "scope": "the policy the closed-loop run applied; it is not a truth value and never rewrites one",
+        },
         "artifact_sha256": manifest["artifact_sha256"],
         "manifest_sha256": sha256(manifest_path),
         "preset_sha256": sha256(preset_out),
@@ -380,8 +430,9 @@ def train(args, preset, preset_path: Path, layout: Layout, rate: float, capture_
             "min_keep_accept_fraction": MIN_KEEP_ACCEPT_FRACTION,
         },
     }
-    if is_keep:
-        record_keep_outcome(validation, preset, artifact, profile, new_label)
+    # Every candidate activates as Keep, so every candidate runs the closed-loop gate.
+    validation["policy"]["engine_policy_version"] = record_keep_outcome(
+        validation, preset, artifact, profile, new_label, applied_reject_classes)
     validation["failures"] = gate_failures(validation)
     validation["passed"] = not validation["failures"]
     write_atomic_json(out / "validation.json", validation)
@@ -405,8 +456,13 @@ def train(args, preset, preset_path: Path, layout: Layout, rate: float, capture_
 
 
 def record_keep_outcome(validation: dict[str, Any], preset, artifact: Path, profile,
-                        new_label: str) -> None:
-    """Run one seeded closed-loop run and record its two evidence kinds separately."""
+                        new_label: str, reject_classes: list[str]) -> str | None:
+    """Run one seeded closed-loop run under the intended live policy.
+
+    The run applies the survivor reject classes before its first step, and the new label
+    is never in that set, because activation always adds it as Keep. Returns the engine
+    policy version. Outcomes and pulses stay in separate blocks.
+    """
     import profiles
 
     # The Engine resolves its profile by name from PROFILES. The candidate binds a
@@ -420,6 +476,8 @@ def record_keep_outcome(validation: dict[str, Any], preset, artifact: Path, prof
             engine = build_engine({**dict(preset), "profile": key}, artifact.resolve(),
                                   Path(directory))
             try:
+                # The intended live policy applies before the first step, never after it.
+                ack = engine.set_reject_classes(list(reject_classes))
                 run = keep_outcome(engine, new_label, seed=seed)
             finally:
                 engine.close()
@@ -435,6 +493,7 @@ def record_keep_outcome(validation: dict[str, Any], preset, artifact: Path, prof
         "runs": [{"seed": run["seed"], **run["pulses"]}],
         "scope": "commanded valve pulses only; they never enter the gate and are never an outcome",
     }
+    return ack.get("policy_version") if isinstance(ack, Mapping) else None
 
 
 if __name__ == "__main__":
