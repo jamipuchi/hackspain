@@ -118,6 +118,71 @@ class SorterSim:
         self.spawn_accum = 0.0
         self.class_by_name = {c.name: c for c in profile.classes}
         mujoco.mj_forward(m, self.data)
+        # The local refresh below depends on independent free bodies and fixed frames.
+        if m.ntendon or m.nflex or m.nu or m.neq or m.nplugin:
+            raise ValueError("Pooled physics requires no coupled model elements.")
+        self.inertia_axes = {}
+        for b in self.all_bodies:
+            j, qa = m.body_jntadr[b], self.body_qpos[b]
+            leaf = m.body_bvhadr[b]
+            if (m.body_parentid[b] != 0 or np.any(m.body_parentid == b)
+                    or m.body_jntnum[b] != 1 or m.jnt_type[j] != mujoco.mjtJoint.mjJNT_FREE
+                    or m.body_bvhnum[b] != 1 or m.bvh_nodeid[leaf] != self.body_col[b]
+                    or not np.array_equal(m.qpos0[qa + 3:qa + 7], [1, 0, 0, 0])):
+                raise ValueError("Pooled physics requires independent free bodies with one collision leaf and an identity reference rotation.")
+            rotation = np.empty(9)
+            mujoco.mju_quat2Mat(rotation, m.body_iquat[b])
+            axes = np.abs(rotation.reshape(3, 3))
+            if not np.allclose(axes @ axes.T, np.eye(3), atol=1e-12):
+                raise ValueError("Pooled physics requires axis-aligned principal inertia.")
+            self.inertia_axes[b] = axes.argmax(axis=0)
+        self._stat_points = np.concatenate((
+            self.data.xpos[1:], self.data.xipos[1:], self.data.xanchor,
+            self.data.site_xpos, self.data.geom_xpos))
+        self._stat_radii = np.zeros(len(self._stat_points))
+
+    def _refresh_body_constants(self, b):
+        """Match mj_setConst for the guarded free-body topology without changing live data.
+
+        MuJoCo 3.13 caches simple-body inertia in dof_M0. Full mj_setConst is
+        quadratic in pool size. This local equivalent also includes armature,
+        offset COM, inverse weights, subtree mass, and solver length scales.
+        """
+        m, va = self.model, self.body_qvel[b]
+        mass, inertia = m.body_mass[b], m.body_inertia[b]
+        rotation = np.empty(9)
+        mujoco.mju_quat2Mat(rotation, m.body_iquat[b])
+        rotation = rotation.reshape(3, 3)
+        x, y, z = m.body_ipos[b]
+        jacobian = np.eye(6)
+        jacobian[:3, 3:] = [[0, z, -y], [-z, 0, x], [y, -x, 0]]
+        spatial_mass = np.zeros((6, 6))
+        spatial_mass[:3, :3] = mass * np.eye(3)
+        spatial_mass[3:, 3:] = rotation @ np.diag(inertia) @ rotation.T
+        mass_matrix = jacobian.T @ spatial_mass @ jacobian + np.diag(m.dof_armature[va:va + 6])
+        inverse_mass = np.linalg.inv(mass_matrix)
+        body_inverse = jacobian @ inverse_mass @ jacobian.T
+        old_mass = m.body_subtreemass[b]
+        old_inertia = m.dof_M0[va:va + 6].sum()
+        old_size = m.dof_length[va + 3]
+        m.dof_M0[va:va + 6] = np.diag(mass_matrix)
+        m.dof_invweight0[va:va + 3] = np.diag(inverse_mass)[:3].mean()
+        m.dof_invweight0[va + 3:va + 6] = np.diag(inverse_mass)[3:].mean()
+        m.body_invweight0[b] = [np.diag(body_inverse)[:3].mean(), np.diag(body_inverse)[3:].mean()]
+        m.body_subtreemass[b] = mass
+        m.body_subtreemass[0] += mass - old_mass
+        geoms = slice(m.body_geomadr[b], m.body_geomadr[b] + m.body_geomnum[b])
+        size = max(1e-5, np.linalg.norm(m.body_ipos[b]),
+                   np.max(m.geom_rbound[geoms] + np.linalg.norm(m.geom_pos[geoms] - m.body_ipos[b], axis=1)))
+        m.dof_length[va + 3:va + 6] = size
+        m.stat.meanmass += (mass - old_mass) / (m.nbody - 1)
+        m.stat.meaninertia += (np.trace(mass_matrix) - old_inertia) / m.nv
+        m.stat.meansize += (size - old_size) / (m.nbody - 1)
+        self._stat_radii[-m.ngeom:] = m.geom_rbound
+        lower = np.min(self._stat_points - self._stat_radii[:, None], axis=0)
+        upper = np.max(self._stat_points + self._stat_radii[:, None], axis=0)
+        m.stat.center[:] = (lower + upper) / 2
+        m.stat.extent = max(1e-5, np.max(upper - lower), 2 * m.stat.meansize)
 
     # ------------------------------------------------------------------ spawning
     def _sample_class(self) -> ClassSpec:
@@ -135,41 +200,52 @@ class SorterSim:
         gc = self.body_col[b]
         if spec.shape == ELLIPSOID:
             m.geom_size[g] = axes
+            m.geom_rbound[g] = np.max(axes)
             half = axes
             r, hl = axes[2], max(axes[0] - axes[2], 1e-4)     # collision capsule: same length & resting height
             m.geom_size[gc, 0], m.geom_size[gc, 1] = r, hl
             m.geom_rbound[gc] = hl + r
-            m.geom_aabb[gc, 3:6] = [hl + r, r, r]
+            # Bounds use the capsule's local z axis, before geom_quat rotates it.
+            m.geom_aabb[gc, 3:6] = [r, r, hl + r]
             inertia = mass / 5 * np.array([axes[1] ** 2 + axes[2] ** 2, axes[0] ** 2 + axes[2] ** 2, axes[0] ** 2 + axes[1] ** 2])
         elif spec.shape == BOX:
             m.geom_size[g] = axes
+            m.geom_rbound[g] = np.linalg.norm(axes)
             half = axes
             inertia = mass / 3 * np.array([axes[1] ** 2 + axes[2] ** 2, axes[0] ** 2 + axes[2] ** 2, axes[0] ** 2 + axes[1] ** 2])
         elif spec.shape == CAPSULE:
             r, hl = axes[1], axes[0]
             m.geom_size[g, 0], m.geom_size[g, 1] = r, hl
+            m.geom_rbound[g] = hl + r
             half = np.array([r, r, hl + r])
             inertia = np.array([mass * (r ** 2 / 4 + hl ** 2 / 3)] * 2 + [mass * r ** 2 / 2])
         else:  # HALF mesh: fixed scale variants, read the compiled size back
             half = m.geom_aabb[g, 3:6].copy()
             axes = half
+            # Ellipsoid approximation from visual bounds, around the compiled collider COM.
             inertia = mass / 5 * np.array([axes[1] ** 2 + axes[2] ** 2, axes[0] ** 2 + axes[2] ** 2, axes[0] ** 2 + axes[1] ** 2])
         if spec.shape != HALF:
-            m.geom_rbound[g] = np.linalg.norm(half)
             m.geom_aabb[g, 3:6] = half
+            # Each pooled body has one collision leaf, stored in its inertial frame.
+            inertial_rotation, geom_rotation = np.empty(9), np.empty(9)
+            mujoco.mju_quat2Mat(inertial_rotation, m.body_iquat[b])
+            mujoco.mju_quat2Mat(geom_rotation, m.geom_quat[gc])
+            inertial_rotation = inertial_rotation.reshape(3, 3).T
+            geom_rotation = geom_rotation.reshape(3, 3)
+            leaf = m.body_bvhadr[b]
+            m.bvh_aabb[leaf, :3] = inertial_rotation @ (
+                m.geom_pos[gc] + geom_rotation @ m.geom_aabb[gc, :3] - m.body_ipos[b])
+            m.bvh_aabb[leaf, 3:] = np.abs(inertial_rotation @ geom_rotation) @ m.geom_aabb[gc, 3:]
         m.geom_rgba[g] = rgba
         m.geom_matid[g] = int(rng.choice(self.material_ids[spec.texture])) if spec.texture else -1
         m.body_mass[b] = mass
-        m.body_inertia[b] = np.maximum(inertia, 1e-12)
-        # keep the solver's precomputed inverse weights consistent with the new mass/inertia
+        # Analytic inertia uses body axes, while MuJoCo stores principal-frame axes.
+        m.body_inertia[b] = np.maximum(inertia[self.inertia_axes[b]], 1e-12)
         va0 = self.body_qvel[b]
-        m.dof_invweight0[va0:va0 + 3] = 1.0 / mass
-        m.dof_invweight0[va0 + 3:va0 + 6] = 1.0 / m.body_inertia[b].mean()
-        m.body_invweight0[b] = [1.0 / mass, 1.0 / m.body_inertia[b].mean()]
         i_mean = m.body_inertia[b].mean()
         m.dof_damping[va0 + 3:va0 + 6] = i_mean / ROT_TAU
         m.dof_armature[va0 + 3:va0 + 6] = ROT_ARMATURE_FACTOR * i_mean
-        m.body_gravcomp[b] = 0.0
+        self._refresh_body_constants(b)
         # pose: flat on the belt with random yaw, small random tilt; capsule lies along x by default (z-axis -> x)
         yaw = rng.uniform(-np.pi, np.pi)
         tilt = rng.normal(0, 0.15, 2)
@@ -189,6 +265,7 @@ class SorterSim:
             self.free[spec.shape].append(b)
             self.spawn_accum += 1.0
             return None
+        m.body_gravcomp[b] = 0.0
         d.qpos[qa:qa + 3] = pos
         d.qpos[qa + 3:qa + 7] = q
         d.qvel[va:va + 6] = [L.feed_vx + rng.normal(0, 0.15), rng.normal(0, 0.08), 0, *rng.normal(0, 3.0, 3)]
