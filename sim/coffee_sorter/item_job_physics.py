@@ -51,8 +51,10 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
+# EXIT_RESPONSE_RECEIVED proves that a live provider response was received even when every
+# local evidence write failed. Queue settlement owns the matching retained-state transition.
 from item_jobs import (EXIT_CACHE_ENTRY_INVALID, EXIT_CREDENTIALS, EXIT_FAILED,
-                       EXIT_NOT_SUBMITTED, EXIT_OK, EXIT_UNCERTAIN)
+                       EXIT_NOT_SUBMITTED, EXIT_OK, EXIT_RESPONSE_RECEIVED, EXIT_UNCERTAIN)
 from object_definitions import build_object_definition, physics_request, propose_physics
 
 REPLAY_FIELDS = {"schema_version", "binding", "physics_description",
@@ -60,9 +62,6 @@ REPLAY_FIELDS = {"schema_version", "binding", "physics_description",
 BINDING_FIELDS = {"recipe_sha256", "glb_sha256"}
 SCHEMA_VERSION = 1
 MEASUREMENT_STATUS = "unmeasured_proxy_estimate"
-# This exit proves that a live provider response was received even when every local
-# evidence write failed. Queue settlement owns the matching retained-state transition.
-EXIT_RESPONSE_RECEIVED = 7
 
 
 class ReplayError(Exception):
