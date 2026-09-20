@@ -1,0 +1,53 @@
+{"name": "splitter", "body_id": 0, "center_m": [0.48, 0.0, 0.475], "half_size_m": [0.14, 0.27, 0.002], "quaternion_wxyz": [0.992197667229329, 0.0, 0.12467473338522769, 0.0]}
+{"name": "bin_accept", "body_id": 0, "center_m": [0.64, 0.0, 0.3], "half_size_m": [0.12, 0.27, 0.003], "quaternion_wxyz": [1.0, 0.0, 0.0, 0.0]}
+{"name": "bin_reject", "body_id": 0, "center_m": [0.4, 0.0, 0.18], "half_size_m": [0.12, 0.27, 0.003], "quaternion_wxyz": [1.0, 0.0, 0.0, 0.0]}
+{"name": "bin_accept_end", "body_id": 0, "center_m": [0.76, 0.0, 0.36], "half_size_m": [0.003, 0.27, 0.06], "quaternion_wxyz": [1.0, 0.0, 0.0, 0.0]}
+{"name": "bin_reject_end", "body_id": 0, "center_m": [0.52, 0.0, 0.24], "half_size_m": [0.003, 0.27, 0.06], "quaternion_wxyz": [1.0, 0.0, 0.0, 0.0]}
+test_airborne_lateral_motion_after_belt_stays_unresolved (test_sim_lifecycle.CollectionLifecycleTests.test_airborne_lateral_motion_after_belt_stays_unresolved) ... ok
+test_body_straddling_the_accept_wall_stays_active (test_sim_lifecycle.CollectionLifecycleTests.test_body_straddling_the_accept_wall_stays_active) ... ok
+test_ground_and_downstream_escape_spill (test_sim_lifecycle.CollectionLifecycleTests.test_ground_and_downstream_escape_spill) ... ok
+test_idle_steps_are_safe_before_spawn_and_after_retirement (test_sim_lifecycle.CollectionLifecycleTests.test_idle_steps_are_safe_before_spawn_and_after_retirement) ... ok
+test_multiple_bin_contact_points_emit_one_outcome_and_retirement (test_sim_lifecycle.CollectionLifecycleTests.test_multiple_bin_contact_points_emit_one_outcome_and_retirement) ... ok
+test_positive_named_bin_contact_resolves_once_and_retires_once (test_sim_lifecycle.CollectionLifecycleTests.test_positive_named_bin_contact_resolves_once_and_retires_once) ... ok
+test_slot_reuse_clears_collection_state_for_every_shape (test_sim_lifecycle.CollectionLifecycleTests.test_slot_reuse_clears_collection_state_for_every_shape) ... ok
+test_splitter_and_old_retirement_bound_do_not_resolve_a_flying_body (test_sim_lifecycle.CollectionLifecycleTests.test_splitter_and_old_retirement_bound_do_not_resolve_a_flying_body) ... ok
+test_zero_force_bin_contact_stays_unresolved (test_sim_lifecycle.CollectionLifecycleTests.test_zero_force_bin_contact_stays_unresolved) ... ok
+test_changed_pool_topology_fails_before_spawning (test_sim_physics.PooledPhysicsTests.test_changed_pool_topology_fails_before_spawning) ... ok
+test_collision_leaf_matches_freshly_compiled_geometry (test_sim_physics.PooledPhysicsTests.test_collision_leaf_matches_freshly_compiled_geometry) ... ok
+test_ellipsoid_collision_bounds_use_capsule_local_axes (test_sim_physics.PooledPhysicsTests.test_ellipsoid_collision_bounds_use_capsule_local_axes) ... ok
+test_ellipsoid_inertia_uses_body_shape_axes (test_sim_physics.PooledPhysicsTests.test_ellipsoid_inertia_uses_body_shape_axes) ... ok
+test_failed_spawn_refreshes_parked_body_before_retry (test_sim_physics.PooledPhysicsTests.test_failed_spawn_refreshes_parked_body_before_retry) ... ok
+test_gravity_and_applied_force_follow_sampled_mass_after_reuse (test_sim_physics.PooledPhysicsTests.test_gravity_and_applied_force_follow_sampled_mass_after_reuse) ... ok
+test_refresh_matches_full_mujoco_constants_for_every_shape_and_reuse (test_sim_physics.PooledPhysicsTests.test_refresh_matches_full_mujoco_constants_for_every_shape_and_reuse) ... ok
+test_retirement_clears_only_its_warmstart_and_restores_compensation (test_sim_physics.PooledPhysicsTests.test_retirement_clears_only_its_warmstart_and_restores_compensation) ... ok
+test_sensor_feeder_uses_the_same_physical_refresh (test_sim_physics.PooledPhysicsTests.test_sensor_feeder_uses_the_same_physical_refresh) ... ok
+test_spawn_preserves_other_live_state (test_sim_physics.PooledPhysicsTests.test_spawn_preserves_other_live_state) ... ok
+test_stone_no_air_flight_height_at_splitter_plane_across_seeds_and_reuse (test_sim_physics.PooledPhysicsTests.test_stone_no_air_flight_height_at_splitter_plane_across_seeds_and_reuse) ... ok
+test_unsupported_mujoco_version_fails_before_compilation (test_sim_physics.PooledPhysicsTests.test_unsupported_mujoco_version_fails_before_compilation) ... ok
+test_class_catalog_previews_use_profile_midpoints_and_shape_axes (test_continuous_engine.ContinuousRetentionTest.test_class_catalog_previews_use_profile_midpoints_and_shape_axes) ... ok
+test_completed_injection_history_has_fixed_limit (test_continuous_engine.ContinuousRetentionTest.test_completed_injection_history_has_fixed_limit) ... ok
+test_engine_exposes_session_scoped_scores_only_in_continuous_mode (test_continuous_engine.ContinuousRetentionTest.test_engine_exposes_session_scoped_scores_only_in_continuous_mode) ... ok
+test_identical_policy_is_noop_and_keeps_score_window (test_continuous_engine.ContinuousRetentionTest.test_identical_policy_is_noop_and_keeps_score_window) ... ok
+test_manual_injection_expectation_survives_later_policy_changes (test_continuous_engine.ContinuousRetentionTest.test_manual_injection_expectation_survives_later_policy_changes) ... ok
+test_manual_injections_do_not_enter_feed_ledger (test_continuous_engine.ContinuousRetentionTest.test_manual_injections_do_not_enter_feed_ledger) ... ok
+test_new_object_truth_uses_class_policy_after_cutover (test_continuous_engine.ContinuousRetentionTest.test_new_object_truth_uses_class_policy_after_cutover) ... ok
+test_normally_accepted_class_can_become_policy_reject (test_continuous_engine.ContinuousRetentionTest.test_normally_accepted_class_can_become_policy_reject) ... ok
+test_pending_fire_records_each_object_contact_once (test_continuous_engine.ContinuousRetentionTest.test_pending_fire_records_each_object_contact_once) ... ok
+test_policy_change_starts_isolated_score_epoch_and_excludes_in_flight (test_continuous_engine.ContinuousRetentionTest.test_policy_change_starts_isolated_score_epoch_and_excludes_in_flight) ... ok
+test_policy_supports_every_catalog_class_and_rejects_unknown_classes (test_continuous_engine.ContinuousRetentionTest.test_policy_supports_every_catalog_class_and_rejects_unknown_classes) ... ok
+test_prunes_stale_full_records_and_track_evidence (test_continuous_engine.ContinuousRetentionTest.test_prunes_stale_full_records_and_track_evidence) ... ok
+test_report_waits_for_shared_settling_deadline_before_cohorting (test_continuous_engine.ContinuousRetentionTest.test_report_waits_for_shared_settling_deadline_before_cohorting) ... ok
+test_a_model_path_cannot_leave_the_preset_directory (test_continuous_engine.ModelPathRootTest.test_a_model_path_cannot_leave_the_preset_directory) ... ok
+test_a_relative_model_path_resolves_beside_the_preset (test_continuous_engine.ModelPathRootTest.test_a_relative_model_path_resolves_beside_the_preset) ... ok
+test_without_the_field_the_model_path_stays_source_relative (test_continuous_engine.ModelPathRootTest.test_without_the_field_the_model_path_stays_source_relative) ... ok
+test_counts_spills_unresolved_and_empty_denominators (test_continuous_engine.RollingScoreLedgerTest.test_counts_spills_unresolved_and_empty_denominators) ... ok
+test_delayed_outcome_updates_retained_row_and_expired_row_is_discarded (test_continuous_engine.RollingScoreLedgerTest.test_delayed_outcome_updates_retained_row_and_expired_row_is_discarded) ... ok
+test_epoch_availability_starts_at_policy_boundary (test_continuous_engine.RollingScoreLedgerTest.test_epoch_availability_starts_at_policy_boundary) ... ok
+test_pending_object_and_late_outcome_share_settling_deadline (test_continuous_engine.RollingScoreLedgerTest.test_pending_object_and_late_outcome_share_settling_deadline) ... ok
+test_policy_scores_and_legacy_defect_scores_keep_distinct_truth (test_continuous_engine.RollingScoreLedgerTest.test_policy_scores_and_legacy_defect_scores_keep_distinct_truth) ... ok
+test_uses_exclusive_start_inclusive_end_and_settling_delay (test_continuous_engine.RollingScoreLedgerTest.test_uses_exclusive_start_inclusive_end_and_settling_delay) ... ok
+
+----------------------------------------------------------------------
+Ran 43 tests in 0.711s
+
+OK

@@ -159,7 +159,7 @@ class PooledPhysicsTests(unittest.TestCase):
                 self.assertGreaterEqual(m.geom_rbound[g], reference.geom_rbound[0] - 1e-12)
             sim._park(b)
 
-    def test_stone_no_air_route_accepts_across_seeds_and_same_body_reuse(self):
+    def test_stone_no_air_flight_height_at_splitter_plane_across_seeds_and_reuse(self):
         for seed in (7, 8, 9, 42):
             sim = self.make_sim(seed)
             previous_body = None
@@ -170,9 +170,18 @@ class PooledPhysicsTests(unittest.TestCase):
                         self.assertEqual(bean.body, previous_body)
                     previous_body = bean.body
                     start = sim.data.time
+                    while bean.body in sim.bean_of:
+                        bodies, pos, _ = sim.active_state()
+                        if pos[0, 0] >= sim.L.split_x:
+                            # Bin contact now determines collection. The old accept assertion
+                            # was a splitter-height proxy, so retain that gravity oracle directly.
+                            self.assertGreater(pos[0, 2], sim.L.split_z)
+                            break
+                        sim.step()
+                    else:
+                        self.fail('stone retired before the splitter plane')
                     while bean.body in sim.bean_of and sim.data.time - start < 1.5:
                         sim.step()
-                    self.assertEqual(bean.outcome, 'accept')
                     self.assertEqual(bean.jet_hits, 0)
                     self.assertEqual(sim.n_fired, 0)
                     self.assertNotIn(bean.body, sim.bean_of)

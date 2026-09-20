@@ -25,6 +25,7 @@ from controller import Controller, SPECIALTY
 from profiles import BEAN, BOX, ELLIPSOID, ClassSpec, GREEN_ARABICA, Profile
 from render import Overview, Video, hud
 from run import metrics
+from rolling_scores import SETTLING_SECONDS
 from scene import Layout
 from sim import SorterSim
 from vision import Inspector, draw_blobs
@@ -186,7 +187,7 @@ def collect_camera_objects(profile: Profile, model: Model, seconds: float, rate:
             })
             counts["single_object_observations"] += 1
     inspector.close()
-    eligible = [bean for bean in sim.beans if bean.spawn_t <= sim.data.time - 0.6 and
+    eligible = [bean for bean in sim.beans if bean.spawn_t <= sim.data.time - SETTLING_SECONDS and
                 (bean.cls == "good" or bean.cls in UNKNOWN_NAMES)]
     eligible_uids = {bean.uid for bean in eligible}
     raw_observations = [row for row in raw_observations if row["uid"] in eligible_uids]
@@ -373,7 +374,7 @@ def _link_decisions(sim, blobs, blob_tracks, decisions, captured_t):
 
 
 def _decision_summary(sim, ctrl, warmup: float, end_t: float, threshold: float) -> dict:
-    eligible = {b.uid: b for b in sim.beans if warmup <= b.spawn_t <= end_t - 0.6}
+    eligible = {b.uid: b for b in sim.beans if warmup <= b.spawn_t <= end_t - SETTLING_SECONDS}
     by_uid = defaultdict(list)
     for decision in ctrl.decisions:
         for uid in decision.target_uids:

@@ -18,7 +18,6 @@ ROT_ARMATURE_FACTOR = 2  # added rotational inertia as a multiple of the body's 
 JET_FORCE = 0.09          # N per nozzle on a body inside the jet
 JET_HALF_X = 0.010        # m, jet footprint along travel
 JET_HALF_Y_FACTOR = 0.75  # jet half-width as a multiple of the nozzle pitch (jets overlap slightly)
-RESOLVED_RETIRE_GRACE = 0.5  # s: preserve chute motion, then recycle bodies settled in catch bins
 
 
 @dataclass
@@ -38,6 +37,7 @@ class Bean:
     camera_observations: int = 0     # full camera blobs containing this bean's rendered centre
     merged_observations: int = 0     # those observations whose component contains >=2 bean centres
     last_pos: tuple | None = None    # where it was recycled (diagnostics)
+    last_quat: tuple | None = None   # WXYZ orientation at the same collection pose
 
 
 @dataclass
@@ -90,8 +90,8 @@ class SorterSim:
         self.qvel_adr = np.array([self.body_qvel[b] for b in self.all_bodies])
         self.geom_of = np.array([self.body_geom[b] for b in self.all_bodies])
         self.body_index = {b: i for i, b in enumerate(self.all_bodies)}
+        self.collision_body = {geom: body for body, geom in self.body_col.items()}
         self.active = np.zeros(len(self.all_bodies), bool)
-        self.retire_at = np.full(len(self.all_bodies), np.inf)
         self.continuous = False
         self.bean_of = {}                  # body -> Bean (active)
         self.beans: list[Bean] = []        # every bean ever spawned (ground truth log)
@@ -120,6 +120,19 @@ class SorterSim:
         self.spawn_accum = 0.0
         self.class_by_name = {c.name: c for c in profile.classes}
         mujoco.mj_forward(m, self.data)
+        self.collection_geom = {
+            mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, "bin_accept"): "accept",
+            mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, "bin_reject"): "reject",
+        }
+        self.ground_geom = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, "floor")
+        end_walls = [
+            mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, name)
+            for name in ("bin_accept_end", "bin_reject_end")
+        ]
+        # A body must clear the exterior of both collection end walls.
+        self.collection_end_x = max(
+            m.geom_pos[geom, 0] + m.geom_size[geom, 0] for geom in end_walls
+        )
         # The local refresh below depends on independent free bodies and fixed frames.
         if m.ntendon or m.nflex or m.nu or m.neq or m.nplugin:
             raise ValueError("Pooled physics requires no coupled model elements.")
@@ -302,9 +315,7 @@ class SorterSim:
         else:
             self.beans.append(bean)
         self.bean_by_uid[bean.uid] = bean
-        body_index = self.body_index[b]
-        self.retire_at[body_index] = np.inf
-        self.active[body_index] = True
+        self.active[self.body_index[b]] = True
         return bean
 
     def _free_spot(self, half, margin, tries=12):
@@ -331,7 +342,6 @@ class SorterSim:
         m, d = self.model, self.data
         i = self.body_index[b]
         self.active[i] = False
-        self.retire_at[i] = np.inf
         m.body_gravcomp[b] = 1.0
         # Keep this flag enabled for reusable bodies, even if a reference refresh cleared it.
         m.flg_gravcomp = True
@@ -410,29 +420,6 @@ class SorterSim:
                                 else:
                                     self.fire_hits.add((fr.uid, bean.uid))
             d.xfrc_applied[bodies, :3] = f
-            # outcome capture at the splitter plane and recycling
-            past = pos[:, 0] >= L.split_x
-            for b, p in zip(bodies[past], pos[past]):
-                bean = self.bean_of[b]
-                if bean.outcome is None:
-                    bean.outcome = "accept" if p[2] > L.split_z else "reject"
-                    bean.resolved_t = t
-                    self.retire_at[self.body_index[b]] = t + RESOLVED_RETIRE_GRACE
-                    if self.continuous:
-                        self._outcome_events.append(bean)
-            resolved_expired = self.retire_at[act] <= t
-            gone = (pos[:, 0] > L.split_x + 0.16) | (pos[:, 2] < L.belt_z - 0.44) | \
-                   ((pos[:, 0] < 0) & (np.abs(pos[:, 1]) > L.belt_w / 2 + 0.03)) | \
-                   (pos[:, 2] < 0.05) | resolved_expired
-            for b, p in zip(bodies[gone], pos[gone]):
-                bean = self.bean_of[b]
-                bean.last_pos = tuple(np.round(p, 3))
-                if bean.outcome is None:
-                    bean.outcome = "spilled"
-                    bean.resolved_t = t
-                    if self.continuous:
-                        self._outcome_events.append(bean)
-                self._park(b)
         # conveyor: the belt body never moves in position but always carries belt_speed, so friction
         # transports whatever rests on it (standard MuJoCo conveyor idiom)
         d.qpos[self.belt_qpos] = 0.0
@@ -442,6 +429,54 @@ class SorterSim:
         d.qpos[self.roller_head] += w
         d.qpos[self.roller_tail] += w
         mujoco.mj_step(m, d)
+
+        if not act.any():
+            return
+
+        # implicitfast keeps these contacts and forces from the pre-integration state, at t.
+        outcomes, grounded = {}, set()
+        for index, contact in enumerate(d.contact[:d.ncon]):
+            first, second = contact.geom1, contact.geom2
+            if first in self.collection_geom:
+                collector, collision = first, second
+            elif second in self.collection_geom:
+                collector, collision = second, first
+            elif first == self.ground_geom:
+                collector, collision = None, second
+            elif second == self.ground_geom:
+                collector, collision = None, first
+            else:
+                continue
+            body = self.collision_body.get(collision)
+            if body is None or body not in self.bean_of:
+                continue
+            force = np.zeros(6)
+            mujoco.mj_contactForce(m, d, index, force)
+            if force[0] <= 0:
+                continue
+            if collector is None:
+                grounded.add(body)
+            else:
+                outcomes.setdefault(body, self.collection_geom[collector])
+
+        for b, p in zip(bodies, pos):
+            if b not in self.bean_of:
+                continue
+            escaped = p[0] > self.collection_end_x + m.geom_rbound[self.body_col[b]]
+            side_spill = p[0] < 0 and abs(p[1]) > L.belt_w / 2 + 0.03
+            outcome = outcomes.get(b)
+            if outcome is None and (b in grounded or escaped or side_spill):
+                outcome = "spilled"
+            if outcome is None:
+                continue
+            bean = self.bean_of[b]
+            bean.outcome = outcome
+            bean.resolved_t = t
+            bean.last_pos = tuple(np.round(p, 3))
+            bean.last_quat = tuple(d.xquat[b])
+            if self.continuous:
+                self._outcome_events.append(bean)
+            self._park(b)
 
     def drain_continuous_events(self):
         """Return new physical facts and clear their per-step queues."""

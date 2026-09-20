@@ -5,7 +5,7 @@ from collections import deque
 from dataclasses import dataclass
 
 
-SETTLING_SECONDS = 0.6
+SETTLING_SECONDS = 1.1
 
 
 @dataclass

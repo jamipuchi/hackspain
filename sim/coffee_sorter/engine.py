@@ -826,7 +826,7 @@ class Engine:
     def report(self) -> dict:
         """Return post-control evaluation truth, attribution, and timing evidence."""
         sim_time = float(self.sim.data.time)
-        cohort_end = sim_time - 0.6
+        cohort_end = sim_time - SETTLING_SECONDS
         in_cohort = {bean.uid for bean in self.sim.beans if 0.8 <= bean.spawn_t <= cohort_end}
         evidence = [self._object_evidence(bean, bean.uid in in_cohort) for bean in self.sim.beans]
         cohort = [row for row in evidence if row["in_cohort"]]

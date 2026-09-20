@@ -1,0 +1,2035 @@
+{
+  "schema_version": 1,
+  "mode": "stone",
+  "identity": {
+    "repo": "/private/tmp/hackspain-cinta-collection-scoring",
+    "model": "/private/tmp/hackspain-cinta-collection-scoring/sim/coffee_sorter/models/live_green_arabica.joblib",
+    "model_sha256": "f5b26f26aed62db18fbef23b4df712b96b2946b1ae2fce699e1a2e85a20844a3",
+    "preset": "/private/tmp/hackspain-cinta-collection-scoring/sim/coffee_sorter/configs/continuous_demo.json",
+    "preset_sha256": "5fc5033ea62ceb4f640b4e642990d014d6de09ce706c20501eecd6c30d5c428b",
+    "source_revision": "38de1d01468646d7116bd2bec03960c2f5e5f0ff",
+    "source_hashes": {
+      "sim.py": "b66b440d156d6f1e0f2096b6ce740fc3e2dc4760a3205e84085b1ae8065f1114",
+      "scene.py": "90678e917131474289b95392a457be252afe42bc903b645fb35d5ea595974093",
+      "engine.py": "ca2db6187bd2523e44af401c68c86f95fed5f715bd2b0f0d4cf5e6062e2e1a89",
+      "rolling_scores.py": "d3ad84f67d17b3a8861ec604e084661313a988dceddc0c131ac6e5149a9e9f4c",
+      "controller.py": "fac051ba53641f1c98dc78ce021ed8502864059adc391169af77474bc27c1c8f",
+      "profiles.py": "c186725ad3ca2c65327a60aec332eb6fce0fce5099ac2eaee65788e273f2b899",
+      "runner": "7ca2894be8484e0f5189f4c2c7559feb495897848092148b3d60f4bc53b12723"
+    }
+  },
+  "configuration": {
+    "seeds": [
+      7,
+      8,
+      9,
+      42
+    ],
+    "reuses_per_target": 2,
+    "object_seconds": 2.0,
+    "settling_seconds": 1.1,
+    "force_n": 0.06,
+    "lead_s": 0.0015,
+    "pool_size": 488,
+    "dt_s": 0.001,
+    "class_order": [
+      "good",
+      "faded",
+      "black",
+      "sour",
+      "insect",
+      "broken",
+      "shell",
+      "husk",
+      "stone",
+      "stick"
+    ],
+    "feed_rate": 0.0,
+    "observe_support": false,
+    "continuation_seconds": null,
+    "application_source_changed": false
+  },
+  "run_count": 8,
+  "error_runs": 0,
+  "skipped_reuses": 0,
+  "unresolved_attempts": 0,
+  "runs": [
+    "stone-keep-seed-7",
+    "stone-keep-seed-8",
+    "stone-keep-seed-9",
+    "stone-keep-seed-42",
+    "stone-reject-seed-7",
+    "stone-reject-seed-8",
+    "stone-reject-seed-9",
+    "stone-reject-seed-42"
+  ],
+  "stone_keep_reference_comparison": {
+    "baseline_directory": "/private/tmp/hackspain-cinta-collection-scoring/thoughts/taras/qa/evidence/2026-09-20-cinta-stone-mechanics",
+    "available": true,
+    "basis": "raw baseline traces compare sampled bodies and normalized control facts",
+    "spawn_time": "baseline decision times subtract trajectory[0].time_s; current times subtract recorded spawn_time_s",
+    "wall_latency": "wall-clock latency is excluded because it is nondeterministic",
+    "legacy_route_json": "not used because it lacks sampled body parameters and spawn timestamps",
+    "rows": [
+      {
+        "seed": 7,
+        "reuse": 0,
+        "baseline": "/private/tmp/hackspain-cinta-collection-scoring/thoughts/taras/qa/evidence/2026-09-20-cinta-stone-mechanics/keep-seed-7-reuse-0.json.gz",
+        "facts": {
+          "spawn_time_s": {
+            "current": 0.0,
+            "baseline": 0.0,
+            "comparison": "reported only, absolute times are not required to match"
+          },
+          "sampled_body": {
+            "current": {
+              "body_id": 471,
+              "mass_kg": 0.0009784160355202044,
+              "axes_m": [
+                0.004062738666511668,
+                0.003794427601939151,
+                0.0030513713804903872
+              ],
+              "initial_pose": [
+                -1.003206504715628,
+                -0.09375656483400675,
+                0.6090513713804904,
+                0.012742977055627483,
+                0.038374469960638986,
+                0.09965749552691844,
+                -0.9941998793885976
+              ],
+              "initial_velocity": [
+                2.6535330512240094,
+                0.008433139919831885,
+                0.0,
+                -2.791404134124614,
+                -0.08775546738982047,
+                2.0859095833748635
+              ]
+            },
+            "baseline": {
+              "body_id": 471,
+              "mass_kg": 0.0009784160355202044,
+              "axes_m": [
+                0.004062738666511668,
+                0.003794427601939151,
+                0.0030513713804903872
+              ],
+              "initial_pose": [
+                -1.003206504715628,
+                -0.09375656483400675,
+                0.6090513713804904,
+                0.012742977055627483,
+                0.038374469960638986,
+                0.09965749552691844,
+                -0.9941998793885976
+              ],
+              "initial_velocity": [
+                2.6535330512240094,
+                0.008433139919831885,
+                0.0,
+                -2.791404134124614,
+                -0.08775546738982047,
+                2.0859095833748635
+              ]
+            },
+            "equal": {
+              "body_id": true,
+              "mass_kg": true,
+              "axes_m": true,
+              "initial_pose": true,
+              "initial_velocity": true
+            }
+          },
+          "control": {
+            "predicted_class": {
+              "current": "stone",
+              "baseline": "stone",
+              "equal": true
+            },
+            "reject": {
+              "current": false,
+              "baseline": false,
+              "equal": true
+            },
+            "scheduled": {
+              "current": false,
+              "baseline": false,
+              "equal": true
+            },
+            "pulse_s": {
+              "current": 0.0,
+              "baseline": 0.0,
+              "equal": true
+            },
+            "jet_hit_steps": {
+              "current": 0,
+              "baseline": 0,
+              "equal": true
+            },
+            "own_pulse_event_count": {
+              "current": 0,
+              "baseline": 0,
+              "equal": true
+            },
+            "relative_decision_timing_s": {
+              "current": {
+                "t_decided_s": 0.3000000000000002,
+                "t_available_s": 0.3082893751524391,
+                "t_fire_s": 0.3720733237675266
+              },
+              "baseline": {
+                "t_available_s": 0.3095052910465749,
+                "t_fire_s": 0.3720733237675266
+              },
+              "equal": {
+                "t_available_s": false,
+                "t_fire_s": true
+              }
+            }
+          }
+        },
+        "status": "compared"
+      },
+      {
+        "seed": 7,
+        "reuse": 1,
+        "baseline": "/private/tmp/hackspain-cinta-collection-scoring/thoughts/taras/qa/evidence/2026-09-20-cinta-stone-mechanics/keep-seed-7-reuse-1.json.gz",
+        "facts": {
+          "spawn_time_s": {
+            "current": 0.6820000000000005,
+            "baseline": 0.5090000000000003,
+            "comparison": "reported only, absolute times are not required to match"
+          },
+          "sampled_body": {
+            "current": {
+              "body_id": 471,
+              "mass_kg": 0.0010209967577863575,
+              "axes_m": [
+                0.004988750708585982,
+                0.003585323838427506,
+                0.002744358458882325
+              ],
+              "initial_pose": [
+                -0.998511117972863,
+                -0.01608593194516239,
+                0.6087443584588823,
+                0.93780649394261,
+                0.023153331556799297,
+                0.003983551763699556,
+                0.3463625766046847
+              ],
+              "initial_velocity": [
+                2.519196065623005,
+                -0.003880075632085759,
+                0.0,
+                0.3399269580099227,
+                -4.59040729651618,
+                -1.4332598281017919
+              ]
+            },
+            "baseline": {
+              "body_id": 471,
+              "mass_kg": 0.0010209967577863575,
+              "axes_m": [
+                0.004988750708585982,
+                0.003585323838427506,
+                0.002744358458882325
+              ],
+              "initial_pose": [
+                -0.998511117972863,
+                -0.01608593194516239,
+                0.6087443584588823,
+                0.93780649394261,
+                0.023153331556799297,
+                0.003983551763699556,
+                0.3463625766046847
+              ],
+              "initial_velocity": [
+                2.519196065623005,
+                -0.003880075632085759,
+                0.0,
+                0.3399269580099227,
+                -4.59040729651618,
+                -1.4332598281017919
+              ]
+            },
+            "equal": {
+              "body_id": true,
+              "mass_kg": true,
+              "axes_m": true,
+              "initial_pose": true,
+              "initial_velocity": true
+            }
+          },
+          "control": {
+            "predicted_class": {
+              "current": "stone",
+              "baseline": "stone",
+              "equal": true
+            },
+            "reject": {
+              "current": false,
+              "baseline": false,
+              "equal": true
+            },
+            "scheduled": {
+              "current": false,
+              "baseline": false,
+              "equal": true
+            },
+            "pulse_s": {
+              "current": 0.0,
+              "baseline": 0.0,
+              "equal": true
+            },
+            "jet_hit_steps": {
+              "current": 0,
+              "baseline": 0,
+              "equal": true
+            },
+            "own_pulse_event_count": {
+              "current": 0,
+              "baseline": 0,
+              "equal": true
+            },
+            "relative_decision_timing_s": {
+              "current": {
+                "t_decided_s": 0.30200000000000027,
+                "t_available_s": 0.31054345811158446,
+                "t_fire_s": 0.37272592567594864
+              },
+              "baseline": {
+                "t_available_s": 0.3115328750275078,
+                "t_fire_s": 0.3727113623026289
+              },
+              "equal": {
+                "t_available_s": false,
+                "t_fire_s": false
+              }
+            }
+          }
+        },
+        "status": "compared"
+      },
+      {
+        "seed": 8,
+        "reuse": 0,
+        "baseline": "/private/tmp/hackspain-cinta-collection-scoring/thoughts/taras/qa/evidence/2026-09-20-cinta-stone-mechanics/keep-seed-8-reuse-0.json.gz",
+        "facts": {
+          "spawn_time_s": {
+            "current": 0.0,
+            "baseline": 0.0,
+            "comparison": "reported only, absolute times are not required to match"
+          },
+          "sampled_body": {
+            "current": {
+              "body_id": 471,
+              "mass_kg": 0.000586197241454949,
+              "axes_m": [
+                0.0033174306915139022,
+                0.003974553686675851,
+                0.002137421676971034
+              ],
+              "initial_pose": [
+                -1.0021034545837284,
+                -0.12311637893969123,
+                0.608137421676971,
+                0.9772280093249038,
+                0.05165680425886159,
+                0.08313598001929284,
+                -0.18826949086583028
+              ],
+              "initial_velocity": [
+                2.59204553318641,
+                0.06878351911551277,
+                0.0,
+                4.51644346915153,
+                -1.9607836002511456,
+                1.831053437490561
+              ]
+            },
+            "baseline": {
+              "body_id": 471,
+              "mass_kg": 0.000586197241454949,
+              "axes_m": [
+                0.0033174306915139022,
+                0.003974553686675851,
+                0.002137421676971034
+              ],
+              "initial_pose": [
+                -1.0021034545837284,
+                -0.12311637893969123,
+                0.608137421676971,
+                0.9772280093249038,
+                0.05165680425886159,
+                0.08313598001929284,
+                -0.18826949086583028
+              ],
+              "initial_velocity": [
+                2.59204553318641,
+                0.06878351911551277,
+                0.0,
+                4.51644346915153,
+                -1.9607836002511456,
+                1.831053437490561
+              ]
+            },
+            "equal": {
+              "body_id": true,
+              "mass_kg": true,
+              "axes_m": true,
+              "initial_pose": true,
+              "initial_velocity": true
+            }
+          },
+          "control": {
+            "predicted_class": {
+              "current": "stone",
+              "baseline": "stone",
+              "equal": true
+            },
+            "reject": {
+              "current": false,
+              "baseline": false,
+              "equal": true
+            },
+            "scheduled": {
+              "current": false,
+              "baseline": false,
+              "equal": true
+            },
+            "pulse_s": {
+              "current": 0.0,
+              "baseline": 0.0,
+              "equal": true
+            },
+            "jet_hit_steps": {
+              "current": 0,
+              "baseline": 0,
+              "equal": true
+            },
+            "own_pulse_event_count": {
+              "current": 0,
+              "baseline": 0,
+              "equal": true
+            },
+            "relative_decision_timing_s": {
+              "current": {
+                "t_decided_s": 0.3000000000000002,
+                "t_available_s": 0.3089005828332158,
+                "t_fire_s": 0.372632524986733
+              },
+              "baseline": {
+                "t_available_s": 0.30860400013253114,
+                "t_fire_s": 0.372632524986733
+              },
+              "equal": {
+                "t_available_s": false,
+                "t_fire_s": true
+              }
+            }
+          }
+        },
+        "status": "compared"
+      },
+      {
+        "seed": 8,
+        "reuse": 1,
+        "baseline": "/private/tmp/hackspain-cinta-collection-scoring/thoughts/taras/qa/evidence/2026-09-20-cinta-stone-mechanics/keep-seed-8-reuse-1.json.gz",
+        "facts": {
+          "spawn_time_s": {
+            "current": 0.7650000000000006,
+            "baseline": 0.5100000000000003,
+            "comparison": "reported only, absolute times are not required to match"
+          },
+          "sampled_body": {
+            "current": {
+              "body_id": 471,
+              "mass_kg": 0.0005628272818269376,
+              "axes_m": [
+                0.0031398012628955654,
+                0.0031818057035308232,
+                0.0027085445921169117
+              ],
+              "initial_pose": [
+                -1.031844606263727,
+                -0.05013775530186505,
+                0.6087085445921169,
+                0.9190105112860761,
+                0.028325257658951806,
+                0.0024491736009102836,
+                -0.39320651250065974
+              ],
+              "initial_velocity": [
+                2.632845755761733,
+                -0.14531165291637124,
+                0.0,
+                4.657399703990599,
+                -2.584325019865705,
+                -6.7241035745618625
+              ]
+            },
+            "baseline": {
+              "body_id": 471,
+              "mass_kg": 0.0005628272818269376,
+              "axes_m": [
+                0.0031398012628955654,
+                0.0031818057035308232,
+                0.0027085445921169117
+              ],
+              "initial_pose": [
+                -1.031844606263727,
+                -0.05013775530186505,
+                0.6087085445921169,
+                0.9190105112860761,
+                0.028325257658951806,
+                0.0024491736009102836,
+                -0.39320651250065974
+              ],
+              "initial_velocity": [
+                2.632845755761733,
+                -0.14531165291637124,
+                0.0,
+                4.657399703990599,
+                -2.584325019865705,
+                -6.7241035745618625
+              ]
+            },
+            "equal": {
+              "body_id": true,
+              "mass_kg": true,
+              "axes_m": true,
+              "initial_pose": true,
+              "initial_velocity": true
+            }
+          },
+          "control": {
+            "predicted_class": {
+              "current": "stone",
+              "baseline": "stone",
+              "equal": true
+            },
+            "reject": {
+              "current": false,
+              "baseline": false,
+              "equal": true
+            },
+            "scheduled": {
+              "current": false,
+              "baseline": false,
+              "equal": true
+            },
+            "pulse_s": {
+              "current": 0.0,
+              "baseline": 0.0,
+              "equal": true
+            },
+            "jet_hit_steps": {
+              "current": 0,
+              "baseline": 0,
+              "equal": true
+            },
+            "own_pulse_event_count": {
+              "current": 0,
+              "baseline": 0,
+              "equal": true
+            },
+            "relative_decision_timing_s": {
+              "current": {
+                "t_decided_s": 0.3109999999999917,
+                "t_available_s": 0.3198513330984778,
+                "t_fire_s": 0.38225719613858855
+              },
+              "baseline": {
+                "t_available_s": 0.31978937493264703,
+                "t_fire_s": 0.3822408483656715
+              },
+              "equal": {
+                "t_available_s": false,
+                "t_fire_s": false
+              }
+            }
+          }
+        },
+        "status": "compared"
+      },
+      {
+        "seed": 9,
+        "reuse": 0,
+        "baseline": "/private/tmp/hackspain-cinta-collection-scoring/thoughts/taras/qa/evidence/2026-09-20-cinta-stone-mechanics/keep-seed-9-reuse-0.json.gz",
+        "facts": {
+          "spawn_time_s": {
+            "current": 0.0,
+            "baseline": 0.0,
+            "comparison": "reported only, absolute times are not required to match"
+          },
+          "sampled_body": {
+            "current": {
+              "body_id": 471,
+              "mass_kg": 0.0006773685395323714,
+              "axes_m": [
+                0.004675623009925212,
+                0.002573634418175111,
+                0.0027062963001031237
+              ],
+              "initial_pose": [
+                -1.0062751999870492,
+                -0.0071665003588108804,
+                0.6087062963001031,
+                0.4249029247138568,
+                -0.018780329133709604,
+                -0.02958609294501291,
+                0.9045603721761687
+              ],
+              "initial_velocity": [
+                2.811563522601751,
+                -0.0038105789753867148,
+                0.0,
+                7.566982232248304,
+                2.4786547475238483,
+                0.8333415809261482
+              ]
+            },
+            "baseline": {
+              "body_id": 471,
+              "mass_kg": 0.0006773685395323714,
+              "axes_m": [
+                0.004675623009925212,
+                0.002573634418175111,
+                0.0027062963001031237
+              ],
+              "initial_pose": [
+                -1.0062751999870492,
+                -0.0071665003588108804,
+                0.6087062963001031,
+                0.4249029247138568,
+                -0.018780329133709604,
+                -0.02958609294501291,
+                0.9045603721761687
+              ],
+              "initial_velocity": [
+                2.811563522601751,
+                -0.0038105789753867148,
+                0.0,
+                7.566982232248304,
+                2.4786547475238483,
+                0.8333415809261482
+              ]
+            },
+            "equal": {
+              "body_id": true,
+              "mass_kg": true,
+              "axes_m": true,
+              "initial_pose": true,
+              "initial_velocity": true
+            }
+          },
+          "control": {
+            "predicted_class": {
+              "current": "stone",
+              "baseline": "stone",
+              "equal": true
+            },
+            "reject": {
+              "current": false,
+              "baseline": false,
+              "equal": true
+            },
+            "scheduled": {
+              "current": false,
+              "baseline": false,
+              "equal": true
+            },
+            "pulse_s": {
+              "current": 0.0,
+              "baseline": 0.0,
+              "equal": true
+            },
+            "jet_hit_steps": {
+              "current": 0,
+              "baseline": 0,
+              "equal": true
+            },
+            "own_pulse_event_count": {
+              "current": 0,
+              "baseline": 0,
+              "equal": true
+            },
+            "relative_decision_timing_s": {
+              "current": {
+                "t_decided_s": 0.3000000000000002,
+                "t_available_s": 0.30878875008411727,
+                "t_fire_s": 0.3709846964129613
+              },
+              "baseline": {
+                "t_available_s": 0.3097949589099737,
+                "t_fire_s": 0.3709846964129613
+              },
+              "equal": {
+                "t_available_s": false,
+                "t_fire_s": true
+              }
+            }
+          }
+        },
+        "status": "compared"
+      },
+      {
+        "seed": 9,
+        "reuse": 1,
+        "baseline": "/private/tmp/hackspain-cinta-collection-scoring/thoughts/taras/qa/evidence/2026-09-20-cinta-stone-mechanics/keep-seed-9-reuse-1.json.gz",
+        "facts": {
+          "spawn_time_s": {
+            "current": 0.6330000000000005,
+            "baseline": 0.5090000000000003,
+            "comparison": "reported only, absolute times are not required to match"
+          },
+          "sampled_body": {
+            "current": {
+              "body_id": 471,
+              "mass_kg": 0.0004896076275023411,
+              "axes_m": [
+                0.003289008724945683,
+                0.003410667409178908,
+                0.0020983621463964933
+              ],
+              "initial_pose": [
+                -0.9587189948216082,
+                0.0991064911131101,
+                0.6080983621463965,
+                0.03914206892931821,
+                -0.000206259211772207,
+                -0.17497252515693593,
+                0.9837949335797962
+              ],
+              "initial_velocity": [
+                2.4662942245762203,
+                0.0614085820602724,
+                0.0,
+                -3.513721214490203,
+                1.6357253144859352,
+                -3.1323787176474074
+              ]
+            },
+            "baseline": {
+              "body_id": 471,
+              "mass_kg": 0.0004896076275023411,
+              "axes_m": [
+                0.003289008724945683,
+                0.003410667409178908,
+                0.0020983621463964933
+              ],
+              "initial_pose": [
+                -0.9587189948216082,
+                0.0991064911131101,
+                0.6080983621463965,
+                0.03914206892931821,
+                -0.000206259211772207,
+                -0.17497252515693593,
+                0.9837949335797962
+              ],
+              "initial_velocity": [
+                2.4662942245762203,
+                0.0614085820602724,
+                0.0,
+                -3.513721214490203,
+                1.6357253144859352,
+                -3.1323787176474074
+              ]
+            },
+            "equal": {
+              "body_id": true,
+              "mass_kg": true,
+              "axes_m": true,
+              "initial_pose": true,
+              "initial_velocity": true
+            }
+          },
+          "control": {
+            "predicted_class": {
+              "current": "stone",
+              "baseline": "stone",
+              "equal": true
+            },
+            "reject": {
+              "current": false,
+              "baseline": false,
+              "equal": true
+            },
+            "scheduled": {
+              "current": false,
+              "baseline": false,
+              "equal": true
+            },
+            "pulse_s": {
+              "current": 0.0,
+              "baseline": 0.0,
+              "equal": true
+            },
+            "jet_hit_steps": {
+              "current": 0,
+              "baseline": 0,
+              "equal": true
+            },
+            "own_pulse_event_count": {
+              "current": 0,
+              "baseline": 0,
+              "equal": true
+            },
+            "relative_decision_timing_s": {
+              "current": {
+                "t_decided_s": 0.29100000000000026,
+                "t_available_s": 0.2992844999115917,
+                "t_fire_s": 0.3606813848920617
+              },
+              "baseline": {
+                "t_available_s": 0.29995595787651863,
+                "t_fire_s": 0.36068138489205825
+              },
+              "equal": {
+                "t_available_s": false,
+                "t_fire_s": true
+              }
+            }
+          }
+        },
+        "status": "compared"
+      },
+      {
+        "seed": 42,
+        "reuse": 0,
+        "baseline": "/private/tmp/hackspain-cinta-collection-scoring/thoughts/taras/qa/evidence/2026-09-20-cinta-stone-mechanics/keep-seed-42-reuse-0.json.gz",
+        "facts": {
+          "spawn_time_s": {
+            "current": 0.0,
+            "baseline": 0.0,
+            "comparison": "reported only, absolute times are not required to match"
+          },
+          "sampled_body": {
+            "current": {
+              "body_id": 471,
+              "mass_kg": 0.0008540391870092919,
+              "axes_m": [
+                0.004434890121389908,
+                0.002877756879504105,
+                0.003217195839822765
+              ],
+              "initial_pose": [
+                -1.0049614062104433,
+                -0.06150014046529133,
+                0.6092171958398227,
+                0.6817184649388359,
+                -0.017094069169219628,
+                0.016487149457845095,
+                0.7312290347513766
+              ],
+              "initial_velocity": [
+                2.7166687903143423,
+                0.0052824558048972835,
+                0.0,
+                3.381723620904099,
+                1.4025280267561369,
+                -2.5778773886497146
+              ]
+            },
+            "baseline": {
+              "body_id": 471,
+              "mass_kg": 0.0008540391870092919,
+              "axes_m": [
+                0.004434890121389908,
+                0.002877756879504105,
+                0.003217195839822765
+              ],
+              "initial_pose": [
+                -1.0049614062104433,
+                -0.06150014046529133,
+                0.6092171958398227,
+                0.6817184649388359,
+                -0.017094069169219628,
+                0.016487149457845095,
+                0.7312290347513766
+              ],
+              "initial_velocity": [
+                2.7166687903143423,
+                0.0052824558048972835,
+                0.0,
+                3.381723620904099,
+                1.4025280267561369,
+                -2.5778773886497146
+              ]
+            },
+            "equal": {
+              "body_id": true,
+              "mass_kg": true,
+              "axes_m": true,
+              "initial_pose": true,
+              "initial_velocity": true
+            }
+          },
+          "control": {
+            "predicted_class": {
+              "current": "stone",
+              "baseline": "stone",
+              "equal": true
+            },
+            "reject": {
+              "current": false,
+              "baseline": false,
+              "equal": true
+            },
+            "scheduled": {
+              "current": false,
+              "baseline": false,
+              "equal": true
+            },
+            "pulse_s": {
+              "current": 0.0,
+              "baseline": 0.0,
+              "equal": true
+            },
+            "jet_hit_steps": {
+              "current": 0,
+              "baseline": 0,
+              "equal": true
+            },
+            "own_pulse_event_count": {
+              "current": 0,
+              "baseline": 0,
+              "equal": true
+            },
+            "relative_decision_timing_s": {
+              "current": {
+                "t_decided_s": 0.3000000000000002,
+                "t_available_s": 0.3085214998535814,
+                "t_fire_s": 0.37171317467025733
+              },
+              "baseline": {
+                "t_available_s": 0.30833729100041113,
+                "t_fire_s": 0.37171317467025733
+              },
+              "equal": {
+                "t_available_s": false,
+                "t_fire_s": true
+              }
+            }
+          }
+        },
+        "status": "compared"
+      },
+      {
+        "seed": 42,
+        "reuse": 1,
+        "baseline": "/private/tmp/hackspain-cinta-collection-scoring/thoughts/taras/qa/evidence/2026-09-20-cinta-stone-mechanics/keep-seed-42-reuse-1.json.gz",
+        "facts": {
+          "spawn_time_s": {
+            "current": 0.7500000000000006,
+            "baseline": 0.5090000000000003,
+            "comparison": "reported only, absolute times are not required to match"
+          },
+          "sampled_body": {
+            "current": {
+              "body_id": 471,
+              "mass_kg": 0.0005426880492220067,
+              "axes_m": [
+                0.003886461967539587,
+                0.002127634512208351,
+                0.0031552623439851644
+              ],
+              "initial_pose": [
+                -1.0305361292148032,
+                -0.01584080222593173,
+                0.6091552623439851,
+                0.09150064730796284,
+                -0.03304572927608294,
+                0.00858208338372059,
+                0.9952195532462323
+              ],
+              "initial_velocity": [
+                2.654816609654612,
+                0.03301860892767907,
+                0.0,
+                1.2924630090236482,
+                6.424942802611383,
+                -1.2192450491538467
+              ]
+            },
+            "baseline": {
+              "body_id": 471,
+              "mass_kg": 0.0005426880492220067,
+              "axes_m": [
+                0.003886461967539587,
+                0.002127634512208351,
+                0.0031552623439851644
+              ],
+              "initial_pose": [
+                -1.0305361292148032,
+                -0.01584080222593173,
+                0.6091552623439851,
+                0.09150064730796284,
+                -0.03304572927608294,
+                0.00858208338372059,
+                0.9952195532462323
+              ],
+              "initial_velocity": [
+                2.654816609654612,
+                0.03301860892767907,
+                0.0,
+                1.2924630090236482,
+                6.424942802611383,
+                -1.2192450491538467
+              ]
+            },
+            "equal": {
+              "body_id": true,
+              "mass_kg": true,
+              "axes_m": true,
+              "initial_pose": true,
+              "initial_velocity": true
+            }
+          },
+          "control": {
+            "predicted_class": {
+              "current": "stone",
+              "baseline": "stone",
+              "equal": true
+            },
+            "reject": {
+              "current": false,
+              "baseline": false,
+              "equal": true
+            },
+            "scheduled": {
+              "current": false,
+              "baseline": false,
+              "equal": true
+            },
+            "pulse_s": {
+              "current": 0.0,
+              "baseline": 0.0,
+              "equal": true
+            },
+            "jet_hit_steps": {
+              "current": 0,
+              "baseline": 0,
+              "equal": true
+            },
+            "own_pulse_event_count": {
+              "current": 0,
+              "baseline": 0,
+              "equal": true
+            },
+            "relative_decision_timing_s": {
+              "current": {
+                "t_decided_s": 0.3099999999999935,
+                "t_available_s": 0.3189347500316734,
+                "t_fire_s": 0.38097525887915273
+              },
+              "baseline": {
+                "t_available_s": 0.3190937499143186,
+                "t_fire_s": 0.38100138775995784
+              },
+              "equal": {
+                "t_available_s": false,
+                "t_fire_s": false
+              }
+            }
+          }
+        },
+        "status": "compared"
+      }
+    ]
+  },
+  "stone_reject_reference_comparison": {
+    "baseline_directory": "/private/tmp/hackspain-cinta-collection-scoring/thoughts/taras/qa/evidence/2026-09-20-cinta-stone-mechanics",
+    "available": true,
+    "basis": "raw baseline traces compare sampled bodies and normalized control facts",
+    "spawn_time": "baseline decision times subtract trajectory[0].time_s; current times subtract recorded spawn_time_s",
+    "wall_latency": "wall-clock latency is excluded because it is nondeterministic",
+    "legacy_route_json": "not used because it lacks sampled body parameters and spawn timestamps",
+    "rows": [
+      {
+        "seed": 7,
+        "reuse": 0,
+        "baseline": "/private/tmp/hackspain-cinta-collection-scoring/thoughts/taras/qa/evidence/2026-09-20-cinta-stone-mechanics/reject-seed-7-reuse-0.json.gz",
+        "facts": {
+          "spawn_time_s": {
+            "current": 0.0,
+            "baseline": 0.0,
+            "comparison": "reported only, absolute times are not required to match"
+          },
+          "sampled_body": {
+            "current": {
+              "body_id": 471,
+              "mass_kg": 0.0009784160355202044,
+              "axes_m": [
+                0.004062738666511668,
+                0.003794427601939151,
+                0.0030513713804903872
+              ],
+              "initial_pose": [
+                -1.003206504715628,
+                -0.09375656483400675,
+                0.6090513713804904,
+                0.012742977055627483,
+                0.038374469960638986,
+                0.09965749552691844,
+                -0.9941998793885976
+              ],
+              "initial_velocity": [
+                2.6535330512240094,
+                0.008433139919831885,
+                0.0,
+                -2.791404134124614,
+                -0.08775546738982047,
+                2.0859095833748635
+              ]
+            },
+            "baseline": {
+              "body_id": 471,
+              "mass_kg": 0.0009784160355202044,
+              "axes_m": [
+                0.004062738666511668,
+                0.003794427601939151,
+                0.0030513713804903872
+              ],
+              "initial_pose": [
+                -1.003206504715628,
+                -0.09375656483400675,
+                0.6090513713804904,
+                0.012742977055627483,
+                0.038374469960638986,
+                0.09965749552691844,
+                -0.9941998793885976
+              ],
+              "initial_velocity": [
+                2.6535330512240094,
+                0.008433139919831885,
+                0.0,
+                -2.791404134124614,
+                -0.08775546738982047,
+                2.0859095833748635
+              ]
+            },
+            "equal": {
+              "body_id": true,
+              "mass_kg": true,
+              "axes_m": true,
+              "initial_pose": true,
+              "initial_velocity": true
+            }
+          },
+          "control": {
+            "predicted_class": {
+              "current": "stone",
+              "baseline": "stone",
+              "equal": true
+            },
+            "reject": {
+              "current": true,
+              "baseline": true,
+              "equal": true
+            },
+            "scheduled": {
+              "current": true,
+              "baseline": true,
+              "equal": true
+            },
+            "pulse_s": {
+              "current": 0.009110206557354209,
+              "baseline": 0.009110206557354209,
+              "equal": true
+            },
+            "jet_hit_steps": {
+              "current": 10,
+              "baseline": 10,
+              "equal": true
+            },
+            "own_pulse_event_count": {
+              "current": 2,
+              "baseline": 2,
+              "equal": true
+            },
+            "relative_decision_timing_s": {
+              "current": {
+                "t_decided_s": 0.3000000000000002,
+                "t_available_s": 0.3085404999982568,
+                "t_fire_s": 0.3720733237675266
+              },
+              "baseline": {
+                "t_available_s": 0.3095850408971312,
+                "t_fire_s": 0.3720733237675266
+              },
+              "equal": {
+                "t_available_s": false,
+                "t_fire_s": true
+              }
+            }
+          }
+        },
+        "status": "compared"
+      },
+      {
+        "seed": 7,
+        "reuse": 1,
+        "baseline": "/private/tmp/hackspain-cinta-collection-scoring/thoughts/taras/qa/evidence/2026-09-20-cinta-stone-mechanics/reject-seed-7-reuse-1.json.gz",
+        "facts": {
+          "spawn_time_s": {
+            "current": 0.5400000000000004,
+            "baseline": 0.5070000000000003,
+            "comparison": "reported only, absolute times are not required to match"
+          },
+          "sampled_body": {
+            "current": {
+              "body_id": 471,
+              "mass_kg": 0.0010209967577863575,
+              "axes_m": [
+                0.004988750708585982,
+                0.003585323838427506,
+                0.002744358458882325
+              ],
+              "initial_pose": [
+                -0.998511117972863,
+                -0.01608593194516239,
+                0.6087443584588823,
+                0.93780649394261,
+                0.023153331556799297,
+                0.003983551763699556,
+                0.3463625766046847
+              ],
+              "initial_velocity": [
+                2.519196065623005,
+                -0.003880075632085759,
+                0.0,
+                0.3399269580099227,
+                -4.59040729651618,
+                -1.4332598281017919
+              ]
+            },
+            "baseline": {
+              "body_id": 471,
+              "mass_kg": 0.0010209967577863575,
+              "axes_m": [
+                0.004988750708585982,
+                0.003585323838427506,
+                0.002744358458882325
+              ],
+              "initial_pose": [
+                -0.998511117972863,
+                -0.01608593194516239,
+                0.6087443584588823,
+                0.93780649394261,
+                0.023153331556799297,
+                0.003983551763699556,
+                0.3463625766046847
+              ],
+              "initial_velocity": [
+                2.519196065623005,
+                -0.003880075632085759,
+                0.0,
+                0.3399269580099227,
+                -4.59040729651618,
+                -1.4332598281017919
+              ]
+            },
+            "equal": {
+              "body_id": true,
+              "mass_kg": true,
+              "axes_m": true,
+              "initial_pose": true,
+              "initial_velocity": true
+            }
+          },
+          "control": {
+            "predicted_class": {
+              "current": "stone",
+              "baseline": "stone",
+              "equal": true
+            },
+            "reject": {
+              "current": true,
+              "baseline": true,
+              "equal": true
+            },
+            "scheduled": {
+              "current": true,
+              "baseline": true,
+              "equal": true
+            },
+            "pulse_s": {
+              "current": 0.009110125097435707,
+              "baseline": 0.009110125097435707,
+              "equal": true
+            },
+            "jet_hit_steps": {
+              "current": 10,
+              "baseline": 10,
+              "equal": true
+            },
+            "own_pulse_event_count": {
+              "current": 2,
+              "baseline": 2,
+              "equal": true
+            },
+            "relative_decision_timing_s": {
+              "current": {
+                "t_decided_s": 0.30000000000000027,
+                "t_available_s": 0.30830404185317484,
+                "t_fire_s": 0.3727150167453006
+              },
+              "baseline": {
+                "t_available_s": 0.30997470796108273,
+                "t_fire_s": 0.37271540601241915
+              },
+              "equal": {
+                "t_available_s": false,
+                "t_fire_s": false
+              }
+            }
+          }
+        },
+        "status": "compared"
+      },
+      {
+        "seed": 8,
+        "reuse": 0,
+        "baseline": "/private/tmp/hackspain-cinta-collection-scoring/thoughts/taras/qa/evidence/2026-09-20-cinta-stone-mechanics/reject-seed-8-reuse-0.json.gz",
+        "facts": {
+          "spawn_time_s": {
+            "current": 0.0,
+            "baseline": 0.0,
+            "comparison": "reported only, absolute times are not required to match"
+          },
+          "sampled_body": {
+            "current": {
+              "body_id": 471,
+              "mass_kg": 0.000586197241454949,
+              "axes_m": [
+                0.0033174306915139022,
+                0.003974553686675851,
+                0.002137421676971034
+              ],
+              "initial_pose": [
+                -1.0021034545837284,
+                -0.12311637893969123,
+                0.608137421676971,
+                0.9772280093249038,
+                0.05165680425886159,
+                0.08313598001929284,
+                -0.18826949086583028
+              ],
+              "initial_velocity": [
+                2.59204553318641,
+                0.06878351911551277,
+                0.0,
+                4.51644346915153,
+                -1.9607836002511456,
+                1.831053437490561
+              ]
+            },
+            "baseline": {
+              "body_id": 471,
+              "mass_kg": 0.000586197241454949,
+              "axes_m": [
+                0.0033174306915139022,
+                0.003974553686675851,
+                0.002137421676971034
+              ],
+              "initial_pose": [
+                -1.0021034545837284,
+                -0.12311637893969123,
+                0.608137421676971,
+                0.9772280093249038,
+                0.05165680425886159,
+                0.08313598001929284,
+                -0.18826949086583028
+              ],
+              "initial_velocity": [
+                2.59204553318641,
+                0.06878351911551277,
+                0.0,
+                4.51644346915153,
+                -1.9607836002511456,
+                1.831053437490561
+              ]
+            },
+            "equal": {
+              "body_id": true,
+              "mass_kg": true,
+              "axes_m": true,
+              "initial_pose": true,
+              "initial_velocity": true
+            }
+          },
+          "control": {
+            "predicted_class": {
+              "current": "stone",
+              "baseline": "stone",
+              "equal": true
+            },
+            "reject": {
+              "current": true,
+              "baseline": true,
+              "equal": true
+            },
+            "scheduled": {
+              "current": true,
+              "baseline": true,
+              "equal": true
+            },
+            "pulse_s": {
+              "current": 0.00911025451312559,
+              "baseline": 0.00911025451312559,
+              "equal": true
+            },
+            "jet_hit_steps": {
+              "current": 4,
+              "baseline": 4,
+              "equal": true
+            },
+            "own_pulse_event_count": {
+              "current": 1,
+              "baseline": 1,
+              "equal": true
+            },
+            "relative_decision_timing_s": {
+              "current": {
+                "t_decided_s": 0.3000000000000002,
+                "t_available_s": 0.30856483312882504,
+                "t_fire_s": 0.372632524986733
+              },
+              "baseline": {
+                "t_available_s": 0.30982941598258934,
+                "t_fire_s": 0.372632524986733
+              },
+              "equal": {
+                "t_available_s": false,
+                "t_fire_s": true
+              }
+            }
+          }
+        },
+        "status": "compared"
+      },
+      {
+        "seed": 8,
+        "reuse": 1,
+        "baseline": "/private/tmp/hackspain-cinta-collection-scoring/thoughts/taras/qa/evidence/2026-09-20-cinta-stone-mechanics/reject-seed-8-reuse-1.json.gz",
+        "facts": {
+          "spawn_time_s": {
+            "current": 0.5510000000000004,
+            "baseline": 0.5400000000000004,
+            "comparison": "reported only, absolute times are not required to match"
+          },
+          "sampled_body": {
+            "current": {
+              "body_id": 471,
+              "mass_kg": 0.0005628272818269376,
+              "axes_m": [
+                0.0031398012628955654,
+                0.0031818057035308232,
+                0.0027085445921169117
+              ],
+              "initial_pose": [
+                -1.031844606263727,
+                -0.05013775530186505,
+                0.6087085445921169,
+                0.9190105112860761,
+                0.028325257658951806,
+                0.0024491736009102836,
+                -0.39320651250065974
+              ],
+              "initial_velocity": [
+                2.632845755761733,
+                -0.14531165291637124,
+                0.0,
+                4.657399703990599,
+                -2.584325019865705,
+                -6.7241035745618625
+              ]
+            },
+            "baseline": {
+              "body_id": 471,
+              "mass_kg": 0.0005628272818269376,
+              "axes_m": [
+                0.0031398012628955654,
+                0.0031818057035308232,
+                0.0027085445921169117
+              ],
+              "initial_pose": [
+                -1.031844606263727,
+                -0.05013775530186505,
+                0.6087085445921169,
+                0.9190105112860761,
+                0.028325257658951806,
+                0.0024491736009102836,
+                -0.39320651250065974
+              ],
+              "initial_velocity": [
+                2.632845755761733,
+                -0.14531165291637124,
+                0.0,
+                4.657399703990599,
+                -2.584325019865705,
+                -6.7241035745618625
+              ]
+            },
+            "equal": {
+              "body_id": true,
+              "mass_kg": true,
+              "axes_m": true,
+              "initial_pose": true,
+              "initial_velocity": true
+            }
+          },
+          "control": {
+            "predicted_class": {
+              "current": "stone",
+              "baseline": "stone",
+              "equal": true
+            },
+            "reject": {
+              "current": true,
+              "baseline": true,
+              "equal": true
+            },
+            "scheduled": {
+              "current": true,
+              "baseline": true,
+              "equal": true
+            },
+            "pulse_s": {
+              "current": 0.00911027663604526,
+              "baseline": 0.00911027663604526,
+              "equal": true
+            },
+            "jet_hit_steps": {
+              "current": 5,
+              "baseline": 5,
+              "equal": true
+            },
+            "own_pulse_event_count": {
+              "current": 1,
+              "baseline": 1,
+              "equal": true
+            },
+            "relative_decision_timing_s": {
+              "current": {
+                "t_decided_s": 0.3090000000000003,
+                "t_available_s": 0.31743029101006714,
+                "t_fire_s": 0.3822611179971378
+              },
+              "baseline": {
+                "t_available_s": 0.3206996250748637,
+                "t_fire_s": 0.38224337925988605
+              },
+              "equal": {
+                "t_available_s": false,
+                "t_fire_s": false
+              }
+            }
+          }
+        },
+        "status": "compared"
+      },
+      {
+        "seed": 9,
+        "reuse": 0,
+        "baseline": "/private/tmp/hackspain-cinta-collection-scoring/thoughts/taras/qa/evidence/2026-09-20-cinta-stone-mechanics/reject-seed-9-reuse-0.json.gz",
+        "facts": {
+          "spawn_time_s": {
+            "current": 0.0,
+            "baseline": 0.0,
+            "comparison": "reported only, absolute times are not required to match"
+          },
+          "sampled_body": {
+            "current": {
+              "body_id": 471,
+              "mass_kg": 0.0006773685395323714,
+              "axes_m": [
+                0.004675623009925212,
+                0.002573634418175111,
+                0.0027062963001031237
+              ],
+              "initial_pose": [
+                -1.0062751999870492,
+                -0.0071665003588108804,
+                0.6087062963001031,
+                0.4249029247138568,
+                -0.018780329133709604,
+                -0.02958609294501291,
+                0.9045603721761687
+              ],
+              "initial_velocity": [
+                2.811563522601751,
+                -0.0038105789753867148,
+                0.0,
+                7.566982232248304,
+                2.4786547475238483,
+                0.8333415809261482
+              ]
+            },
+            "baseline": {
+              "body_id": 471,
+              "mass_kg": 0.0006773685395323714,
+              "axes_m": [
+                0.004675623009925212,
+                0.002573634418175111,
+                0.0027062963001031237
+              ],
+              "initial_pose": [
+                -1.0062751999870492,
+                -0.0071665003588108804,
+                0.6087062963001031,
+                0.4249029247138568,
+                -0.018780329133709604,
+                -0.02958609294501291,
+                0.9045603721761687
+              ],
+              "initial_velocity": [
+                2.811563522601751,
+                -0.0038105789753867148,
+                0.0,
+                7.566982232248304,
+                2.4786547475238483,
+                0.8333415809261482
+              ]
+            },
+            "equal": {
+              "body_id": true,
+              "mass_kg": true,
+              "axes_m": true,
+              "initial_pose": true,
+              "initial_velocity": true
+            }
+          },
+          "control": {
+            "predicted_class": {
+              "current": "stone",
+              "baseline": "stone",
+              "equal": true
+            },
+            "reject": {
+              "current": true,
+              "baseline": true,
+              "equal": true
+            },
+            "scheduled": {
+              "current": true,
+              "baseline": true,
+              "equal": true
+            },
+            "pulse_s": {
+              "current": 0.009110282962231795,
+              "baseline": 0.009110282962231795,
+              "equal": true
+            },
+            "jet_hit_steps": {
+              "current": 10,
+              "baseline": 10,
+              "equal": true
+            },
+            "own_pulse_event_count": {
+              "current": 2,
+              "baseline": 2,
+              "equal": true
+            },
+            "relative_decision_timing_s": {
+              "current": {
+                "t_decided_s": 0.3000000000000002,
+                "t_available_s": 0.3085673749409618,
+                "t_fire_s": 0.3709846964129613
+              },
+              "baseline": {
+                "t_available_s": 0.3089675418995323,
+                "t_fire_s": 0.3709846964129613
+              },
+              "equal": {
+                "t_available_s": false,
+                "t_fire_s": true
+              }
+            }
+          }
+        },
+        "status": "compared"
+      },
+      {
+        "seed": 9,
+        "reuse": 1,
+        "baseline": "/private/tmp/hackspain-cinta-collection-scoring/thoughts/taras/qa/evidence/2026-09-20-cinta-stone-mechanics/reject-seed-9-reuse-1.json.gz",
+        "facts": {
+          "spawn_time_s": {
+            "current": 0.5230000000000004,
+            "baseline": 0.5060000000000003,
+            "comparison": "reported only, absolute times are not required to match"
+          },
+          "sampled_body": {
+            "current": {
+              "body_id": 471,
+              "mass_kg": 0.0004896076275023411,
+              "axes_m": [
+                0.003289008724945683,
+                0.003410667409178908,
+                0.0020983621463964933
+              ],
+              "initial_pose": [
+                -0.9587189948216082,
+                0.0991064911131101,
+                0.6080983621463965,
+                0.03914206892931821,
+                -0.000206259211772207,
+                -0.17497252515693593,
+                0.9837949335797962
+              ],
+              "initial_velocity": [
+                2.4662942245762203,
+                0.0614085820602724,
+                0.0,
+                -3.513721214490203,
+                1.6357253144859352,
+                -3.1323787176474074
+              ]
+            },
+            "baseline": {
+              "body_id": 471,
+              "mass_kg": 0.0004896076275023411,
+              "axes_m": [
+                0.003289008724945683,
+                0.003410667409178908,
+                0.0020983621463964933
+              ],
+              "initial_pose": [
+                -0.9587189948216082,
+                0.0991064911131101,
+                0.6080983621463965,
+                0.03914206892931821,
+                -0.000206259211772207,
+                -0.17497252515693593,
+                0.9837949335797962
+              ],
+              "initial_velocity": [
+                2.4662942245762203,
+                0.0614085820602724,
+                0.0,
+                -3.513721214490203,
+                1.6357253144859352,
+                -3.1323787176474074
+              ]
+            },
+            "equal": {
+              "body_id": true,
+              "mass_kg": true,
+              "axes_m": true,
+              "initial_pose": true,
+              "initial_velocity": true
+            }
+          },
+          "control": {
+            "predicted_class": {
+              "current": "stone",
+              "baseline": "stone",
+              "equal": true
+            },
+            "reject": {
+              "current": true,
+              "baseline": true,
+              "equal": true
+            },
+            "scheduled": {
+              "current": true,
+              "baseline": true,
+              "equal": true
+            },
+            "pulse_s": {
+              "current": 0.009110286317648911,
+              "baseline": 0.009110285151149889,
+              "equal": false
+            },
+            "jet_hit_steps": {
+              "current": 5,
+              "baseline": 5,
+              "equal": true
+            },
+            "own_pulse_event_count": {
+              "current": 1,
+              "baseline": 1,
+              "equal": true
+            },
+            "relative_decision_timing_s": {
+              "current": {
+                "t_decided_s": 0.28900000000000026,
+                "t_available_s": 0.29729283292032804,
+                "t_fire_s": 0.3606765500542315
+              },
+              "baseline": {
+                "t_available_s": 0.29842966702394214,
+                "t_fire_s": 0.3606739881361377
+              },
+              "equal": {
+                "t_available_s": false,
+                "t_fire_s": false
+              }
+            }
+          }
+        },
+        "status": "compared"
+      },
+      {
+        "seed": 42,
+        "reuse": 0,
+        "baseline": "/private/tmp/hackspain-cinta-collection-scoring/thoughts/taras/qa/evidence/2026-09-20-cinta-stone-mechanics/reject-seed-42-reuse-0.json.gz",
+        "facts": {
+          "spawn_time_s": {
+            "current": 0.0,
+            "baseline": 0.0,
+            "comparison": "reported only, absolute times are not required to match"
+          },
+          "sampled_body": {
+            "current": {
+              "body_id": 471,
+              "mass_kg": 0.0008540391870092919,
+              "axes_m": [
+                0.004434890121389908,
+                0.002877756879504105,
+                0.003217195839822765
+              ],
+              "initial_pose": [
+                -1.0049614062104433,
+                -0.06150014046529133,
+                0.6092171958398227,
+                0.6817184649388359,
+                -0.017094069169219628,
+                0.016487149457845095,
+                0.7312290347513766
+              ],
+              "initial_velocity": [
+                2.7166687903143423,
+                0.0052824558048972835,
+                0.0,
+                3.381723620904099,
+                1.4025280267561369,
+                -2.5778773886497146
+              ]
+            },
+            "baseline": {
+              "body_id": 471,
+              "mass_kg": 0.0008540391870092919,
+              "axes_m": [
+                0.004434890121389908,
+                0.002877756879504105,
+                0.003217195839822765
+              ],
+              "initial_pose": [
+                -1.0049614062104433,
+                -0.06150014046529133,
+                0.6092171958398227,
+                0.6817184649388359,
+                -0.017094069169219628,
+                0.016487149457845095,
+                0.7312290347513766
+              ],
+              "initial_velocity": [
+                2.7166687903143423,
+                0.0052824558048972835,
+                0.0,
+                3.381723620904099,
+                1.4025280267561369,
+                -2.5778773886497146
+              ]
+            },
+            "equal": {
+              "body_id": true,
+              "mass_kg": true,
+              "axes_m": true,
+              "initial_pose": true,
+              "initial_velocity": true
+            }
+          },
+          "control": {
+            "predicted_class": {
+              "current": "stone",
+              "baseline": "stone",
+              "equal": true
+            },
+            "reject": {
+              "current": true,
+              "baseline": true,
+              "equal": true
+            },
+            "scheduled": {
+              "current": true,
+              "baseline": true,
+              "equal": true
+            },
+            "pulse_s": {
+              "current": 0.009110282859346303,
+              "baseline": 0.009110282859346303,
+              "equal": true
+            },
+            "jet_hit_steps": {
+              "current": 10,
+              "baseline": 10,
+              "equal": true
+            },
+            "own_pulse_event_count": {
+              "current": 2,
+              "baseline": 2,
+              "equal": true
+            },
+            "relative_decision_timing_s": {
+              "current": {
+                "t_decided_s": 0.3000000000000002,
+                "t_available_s": 0.30809745890647194,
+                "t_fire_s": 0.37171317467025733
+              },
+              "baseline": {
+                "t_available_s": 0.30960829089954517,
+                "t_fire_s": 0.37171317467025733
+              },
+              "equal": {
+                "t_available_s": false,
+                "t_fire_s": true
+              }
+            }
+          }
+        },
+        "status": "compared"
+      },
+      {
+        "seed": 42,
+        "reuse": 1,
+        "baseline": "/private/tmp/hackspain-cinta-collection-scoring/thoughts/taras/qa/evidence/2026-09-20-cinta-stone-mechanics/reject-seed-42-reuse-1.json.gz",
+        "facts": {
+          "spawn_time_s": {
+            "current": 0.5340000000000004,
+            "baseline": 0.5070000000000003,
+            "comparison": "reported only, absolute times are not required to match"
+          },
+          "sampled_body": {
+            "current": {
+              "body_id": 471,
+              "mass_kg": 0.0005426880492220067,
+              "axes_m": [
+                0.003886461967539587,
+                0.002127634512208351,
+                0.0031552623439851644
+              ],
+              "initial_pose": [
+                -1.0305361292148032,
+                -0.01584080222593173,
+                0.6091552623439851,
+                0.09150064730796284,
+                -0.03304572927608294,
+                0.00858208338372059,
+                0.9952195532462323
+              ],
+              "initial_velocity": [
+                2.654816609654612,
+                0.03301860892767907,
+                0.0,
+                1.2924630090236482,
+                6.424942802611383,
+                -1.2192450491538467
+              ]
+            },
+            "baseline": {
+              "body_id": 471,
+              "mass_kg": 0.0005426880492220067,
+              "axes_m": [
+                0.003886461967539587,
+                0.002127634512208351,
+                0.0031552623439851644
+              ],
+              "initial_pose": [
+                -1.0305361292148032,
+                -0.01584080222593173,
+                0.6091552623439851,
+                0.09150064730796284,
+                -0.03304572927608294,
+                0.00858208338372059,
+                0.9952195532462323
+              ],
+              "initial_velocity": [
+                2.654816609654612,
+                0.03301860892767907,
+                0.0,
+                1.2924630090236482,
+                6.424942802611383,
+                -1.2192450491538467
+              ]
+            },
+            "equal": {
+              "body_id": true,
+              "mass_kg": true,
+              "axes_m": true,
+              "initial_pose": true,
+              "initial_velocity": true
+            }
+          },
+          "control": {
+            "predicted_class": {
+              "current": "stone",
+              "baseline": "stone",
+              "equal": true
+            },
+            "reject": {
+              "current": true,
+              "baseline": true,
+              "equal": true
+            },
+            "scheduled": {
+              "current": true,
+              "baseline": true,
+              "equal": true
+            },
+            "pulse_s": {
+              "current": 0.009110265098901343,
+              "baseline": 0.009110266942662437,
+              "equal": false
+            },
+            "jet_hit_steps": {
+              "current": 10,
+              "baseline": 10,
+              "equal": true
+            },
+            "own_pulse_event_count": {
+              "current": 2,
+              "baseline": 2,
+              "equal": true
+            },
+            "relative_decision_timing_s": {
+              "current": {
+                "t_decided_s": 0.3100000000000003,
+                "t_available_s": 0.31850529204681544,
+                "t_fire_s": 0.38097525887916717
+              },
+              "baseline": {
+                "t_available_s": 0.317720416851342,
+                "t_fire_s": 0.38097214969539506
+              },
+              "equal": {
+                "t_available_s": false,
+                "t_fire_s": false
+              }
+            }
+          }
+        },
+        "status": "compared"
+      }
+    ]
+  },
+  "historical_observer_physical": {
+    "stone_reject": {
+      "accept": 8,
+      "reject": 0,
+      "spilled": 0
+    },
+    "stone_keep": {
+      "accept": 6,
+      "reject": 0,
+      "spilled": 2
+    },
+    "asserted": false
+  }
+}

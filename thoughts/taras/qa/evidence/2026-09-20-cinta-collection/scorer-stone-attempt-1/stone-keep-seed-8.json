@@ -1,0 +1,342 @@
+{
+  "schema_version": 1,
+  "label": "stone-keep",
+  "seed": 8,
+  "targets": [
+    "stone"
+  ],
+  "policy_mode": "keep",
+  "status": "ok",
+  "attempts": [
+    {
+      "seed": 8,
+      "reuse": 0,
+      "object_id": 0,
+      "spawn_time_s": 0.0,
+      "expected_outcome": "accept",
+      "sampled_body": {
+        "body_id": 471,
+        "mass_kg": 0.000586197241454949,
+        "axes_m": [
+          0.0033174306915139022,
+          0.003974553686675851,
+          0.002137421676971034
+        ],
+        "initial_pose": [
+          -1.0021034545837284,
+          -0.12311637893969123,
+          0.608137421676971,
+          0.9772280093249038,
+          0.05165680425886159,
+          0.08313598001929284,
+          -0.18826949086583028
+        ],
+        "initial_velocity": [
+          2.59204553318641,
+          0.06878351911551277,
+          0.0,
+          4.51644346915153,
+          -1.9607836002511456,
+          1.831053437490561
+        ]
+      },
+      "classification_control": {
+        "observed": true,
+        "predicted_class": "stone",
+        "probabilities": {
+          "good": 6.388444857905518e-06,
+          "faded": 4.019913981660187e-10,
+          "black": 5.076487879684786e-10,
+          "sour": 2.9508230079805e-07,
+          "insect": 8.288713721333771e-10,
+          "broken": 1.0528234528509683e-08,
+          "shell": 2.255688415558331e-09,
+          "husk": 2.881378574141187e-10,
+          "stone": 0.9999933013957528,
+          "stick": 2.66516082099715e-10
+        },
+        "anomaly_score": 7.846450774929757,
+        "anomaly_threshold": 14.96062187496633,
+        "reject_probability": 3.1015938923989966e-07,
+        "class_threshold_reject": false,
+        "anomaly_reject": false,
+        "reject": false,
+        "scheduled": false,
+        "late": false,
+        "pulse_s": 0.0,
+        "relative_t_decided_s": 0.3000000000000002,
+        "relative_t_available_s": 0.3089005828332158,
+        "relative_t_fire_s": 0.372632524986733,
+        "track_id": 0,
+        "nozzles": [],
+        "observation_count": 2,
+        "expected_outcome": "accept",
+        "expectation_policy_version": "861b3a6e47203b6394ff2ab13479435da8e0a5f096d478a2dd6f38a3236166aa",
+        "associated_rejection_tracks": [],
+        "actual_scheduled_fires": [],
+        "jet_hit_steps": 0,
+        "own_pulse_event_count": 0,
+        "own_pulse_hit": false
+      },
+      "collection": {
+        "outcome": "accept",
+        "resolved_time_s": 0.7640000000000006,
+        "resolution_age_s": 0.7640000000000006,
+        "last_position_m": [
+          0.716,
+          -0.121,
+          0.308
+        ],
+        "retired": true,
+        "unresolved": false,
+        "stop_reason": "retired",
+        "sim_seconds_observed": 0.7650000000000006,
+        "native_positive_contacts_before_park": [
+          {
+            "object_id": 0,
+            "body_id": 471,
+            "sim_time_s": 0.7650000000000006,
+            "outcome": "accept",
+            "contacts": [
+              {
+                "surface": "accept",
+                "geom_name": "bin_accept",
+                "normal_force_n": 0.22612998606847554,
+                "distance_m": -0.0001411520830660101,
+                "solve_time_s": 0.7640000000000006,
+                "observed_after_step_s": 0.7650000000000006
+              }
+            ],
+            "final_pose_before_park": [
+              0.7152697232050343,
+              -0.12143604383738725,
+              0.3068107895239735,
+              0.9062626100492227,
+              -0.12653830485510326,
+              0.3960657906497976,
+              -0.0762104225688231
+            ],
+            "final_velocity_before_park": [
+              -0.2935963621252089,
+              -0.11543804327331597,
+              -0.9767382012202381,
+              19.09391097368772,
+              -10.975027035005187,
+              9.58287056122045
+            ]
+          }
+        ],
+        "support_observation": null,
+        "retirement_event_count": 1,
+        "outcome_event_count": 1,
+        "event_counts": {
+          "decision": 1,
+          "injected": 1,
+          "outcome": 1
+        }
+      },
+      "events": [
+        {
+          "event_id": 2,
+          "type": "injected",
+          "sim_time_s": 0.0,
+          "object_id": 0
+        },
+        {
+          "event_id": 3,
+          "type": "decision",
+          "sim_time_s": 0.3010000000000002,
+          "object_ids": [
+            0
+          ],
+          "track_id": 0
+        },
+        {
+          "event_id": 4,
+          "type": "outcome",
+          "sim_time_s": 0.7650000000000006,
+          "object_id": 0,
+          "outcome": "accept"
+        }
+      ]
+    },
+    {
+      "seed": 8,
+      "reuse": 1,
+      "object_id": 1,
+      "spawn_time_s": 0.7650000000000006,
+      "expected_outcome": "accept",
+      "sampled_body": {
+        "body_id": 471,
+        "mass_kg": 0.0005628272818269376,
+        "axes_m": [
+          0.0031398012628955654,
+          0.0031818057035308232,
+          0.0027085445921169117
+        ],
+        "initial_pose": [
+          -1.031844606263727,
+          -0.05013775530186505,
+          0.6087085445921169,
+          0.9190105112860761,
+          0.028325257658951806,
+          0.0024491736009102836,
+          -0.39320651250065974
+        ],
+        "initial_velocity": [
+          2.632845755761733,
+          -0.14531165291637124,
+          0.0,
+          4.657399703990599,
+          -2.584325019865705,
+          -6.7241035745618625
+        ]
+      },
+      "classification_control": {
+        "observed": true,
+        "predicted_class": "stone",
+        "probabilities": {
+          "good": 2.0549721561602176e-06,
+          "faded": 1.5509271608526188e-09,
+          "black": 2.427148804210204e-10,
+          "sour": 2.326816628760574e-10,
+          "insect": 6.06200621104705e-10,
+          "broken": 3.813608245587971e-10,
+          "shell": 5.647644136259853e-07,
+          "husk": 1.8274889334023876e-10,
+          "stone": 0.9999973769393707,
+          "stick": 1.2742553617822798e-10
+        },
+        "anomaly_score": 7.590228854857373,
+        "anomaly_threshold": 14.96062187496633,
+        "reject_probability": 5.680884732053169e-07,
+        "class_threshold_reject": false,
+        "anomaly_reject": false,
+        "reject": false,
+        "scheduled": false,
+        "late": false,
+        "pulse_s": 0.0,
+        "relative_t_decided_s": 0.3109999999999917,
+        "relative_t_available_s": 0.3198513330984778,
+        "relative_t_fire_s": 0.38225719613858855,
+        "track_id": 1,
+        "nozzles": [],
+        "observation_count": 3,
+        "expected_outcome": "accept",
+        "expectation_policy_version": "861b3a6e47203b6394ff2ab13479435da8e0a5f096d478a2dd6f38a3236166aa",
+        "associated_rejection_tracks": [],
+        "actual_scheduled_fires": [],
+        "jet_hit_steps": 0,
+        "own_pulse_event_count": 0,
+        "own_pulse_hit": false
+      },
+      "collection": {
+        "outcome": "accept",
+        "resolved_time_s": 1.5349999999999417,
+        "resolution_age_s": 0.7699999999999412,
+        "last_position_m": [
+          0.718,
+          -0.056,
+          0.306
+        ],
+        "retired": true,
+        "unresolved": false,
+        "stop_reason": "retired",
+        "sim_seconds_observed": 0.7709999999999411,
+        "native_positive_contacts_before_park": [
+          {
+            "object_id": 1,
+            "body_id": 471,
+            "sim_time_s": 1.5359999999999416,
+            "outcome": "accept",
+            "contacts": [
+              {
+                "surface": "accept",
+                "geom_name": "bin_accept",
+                "normal_force_n": 0.09541578294839156,
+                "distance_m": -0.00043327172495266663,
+                "solve_time_s": 1.5349999999999417,
+                "observed_after_step_s": 1.5359999999999416
+              },
+              {
+                "surface": "accept",
+                "geom_name": "bin_accept",
+                "normal_force_n": 0.10392265030337632,
+                "distance_m": -5.538068215137028e-05,
+                "solve_time_s": 1.5349999999999417,
+                "observed_after_step_s": 1.5359999999999416
+              }
+            ],
+            "final_pose_before_park": [
+              0.7177153441737173,
+              -0.056500546689824946,
+              0.3046795959420317,
+              0.9077719040301859,
+              -0.014622684261779241,
+              0.03899098351196535,
+              -0.4173919627438468
+            ],
+            "final_velocity_before_park": [
+              -0.29623083286887536,
+              -0.06952299785355569,
+              -1.0767735597948336,
+              38.47028961791707,
+              -1.6546009192000055,
+              0.6645011460534557
+            ]
+          }
+        ],
+        "support_observation": null,
+        "retirement_event_count": 1,
+        "outcome_event_count": 1,
+        "event_counts": {
+          "decision": 1,
+          "injected": 1,
+          "outcome": 1
+        }
+      },
+      "events": [
+        {
+          "event_id": 5,
+          "type": "injected",
+          "sim_time_s": 0.7650000000000006,
+          "object_id": 1
+        },
+        {
+          "event_id": 6,
+          "type": "decision",
+          "sim_time_s": 1.0769999999999922,
+          "object_ids": [
+            1
+          ],
+          "track_id": 1
+        },
+        {
+          "event_id": 7,
+          "type": "outcome",
+          "sim_time_s": 1.5359999999999416,
+          "object_id": 1,
+          "outcome": "accept"
+        }
+      ]
+    }
+  ],
+  "identity": {
+    "repo": "/private/tmp/hackspain-cinta-collection-scoring",
+    "model": "/private/tmp/hackspain-cinta-collection-scoring/sim/coffee_sorter/models/live_green_arabica.joblib",
+    "model_sha256": "f5b26f26aed62db18fbef23b4df712b96b2946b1ae2fce699e1a2e85a20844a3",
+    "preset_sha256": "5fc5033ea62ceb4f640b4e642990d014d6de09ce706c20501eecd6c30d5c428b",
+    "source_revision": "38de1d01468646d7116bd2bec03960c2f5e5f0ff",
+    "source_hashes": {
+      "sim.py": "b66b440d156d6f1e0f2096b6ce740fc3e2dc4760a3205e84085b1ae8065f1114",
+      "scene.py": "90678e917131474289b95392a457be252afe42bc903b645fb35d5ea595974093",
+      "engine.py": "ca2db6187bd2523e44af401c68c86f95fed5f715bd2b0f0d4cf5e6062e2e1a89",
+      "rolling_scores.py": "d3ad84f67d17b3a8861ec604e084661313a988dceddc0c131ac6e5149a9e9f4c",
+      "controller.py": "fac051ba53641f1c98dc78ce021ed8502864059adc391169af77474bc27c1c8f",
+      "profiles.py": "c186725ad3ca2c65327a60aec332eb6fce0fce5099ac2eaee65788e273f2b899",
+      "runner": "7ca2894be8484e0f5189f4c2c7559feb495897848092148b3d60f4bc53b12723"
+    }
+  },
+  "lock_wait_s": 7.250113412737846e-06,
+  "lock_released_after_close": true
+}

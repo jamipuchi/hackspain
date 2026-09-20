@@ -11,7 +11,7 @@ import numpy as np
 from controller import Policy
 from engine import HERE, Engine, MAX_COMPLETED_INJECTIONS
 from profiles import PROFILES
-from rolling_scores import RollingScoreLedger
+from rolling_scores import SETTLING_SECONDS, RollingScoreLedger
 from sim import Fire
 
 
@@ -31,7 +31,7 @@ class RollingScoreLedgerTest(unittest.TestCase):
         first = RollingScoreLedger(60.0)
         first.add(0, 0.0, False)
         first.resolve(0, "accept")
-        self.assertEqual(self.scores(first, 0.6)["eligible_objects"], 1)
+        self.assertEqual(self.scores(first, SETTLING_SECONDS)["eligible_objects"], 1)
 
         ledger = RollingScoreLedger(60.0)
         ledger.add(1, 0.0, False)
@@ -42,7 +42,7 @@ class RollingScoreLedgerTest(unittest.TestCase):
         ledger.resolve(2, "reject")
         ledger.resolve(3, "accept")
 
-        scores = self.scores(ledger, 60.7)
+        scores = self.scores(ledger, 60.1 + SETTLING_SECONDS)
 
         self.assertAlmostEqual(scores["window_start_exclusive_s"], 0.1)
         self.assertAlmostEqual(scores["window_end_inclusive_s"], 60.1)
@@ -52,6 +52,25 @@ class RollingScoreLedgerTest(unittest.TestCase):
             "numerator": 1, "denominator": 1, "value": 1.0,
         })
         self.assertEqual(len(ledger), 2)
+
+    def test_pending_object_and_late_outcome_share_settling_deadline(self):
+        ledger = RollingScoreLedger(60.0)
+        ledger.add(1, 1.0, True)
+
+        pending = self.scores(ledger, 1.7)
+        self.assertEqual(pending["eligible_objects"], 0)
+        self.assertEqual(pending["settling_objects"], 1)
+
+        ledger.resolve(1, "reject")
+        at_outcome = self.scores(ledger, 1.85)
+        self.assertEqual(at_outcome["eligible_objects"], 0)
+        self.assertEqual(at_outcome["settling_objects"], 1)
+
+        after_deadline = self.scores(ledger, 1.0 + SETTLING_SECONDS + 0.01)
+        self.assertEqual(after_deadline["eligible_objects"], 1)
+        self.assertEqual(after_deadline["reject_capture"], {
+            "numerator": 1, "denominator": 1, "value": 1.0,
+        })
 
     def test_counts_spills_unresolved_and_empty_denominators(self):
         ledger = RollingScoreLedger(60.0)
@@ -63,7 +82,7 @@ class RollingScoreLedgerTest(unittest.TestCase):
         ledger.resolve(3, "reject")
         ledger.resolve(4, "accept")
 
-        scores = self.scores(ledger, 2.0)
+        scores = self.scores(ledger, 1.3 + SETTLING_SECONDS)
 
         self.assertEqual(scores["sorting_accuracy"]["numerator"], 1)
         self.assertEqual(scores["sorting_accuracy"]["denominator"], 4)
@@ -95,11 +114,15 @@ class RollingScoreLedgerTest(unittest.TestCase):
         ledger = RollingScoreLedger(2.0)
         ledger.add(1, 0.0, True)
 
-        self.assertEqual(self.scores(ledger, 1.0)["unresolved"]["numerator"], 1)
+        self.assertEqual(
+            self.scores(ledger, SETTLING_SECONDS + 0.1)["unresolved"]["numerator"], 1
+        )
         ledger.resolve(1, "reject")
-        self.assertEqual(self.scores(ledger, 1.1)["defect_capture"]["numerator"], 1)
+        self.assertEqual(
+            self.scores(ledger, SETTLING_SECONDS + 0.1)["defect_capture"]["numerator"], 1
+        )
 
-        expired = self.scores(ledger, 2.6)
+        expired = self.scores(ledger, 2.0 + SETTLING_SECONDS)
         self.assertEqual(expired["eligible_objects"], 0)
         self.assertEqual(len(ledger), 0)
         ledger.resolve(1, "accept")
@@ -109,7 +132,9 @@ class RollingScoreLedgerTest(unittest.TestCase):
         ledger = RollingScoreLedger(60.0, start_sim_time_s=120.0)
 
         self.assertEqual(self.scores(ledger, 120.5)["available_seconds"], 0.0)
-        self.assertAlmostEqual(self.scores(ledger, 121.1)["available_seconds"], 0.5)
+        self.assertAlmostEqual(
+            self.scores(ledger, 120.0 + SETTLING_SECONDS + 0.5)["available_seconds"], 0.5
+        )
 
     def test_policy_scores_and_legacy_defect_scores_keep_distinct_truth(self):
         ledger = RollingScoreLedger(60.0)
@@ -118,7 +143,7 @@ class RollingScoreLedgerTest(unittest.TestCase):
         ledger.resolve(1, "reject")
         ledger.resolve(2, "accept")
 
-        scores = self.scores(ledger, 2.0)
+        scores = self.scores(ledger, 1.1 + SETTLING_SECONDS + 0.01)
 
         self.assertEqual(scores["reject_capture"], {
             "numerator": 1, "denominator": 1, "value": 1.0,
@@ -288,7 +313,7 @@ class ContinuousRetentionTest(unittest.TestCase):
         engine.policy_version = "policy"
         engine.score_epoch_id = "session"
         engine.source_revision = "source"
-        engine.sim = SimpleNamespace(data=SimpleNamespace(time=0.6))
+        engine.sim = SimpleNamespace(data=SimpleNamespace(time=SETTLING_SECONDS))
         engine._score_ledger = RollingScoreLedger(60.0)
         engine._score_ledger.add(1, 0.0, False)
 
@@ -299,6 +324,54 @@ class ContinuousRetentionTest(unittest.TestCase):
         engine.continuous = False
         with self.assertRaisesRegex(RuntimeError, "continuous mode"):
             engine.rolling_scores()
+
+    def test_report_waits_for_shared_settling_deadline_before_cohorting(self):
+        bean = SimpleNamespace(uid=1, spawn_t=0.8, outcome=None)
+        engine = Engine.__new__(Engine)
+        engine.continuous = False
+        engine.sim = SimpleNamespace(
+            data=SimpleNamespace(time=0.8 + 0.7), beans=[bean], n_spawned=1,
+            starved=False, dt=0.001,
+        )
+        engine._object_evidence = lambda current, cohort: {
+            "in_cohort": cohort,
+            "required_reject": True,
+            "physical_defect": True,
+            "outcome": current.outcome,
+            "missed_category": None,
+            "captured_without_own_pulse_hit": False,
+        }
+        engine._wall_elapsed = lambda: 0.0
+        engine.session_id = "session"
+        engine.preset = {"requested_rate": 1.0, "camera_every_steps": 1}
+        engine.model_version = "model"
+        engine.policy_version = "policy"
+        engine.source_revision = "source"
+        engine.source_hashes = {}
+        engine.preset_version = "preset"
+        engine.packages = {}
+        engine.startup_seconds = 0.0
+        engine._peak_active = 1
+        engine._timings = {name: [] for name in (
+            "physics_ms", "render_ms", "evaluation_ms", "snapshot_ms",
+            "control_path_ms", "camera_frame_ms",
+        )}
+        engine.controller = SimpleNamespace(
+            detection_ms=[], inference_ms=[], control_ms=[],
+        )
+        engine._decision_evidence = []
+        engine._event_id = 0
+        engine._events = []
+        engine._event_counts = {}
+
+        pending = engine.report()
+        self.assertEqual(pending["quality"]["eligible_objects"], 0)
+
+        bean.outcome = "reject"
+        engine.sim.data.time = 0.8 + SETTLING_SECONDS + 0.01
+        settled = engine.report()
+        self.assertEqual(settled["quality"]["eligible_objects"], 1)
+        self.assertEqual(settled["quality"]["captured_required_reject_objects"], 1)
 
     def test_manual_injections_do_not_enter_feed_ledger(self):
         engine = Engine.__new__(Engine)
@@ -315,6 +388,9 @@ class ContinuousRetentionTest(unittest.TestCase):
         engine.sim = SimpleNamespace(
             body_geom={1: 0},
             model=SimpleNamespace(geom_rgba=np.ones((1, 4))),
+            data=SimpleNamespace(time=SETTLING_SECONDS - 0.01),
+            fire_hits=set(),
+            fired_targets=set(),
         )
         engine._object_records = {}
         engine._injected_ids = set()
@@ -330,6 +406,10 @@ class ContinuousRetentionTest(unittest.TestCase):
 
         self.assertEqual(len(engine._score_ledger), 0)
         self.assertEqual(engine._active_injections, {1})
+        engine._decision_by_uid = {}
+        self.assertFalse(engine._snapshot_object(1, active=True)["overdue"])
+        engine.sim.data.time = SETTLING_SECONDS + 0.01
+        self.assertTrue(engine._snapshot_object(1, active=True)["overdue"])
 
     def test_manual_injection_expectation_survives_later_policy_changes(self):
         def register(reject_classes, policy_version, uid):
@@ -405,7 +485,7 @@ class ContinuousRetentionTest(unittest.TestCase):
         engine._seen_fire_hits = {(track_id, 1) for track_id in range(10_000)}
         engine._seen_outcomes = {2, 3, 4}
         engine.sim = SimpleNamespace(
-            data=SimpleNamespace(time=61.0),
+            data=SimpleNamespace(time=60.0 + SETTLING_SECONDS),
             bean_of={100: SimpleNamespace(uid=1)},
             fires=[SimpleNamespace(uid=10)],
         )

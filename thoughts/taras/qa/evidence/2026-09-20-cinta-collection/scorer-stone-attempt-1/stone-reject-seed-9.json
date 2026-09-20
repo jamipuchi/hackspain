@@ -1,0 +1,481 @@
+{
+  "schema_version": 1,
+  "label": "stone-reject",
+  "seed": 9,
+  "targets": [
+    "stone"
+  ],
+  "policy_mode": "reject",
+  "status": "ok",
+  "attempts": [
+    {
+      "seed": 9,
+      "reuse": 0,
+      "object_id": 0,
+      "spawn_time_s": 0.0,
+      "expected_outcome": "reject",
+      "sampled_body": {
+        "body_id": 471,
+        "mass_kg": 0.0006773685395323714,
+        "axes_m": [
+          0.004675623009925212,
+          0.002573634418175111,
+          0.0027062963001031237
+        ],
+        "initial_pose": [
+          -1.0062751999870492,
+          -0.0071665003588108804,
+          0.6087062963001031,
+          0.4249029247138568,
+          -0.018780329133709604,
+          -0.02958609294501291,
+          0.9045603721761687
+        ],
+        "initial_velocity": [
+          2.811563522601751,
+          -0.0038105789753867148,
+          0.0,
+          7.566982232248304,
+          2.4786547475238483,
+          0.8333415809261482
+        ]
+      },
+      "classification_control": {
+        "observed": true,
+        "predicted_class": "stone",
+        "probabilities": {
+          "good": 2.3170746253307466e-07,
+          "faded": 9.481126885196355e-08,
+          "black": 2.961558432181326e-10,
+          "sour": 2.1538053098543468e-10,
+          "insect": 1.1343740916712271e-09,
+          "broken": 1.6016380597302546e-10,
+          "shell": 5.644238414866078e-09,
+          "husk": 9.904367933708505e-07,
+          "stone": 0.9999986754386804,
+          "stick": 1.554820909576074e-10
+        },
+        "anomaly_score": 47.685531410215155,
+        "anomaly_threshold": 14.96062187496633,
+        "reject_probability": 0.9999997682925373,
+        "class_threshold_reject": true,
+        "anomaly_reject": true,
+        "reject": true,
+        "scheduled": true,
+        "late": false,
+        "pulse_s": 0.009110282962231795,
+        "relative_t_decided_s": 0.3000000000000002,
+        "relative_t_available_s": 0.3085673749409618,
+        "relative_t_fire_s": 0.3709846964129613,
+        "track_id": 0,
+        "nozzles": [
+          31,
+          30,
+          32
+        ],
+        "observation_count": 3,
+        "expected_outcome": "reject",
+        "expectation_policy_version": "5acba1d1a7547e544a6283cb870003120799cc2aa37cb0f273f2af5545c1afff",
+        "associated_rejection_tracks": [
+          0
+        ],
+        "actual_scheduled_fires": [
+          {
+            "track_id": 0,
+            "nozzle": 31,
+            "t_on": 0.3694846964129613,
+            "t_off": 0.3795949793751931,
+            "force_n": 0.06
+          },
+          {
+            "track_id": 0,
+            "nozzle": 30,
+            "t_on": 0.3694846964129613,
+            "t_off": 0.3795949793751931,
+            "force_n": 0.06
+          },
+          {
+            "track_id": 0,
+            "nozzle": 32,
+            "t_on": 0.3694846964129613,
+            "t_off": 0.3795949793751931,
+            "force_n": 0.06
+          }
+        ],
+        "jet_hit_steps": 10,
+        "own_pulse_event_count": 2,
+        "own_pulse_hit": true
+      },
+      "collection": {
+        "outcome": "accept",
+        "resolved_time_s": 0.5220000000000004,
+        "resolution_age_s": 0.5220000000000004,
+        "last_position_m": [
+          0.553,
+          -0.007,
+          0.305
+        ],
+        "retired": true,
+        "unresolved": false,
+        "stop_reason": "retired",
+        "sim_seconds_observed": 0.5230000000000004,
+        "native_positive_contacts_before_park": [
+          {
+            "object_id": 0,
+            "body_id": 471,
+            "sim_time_s": 0.5230000000000004,
+            "outcome": "accept",
+            "contacts": [
+              {
+                "surface": "accept",
+                "geom_name": "bin_accept",
+                "normal_force_n": 0.11905048917191985,
+                "distance_m": -0.0006703136586642151,
+                "solve_time_s": 0.5220000000000004,
+                "observed_after_step_s": 0.5230000000000004
+              },
+              {
+                "surface": "accept",
+                "geom_name": "bin_accept",
+                "normal_force_n": 0.24195654891929466,
+                "distance_m": -0.0007089734540057507,
+                "solve_time_s": 0.5220000000000004,
+                "observed_after_step_s": 0.5230000000000004
+              },
+              {
+                "surface": "accept",
+                "geom_name": "bin_accept",
+                "normal_force_n": 0.22503020658600711,
+                "distance_m": -0.0007091268981075793,
+                "solve_time_s": 0.5220000000000004,
+                "observed_after_step_s": 0.5230000000000004
+              },
+              {
+                "surface": "accept",
+                "geom_name": "bin_accept",
+                "normal_force_n": 0.10385043703912394,
+                "distance_m": -0.0006704671027660437,
+                "solve_time_s": 0.5220000000000004,
+                "observed_after_step_s": 0.5230000000000004
+              }
+            ],
+            "final_pose_before_park": [
+              0.5549932850351128,
+              -0.006599591633718349,
+              0.3033460948402878,
+              0.43327162425366383,
+              0.008503403552487413,
+              0.029743952146753724,
+              0.9007323071008991
+            ],
+            "final_velocity_before_park": [
+              2.1842697274060012,
+              0.0026044955545415378,
+              -1.6704580527987871,
+              61.06568654810243,
+              13.518666087564114,
+              -35.35784714750714
+            ]
+          }
+        ],
+        "support_observation": null,
+        "retirement_event_count": 1,
+        "outcome_event_count": 1,
+        "event_counts": {
+          "decision": 1,
+          "injected": 1,
+          "outcome": 1,
+          "own_pulse_hit": 2,
+          "valve_activated": 1
+        }
+      },
+      "events": [
+        {
+          "event_id": 1,
+          "type": "injected",
+          "sim_time_s": 0.0,
+          "object_id": 0
+        },
+        {
+          "event_id": 2,
+          "type": "decision",
+          "sim_time_s": 0.3010000000000002,
+          "object_ids": [
+            0
+          ],
+          "track_id": 0
+        },
+        {
+          "event_id": 3,
+          "type": "valve_activated",
+          "sim_time_s": 0.3710000000000003,
+          "object_ids": [
+            0
+          ],
+          "track_id": 0
+        },
+        {
+          "event_id": 4,
+          "type": "own_pulse_hit",
+          "sim_time_s": 0.3710000000000003,
+          "object_id": 0,
+          "track_id": 0
+        },
+        {
+          "event_id": 5,
+          "type": "own_pulse_hit",
+          "sim_time_s": 0.3710000000000003,
+          "object_id": 0,
+          "track_id": 0
+        },
+        {
+          "event_id": 6,
+          "type": "outcome",
+          "sim_time_s": 0.5230000000000004,
+          "object_id": 0,
+          "outcome": "accept"
+        }
+      ]
+    },
+    {
+      "seed": 9,
+      "reuse": 1,
+      "object_id": 1,
+      "spawn_time_s": 0.5230000000000004,
+      "expected_outcome": "reject",
+      "sampled_body": {
+        "body_id": 471,
+        "mass_kg": 0.0004896076275023411,
+        "axes_m": [
+          0.003289008724945683,
+          0.003410667409178908,
+          0.0020983621463964933
+        ],
+        "initial_pose": [
+          -0.9587189948216082,
+          0.0991064911131101,
+          0.6080983621463965,
+          0.03914206892931821,
+          -0.000206259211772207,
+          -0.17497252515693593,
+          0.9837949335797962
+        ],
+        "initial_velocity": [
+          2.4662942245762203,
+          0.0614085820602724,
+          0.0,
+          -3.513721214490203,
+          1.6357253144859352,
+          -3.1323787176474074
+        ]
+      },
+      "classification_control": {
+        "observed": true,
+        "predicted_class": "stone",
+        "probabilities": {
+          "good": 8.768062205329352e-07,
+          "faded": 9.481542104348341e-09,
+          "black": 2.485859322969361e-10,
+          "sour": 3.49439199177483e-10,
+          "insect": 5.234595568445943e-10,
+          "broken": 2.420657471627731e-10,
+          "shell": 2.600425436977875e-07,
+          "husk": 1.945697691736591e-10,
+          "stone": 0.9999988519810655,
+          "stick": 1.3050784383040465e-10
+        },
+        "anomaly_score": 51.44534329964484,
+        "anomaly_threshold": 14.96062187496633,
+        "reject_probability": 0.9999991231937794,
+        "class_threshold_reject": true,
+        "anomaly_reject": true,
+        "reject": true,
+        "scheduled": true,
+        "late": false,
+        "pulse_s": 0.009110286317648911,
+        "relative_t_decided_s": 0.28900000000000026,
+        "relative_t_available_s": 0.29729283292032804,
+        "relative_t_fire_s": 0.3606765500542315,
+        "track_id": 1,
+        "nozzles": [
+          45,
+          44,
+          46
+        ],
+        "observation_count": 3,
+        "expected_outcome": "reject",
+        "expectation_policy_version": "5acba1d1a7547e544a6283cb870003120799cc2aa37cb0f273f2af5545c1afff",
+        "associated_rejection_tracks": [
+          1
+        ],
+        "actual_scheduled_fires": [
+          {
+            "track_id": 1,
+            "nozzle": 45,
+            "t_on": 0.8821765500542319,
+            "t_off": 0.8922868363718808,
+            "force_n": 0.06
+          },
+          {
+            "track_id": 1,
+            "nozzle": 44,
+            "t_on": 0.8821765500542319,
+            "t_off": 0.8922868363718808,
+            "force_n": 0.06
+          },
+          {
+            "track_id": 1,
+            "nozzle": 46,
+            "t_on": 0.8821765500542319,
+            "t_off": 0.8922868363718808,
+            "force_n": 0.06
+          }
+        ],
+        "jet_hit_steps": 5,
+        "own_pulse_event_count": 1,
+        "own_pulse_hit": true
+      },
+      "collection": {
+        "outcome": "accept",
+        "resolved_time_s": 1.050999999999995,
+        "resolution_age_s": 0.5279999999999947,
+        "last_position_m": [
+          0.602,
+          0.104,
+          0.303
+        ],
+        "retired": true,
+        "unresolved": false,
+        "stop_reason": "retired",
+        "sim_seconds_observed": 0.5289999999999946,
+        "native_positive_contacts_before_park": [
+          {
+            "object_id": 1,
+            "body_id": 471,
+            "sim_time_s": 1.051999999999995,
+            "outcome": "accept",
+            "contacts": [
+              {
+                "surface": "accept",
+                "geom_name": "bin_accept",
+                "normal_force_n": 0.1262833267416769,
+                "distance_m": -0.0022621983473700715,
+                "solve_time_s": 1.050999999999995,
+                "observed_after_step_s": 1.051999999999995
+              },
+              {
+                "surface": "accept",
+                "geom_name": "bin_accept",
+                "normal_force_n": 0.18154000391299055,
+                "distance_m": -0.0022993490181794974,
+                "solve_time_s": 1.050999999999995,
+                "observed_after_step_s": 1.051999999999995
+              },
+              {
+                "surface": "accept",
+                "geom_name": "bin_accept",
+                "normal_force_n": 0.23376623612177183,
+                "distance_m": -0.0022983036308346643,
+                "solve_time_s": 1.050999999999995,
+                "observed_after_step_s": 1.051999999999995
+              },
+              {
+                "surface": "accept",
+                "geom_name": "bin_accept",
+                "normal_force_n": 0.17850955895045295,
+                "distance_m": -0.0022611529600252383,
+                "solve_time_s": 1.050999999999995,
+                "observed_after_step_s": 1.051999999999995
+              }
+            ],
+            "final_pose_before_park": [
+              0.6036495836195939,
+              0.10396738789147338,
+              0.3017025558573674,
+              -0.10448893180050968,
+              0.013939414739066118,
+              -0.020742696314448063,
+              0.9942119977135304
+            ],
+            "final_velocity_before_park": [
+              1.823076261835108,
+              0.002062356332771529,
+              -1.1155218097949096,
+              -43.59802338126746,
+              -18.388150702644133,
+              29.16093086517309
+            ]
+          }
+        ],
+        "support_observation": null,
+        "retirement_event_count": 1,
+        "outcome_event_count": 1,
+        "event_counts": {
+          "decision": 1,
+          "injected": 1,
+          "outcome": 1,
+          "own_pulse_hit": 1,
+          "valve_activated": 1
+        }
+      },
+      "events": [
+        {
+          "event_id": 7,
+          "type": "injected",
+          "sim_time_s": 0.5230000000000004,
+          "object_id": 1
+        },
+        {
+          "event_id": 8,
+          "type": "decision",
+          "sim_time_s": 0.8130000000000006,
+          "object_ids": [
+            1
+          ],
+          "track_id": 1
+        },
+        {
+          "event_id": 9,
+          "type": "valve_activated",
+          "sim_time_s": 0.8840000000000007,
+          "object_ids": [
+            1
+          ],
+          "track_id": 1
+        },
+        {
+          "event_id": 10,
+          "type": "own_pulse_hit",
+          "sim_time_s": 0.8840000000000007,
+          "object_id": 1,
+          "track_id": 1
+        },
+        {
+          "event_id": 11,
+          "type": "outcome",
+          "sim_time_s": 1.051999999999995,
+          "object_id": 1,
+          "outcome": "accept"
+        }
+      ]
+    }
+  ],
+  "identity": {
+    "repo": "/private/tmp/hackspain-cinta-collection-scoring",
+    "model": "/private/tmp/hackspain-cinta-collection-scoring/sim/coffee_sorter/models/live_green_arabica.joblib",
+    "model_sha256": "f5b26f26aed62db18fbef23b4df712b96b2946b1ae2fce699e1a2e85a20844a3",
+    "preset_sha256": "5fc5033ea62ceb4f640b4e642990d014d6de09ce706c20501eecd6c30d5c428b",
+    "source_revision": "38de1d01468646d7116bd2bec03960c2f5e5f0ff",
+    "source_hashes": {
+      "sim.py": "b66b440d156d6f1e0f2096b6ce740fc3e2dc4760a3205e84085b1ae8065f1114",
+      "scene.py": "90678e917131474289b95392a457be252afe42bc903b645fb35d5ea595974093",
+      "engine.py": "ca2db6187bd2523e44af401c68c86f95fed5f715bd2b0f0d4cf5e6062e2e1a89",
+      "rolling_scores.py": "d3ad84f67d17b3a8861ec604e084661313a988dceddc0c131ac6e5149a9e9f4c",
+      "controller.py": "fac051ba53641f1c98dc78ce021ed8502864059adc391169af77474bc27c1c8f",
+      "profiles.py": "c186725ad3ca2c65327a60aec332eb6fce0fce5099ac2eaee65788e273f2b899",
+      "runner": "7ca2894be8484e0f5189f4c2c7559feb495897848092148b3d60f4bc53b12723"
+    }
+  },
+  "lock_wait_s": 5.832873284816742e-06,
+  "lock_released_after_close": true
+}
