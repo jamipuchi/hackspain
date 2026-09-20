@@ -775,15 +775,34 @@ class CandidateProfileBindingTest(unittest.TestCase):
 
 
 class _PicklableClassifier:
-    """A saved Model needs a picklable estimator. The loader never calls it."""
+    """A saved Model needs a picklable estimator. It only has to answer predict_proba."""
+
+    def __init__(self, count=1):
+        self.count = count
+
+    def predict_proba(self, X):
+        probabilities = np.zeros((len(X), self.count))
+        probabilities[:, 0] = 1.0
+        return probabilities
+
+
+def real_candidate_model(classes, meta):
+    """A genuine `classifier.Model` that `Model.load` reads back and the loader accepts.
+
+    The caller supplies the meta, so the model provenance equals the manifest provenance
+    that the trainer writes beside it.
+    """
+    from classifier import Model
+
+    classes = list(classes)
+    return Model(classes, _PicklableClassifier(len(classes)), np.zeros(4), np.eye(4), 1.0,
+                 np.ones(4), meta)
 
 
 class CandidateLoaderProofTest(unittest.TestCase):
     """The REAL live.load_preset must accept the REAL candidate bundle while it is bound."""
 
     def setUp(self):
-        from classifier import Model
-
         self.before = dict(profiles.PROFILES)
         folder = tempfile.TemporaryDirectory()
         self.addCleanup(folder.cleanup)
@@ -795,9 +814,9 @@ class CandidateLoaderProofTest(unittest.TestCase):
         new_class = dataclasses.replace(survivors[0], name="star_token", prior=0.03)
         self.profile = profiles.Profile(builtin.name, builtin.belt_rgb, [new_class, *survivors])
         self.labels = self.profile.names
-        self.preset_path = self.write_bundle(Model)
+        self.preset_path = self.write_bundle()
 
-    def write_bundle(self, Model):
+    def write_bundle(self):
         """A genuine artifact set: a saved Model, its manifest, and the bundled preset."""
         from vision import FEATURES
 
@@ -816,8 +835,7 @@ class CandidateLoaderProofTest(unittest.TestCase):
         }}
         meta = {"profile": self.preset["profile"], "classes": self.labels,
                 "features": FEATURES, "provenance": provenance}
-        model = Model(list(self.labels), _PicklableClassifier(), np.zeros(4), np.eye(4), 1.0,
-                      np.ones(4), meta)
+        model = real_candidate_model(self.labels, meta)
         artifact = self.out / "candidate.joblib"
         model.save(artifact)
         (self.out / "candidate.manifest.json").write_text(json.dumps({
@@ -880,45 +898,22 @@ class CandidateLoaderProofTest(unittest.TestCase):
         del validation["preset_compatibility"]
         self.assertIn("preset_incompatible", gate_failures(validation))
 
-    def test_the_loader_proof_runs_inside_the_binding(self):
-        """Order guard: this fails if preset_compatibility moves out of the scope."""
-        seen = {}
-
-        with patch("live.load_preset",
-                   side_effect=lambda path: seen.update(
-                       bound=profiles.PROFILES["green_arabica"].names)):
-            with train_candidate.bound_candidate_profile(self.profile):
-                train_candidate.preset_compatibility(self.preset_path)
-
-        self.assertEqual(self.labels, seen["bound"])
-        self.assertNotEqual(profiles.GREEN_ARABICA.names, seen["bound"])
-
-
-class FakeModel:
-    """Model-like double for the trainer write path. It fits nothing."""
-
-    def __init__(self, classes):
-        self.classes = list(classes)
-        self.anomaly_thresh = 14.339
-
-    def save(self, path):
-        Path(path).write_bytes(b"fake candidate model")
-
-    def references(self):
-        return {name: {"thresh": 1.0} for name in self.classes}
-
-    def set_anomaly_reference(self, labels):
-        selected = set(labels)
-        return [name for name in self.classes if name in selected]
-
-    def predict(self, X):
-        probabilities = np.zeros((len(X), len(self.classes)))
-        probabilities[:, 0] = 1.0
-        return probabilities, np.zeros(len(X))
-
 
 class BundledArtifactTest(unittest.TestCase):
-    """No bundled file carries an absolute path, a host name, or a timestamp."""
+    """The real train() through the real loader, and the bundled bytes it writes.
+
+    This is also the ORDER GUARD for the loader proof: `train()` itself must call
+    `preset_compatibility` inside `bound_candidate_profile`, or the real
+    `live.load_preset` compares the candidate model against the original catalog and
+    refuses it. Collection, fitting, and the closed-loop run stay mocked. The physical
+    Keep gate is NOT asserted here: its numbers are fakes.
+    """
+
+    DATE_PATTERNS = {
+        "an ISO date": r"\d{4}-\d{2}-\d{2}",
+        "a clock time": r"\d{2}:\d{2}:\d{2}",
+        "a build date": r"[A-Z][a-z]{2} +\d{1,2} \d{4}",
+    }
 
     DATE_PATTERNS = {
         "an ISO date": r"\d{4}-\d{2}-\d{2}",
@@ -943,8 +938,11 @@ class BundledArtifactTest(unittest.TestCase):
             return (np.zeros((len(labels), 4)), np.asarray(labels, dtype=object), rows, history)
 
         def fit(profile, X_train, y_train, X_holdout, y_holdout, meta):
+            # A genuine Model with the candidate label order, so Model.save writes a real
+            # joblib and the real live.load_preset can read it back.
             captured["meta"] = meta
-            return FakeModel(profile.names), {"fit_seconds": 0.0, "confusion": []}
+            return real_candidate_model(profile.names, meta), {"fit_seconds": 0.0,
+                                                               "confusion": []}
 
         with patch.object(train_candidate, "collect_covered", side_effect=partition), \
                 patch.object(train_candidate, "fit_model", side_effect=fit), \
@@ -984,6 +982,27 @@ class BundledArtifactTest(unittest.TestCase):
         self.assertEqual(platform.python_version(), manifest["provenance"]["runtime"]["python"])
         # live.load_preset compares the model meta provenance with the manifest provenance.
         self.assertEqual(manifest["provenance"], captured["meta"]["provenance"])
+
+    def test_train_proves_the_bundled_preset_with_the_real_loader(self):
+        """Order guard: this fails if train() calls the proof outside the binding."""
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        work = Path(folder.name)
+        before = dict(profiles.PROFILES)
+
+        code, out, _ = self.train_with_fakes(work)
+        validation = json.loads((out / "validation.json").read_text())
+        proof = validation["preset_compatibility"]
+
+        self.assertEqual(0, code)
+        self.assertIs(True, proof["loaded"], proof["reason"])
+        self.assertEqual("live.load_preset", proof["loader"])
+        self.assertNotIn("preset_incompatible", validation["failures"])
+        # The candidate labels differ from the built-in order, so the proof can only pass
+        # while the candidate catalog is bound.
+        self.assertNotEqual(profiles.GREEN_ARABICA.names, validation["labels"])
+        # The physics here is fake, so the overall gate is not asserted.
+        self.assertEqual(before, dict(profiles.PROFILES))
 
 
 class TrainerInputTest(unittest.TestCase):
