@@ -8,6 +8,14 @@ Choose how CINTA handles each item class, watch the conveyor, and compare every 
 feed -> inspection camera -> classifier and anomaly detector -> air jets -> Keep or Reject
 ```
 
+## Public demo
+
+[Open CINTA at hack-growth.dev](https://hack-growth.dev).
+
+The public backend is active. Its private health check advances simulation time, and the HTTPS route returns HTTP 200.
+
+Independent browser and secure WebSocket verification is still in progress. The public Keep or Reject policy is shared by all visitors.
+
 ## What you can use now
 
 The live page provides these controls and views:
@@ -77,12 +85,14 @@ Stop the service with `Ctrl+C`. Shutdown writes the retained report and final st
 ## Current limits
 
 - The measured Mac runs the engine at approximately `0.2×` real time under the tested workload. Concurrent work can change this rate.
+- The public engine is expected to run below real time. Use the **Sim** value to see its current cumulative rate.
 - Browser FPS does not measure simulation speed, pose-packet rate, or sorting throughput.
 - Keep all sets class rejection probability to zero. The anomaly detector remains active.
 - Some stones can reach Reject without jet contact because of their passive physical trajectory. Stone routing remains unresolved.
 - Recycling is fixed in the current runtime. The live scores still describe a simulation, not a production sorter.
 - Manual test stones do not enter rolling feed scores.
-- The local command above accepts loopback connections only. A public deployment is not verified.
+- The local command above accepts loopback connections only. The public service uses separate reviewed deployment packaging.
+- The public demo has no visitor login. Policy changes affect every connected visitor.
 - Generated-item activation is planned, not delivered. The current Items gallery is limited to the active catalog.
 
 ## Technical documentation
@@ -90,7 +100,7 @@ Stop the service with `Ctrl+C`. Shutdown writes the retained report and final st
 - [Live engine and UI guide](sim/coffee_sorter/LIVE.md)
 - [Sorter model and experiment guide](sim/coffee_sorter/README.md)
 - [Measured live checkpoint](thoughts/taras/research/coffee-core-live/REPORT.md)
-- [Public deployment plan](thoughts/taras/deployment/hack-growth.dev/README.md)
+- [Public deployment guide](thoughts/taras/deployment/hack-growth.dev/README.md)
 - [Generated-item controls plan](thoughts/taras/plans/2026-09-19-cinta-item-controls.md)
 
-The deployment document is a plan. It does not prove that a public service, DNS record, container image, or HTTPS route exists.
+The deployment guide records the release procedure and rollback boundary. Its remaining browser and WebSocket checks must pass before full verification.
