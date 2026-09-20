@@ -90,8 +90,8 @@ COPY thoughts/taras/research/coffee-quality/model-selected.manifest.json.gz /tmp
 RUN mkdir -p /app/sim/coffee_sorter/models \
     && gzip -dc /tmp/model.joblib.gz > /app/sim/coffee_sorter/models/live_green_arabica.joblib \
     && gzip -dc /tmp/model.manifest.json.gz > /app/sim/coffee_sorter/models/live_green_arabica.manifest.json \
-    && echo '89513398373c6e0e81286419962feb3e312742de14a76d02dd0d819ad5264a5a  /app/sim/coffee_sorter/models/live_green_arabica.joblib' | sha256sum -c - \
-    && echo '6409f13385bc0e7335ed48546a13999dd3e5d10a23d48491baeeae1e95015387  /app/sim/coffee_sorter/models/live_green_arabica.manifest.json' | sha256sum -c - \
+    && echo 'd793e25a3662585eda545cbe0dc84796d9fdd2e0787bdd89a10bfb441ed861ad  /app/sim/coffee_sorter/models/live_green_arabica.joblib' | sha256sum -c - \
+    && echo 'c87ff9ecdb147917a5fa8c3967b8c62603aa15c2062004977365e3ca8e6d39cf  /app/sim/coffee_sorter/models/live_green_arabica.manifest.json' | sha256sum -c - \
     && rm /tmp/model.joblib.gz /tmp/model.manifest.json.gz
 
 RUN python -m py_compile \
