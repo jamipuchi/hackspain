@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {OrbitControls} from '/vendor/OrbitControls.js';
 import {RoomEnvironment} from '/vendor/RoomEnvironment.js';
 import {GLTFLoader} from '/assets/vendor/loaders/GLTFLoader.js';
-import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, normalizedClassPreview, profilePreviewScale, samePresentationTimeline} from './timeline.mjs';
+import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, normalizedClassPreview, profilePreviewScale, samePresentationTimeline} from './timeline.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('scene');
@@ -433,7 +433,6 @@ function updateItems() {
       const name = document.createElement('span'); name.className = 'item-name';
       const dot = document.createElement('i'); dot.dataset.severity = item.severity;
       name.append(dot, document.createTextNode(item.name));
-      name.title = item.defect ? `${item.severity} defect` : 'Keep item';
       const button = document.createElement('button'); button.type = 'button'; button.className = 'policy-toggle';
       button.dataset.policyClass = item.name;
       button.onclick = event => { event.stopPropagation(); queuePolicyChange(item.name, !policyDesiredClasses.has(item.name)); };
@@ -761,7 +760,7 @@ function update() {
     : 'The first injection starts the conveyor. Restart resets the shared session for all browsers.';
   if (state.error) $('error').textContent = state.error;
   setMetric('sim-time', `${(state.sim_time_s || 0).toFixed(2)} s`);
-  setMetric('engine-rate', state.engine_rate ? `${state.engine_rate.toFixed(2)}×` : 'Waiting');
+  setMetric('engine-rate', formatEngineRate(state.engine_rate) || 'Waiting');
   setMetric('admitted', `${(state.admitted_rate || 0).toFixed(0)} /s`);
   const objects = state.objects || [];
   setMetric('active', String(objects.filter(o => o.active).length));
@@ -888,11 +887,11 @@ function updatePerformanceBadge(waiting) {
   const fpsLabel = Number.isFinite(measurements.fps) ? `${measurements.fps.toFixed(0)} FPS` : 'Measuring FPS';
   const connected = socket?.readyState === WebSocket.OPEN && !staleConnection;
   const connecting = !socket || socket.readyState === WebSocket.CONNECTING;
-  const engineRate = Number(liveState?.engine_rate);
-  const hasEngineRate = connected && telemetryFresh && Number.isFinite(engineRate) && engineRate > 0;
+  const engineRate = formatEngineRate(liveState?.engine_rate);
+  const hasEngineRate = connected && telemetryFresh && engineRate !== null;
   const simLabel = !connected
     ? connecting ? 'Sim connecting' : 'Sim disconnected'
-    : hasEngineRate ? `Sim ${engineRate.toFixed(2)}×` : 'Sim measuring';
+    : hasEngineRate ? `Sim ${engineRate}` : 'Sim measuring';
   const viewWaiting = connected && telemetryFresh && waiting;
   const label = `${fpsLabel} · ${simLabel}${viewWaiting ? ' · View waiting' : ''}`;
   const badgeState = !connected && !connecting ? 'disconnected' : viewWaiting || !telemetryFresh ? 'waiting' : 'live';

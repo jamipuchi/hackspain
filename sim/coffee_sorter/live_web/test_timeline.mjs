@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, normalizedClassPreview, profilePreviewScale, samePresentationTimeline} from './timeline.mjs';
+import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, normalizedClassPreview, profilePreviewScale, samePresentationTimeline} from './timeline.mjs';
 
 const snapshot = {
   session_id: 'session-a',
@@ -16,6 +16,15 @@ test('command retention epochs do not interrupt pose interpolation', () => {
 test('session and score epochs stop pose interpolation', () => {
   assert.equal(samePresentationTimeline(snapshot, {...snapshot, session_id: 'session-b'}), false);
   assert.equal(samePresentationTimeline(snapshot, {...snapshot, score_epoch_id: 'scores-2'}), false);
+});
+
+test('engine speed preserves zero and rejects unavailable values', () => {
+  assert.equal(formatEngineRate(0), '0.00×');
+  assert.equal(formatEngineRate(.2), '0.20×');
+  assert.equal(formatEngineRate(undefined), null);
+  assert.equal(formatEngineRate(null), null);
+  assert.equal(formatEngineRate(Number.NaN), null);
+  assert.equal(formatEngineRate(Number.POSITIVE_INFINITY), null);
 });
 
 test('policy intents stay bounded and reconnect with only the latest choices', () => {

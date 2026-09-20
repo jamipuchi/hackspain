@@ -6,6 +6,10 @@ export function samePresentationTimeline(left, right) {
   return left?.session_id === right?.session_id && scoreEpoch(left) === scoreEpoch(right);
 }
 
+export function formatEngineRate(value) {
+  return typeof value === 'number' && Number.isFinite(value) ? `${value.toFixed(2)}×` : null;
+}
+
 export class PolicyIntentBuffer {
   constructor() {
     this.catalog = new Set();
