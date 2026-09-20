@@ -772,6 +772,46 @@ class ArchiveCompletenessTest(CatalogRootTest):
         self.assertIsNotNone(wall_of_fame_page(root)["entries"][0]["preview"])
 
 
+class BundleMappingKeyTest(unittest.TestCase):
+    """A mapping key can carry a host path as easily as a value can."""
+
+    def setUp(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.root = Path(folder.name)
+
+    def sources(self, files):
+        from test_validate_bundle import bundle_files, pretty
+        value = bundle_files()
+        value["sources.json"] = pretty({"source_revision": "c" * 40, "files": files})
+        return value
+
+    def test_an_unsafe_mapping_key_is_refused_on_publish_and_on_verify(self):
+        for key in ("/Users/taras/live.py", "../outside/live.py", "/etc/passwd"):
+            with self.assertRaises(CatalogError) as raised:
+                object_catalog.publish_bundle(self.root / "bundles",
+                                              self.sources({key: "b" * 64}))
+            self.assertIn("sources.json", str(raised.exception))
+
+        from test_validate_bundle import pretty
+        digest = object_catalog.publish_bundle(self.root / "good",
+                                               self.sources({"live.py": "b" * 64}))
+        directory = self.root / "good" / digest
+        self.assertEqual(object_catalog.verify_bundle(directory)["bundle_sha256"], digest)
+        # The same key, edited after publication, is refused on verify.
+        (directory / "sources.json").write_bytes(
+            pretty({"source_revision": "c" * 40, "files": {"/etc/passwd": "b" * 64}}))
+        with self.assertRaises(CatalogError):
+            object_catalog.verify_bundle(directory)
+
+    def test_ordinary_keys_and_user_text_stay_accepted(self):
+        digest = object_catalog.publish_bundle(
+            self.root / "ok", self.sources({"live.py": "b" * 64, "1.2.0-rc.1": "c" * 64,
+                                            "model/candidate.joblib": "d" * 64}))
+        self.assertEqual(object_catalog.verify_bundle(self.root / "ok" / digest)["bundle_sha256"],
+                         digest)
+
+
 class BundlePointerReproductionTest(CatalogRootTest):
     """Gate B reproduction from the work order, against the packaged catalog."""
 

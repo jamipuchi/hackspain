@@ -53,6 +53,8 @@ def validate(bundle_dir: Path) -> dict:
 
     try:
         policy = json.loads((bundle / "policy.json").read_text())
+        if not isinstance(policy, dict):
+            raise TypeError("policy.json must be a JSON object")
         reject = list(policy.get("reject_classes", []))
         unknown = sorted(set(reject) - set(result["labels"]))
         if unknown:

@@ -735,6 +735,8 @@ def _verify_bundle_content(directory: Path, listed: Mapping[str, Any]) -> None:
             raise CatalogError("a bundle catalog must carry a null active_bundle_sha256")
         if relative == BUNDLE_PRESET:
             _verify_bundle_preset(directory, value)
+        if relative == "policy.json":
+            _mapping(value, "policy")
 
 
 def _verify_bundle_preset(directory: Path, preset: Any) -> None:
@@ -803,6 +805,9 @@ def _structural_strings(value: Any, key: str | None = None):
         yield value
     elif isinstance(value, Mapping):
         for name, item in value.items():
+            # A key can carry a host path as easily as a value can.
+            if isinstance(name, str):
+                yield name
             yield from _structural_strings(item, name if isinstance(name, str) else None)
     elif isinstance(value, list):
         for item in value:

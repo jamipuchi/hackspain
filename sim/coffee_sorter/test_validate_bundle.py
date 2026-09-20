@@ -634,6 +634,26 @@ class ValidateBundleCommandTest(BundleFixture, unittest.TestCase):
             self.assertNotIn(str(self.root), output, label)
             self.assertNotIn(str(HERE), output, label)
 
+    def test_a_non_object_policy_returns_one_sanitized_failure(self):
+        """A list policy must not raise AttributeError out of the child process."""
+        for payload in ([], "text", 7):
+            root = Path(tempfile.mkdtemp(dir=self.root))
+            files = bundle_files()
+            files["policy.json"] = pretty(payload)
+            with self.assertRaises(CatalogError):
+                publish_bundle(root, dict(files))
+            # A published bundle can still hold one: the CLI must answer, not crash.
+            _, directory = self.publish(bundle_files(), bundles=root)
+            (directory / "policy.json").write_bytes(pretty(payload))
+
+            exit_code, result, output = self.run_cli(directory)
+
+            self.assertEqual(exit_code, 1)
+            self.assertIsNotNone(result)
+            self.assertNotIn("AttributeError", output)
+            self.assertNotIn("Traceback", output)
+            self.assertNotIn(str(self.root), output)
+
     def test_a_usage_error_exits_two(self):
         result = subprocess.run([sys.executable, str(HERE / "validate_bundle.py")],
                                 capture_output=True, text=True, cwd=str(HERE), timeout=120)
