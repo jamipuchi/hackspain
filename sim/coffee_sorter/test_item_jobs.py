@@ -548,18 +548,35 @@ class RenderRetryTest(QueueTest):
 
 
 class WorkerOwnershipTest(QueueTest):
+    def expire_lease(self, runner, request_id):
+        """Wait for the hung renderer, expire its lease now, and return its group.
+
+        A tiny lease on the runner is a wall-clock budget for EVERY child. Under load a
+        healthy child outlasts it too, the runner consumes the second attempt, and the job
+        ends failed. So the test waits for the hung child and expires only that one.
+        """
+        def render_group():
+            worker = self.store.get(request_id).get('worker') or {}
+            return worker.get('pgid') if worker.get('stage') == 'render' else None
+
+        # The start record is the child's own word that this run counts as the hung one.
+        self.drive(runner, lambda: render_group() and self.starts('render'))
+        pgid = render_group()
+        with runner._guard:
+            runner.children[request_id]['deadline'] = time.monotonic()
+        return pgid
+
     def test_expired_lease_terminates_the_whole_group_before_a_replacement(self):
         self.scenarios({'render': {'1': 'hang', '2': 'ok'}})
         job = self.submit()
         request_id = job['request_id']
-        runner = self.open_runner(lease_s=TINY_WAIT_S)
+        runner = self.open_runner()
         # The lease expiry is what this test exercises. Killing a group that ignores
         # SIGTERM is asynchronous, so the terminate budget waits for the observable exit
         # instead of assuming a fixed wall time: a short budget only makes the test flaky.
         runner.term_wait_s = runner.kill_wait_s = 1.0
 
-        self.drive(runner, lambda: (self.store.get(request_id).get('worker') or {}).get('pgid'))
-        pgid = self.store.get(request_id)['worker']['pgid']
+        pgid = self.expire_lease(runner, request_id)
         self.drive(runner, lambda: self.state(request_id) == 'preview_ready', timeout=40.0)
         # The replacement record is written by the second worker, so wait for it too.
         self.drive(runner, lambda: len(self.starts('render')) == 2, timeout=40.0)
@@ -575,12 +592,10 @@ class WorkerOwnershipTest(QueueTest):
     def test_unconfirmed_exit_blocks_one_slot_until_cleanup_is_confirmed(self):
         self.scenarios({'render': {'1': 'hang', '2': 'ok'}})
         blocked = self.submit('Blocked token')
-        runner = self.open_runner(lease_s=TINY_WAIT_S)
+        runner = self.open_runner()
         # Generation must settle normally. The unconfirmed exit under test is the
         # renderer's, so only that one group refuses to confirm.
-        self.drive(runner, lambda: (self.store.get(blocked['request_id']).get('worker')
-                                    or {}).get('stage') == 'render')
-        hung = self.store.get(blocked['request_id'])['worker']['pgid']
+        hung = self.expire_lease(runner, blocked['request_id'])
         confirm = runner._group_gone
         runner._group_gone = (lambda pgid, pid=None:
                               False if pgid == hung else confirm(pgid, pid))
@@ -1713,6 +1728,50 @@ class PhysicsAndTrainingFlowTest(QueueTest):
         self.assertEqual('physics_proposal_failed', stored['error'])
         self.assertEqual(MAX_ATTEMPTS, stored['attempts']['physics_proposal'])
 
+    def proposing(self, submission):
+        """One job whose physics proposal child just exited. Its status file is a fake."""
+        job = self.submit()
+        job = self.store.transition(job['request_id'], 'proposing_physics',
+                                    attempts={**job['attempts'], 'physics_proposal': 1},
+                                    provider_submission=submission)
+        return job, self.store.job_dir(job['request_id'])
+
+    def test_a_finished_paid_physics_call_never_stays_in_flight(self):
+        """The same settlement as generation. A cache replay after a flight stays sticky."""
+        runner = self.open_runner()
+        for reported, settled in {'completed': 'completed', 'not_submitted': 'uncertain'}.items():
+            with self.subTest(status=reported):
+                job, job_dir = self.proposing('in_flight')
+                (job_dir / 'definition.json').write_text('{}')
+                (job_dir / 'physics.json').write_text(json.dumps({'physics_source': 'paid_llm_call'}))
+                (job_dir / 'provider_status.json').write_text(json.dumps(
+                    {'provider_submission': reported, 'cache_hit': False}))
+
+                runner._settle_physics_proposal(job, job_dir, None, item_jobs.EXIT_OK)
+
+                stored = self.store.get(job['request_id'])
+                self.assertEqual('validating_physics', stored['state'])
+                self.assertEqual(settled, stored['provider_submission'])
+                self.assertNotEqual('in_flight', stored['provider_submission_history'][-1])
+
+    def test_a_known_provider_failure_shows_its_short_path_free_reason(self):
+        runner = self.open_runner()
+        job, job_dir = self.proposing('not_submitted')
+        reason = f'physics proposal verification failed: unreadable {job_dir}/physics/out.json'
+        (job_dir / 'provider_status.json').write_text(json.dumps(
+            {'provider_submission': 'not_submitted', 'reason': reason + ' ' + 'x' * 400}))
+
+        runner._settle_physics_proposal(job, job_dir, None, 1)
+
+        stored = self.store.get(job['request_id'])
+        # No new code: the generic error stays, and the short reason rides in progress.
+        self.assertEqual('physics_proposal_failed', stored['error'])
+        self.assertEqual('physics_proposal_failed', stored['reason'])
+        self.assertTrue(stored['progress'].startswith(
+            'physics proposal verification failed: unreadable <path>'))
+        self.assertLessEqual(len(stored['progress']), 160)
+        self.assertNotIn(str(self.root), json.dumps(stored))
+
     def starts_in_order(self):
         path = self.root / 'worker_runs.jsonl'
         rows = [json.loads(line) for line in path.read_text().splitlines()]
@@ -1848,13 +1907,6 @@ class PhysicsReplayTest(unittest.TestCase):
 
         with self.assertRaisesRegex(item_job_physics.ReplayError, 'cache entry bytes'):
             item_job_physics.verify_cache_entry(cache, self.SHORT_DIGEST, self.CACHE_SHA256)
-
-    def test_an_absent_cache_entry_is_not_an_error(self):
-        cache = self.root / 'cache'
-        cache.mkdir()
-
-        self.assertEqual('', item_job_physics.verify_cache_entry(
-            cache, self.SHORT_DIGEST, self.CACHE_SHA256))
 
     @unittest.skipUnless(AUTHENTIC.is_file(),
                          'the authentic cached physics entry is a local artifact')

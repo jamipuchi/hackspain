@@ -867,9 +867,12 @@ class ItemJobRunner:
                                     reason="definition_missing",
                                     progress="the physics stage produced no definition")
                 return
+            # The same settlement as generation: a finished call must not stay in_flight.
             self.store.transition(
                 request_id, "validating_physics", token=token, error=None, worker=None,
                 artifacts={**job["artifacts"], "physics": _read_json(job_dir / "physics.json")},
+                provider_submission=status.get("provider_submission",
+                                               job["provider_submission"]),
                 provider_cache_hit=bool(status.get("cache_hit")))
             return
         if code == EXIT_NOT_SUBMITTED:
@@ -889,8 +892,9 @@ class ItemJobRunner:
                                 reason="cache_entry_invalid")
             return
         if status.get("provider_submission") == "not_submitted":
+            # A known failure that sent nothing. The child's short reason shows why.
             self._stage_failure(job, "physics_proposal", "physics_proposal_failed", token,
-                                reason="physics_proposal_failed")
+                                reason="physics_proposal_failed", **_status_progress(status))
             return
         self._unconsumed(job, "physics_proposal", token, "interrupted_uncertain",
                          "provider_interrupted", provider_submission="uncertain")
@@ -1533,11 +1537,23 @@ def incomplete_validation(validation: Mapping[str, Any]) -> list[str]:
     return sorted(set(missing))
 
 
+def _path_free_line(value: Any) -> str:
+    """Child or exception text as one line that names no host path."""
+    return re.sub(r"(/[^\s'\"]+)+", "<path>", " ".join(str(value).split()))
+
+
 def _short_reason(error: BaseException, limit: int = 160) -> str:
     """One bounded line for an operator. It names the failure, never a host path."""
-    text = " ".join(str(error).split())
-    text = re.sub(r"(/[^\s'\"]+)+", "<path>", text)
+    text = _path_free_line(error)
     return f"{type(error).__name__}: {text}"[:limit] if text else type(error).__name__
+
+
+def _status_progress(status: Mapping[str, Any], limit: int = 160) -> dict[str, str]:
+    """The short reason a provider child recorded, as the progress field. Empty without one."""
+    reason = status.get("reason")
+    if not isinstance(reason, str) or not reason.strip():
+        return {}
+    return {"progress": _path_free_line(reason)[:limit]}
 
 
 def _canonical_request_id(value: Any) -> str:
