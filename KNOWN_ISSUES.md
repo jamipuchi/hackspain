@@ -1,94 +1,79 @@
 # CINTA known issues
 
-This file separates the current public demo from the replacement release candidate.
+This file separates the working public demo from the replacement candidate.
 
 ## Current public deployment
 
 The working public demo is [https://hack-growth.dev/](https://hack-growth.dev/).
 
-It runs source `30758f7dd499027ffe76a8f7646377c0f94fa596`. Keep the deployed service on this source until the replacement passes every release gate.
+It runs source `30758f7dd499027ffe76a8f7646377c0f94fa596`. Generated-item creation and Reset defaults are not deployed there.
 
-Keep both main branches at their current accepted tips until the replacement passes every release gate.
+The public engine runs slower than wall time. Its measured release rate was `0.119557x` real time.
 
-The public engine runs below wall-clock speed. The measured release rate was `0.119557x` real time.
+The **Sim** badge reports engine speed. Browser FPS reports rendering speed and does not measure sorting throughput.
 
-The **Sim** badge reports simulation speed. Browser FPS does not report engine speed or sorting throughput.
-
-One verified public Stone injection spilled after an expected Reject decision. The current demo does not guarantee each object reaches its intended bin.
+One verified public Stone injection spilled after an expected Reject decision. The demo cannot guarantee that every object reaches its intended bin.
 
 The public service uses one shared engine. Policy changes affect every visitor, and the service accepts at most four browser connections.
 
-Generated-item creation and activation are not deployed. The public Items view shows only the active built-in catalog.
+## Replacement candidate scope
 
-## Replacement candidate limits
+The accepted candidate can use the real provider to generate an item. It then renders, validates, retrains, and prepares an activation bundle.
 
-The replacement release uses cached provider replay only. It mounts no provider credential file and performs no paid request.
+A real provider request needs an explicit operator grant and can cost money. A confirmed response must not trigger another paid request automatically.
 
-An exact cache miss stops in `operator_required`. An operator must review any future uncached request before a paid call.
+Candidate validation uses a measured simulator heuristic. It is not a calibrated confidence estimate or a production accuracy guarantee.
 
-The approved star replay uses cached generation and a cached physics estimate. The estimate assumes a solid-gold contact box.
+Each trained label needs at least 30 observations and 10 unique training objects. Each holdout label needs at least 10 unique objects.
 
-The contact box measures approximately `16.9 x 16.1 x 2.0 mm`. Its estimated mass is `0.010502674 kg` at `19300 kg/m3`.
+The new label needs at least 90% holdout recall. Missing coverage or lower new-label recall blocks activation.
 
-The estimate does not measure the real object. It also does not model the star's concave valleys.
+Invalid assets, failed model training, incompatible presets, and incorrect label order also block activation.
 
-The visual GLB and the physics proxy serve different purposes. Final evidence must identify which representation each view uses.
+The demo can show these physical quality failures as visible **Needs review** warnings:
 
-Earlier baseline compatibility QA reported `92.24%` reject capture, `3.96%` Keep loss, and `11` spills across four runs.
+- Overall holdout accuracy below 90%.
+- Keep anomaly fraction above 5%.
+- Fewer than 30 resolved Keep outcomes.
+- Physical Keep acceptance below 95%.
 
-Those older results are not current candidate metrics. They do not approve the replacement geometry, final model, or public rollout.
+These warnings disclose measured failures. They do not prove reliable sorting.
 
-Collection candidate 4 failed the Keep-loss gate. It lost `194/3579`, or `5.4205%`, of Keep objects.
+## Known sorting limits
 
-The baseline lost `145/3582`, or `4.0480%`. Candidate 4 increased loss by `1.3725` percentage points, above the `1.0` point limit.
+Earlier baseline QA measured `92.24%` reject capture, `3.96%` Keep loss, and 11 spills across four runs.
 
-The narrowed object-addition demo defers this geometry change. The failed candidate remains evidence, not a release configuration.
+Those results do not approve the replacement candidate or guarantee future outcomes.
 
-The demo keeps the accepted original collection geometry. Its sorting losses remain documented limits.
+Collection candidate 4 increased Keep loss from `4.0480%` to `5.4205%`. The candidate exceeded the allowed one-point regression.
 
-The current activator also remains blocked. A drain-report failure can leave the engine rate at `0.0`.
+The replacement keeps the accepted original collection geometry. Physical Keep loss, anomaly warnings, spills, and overall accuracy remain visible limitations.
 
-A pointer `fsync` failure can split the active pointer from the running worker. Exact retry does not yet repair missing archive or history records.
+## Reset defaults
 
-The spawned failed-start and rollback path still needs a valid process proof. The activator stays excluded until focused corrections pass both reviews.
+Reset defaults restores the deployed built-in catalog, model, default policy, and a fresh session.
 
-The candidate still needs final agent-browser recordings. These recordings must cover desktop, mobile, cached recovery, activation, rollback, and the generated GLB.
+It preserves Wall of Fame history and referenced assets. It archives the removed active generated item before restoring defaults.
 
-## Pending replacement gates
+Terminal failed or invalid submissions remain visible as **Needs review** entries. A verified preview remains available when one exists.
 
-The narrowed replacement cannot deploy until these gates pass:
+The reset also creates recoverable backups of the prior active state and jobs. It does not delete bundles, history, or provider cache.
 
-1. Refresh the initial model from the frozen accepted source with seeds 7 and 9 for exactly 16 seconds.
-2. Validate the preserved seed-17 anomaly evidence without recollection or retuning.
-3. Integrate only reviewed queue, worker, startup, activation, and visual commits.
-4. Run one real cached job through render, physics, training, activation, restart, and recovery.
-5. Reset to the built-in startup bundle while preserving Wall of Fame history and assets.
-6. Prove the generated GLB appears in the live scene and the gallery.
-7. Record final desktop and mobile browser flows with agent-browser.
-8. Build the final image and verify its source, model, bundle, and cache identities.
-9. Verify private health, public HTTPS, public WSS, restart, recovery, and reset.
+Focused reset tests pass. The complete reset flow still needs integrated browser and deployment E2E verification.
 
-Collection geometry and mixed-feed quality improvements are deferred. They failed their current quality gate and have not passed release review.
+## Pending release evidence
 
-## Fixed candidate findings
+The replacement is not a deployment claim yet. These checks remain pending:
 
-These fixes exist in reviewed candidate commits. They are not all deployed yet.
-
-- Pooled objects now refresh supported MuJoCo mass and inertia state.
-- Outcome scoring waits for collection instead of freezing at the splitter.
-- The browser can load verified generated GLBs and use a labelled proxy fallback.
-- WebGL context loss returns the page to the supported 2D view.
-- Queue history, process groups, previews, and parent death have bounded handling.
-- The Blender image runs as a non-root user with a read-only root filesystem.
-- Cached release packaging includes no provider credentials.
-- Model provenance binds the catalog revision and hashed training sources.
-
-A fixed finding becomes a release claim only after combined integration and final end-to-end validation.
+1. Run one real generated-item flow through provider, render, physics, training, activation, restart, and recovery.
+2. Confirm warning and hard-failure behavior with the final bundled model.
+3. Confirm Reset defaults preserves Wall of Fame entries and verified previews.
+4. Record desktop and mobile browser flows.
+5. Build the final image and verify source, model, bundle, provider cache, HTTPS, and WSS identities.
 
 ## Evidence and commands
 
 - [Current public deployment status](thoughts/taras/deployment/hack-growth.dev/README.md#current-status)
-- [Public deployment verification](thoughts/taras/deployment/hack-growth.dev/README.md#verification)
 - [Generated-item Manual E2E](thoughts/taras/plans/2026-09-19-cinta-item-controls.md#manual-e2e)
-- [Current collection scorer evidence](thoughts/taras/qa/2026-09-20-cinta-collection-scorer.md)
+- [Collection scorer evidence](thoughts/taras/qa/2026-09-20-cinta-collection-scorer.md)
 - [Physics repair evidence](thoughts/taras/qa/2026-09-20-cinta-physics-repair.md)

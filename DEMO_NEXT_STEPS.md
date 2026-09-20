@@ -8,27 +8,58 @@
 - Local demo: [http://127.0.0.1:8899/](http://127.0.0.1:8899/), when the canonical local service runs
 - Replacement draft: [jamipuchi/hackspain PR #7](https://github.com/jamipuchi/hackspain/pull/7)
 
-The public URL serves the last working release. Generated-item activation remains unavailable there.
+The public URL serves the last working release. Generated-item creation and Reset defaults are not deployed there.
 
-## Short demo flow
+## Current public demo
 
-1. Open the public demo and wait for the running state.
-2. Show **Overview**, **Sorting**, and **Belt** to explain the machine path.
-3. Switch between **3D** and **2D** to separate rendering from engine behavior.
-4. Open **Items** and show the active built-in catalog with its Keep or Reject policy.
-5. Open **Details** and point to the session, source, model, policy, and simulation speed.
-6. Explain that `Sim 0.119557x` means the engine runs slower than wall-clock time.
-7. Use **Drop test stone** only when a shared-session mutation is acceptable.
+1. Open the public page and wait for the running state.
+2. Show **Overview**, **Sorting**, and **Belt**.
+3. Switch between **3D** and **2D**.
+4. Open **Items** and show the built-in catalog and shared policy.
+5. Open **Details** and show source, model, session, policy, browser FPS, and simulation speed.
+6. Explain that `Sim 0.119557x` means the engine runs slower than wall time.
+7. Drop a test Stone only when a shared-session mutation is acceptable.
 8. Compare the expected decision with the retained physical outcome.
-9. State that generated-item creation is still a release candidate.
 
-Do not promise that a Reject decision always reaches the Reject bin. One verified public Stone spilled.
+One verified public Stone spilled. Do not promise that a Reject decision always reaches the Reject bin.
 
-Do not present browser FPS as simulation speed. Use the **Sim** badge for engine speed.
+Browser FPS measures rendering. The **Sim** badge measures simulated seconds per wall second.
+
+## Replacement candidate for judges
+
+The candidate accepts an item description and can call the real provider after explicit operator approval.
+
+It renders the item, validates its asset, estimates physics, retrains the classifier, and prepares an immutable activation bundle.
+
+Hard failures block activation. These include invalid assets, failed training, insufficient coverage, and new-label recall below 90%.
+
+Physical Keep, anomaly, and overall accuracy failures appear as **Needs review** warnings. Judges should see these warnings as measured limitations.
+
+The complete real-provider flow, activation, reset, and public deployment still need final E2E verification.
+
+## Reset defaults
+
+Run a safe preview from the repository checkout:
+
+```bash
+./deploy/hack-growth.dev/reset-live-state.sh --dry-run
+```
+
+Apply the reset from the laptop only after the dry run succeeds:
+
+```bash
+./deploy/hack-growth.dev/reset-live-state.sh --apply
+```
+
+The script targets only the `coffee` service on SSH host `hackspain`.
+
+Reset defaults restores the built-in catalog and model. It preserves Wall of Fame history, generated assets, failed submissions, and verified previews.
+
+The integrated button and laptop flow still need final deployment E2E proof.
 
 ## Verify before presenting
 
-Run these checks shortly before the demo:
+Run these checks shortly before the public demo:
 
 ```bash
 curl --fail --show-error https://hack-growth.dev/health
@@ -39,7 +70,7 @@ curl --fail --show-error https://hack-growth.dev/timeline.mjs >/dev/null
 
 Confirm that `/state` reports source `30758f7dd499027ffe76a8f7646377c0f94fa596` until the replacement deploys.
 
-Use agent-browser for the presentation browser:
+Use agent-browser for final browser evidence:
 
 ```bash
 agent-browser skills get core
@@ -47,44 +78,22 @@ agent-browser open https://hack-growth.dev/
 agent-browser snapshot
 ```
 
-Confirm these points:
+Confirm HTTPS, WSS, advancing simulation time, stable reconnect, shared sessions, Items, warnings, generated assets, mobile layout, and Reset defaults.
 
-- HTTPS loads without a certificate warning.
-- The page connects to `wss://hack-growth.dev/ws`.
-- Simulation time advances without a browser command.
-- The running session ID remains stable after reconnect.
-- The Items modal opens and shows the built-in catalog.
-- The page labels engine speed separately from browser FPS.
-- Mobile panels start collapsed in a clean browser profile.
+## Release path
 
-If you change a shared policy, record the starting policy first. Restore it after the demo.
-
-## Replacement release path
-
-Complete these steps in order:
-
-1. Freeze the accepted combined source with the original collection geometry.
-2. Run the authorized 16-second model refresh under the shared runtime lock.
-3. Validate source hashes, catalog revision, model identity, and preserved seed-17 rows.
-4. Integrate reviewed queue, worker, startup, activation, and visual commits.
-5. Run one exact cached star job through creation, activation, restart, and recovery.
-6. Run the coffee-only reset and confirm it preserves Wall of Fame history and assets.
-7. Capture the final desktop and mobile flows with agent-browser.
-8. Build the immutable image and run the read-only runtime checks.
-9. Deploy with no credential mount and no paid-provider flag.
-10. Verify private health, public HTTPS, public WSS, identities, recovery, and reset.
-
-A cache miss must remain `operator_required`. It must not start a paid request.
-
-The mixed-feed geometry candidate failed its quality gate. This demo defers that change and does not claim improved sorting quality.
+1. Freeze the reviewed combined source and final bundled model.
+2. Run one real generated-item flow with an explicit provider grant.
+3. Verify hard failures, warnings, activation, restart, and recovery.
+4. Run Reset defaults and verify preserved Wall of Fame evidence.
+5. Capture desktop and mobile browser evidence.
+6. Build the immutable image and verify all identities.
+7. Deploy, then verify private health, public HTTPS, public WSS, recovery, and reset.
 
 ## Runnable guides
 
 - [Run one local service](README.md#run-one-local-service)
 - [Live engine guide](sim/coffee_sorter/LIVE.md)
 - [Generated-item Manual E2E](thoughts/taras/plans/2026-09-19-cinta-item-controls.md#manual-e2e)
-- [Deployment build and rollback guide](thoughts/taras/deployment/hack-growth.dev/README.md)
-- [Public deployment verification](thoughts/taras/deployment/hack-growth.dev/README.md#verification)
+- [Deployment and rollback guide](thoughts/taras/deployment/hack-growth.dev/README.md)
 - [Known issues](KNOWN_ISSUES.md)
-
-Refresh these facts after the replacement rollout. Record the deployed source, image digest, model hash, bundle hash, session ID, and final recordings.
