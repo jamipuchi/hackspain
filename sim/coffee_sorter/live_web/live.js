@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {OrbitControls} from '/vendor/OrbitControls.js';
 import {RoomEnvironment} from '/vendor/RoomEnvironment.js';
 import {GLTFLoader} from '/assets/vendor/loaders/GLTFLoader.js';
-import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, freezeItemRequest, jobActionLabel, jobActionPath, jobErrorLabel, jobQueueSignature, jobStateLabel, jobStateNote, queueModeCue, normalizedClassPreview, normalizedJobSummary, profilePreviewScale, resolvePendingRequest, samePresentationTimeline} from './timeline.mjs';
+import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, freezeItemRequest, jobActionLabel, jobActionPath, jobErrorLabel, jobQueueSignature, jobStateLabel, jobStateNote, queueModeCue, normalizedClassPreview, normalizedCollectionSurfaces, normalizedJobSummary, profilePreviewScale, resolvePendingRequest, samePresentationTimeline} from './timeline.mjs';
 import {acceptedAssetRegistry, chooseObjectAsset, generatedAssetMetrics, instanceScale, mustResetGeneratedPools, parsedAssetRefusal, planAssetLoads, prepareGeometry} from './generated_assets.mjs';
 
 const $ = id => document.getElementById(id);
@@ -1026,6 +1026,7 @@ function setMetric(id, text) {
 function update() {
   if (!state) return;
   reconcileGeneratedAssets();
+  syncCollectionSurfaces();
   const commandState = liveState || state;
   const status = commandState.status;
   const connected = socket?.readyState === WebSocket.OPEN;
@@ -1447,9 +1448,11 @@ function buildMachine(L) {
   for (const y of [-1, 1]) add(new THREE.BoxGeometry(.03, .03, .12), materials.frame, [L.ej_x, y * (L.belt_w / 2 + .035), L.belt_z + .06]);
   // Splitter plate and the two collection volumes.
   const splitZ = L.belt_z - L.split_z_drop;
-  add(new THREE.BoxGeometry(.15, L.belt_w + .05, .006), materials.steel, [L.split_x + .075, 0, splitZ]);
-  add(new THREE.BoxGeometry(.37, L.belt_w + .05, .25), materials.reject, [L.split_x - .035, 0, splitZ - .13], {soft: true});
-  add(new THREE.BoxGeometry(.26, L.belt_w + .05, .28), materials.accept, [L.split_x + .28, 0, splitZ - .13], {soft: true});
+  const legacyCollectionMeshes = [
+    add(new THREE.BoxGeometry(.15, L.belt_w + .05, .006), materials.steel, [L.split_x + .075, 0, splitZ]),
+    add(new THREE.BoxGeometry(.37, L.belt_w + .05, .25), materials.reject, [L.split_x - .035, 0, splitZ - .13], {soft: true}),
+    add(new THREE.BoxGeometry(.26, L.belt_w + .05, .28), materials.accept, [L.split_x + .28, 0, splitZ - .13], {soft: true}),
+  ];
   // Dimension callouts (metres), drawn as thin lines with end ticks.
   const dimMat = new THREE.LineBasicMaterial({color: INK});
   const dimension = (a, b, text, tick) => {
@@ -1517,8 +1520,9 @@ function buildMachine(L) {
     ['RENDER', 'authoritative objects only'],
     ['INPUT', 'drag orbit · scroll zoom · click machine = drop stone · L labels · H panels'],
   ].map(([k, v]) => { const row = document.createElement('div'); const b = document.createElement('b'); b.textContent = k; row.append(b, document.createTextNode(v)); return row; }));
-  Object.assign(three, {pools, puffMesh, ring, ring2, selectedShadow, selectedShadowMaterial, spawnCue, dummy, machineGroup});
+  Object.assign(three, {pools, puffMesh, ring, ring2, selectedShadow, selectedShadowMaterial, spawnCue, dummy, machineGroup, legacyCollectionMeshes});
   three.machineBuilt = true;
+  syncCollectionSurfaces();
   loadBlenderAssets(L).catch(error => { console.error(error); setAssetsRow(`primitives (Blender GLBs failed: ${error.message})`); });
 }
 
@@ -1549,6 +1553,68 @@ function disposeOwnedFallbackMachine(root) {
   });
   for (const geometry of geometries) geometry.dispose();
   for (const material of materials) material.dispose();
+}
+
+const OBSOLETE_COLLECTION_NAMES = new Set([
+  'splitter', 'bin accept', 'bin reject', 'recorded surface 20', 'recorded surface 21',
+  'accept tray bracket left', 'accept tray bracket right', 'accept tray underside',
+  'reject tray bracket left', 'reject tray bracket right', 'reject tray underside',
+  'splitter side trim left', 'splitter side trim right',
+]);
+const normalizedMeshName = name => String(name || '').toLowerCase().replace(/[ _]+/g, ' ').trim();
+
+function clearCollectionOverlay() {
+  if (three.collectionOverlay) {
+    three.scene.remove(three.collectionOverlay);
+    disposeOwnedFallbackMachine(three.collectionOverlay);
+    three.collectionOverlay = null;
+  }
+  for (const [mesh, visible] of three.collectionHidden || []) mesh.visible = visible;
+  three.collectionHidden = new Map();
+}
+
+function syncCollectionSurfaces() {
+  if (!three.ready || !three.machineBuilt || !state) return;
+  const surfaces = normalizedCollectionSurfaces(state.collection_surfaces);
+  measurements.collection_surfaces = surfaces;
+  const signature = surfaces ? JSON.stringify(surfaces) : null;
+  if (signature === three.collectionSignature) return;
+  clearCollectionOverlay();
+  three.collectionSignature = signature;
+  if (!surfaces) return;
+  const hidden = new Map();
+  for (const mesh of [...(three.legacyCollectionMeshes || []), ...(three.machineMeshes || [])]) {
+    if ((three.legacyCollectionMeshes || []).includes(mesh)
+        || OBSOLETE_COLLECTION_NAMES.has(normalizedMeshName(mesh.name))) {
+      hidden.set(mesh, mesh.visible);
+      mesh.visible = false;
+    }
+  }
+  three.collectionHidden = hidden;
+  const group = new THREE.Group();
+  group.name = 'Authoritative collection surfaces';
+  const materials = {
+    splitter: matte('#c3cac6', 1, .55),
+    accept: matte('#5d9766', .72, .12),
+    reject: matte('#b45b45', .72, .12),
+  };
+  for (const surface of surfaces) {
+    const material = surface.name === 'splitter' ? materials.splitter
+      : surface.name.startsWith('bin_accept') ? materials.accept : materials.reject;
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(
+      surface.halfSize[0] * 2, surface.halfSize[1] * 2, surface.halfSize[2] * 2,
+    ), material);
+    mesh.name = `Authoritative ${surface.name}`;
+    mesh.position.fromArray(surface.center);
+    mesh.quaternion.set(
+      surface.quaternionWxyz[1], surface.quaternionWxyz[2],
+      surface.quaternionWxyz[3], surface.quaternionWxyz[0],
+    );
+    mesh.userData.authoritativeCollectionSurface = true;
+    group.add(mesh);
+  }
+  three.scene.add(group);
+  three.collectionOverlay = group;
 }
 
 function disposeGeneratedPool(record) {
@@ -1745,6 +1811,8 @@ async function loadBlenderAssets(L) {
   scene.add(machine.scene);
   scene.remove(three.machineGroup);
   disposeOwnedFallbackMachine(three.machineGroup);
+  three.legacyCollectionMeshes = [];
+  three.machineMeshes = meshes;
   three.inspectionHousing = meshes.filter(mesh => /^(Camera_(?:shroud|gantry_bridge)|Inspection_light|Recorded_surface_(?:11|12|13))/.test(mesh.name));
   updateMachineVisibility();
   clickTargets.length = 0; clickTargets.push(...meshes.filter(m => m.visible));
@@ -1752,6 +1820,8 @@ async function loadBlenderAssets(L) {
   // The recorded floor slab is a dark 8 x 6 m box; the drawing keeps the paper grid instead.
   const box = new THREE.Box3();
   for (const m of meshes) { box.setFromObject(m); if (box.max.x - box.min.x > 3) m.visible = false; }
+  three.collectionSignature = undefined;
+  syncCollectionSurfaces();
   setAssetsRow(`Blender ${loaded.join(', ')}; beans loading…`);
   const bean = async kind => {
     const gltf = await loader.loadAsync(`/assets/bean_${kind}_lod.glb`);

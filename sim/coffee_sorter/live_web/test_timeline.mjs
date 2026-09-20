@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
 
-import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, freezeItemRequest, jobActionLabel, jobActionPath, jobErrorLabel, jobQueueSignature, jobStateLabel, jobStateNote, normalizedClassPreview, normalizedJobSummary, profilePreviewScale, queueModeCue, resolvePendingRequest, samePresentationTimeline} from './timeline.mjs';
+import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, freezeItemRequest, jobActionLabel, jobActionPath, jobErrorLabel, jobQueueSignature, jobStateLabel, jobStateNote, normalizedClassPreview, normalizedCollectionSurfaces, normalizedJobSummary, profilePreviewScale, queueModeCue, resolvePendingRequest, samePresentationTimeline} from './timeline.mjs';
 
 const snapshot = {
   session_id: 'session-a',
@@ -77,6 +77,39 @@ test('class previews require explicit profile geometry with meter dimensions', (
 test('profile half preview keeps the declared cut-half thickness', () => {
   const half = {shape: 'half', axes: [.00245, .0018, .00255], rgb: [.5, .4, .3]};
   assert.deepEqual(profilePreviewScale(half), [.00245, .0018, .00255]);
+});
+
+const surface = (name, changes = {}) => ({
+  name,
+  center_m: [.4, 0, .3],
+  half_size_m: [.1, .27, .003],
+  quaternion_wxyz: [1, 0, 0, 0],
+  ...changes,
+});
+const collectionSurfaces = () => [
+  'splitter', 'bin_accept', 'bin_reject', 'bin_accept_end', 'bin_reject_end',
+].map(name => surface(name));
+
+test('collection surfaces require the complete unique authoritative set', () => {
+  const normalized = normalizedCollectionSurfaces(collectionSurfaces().reverse());
+  assert.deepEqual(normalized.map(item => item.name),
+    ['splitter', 'bin_accept', 'bin_reject', 'bin_accept_end', 'bin_reject_end']);
+  assert.deepEqual(normalized[0].center, [.4, 0, .3]);
+  assert.equal(normalizedCollectionSurfaces(collectionSurfaces().slice(1)), null);
+  const duplicate = collectionSurfaces(); duplicate[4] = surface('splitter');
+  assert.equal(normalizedCollectionSurfaces(duplicate), null);
+});
+
+test('collection surfaces reject invalid dimensions and rotations', () => {
+  for (const change of [
+    {center_m: [.4, 0, Number.NaN]},
+    {half_size_m: [.1, .27, 0]},
+    {quaternion_wxyz: [0, 0, 0, 0]},
+    {quaternion_wxyz: [2, 0, 0, 0]},
+  ]) {
+    const values = collectionSurfaces(); values[0] = surface('splitter', change);
+    assert.equal(normalizedCollectionSurfaces(values), null);
+  }
 });
 
 test('empty score metrics distinguish warm-up from structurally empty cohorts', () => {

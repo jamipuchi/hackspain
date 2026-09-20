@@ -95,6 +95,34 @@ export function profilePreviewScale(preview) {
   return [x, y, z];
 }
 
+const COLLECTION_SURFACE_NAMES = Object.freeze([
+  'splitter', 'bin_accept', 'bin_reject', 'bin_accept_end', 'bin_reject_end',
+]);
+
+export function normalizedCollectionSurfaces(value) {
+  if (!Array.isArray(value) || value.length !== COLLECTION_SURFACE_NAMES.length) return null;
+  const finiteVector = (vector, length, positive = false) => Array.isArray(vector)
+    && vector.length === length
+    && vector.every(component => Number.isFinite(component) && (!positive || component > 0));
+  const byName = new Map();
+  for (const surface of value) {
+    if (!COLLECTION_SURFACE_NAMES.includes(surface?.name) || byName.has(surface.name)
+        || !finiteVector(surface.center_m, 3)
+        || !finiteVector(surface.half_size_m, 3, true)
+        || !finiteVector(surface.quaternion_wxyz, 4)) return null;
+    const magnitude = Math.hypot(...surface.quaternion_wxyz);
+    if (magnitude < .999 || magnitude > 1.001) return null;
+    byName.set(surface.name, {
+      name: surface.name,
+      center: surface.center_m.slice(),
+      halfSize: surface.half_size_m.slice(),
+      quaternionWxyz: surface.quaternion_wxyz.map(component => component / magnitude),
+    });
+  }
+  if (COLLECTION_SURFACE_NAMES.some(name => !byName.has(name))) return null;
+  return COLLECTION_SURFACE_NAMES.map(name => byName.get(name));
+}
+
 export function emptyMetricState({metric, warmingUp, catalogSize, rejectSize}) {
   const cohortCanReceiveSamples = metric === 'reject_capture' || metric === 'defect_capture'
     ? rejectSize > 0
