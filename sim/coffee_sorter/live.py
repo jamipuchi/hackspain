@@ -137,6 +137,8 @@ def access_middleware(allowed_hosts, allowed_origins):
         return response
 
     return validate_access
+
+
 def _item_job_response(error_code):
     return web.json_response({'ok': False, 'error_code': error_code},
                              status=ITEM_JOB_STATUS.get(error_code, 500))
@@ -163,6 +165,8 @@ def _public_job(job):
 def _validate_item_job_arguments(parser, args, item_jobs_root):
     """Fail fast only on a contradiction. Compatible defaults must keep starting."""
     mode = args.item_jobs_provider
+    if mode == 'fake' and args.host != '127.0.0.1':
+        parser.error('--item-jobs-provider fake requires the loopback host 127.0.0.1.')
     if mode == 'paid' and args.item_jobs_provider_env is None:
         parser.error('--item-jobs-provider paid requires --item-jobs-provider-env.')
     # An explicitly named path that does not exist is a contradiction, not a default.

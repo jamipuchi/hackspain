@@ -252,7 +252,7 @@ def item_service(test, provider_mode='cached'):
 
 
 def item_arguments(**overrides):
-    values = {'item_jobs_provider': 'cached', 'item_jobs_provider_cache': None,
+    values = {'host': '127.0.0.1', 'item_jobs_provider': 'cached', 'item_jobs_provider_cache': None,
               'item_jobs_provider_env': None,
               'item_jobs_generator_root': item_jobs.GENERATOR_ROOT}
     return types.SimpleNamespace(**{**values, **overrides})
@@ -934,6 +934,8 @@ class ItemJobRouteTest(unittest.IsolatedAsyncioTestCase):
         credential.write_text('')
         self.addCleanup(credential.unlink)
         cases = [
+            (item_arguments(host='0.0.0.0', item_jobs_provider='fake'),
+             '--item-jobs-provider fake requires the loopback host'),
             (item_arguments(item_jobs_provider='paid', item_jobs_provider_env=None),
              'requires --item-jobs-provider-env'),
             (item_arguments(item_jobs_provider_cache=Path('/tmp/cinta-absent-cache')),
