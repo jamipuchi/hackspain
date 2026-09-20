@@ -17,6 +17,7 @@ import signal
 import subprocess
 import sys
 from pathlib import Path
+import tempfile
 import threading
 from queue import Empty, Full
 import time
@@ -25,6 +26,10 @@ from urllib.parse import urlsplit
 import uuid
 
 from aiohttp import WSMsgType, web
+
+# The one physical settling time. rolling_scores holds no model and no profile, so this
+# import cannot load profiles before the active bundle catalog is exported.
+from rolling_scores import SETTLING_SECONDS
 
 import item_jobs
 import object_catalog
@@ -45,6 +50,13 @@ VALIDATE_BUNDLE_TIMEOUT_S = 120.0
 # Only the service sends these. The WebSocket admits inject and set_reject_policy alone.
 ACTIVATION_COMMANDS = ('prepare_activation', 'commit_activation', 'cancel_activation')
 DRAIN_TIMEOUT_S = 20.0
+ACTIVATION_ACK_TIMEOUT_S = 30.0
+ACTIVATION_POLL_S = 0.05
+# The frozen record block of the increment C contract. Every member is always present.
+# The two catalog revisions and the model artifact come from the training side, not here.
+ACTIVATION_MEMBERS = ('phase', 'active_objects', 'drain_timeout_seconds', 'result',
+                      'rolled_back', 'message', 'bundle_sha256', 'previous_bundle_sha256',
+                      'activation_policy_version', 'session_id', 'score_epoch_id')
 # The sources that bundle zero records. engine.SOURCE_FILES cannot be imported for this:
 # engine imports profiles, and profiles must not load before the active catalog is exported.
 BUNDLE_SOURCE_FILES = ('engine.py', 'controller.py', 'sim.py', 'rolling_scores.py', 'vision.py',
@@ -375,6 +387,28 @@ def _bundle_sources():
             'files': {name: _file_hash(HERE / name) for name in BUNDLE_SOURCE_FILES}}
 
 
+def activation_block(**fields):
+    """One record block with exactly the frozen members. Unknown members stay null."""
+    block = dict.fromkeys(ACTIVATION_MEMBERS)
+    block['drain_timeout_seconds'] = DRAIN_TIMEOUT_S
+    for name, value in fields.items():
+        if name not in block:
+            raise KeyError(f'the activation record has no member named {name}')
+        block[name] = value
+    return block
+
+
+def _bundle_model_manifest(bundle):
+    """The manifest of the model that recognized the type this bundle retires."""
+    found = sorted(Path(bundle).glob('model/*.manifest.json'))
+    return found[0] if found else None
+
+
+def _activation_message(error):
+    """One short operator line. No host path ever reaches a job record."""
+    return _without_host_paths(f'{type(error).__name__}: {error}'[:200])
+
+
 def bind_active_bundle(preset_path, item_jobs_root):
     """Startup steps 2 and 3: resolve the one verified active bundle, then export its catalog.
 
@@ -576,8 +610,11 @@ def worker(preset, states, acknowledgments, commands, stop, out):
         else:
             sim_limit = float(engine.preset['limits']['max_sim_seconds'])
             wall_limit = float(engine.preset['limits']['max_wall_seconds'])
-            if not (0.6 < sim_limit <= 10 and 0 < wall_limit <= 300):
-                raise ValueError('Session limits must allow 0.6 to 10 simulation seconds and at most 300 wall seconds.')
+            # A bounded session must be longer than one settling time, or no injected
+            # object could ever resolve inside it.
+            if not (SETTLING_SECONDS < sim_limit <= 10 and 0 < wall_limit <= 300):
+                raise ValueError(f'Session limits must allow {SETTLING_SECONDS:g} to 10 '
+                                 'simulation seconds and at most 300 wall seconds.')
         running = continuous
         started = time.monotonic() if continuous else None
         publish('running' if continuous else 'ready')
@@ -599,7 +636,10 @@ def worker(preset, states, acknowledgments, commands, stop, out):
                         if command['session_id'] != engine.session_id:
                             raise ValueError('The session changed. Reload the page.')
                         if command_type == 'inject':
-                            if not continuous and running and engine.sim.data.time >= sim_limit - 0.6:
+                            # One settling time is what an injected object needs to reach
+                            # its outcome. A later injection could never resolve.
+                            if not continuous and running and \
+                                    engine.sim.data.time >= sim_limit - SETTLING_SECONDS:
                                 raise ValueError('The session is ending. Restart the session before another injection.')
                             object_id = engine.inject(command['class_name'])
                             ack.update(ok=True, object_id=object_id,
@@ -675,8 +715,12 @@ class LiveService:
     def __init__(self, preset, out, *, item_jobs_root=None, item_jobs_provider='cached',
                  catalog_root=None, provider_cache=None, provider_env=None,
                  generator_root=None, runtime_lock=None, physics_replay=None,
-                 active_bundle=None):
+                 active_bundle=None, record=None):
         self.ctx = mp.get_context('spawn')
+        # The one reporting seam. The job runner injects it, so the activator never
+        # touches the queue store. Without it the activation still runs and reports nothing.
+        self.record = record if record is not None else (lambda job_id, **fields: None)
+        self.loop = None
         self.preset = Path(preset)
         self.preset_config = load_preset(self.preset)
         self.continuous = self.preset_config.get('mode') == 'continuous'
@@ -1073,6 +1117,8 @@ class LiveService:
         self.profile_written = True
 
     async def lifecycle(self, app):
+        # The activator runs on a job runner thread and hands every step to this loop.
+        self.loop = asyncio.get_running_loop()
         await asyncio.to_thread(self._open_item_jobs)
         self.process.start()
         self.task = asyncio.create_task(self.pump())
@@ -1301,6 +1347,204 @@ class LiveService:
         self.process.start()
         self.task = asyncio.create_task(self.pump())
         await asyncio.wait_for(self.state_ready.wait(), timeout=30)
+
+    # Activation ---------------------------------------------------------
+
+    def activate(self, job_id, candidate):
+        """Thread entry for the job runner. Every queue and worker step runs on the loop.
+
+        `candidate` names the trained artifacts: `catalog_root`, `model`,
+        `model_manifest`, `preset`, `victim_id`, `expected_catalog_revision`, optional
+        `evidence` (archive file name to path), and `bundle_sha256` on an exact retry.
+        Returns `active`, `replacement_conflict`, `activation_conflict`, or
+        `activation_failed`. It never raises a queue decision as an exception.
+        """
+        if self.loop is None:
+            raise RuntimeError('the service loop is not running')
+        return asyncio.run_coroutine_threadsafe(
+            self._activate(job_id, candidate), self.loop).result()
+
+    async def _activation_command(self, kind, job_id, **fields):
+        """Send one internal command and wait for the worker acknowledgment.
+
+        The entry is marked sent, so an internal acknowledgment never reaches a browser.
+        """
+        command_id = str(uuid.uuid4())
+        payload = {'type': kind, 'command_id': command_id, 'job_id': job_id, **fields}
+        if self.continuous:
+            payload['command_epoch'] = self.command_epoch
+        self.requests[command_id] = {'payload': payload, 'ack_sent': True}
+        self.commands.put_nowait(payload)
+        deadline = time.monotonic() + ACTIVATION_ACK_TIMEOUT_S
+        while time.monotonic() < deadline:
+            entry = self.requests.get(command_id)
+            if entry is not None and entry.get('ack'):
+                return entry['ack']
+            await asyncio.sleep(ACTIVATION_POLL_S)
+        raise TimeoutError(f'the engine did not acknowledge {kind}')
+
+    def _candidate_bundle_files(self, candidate, reject_classes):
+        return object_catalog.seed_bundle_files(
+            Path(candidate['catalog_root']), Path(candidate['model']),
+            Path(candidate['model_manifest']),
+            json.loads(Path(candidate['preset']).read_text()),
+            {'reject_classes': list(reject_classes)}, _bundle_sources())
+
+    async def _activate(self, job_id, candidate):
+        """Spec section 2 in order. Nothing is rewritten after the verification."""
+        active_root = self.item_jobs_root / 'active'
+        catalog = object_catalog.read_active(active_root)
+        previous_sha256 = catalog['active_bundle_sha256']
+
+        def report(**fields):
+            self.record(job_id, activation=activation_block(
+                previous_bundle_sha256=previous_sha256, **fields))
+
+        def epoch():
+            return (self.state.get('reject_policy') or {}).get('score_epoch_id')
+
+        # An exact retry: the pointer already carries this bundle. No second restart and
+        # no second score epoch.
+        if candidate.get('bundle_sha256') == previous_sha256 and previous_sha256 is not None:
+            report(phase='active', result='active', active_objects=0, rolled_back=False,
+                   bundle_sha256=previous_sha256, session_id=self.state.get('session_id'),
+                   score_epoch_id=epoch(), message='The pointer already carries this bundle.')
+            return 'active'
+
+        victim = next((item for item in catalog['definitions']
+                       if item['object_type_id'] == candidate['victim_id']), None)
+        if victim is None:
+            report(phase='failed', result='replacement_conflict',
+                   message='The replacement victim is not active.')
+            return 'replacement_conflict'
+        victim_label = victim['classifier_label']
+
+        # Step 0: a fresh child judges the candidate before anything pauses. The parent
+        # never judges a bundle against its own cached profiles.
+        provisional = [name for name in ((self.state.get('reject_policy') or {})
+                                         .get('reject_classes') or []) if name != victim_label]
+        try:
+            files = self._candidate_bundle_files(candidate, provisional)
+            with tempfile.TemporaryDirectory() as scratch:
+                draft = object_catalog.publish_bundle(scratch, files)
+                await asyncio.to_thread(validate_bundle_child, Path(scratch) / draft)
+        except (object_catalog.CatalogError, OSError, ValueError, KeyError) as error:
+            report(phase='failed', result='activation_failed', message=_activation_message(error))
+            return 'activation_failed'
+
+        # Step 1: prepare. A conflict pauses nothing.
+        ack = await self._activation_command(
+            'prepare_activation', job_id, victim_label=victim_label,
+            expected_catalog_revision=candidate['expected_catalog_revision'])
+        if not ack.get('ok'):
+            code = ack.get('error_code')
+            result = code if code in ('activation_conflict', 'replacement_conflict') \
+                else 'activation_failed'
+            report(phase='failed', result=result, message=ack.get('error'))
+            return result
+        report(phase='draining', active_objects=ack.get('active_objects'))
+
+        # Steps 2 and 3: drain, then commit under the fence. The worker owns both truths:
+        # only it knows the belt is empty, and only a successful commit sets the fence.
+        deadline = time.monotonic() + DRAIN_TIMEOUT_S
+        while True:
+            ack = await self._activation_command('commit_activation', job_id)
+            if ack.get('ok'):
+                break
+            code = ack.get('error_code')
+            if code != 'activation_not_drained':
+                result = code if code in ('activation_conflict', 'replacement_conflict') \
+                    else 'activation_failed'
+                report(phase='failed', result=result, active_objects=ack.get('active_objects'),
+                       message=ack.get('error'))
+                return result
+            report(phase='draining', active_objects=ack.get('active_objects'))
+            if time.monotonic() >= deadline:
+                await self._activation_command('cancel_activation', job_id)
+                report(phase='failed', result='activation_failed',
+                       active_objects=ack.get('active_objects'),
+                       message='The belt did not drain before the timeout.')
+                return 'activation_failed'
+            await asyncio.sleep(ACTIVATION_POLL_S)
+
+        # Steps 4 and 5: the captured survivors minus the label that leaves, written once
+        # by the staging of the bundle, then verified in a child. Nothing is rewritten.
+        captured = [name for name in (ack.get('reject_classes') or []) if name != victim_label]
+        policy_version = ack.get('policy_version')
+        report(phase='activating', active_objects=0, activation_policy_version=policy_version)
+        try:
+            files = self._candidate_bundle_files(candidate, captured)
+            bundle_sha256 = object_catalog.publish_bundle(active_root / 'bundles', files)
+            bundle = active_root / 'bundles' / bundle_sha256
+            await asyncio.to_thread(validate_bundle_child, bundle)
+        except (object_catalog.CatalogError, OSError, ValueError, KeyError) as error:
+            await self._activation_command('cancel_activation', job_id)
+            report(phase='failed', result='activation_failed',
+                   activation_policy_version=policy_version, message=_activation_message(error))
+            return 'activation_failed'
+
+        # Step 6: the swap. From here the old session is gone, so a failure can never
+        # claim score continuity.
+        previous_preset, previous_bundle = self.preset, self.active_bundle
+        previous_session_id = self.state.get('session_id')
+        os.environ[object_catalog.CATALOG_ROOT_ENV] = str(bundle / 'catalog')
+        self.preset, self.active_bundle = bundle / object_catalog.BUNDLE_PRESET, bundle
+        try:
+            await self._swap_worker(previous_session_id)
+        except Exception as error:
+            return await self._rollback_activation(
+                report, previous_preset, previous_bundle, policy_version,
+                _activation_message(error))
+        if self.state.get('status') == 'failed':
+            return await self._rollback_activation(
+                report, previous_preset, previous_bundle, policy_version,
+                self.state.get('error') or 'The engine failed to start.')
+
+        # Step 7: commit the pointer, then the history. The pointer is the activation.
+        object_catalog.write_active_pointer(active_root, bundle_sha256)
+        retired_at = item_jobs.utc_now()
+        evidence = {name: Path(path) for name, path in (candidate.get('evidence') or {}).items()}
+        retiring = _bundle_model_manifest(active_root / 'bundles' / previous_sha256)
+        if retiring is not None:
+            evidence.setdefault('model.manifest.json', retiring)
+        object_catalog.archive_type(self.history_root, victim, retired_at, evidence)
+        self._append_activation_history({
+            'job_id': job_id, 'activated_at': retired_at, 'bundle_sha256': bundle_sha256,
+            'previous_bundle_sha256': previous_sha256,
+            'victim_type_id': victim['object_type_id'], 'victim_label': victim_label,
+            'activation_policy_version': policy_version, 'reject_classes': captured,
+            'session_id': self.state.get('session_id'), 'score_epoch_id': epoch()})
+        report(phase='active', result='active', active_objects=0, rolled_back=False,
+               bundle_sha256=bundle_sha256, activation_policy_version=policy_version,
+               session_id=self.state.get('session_id'), score_epoch_id=epoch())
+        return 'active'
+
+    async def _rollback_activation(self, report, preset, bundle, policy_version, message):
+        """The pointer never moved, so the prior bundle comes back as one whole unit.
+
+        This is a NEW session and a NEW score epoch. It is never a continuity claim.
+        """
+        self.preset, self.active_bundle = preset, bundle
+        if bundle is not None:
+            os.environ[object_catalog.CATALOG_ROOT_ENV] = str(bundle / 'catalog')
+        rolled_back = True
+        try:
+            await self._swap_worker(self.state.get('session_id'))
+        except Exception as error:
+            # The existing fatal path owns a start that cannot come back.
+            rolled_back = False
+            await self._cleanup_restart_failure(_activation_message(error))
+        epoch = (self.state.get('reject_policy') or {}).get('score_epoch_id')
+        report(phase='failed', result='activation_failed', rolled_back=rolled_back,
+               activation_policy_version=policy_version, message=message,
+               session_id=self.state.get('session_id'), score_epoch_id=epoch)
+        return 'activation_failed'
+
+    def _append_activation_history(self, row):
+        path = Path(self.history_root) / 'activations.jsonl'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open('a', encoding='utf-8') as stream:
+            stream.write(json.dumps(row, sort_keys=True) + '\n')
 
     async def restart(self, request):
         if self.continuous:
@@ -1568,7 +1812,7 @@ def build_parser():
     return parser
 
 
-def build_service(parser, args):
+def build_service(parser, args, record=None):
     """The startup order. The arguments are parsed. Then the verified active bundle is
     resolved, then its catalog is exported, and only then does LiveService call
     load_preset, which imports profiles. Without --item-jobs-root no bundle exists and the
@@ -1594,7 +1838,7 @@ def build_service(parser, args):
         runtime_lock=args.item_jobs_runtime_lock.resolve(),
         physics_replay=args.item_jobs_physics_replay.resolve()
         if args.item_jobs_physics_replay else None,
-        active_bundle=active_bundle)
+        active_bundle=active_bundle, record=record)
 
 
 def main():

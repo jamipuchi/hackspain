@@ -813,6 +813,99 @@ class BoundedCommandTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn('queue is full', ws.packets[-1]['error'])
 
 
+class BoundedSessionGuardTest(unittest.TestCase):
+    """A bounded session refuses an injection that could not resolve before it ends.
+
+    The bound is the one physical settling time that rolling_scores defines, so the
+    guard and the score ledger agree on when an outcome is final.
+    """
+
+    SIM_LIMIT = 2.0
+
+    def bounded_engine(self, stop, script, sim_limit=None):
+        limit = self.SIM_LIMIT if sim_limit is None else sim_limit
+
+        class BoundedEngine:
+            instance = None
+
+            def __init__(self, preset):
+                BoundedEngine.instance = self
+                self.continuous = False
+                self.preset = {'limits': {'max_sim_seconds': limit, 'max_wall_seconds': 60.0}}
+                self.session_id = 'session'
+                self.sim = types.SimpleNamespace(data=types.SimpleNamespace(time=0.0))
+                self.source_revision, self.source_hashes = 'test', {}
+                self.injected = []
+
+            def snapshot(self):
+                return {'session_id': self.session_id, 'sim_time_s': self.sim.data.time}
+
+            def inject(self, class_name):
+                self.injected.append(class_name)
+                return len(self.injected)
+
+            def injection_position(self, object_id):
+                return [0.0, 0.0, 0.0]
+
+            def injection_expectation(self, object_id):
+                return {'expected_outcome': 'accept', 'expectation_policy_version': 'v1'}
+
+            def step(self):
+                # One step carries the session to its last useful injection point.
+                self.sim.data.time = limit - live.SETTLING_SECONDS
+                if not script:
+                    stop.set()
+
+            def report(self):
+                return {}
+
+            def close(self):
+                pass
+
+        return BoundedEngine
+
+    def run_worker(self, script, sim_limit=None):
+        stop = FakeStop()
+        states, acks = WorkerQueue(), WorkerQueue()
+
+        class ScriptedQueue(WorkerQueue):
+            def get(self, timeout=None):
+                return self.get_nowait()
+
+            def get_nowait(self):
+                if not script:
+                    raise Empty
+                return script.pop(0)
+
+        engine = self.bounded_engine(stop, script, sim_limit)
+        with tempfile.TemporaryDirectory() as directory, \
+                patch.dict(sys.modules, {'engine': types.SimpleNamespace(Engine=engine)}), \
+                patch('live.signal.signal'):
+            worker('unused.json', states, acks, ScriptedQueue(), stop, directory)
+        return engine.instance, states, acks
+
+    def inject(self, class_name='stone'):
+        return {'type': 'inject', 'command_id': str(uuid.uuid4()), 'session_id': 'session',
+                'class_name': class_name}
+
+    def test_an_injection_inside_one_settling_time_of_the_end_is_refused(self):
+        engine, _, acks = self.run_worker([self.inject(), self.inject()])
+
+        first, second = acks.items
+        self.assertTrue(first['ok'])
+        self.assertEqual((False, ['stone']), (second['ok'], engine.injected))
+        self.assertIn('session is ending', second['error'])
+        # The refusal begins exactly one settling time before the limit.
+        self.assertEqual(self.SIM_LIMIT - live.SETTLING_SECONDS, engine.sim.data.time)
+
+    def test_a_session_shorter_than_one_settling_time_never_starts(self):
+        _, states, _ = self.run_worker([], sim_limit=live.SETTLING_SECONDS)
+
+        failed = states.items[-1]
+        self.assertEqual('failed', failed['status'])
+        self.assertIn(f'{live.SETTLING_SECONDS:g} to 10', failed['error'])
+
+
 class ParentDeathTest(unittest.TestCase):
     """The engine worker must not outlive a hard exit of the service process.
 
@@ -1429,6 +1522,312 @@ class ActivationWorkerTest(unittest.TestCase):
         self.assertEqual(states.items[1]['activation'],
                          {'job_id': 'job-1', 'phase': 'draining', 'active_objects': 2})
         self.assertNotIn('activation', states.items[-1])
+
+
+class RecordingJobs:
+    """The one injected reporting seam. The activator never touches a queue store."""
+
+    def __init__(self):
+        self.blocks = []
+
+    def __call__(self, job_id, **fields):
+        self.blocks.append((job_id, fields['activation']))
+
+    @property
+    def phases(self):
+        return [block['phase'] for _, block in self.blocks]
+
+    @property
+    def last(self):
+        return self.blocks[-1][1]
+
+
+class ActivationLoopback:
+    """The REAL worker command logic, driven here instead of in a child process."""
+
+    def __init__(self, service, engine):
+        self.service, self.engine = service, engine
+        self.activation = None
+        self.sent = []
+
+    def put_nowait(self, payload):
+        self.sent.append(payload)
+        ack = {'type': 'ack', 'command_id': payload['command_id']}
+        self.activation = live._apply_activation_command(
+            self.engine, payload, self.activation, ack)
+        self.service.requests[payload['command_id']]['ack'] = ack
+
+    @property
+    def kinds(self):
+        return [payload['type'] for payload in self.sent]
+
+
+class ActivatorTest(unittest.IsolatedAsyncioTestCase):
+    """The activation sequence on a real seeded root, with the real worker command logic.
+
+    No engine process, no server, and no port. `_swap_worker` is replaced by a fake that
+    records one swap and publishes a new session and a new score epoch, exactly as a real
+    one does. Slice B2 drives the real swap through the service path.
+    """
+
+    def setUp(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.work = Path(folder.name).resolve()
+        self.root = self.work / 'item-jobs'
+        self.packaged = object_catalog.load_catalog(object_catalog.PACKAGED_CATALOG_ROOT)
+        self.jobs = RecordingJobs()
+        self.swaps = []
+        self.preset = self.write_preset('packaged', self.packaged['catalog_revision'])
+        # The real worker reads the exported catalog in its own child. The loopback runs
+        # here, so the export is scoped to this test and never reaches the next one.
+        self.enterContext(patch.dict(os.environ))
+        self.service = self.build_service()
+        os.environ[object_catalog.CATALOG_ROOT_ENV] = str(self.service.active_bundle / 'catalog')
+        self.engine = ActivationEngine(active=0)
+        self.service.commands = ActivationLoopback(self.service, self.engine)
+        self.service.state = {'status': 'running', 'session_id': 'session-before',
+                              'reject_policy': self.engine.reject_policy()}
+
+    def write_preset(self, name, revision, labels=None):
+        """The real continuous preset beside a tiny model that records this revision."""
+        from test_validate_bundle import CONTINUOUS_PRESET, continuous_model
+
+        directory = self.work / name
+        directory.mkdir()
+        preset = {**json.loads(CONTINUOUS_PRESET.read_text()),
+                  'model_path': str(directory / 'live_green_arabica.joblib')}
+        model, manifest = continuous_model(
+            labels or object_catalog.catalog_labels(self.packaged), preset, revision)
+        (directory / 'live_green_arabica.joblib').write_bytes(model)
+        (directory / 'live_green_arabica.manifest.json').write_bytes(manifest)
+        (directory / 'preset.json').write_text(json.dumps(preset))
+        return directory / 'preset.json'
+
+    def build_service(self):
+        """Seed bundle zero directly, so this process never rebinds its loaded profiles.
+
+        Bundle zero holds the packaged catalog, which is the one this process already
+        loaded, so the model label order still matches.
+        """
+        preset = json.loads(self.preset.read_text())
+        model = self.preset.parent / 'live_green_arabica.joblib'
+        files = object_catalog.seed_bundle_files(
+            object_catalog.PACKAGED_CATALOG_ROOT, model, model.with_suffix('.manifest.json'),
+            preset, {'reject_classes': live.default_reject_classes(self.packaged, preset)},
+            live._bundle_sources())
+        digest = object_catalog.publish_bundle(self.root / 'active' / 'bundles', files)
+        object_catalog.write_active_pointer(self.root / 'active', digest)
+        bundle = self.root / 'active' / 'bundles' / digest
+        return LiveService(bundle / object_catalog.BUNDLE_PRESET, self.work / 'out',
+                           item_jobs_root=self.root, item_jobs_provider='fake',
+                           active_bundle=bundle, record=self.jobs)
+
+    def candidate(self, victim_id=None, **changes):
+        """The artifacts a finished training leaves: a candidate catalog, model, and preset."""
+        from test_object_catalog import generated_definition
+        from test_validate_bundle import CONTINUOUS_PRESET, continuous_model
+
+        active = object_catalog.read_active(self.root / 'active')
+        victim_id = victim_id or active['active_type_ids'][-1]
+        catalog = object_catalog.candidate_catalog(
+            active, generated_definition('star_token'), victim_id)
+        directory = self.work / f'candidate-{uuid.uuid4().hex[:8]}'
+        directory.mkdir()
+        object_catalog.write_catalog(directory / 'catalog', catalog)
+        labels = object_catalog.catalog_labels(catalog)
+        preset = {**json.loads(CONTINUOUS_PRESET.read_text()), 'model_path': 'candidate.joblib',
+                  'model_path_root': 'preset'}
+        model, manifest = continuous_model(labels, preset, catalog['catalog_revision'])
+        (directory / 'candidate.joblib').write_bytes(model)
+        (directory / 'candidate.manifest.json').write_bytes(manifest)
+        (directory / 'preset.json').write_text(json.dumps(preset))
+        return {'catalog_root': directory / 'catalog', 'model': directory / 'candidate.joblib',
+                'model_manifest': directory / 'candidate.manifest.json',
+                'preset': directory / 'preset.json', 'victim_id': victim_id,
+                'expected_catalog_revision': active['catalog_revision'],
+                'evidence': {}, **changes}
+
+    @contextlib.contextmanager
+    def fake_swap(self, error=None):
+        """One swap that publishes a new session and a new score epoch, as a real one does."""
+        async def swap(service, previous_session_id):
+            self.swaps.append(previous_session_id)
+            if error is not None:
+                raise error
+            self.engine.score_epoch_id = f'epoch-{len(self.swaps) + 1}'
+            service.state = {'status': 'running', 'session_id': f'session-{len(self.swaps)}',
+                             'previous_session_id': previous_session_id,
+                             'reject_policy': self.engine.reject_policy()}
+
+        with patch.object(LiveService, '_swap_worker', swap):
+            yield
+
+    def pointer(self):
+        return object_catalog.read_active(self.root / 'active')['active_bundle_sha256']
+
+    def identity(self):
+        return (self.service.state.get('session_id'),
+                (self.service.state.get('reject_policy') or {}).get('score_epoch_id'))
+
+    async def test_a_clean_activation_swaps_one_type_and_records_every_phase(self):
+        before, victim_id = self.pointer(), self.packaged['active_type_ids'][-1]
+        candidate = self.candidate(victim_id)
+
+        with self.fake_swap():
+            result = await self.service._activate('job-1', candidate)
+
+        self.assertEqual('active', result)
+        self.assertEqual(['draining', 'activating', 'active'], self.jobs.phases)
+        self.assertEqual(['prepare_activation', 'commit_activation'],
+                         self.service.commands.kinds)
+        self.assertEqual(['session-before'], self.swaps)
+        # The pointer is the activation, and it carries the new bundle.
+        self.assertNotEqual(before, self.pointer())
+        after = object_catalog.read_active(self.root / 'active')
+        self.assertEqual('generated.star_token', after['active_type_ids'][0])
+        self.assertEqual(len(self.packaged['active_type_ids']), len(after['active_type_ids']))
+        survivors = [item for item in self.packaged['active_type_ids'] if item != victim_id]
+        self.assertEqual(survivors, after['active_type_ids'][1:])
+        self.assertNotIn(victim_id, after['active_type_ids'])
+        # The record block carries exactly the eleven frozen members.
+        block = self.jobs.last
+        self.assertEqual(sorted(live.ACTIVATION_MEMBERS), sorted(block))
+        self.assertEqual(('active', 'active', False, 0), (block['phase'], block['result'],
+                                                          block['rolled_back'],
+                                                          block['active_objects']))
+        self.assertEqual((self.pointer(), before),
+                         (block['bundle_sha256'], block['previous_bundle_sha256']))
+        self.assertEqual(live.DRAIN_TIMEOUT_S, block['drain_timeout_seconds'])
+        self.assertEqual(('session-1', 'epoch-2'),
+                         (block['session_id'], block['score_epoch_id']))
+        self.assertEqual(self.engine.policy_version, block['activation_policy_version'])
+        # The victim reaches the Wall of Fame with the retiring model manifest.
+        archived = self.root / 'history' / 'wall-of-fame' / victim_id
+        self.assertTrue((archived / 'definition.json').is_file())
+        self.assertTrue((archived / 'model.manifest.json').is_file())
+        rows = [json.loads(line) for line in
+                (self.root / 'history' / 'activations.jsonl').read_text().splitlines()]
+        self.assertEqual(1, len(rows))
+        self.assertEqual((before, self.pointer(), victim_id),
+                         (rows[0]['previous_bundle_sha256'], rows[0]['bundle_sha256'],
+                          rows[0]['victim_type_id']))
+
+    async def test_the_final_policy_drops_the_victim_and_is_written_once(self):
+        victim_id = self.packaged['active_type_ids'][-1]
+        victim_label = self.packaged['definitions'][-1]['classifier_label']
+        self.engine.set_reject_classes(['stone', 'black'])
+        self.service.state['reject_policy'] = self.engine.reject_policy()
+        writes = []
+        real_publish = object_catalog.publish_bundle
+
+        def publish(bundles_root, files):
+            digest = real_publish(bundles_root, files)
+            writes.append(('publish', Path(bundles_root), digest))
+            return digest
+
+        def validate(bundle):
+            writes.append(('verify', Path(bundle).parent, Path(bundle).name))
+            return {'ok': True}
+
+        with self.fake_swap(), patch.object(object_catalog, 'publish_bundle', publish), \
+                patch.object(live, 'validate_bundle_child', validate):
+            self.assertEqual('active', await self.service._activate(
+                'job-1', self.candidate(victim_id)))
+
+        bundle = self.root / 'active' / 'bundles' / self.pointer()
+        self.assertEqual({'reject_classes': ['stone', 'black']},
+                         json.loads((bundle / 'policy.json').read_text()))
+        self.assertNotIn(victim_label, ['stone', 'black'])
+        # The published bundle is staged whole, so policy.json is written exactly once,
+        # and that one publish precedes its verification. Nothing is rewritten after it.
+        bundles = self.root / 'active' / 'bundles'
+        steps = [(kind, digest) for kind, parent, digest in writes if parent == bundles]
+        self.assertEqual([('publish', self.pointer()), ('verify', self.pointer())], steps)
+
+    async def test_a_stale_catalog_and_a_rejected_victim_keep_the_session_and_the_epoch(self):
+        before, identity = self.pointer(), self.identity()
+        victim_id = self.packaged['active_type_ids'][-1]
+        victim_label = self.packaged['definitions'][-1]['classifier_label']
+        cases = {
+            'activation_conflict': self.candidate(victim_id, expected_catalog_revision='f' * 64),
+            'replacement_conflict': self.candidate(victim_id),
+        }
+
+        for expected, candidate in cases.items():
+            with self.subTest(result=expected):
+                if expected == 'replacement_conflict':
+                    self.engine.set_reject_classes(['stone', victim_label])
+                with self.fake_swap():
+                    result = await self.service._activate('job-1', candidate)
+
+                self.assertEqual(expected, result)
+                self.assertEqual(expected, self.jobs.last['result'])
+                self.assertEqual('failed', self.jobs.last['phase'])
+                # Nothing paused, nothing moved, and no session or epoch changed.
+                self.assertEqual(30.0, self.engine.sim.rate)
+                self.assertEqual([], self.swaps)
+                self.assertEqual(before, self.pointer())
+                self.assertEqual(identity, self.identity())
+
+    async def test_a_drain_that_never_finishes_cancels_and_resumes_the_old_rate(self):
+        before, identity = self.pointer(), self.identity()
+        self.engine.active = 3
+
+        with self.fake_swap(), patch.object(live, 'DRAIN_TIMEOUT_S', 0.0):
+            result = await self.service._activate('job-1', self.candidate())
+
+        self.assertEqual('activation_failed', result)
+        self.assertEqual('cancel_activation', self.service.commands.kinds[-1])
+        self.assertEqual(30.0, self.engine.sim.rate)
+        self.assertEqual(3, self.jobs.last['active_objects'])
+        self.assertIn('drain', self.jobs.last['message'])
+        self.assertEqual([], self.swaps)
+        self.assertEqual((before, identity), (self.pointer(), self.identity()))
+
+    async def test_a_broken_candidate_never_causes_a_drain(self):
+        before, identity = self.pointer(), self.identity()
+        candidate = self.candidate()
+        Path(candidate['model']).write_bytes(b'not a model')
+
+        with self.fake_swap():
+            result = await self.service._activate('job-1', candidate)
+
+        self.assertEqual('activation_failed', result)
+        self.assertEqual(['failed'], self.jobs.phases)
+        # The pre-check runs before anything pauses, so no command ever reached the worker.
+        self.assertEqual([], self.service.commands.kinds)
+        self.assertEqual(30.0, self.engine.sim.rate)
+        self.assertEqual((before, identity, []), (self.pointer(), self.identity(), self.swaps))
+        self.assertNotIn(str(self.work), self.jobs.last['message'])
+
+    async def test_a_bundle_that_fails_its_verification_cancels_and_keeps_the_session(self):
+        before, identity = self.pointer(), self.identity()
+        calls = []
+
+        def validate(bundle):
+            calls.append(Path(bundle))
+            if len(calls) > 1:
+                raise object_catalog.CatalogError('the final bundle is refused')
+            return {'ok': True}
+
+        with self.fake_swap(), patch.object(live, 'validate_bundle_child', validate):
+            result = await self.service._activate('job-1', self.candidate())
+
+        self.assertEqual('activation_failed', result)
+        self.assertEqual('cancel_activation', self.service.commands.kinds[-1])
+        self.assertEqual(30.0, self.engine.sim.rate)
+        self.assertEqual([], self.swaps)
+        self.assertEqual((before, identity), (self.pointer(), self.identity()))
+        self.assertIn('refused', self.jobs.last['message'])
+
+    async def test_an_unknown_victim_is_a_replacement_conflict_before_anything_runs(self):
+        with self.fake_swap():
+            result = await self.service._activate(
+                'job-1', {**self.candidate(), 'victim_id': 'generated.absent'})
+
+        self.assertEqual('replacement_conflict', result)
+        self.assertEqual([], self.service.commands.kinds)
 
 
 class ActiveBundleStartupTest(unittest.TestCase):
