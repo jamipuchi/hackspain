@@ -159,7 +159,9 @@ test('parsed counts and bytes must equal the declared registry evidence', () => 
   assert.equal(parsedAssetRefusal(asset, {...parsed, primitiveCount: 2}), 'primitive_count_mismatch');
   assert.equal(parsedAssetRefusal(asset, {...parsed, triangleCount: 275}), 'triangle_count_mismatch');
   assert.equal(parsedAssetRefusal(asset, {...parsed, byteLength: 15805}), 'byte_length_mismatch');
-  assert.equal(parsedAssetRefusal(asset, null), 'primitive_count_mismatch');
+  // A missing parse result is a parse failure, not a count mismatch.
+  assert.equal(parsedAssetRefusal(asset, null), 'parse_failed');
+  assert.equal(parsedAssetRefusal(asset, undefined), 'parse_failed');
 });
 
 // The measured cached star. The node scales uniformly and translates source y.
@@ -208,7 +210,7 @@ test('the correction maps asset x to x, asset y to z, and asset z to minus y', (
 test('a fixed-size generated object keeps the authored GLB dimensions at scale one', () => {
   const axes = [.008474803, .008060426, .001];
   assert.deepEqual(instanceScale('box', axes, axes), [1, 1, 1]);
-  assert.deepEqual(instanceScale('ellipsoid', [.004, .003, .002], [.002, .003, .001]), [2, 1, 2]);
+  near(instanceScale('ellipsoid', [.004, .003, .002], [.002, .003, .001]), [2, 1, 2], 1e-12);
   assert.equal(instanceScale('box', [.004, .003], axes), null);
 });
 

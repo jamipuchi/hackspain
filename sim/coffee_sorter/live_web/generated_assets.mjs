@@ -64,7 +64,6 @@ export function acceptedAssetRegistry(state, snapshotRevision) {
       visualAssetId,
       glbSha256: asset.glb_sha256,
       url: asset.url,
-      mediaType: asset.media_type ?? null,
       byteLength: asset.byte_length,
       primitiveCount: asset.primitive_count,
       triangleCount: asset.triangle_count,
@@ -123,9 +122,11 @@ export function planAssetLoads(accepted, caps = ASSET_CAPS) {
 
 // The parsed GLB must match its declared registry evidence exactly, or the proxy stays.
 export function parsedAssetRefusal(asset, parsed) {
-  if (parsed?.primitiveCount !== asset.primitiveCount) return 'primitive_count_mismatch';
-  if (parsed?.triangleCount !== asset.triangleCount) return 'triangle_count_mismatch';
-  if (parsed?.byteLength !== asset.byteLength) return 'byte_length_mismatch';
+  // No parse result at all is a parse failure, never a count mismatch.
+  if (!parsed || typeof parsed !== 'object') return 'parse_failed';
+  if (parsed.primitiveCount !== asset.primitiveCount) return 'primitive_count_mismatch';
+  if (parsed.triangleCount !== asset.triangleCount) return 'triangle_count_mismatch';
+  if (parsed.byteLength !== asset.byteLength) return 'byte_length_mismatch';
   return null;
 }
 
