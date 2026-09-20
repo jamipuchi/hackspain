@@ -2250,12 +2250,16 @@ def main():
     async def cinematic(request):
         return web.FileResponse(HERE / 'live_web/cinematic.mjs')
 
+    async def generated_assets(request):
+        return web.FileResponse(HERE / 'live_web/generated_assets.mjs')
+
     app = web.Application(
         middlewares=[access_middleware(allowed_hosts, allowed_origins)], client_max_size=2048)
     app.cleanup_ctx.append(service.lifecycle)
     app.on_shutdown.append(service.shutdown)
     app.add_routes([web.get('/', page), web.get('/live.js', script),
                     web.get('/timeline.mjs', timeline), web.get('/cinematic.mjs', cinematic),
+                    web.get('/generated_assets.mjs', generated_assets),
                     web.get('/health', service.health),
                     web.get('/state', service.state_handler), web.get('/ws', service.websocket),
                     web.post('/restart', service.restart),
