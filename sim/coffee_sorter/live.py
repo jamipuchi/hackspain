@@ -799,6 +799,20 @@ class LiveService:
         self.item_jobs_state = self._item_jobs_packet()
         self.item_jobs_revision = self.item_jobs.revision
 
+    def _refresh_active_identity(self):
+        """Republish the identity of the bundle the pointer names right now.
+
+        The parent never rebinds its loaded profiles, so every value here comes from the
+        verified bundle files. A stale revision would refuse every new job, and a stale
+        class list would describe a catalog that no engine runs.
+        """
+        catalog = self._active_catalog()
+        self.catalog_revision = catalog['catalog_revision']
+        self.active_type_ids = list(catalog['active_type_ids'])
+        if self.active_bundle is not None:
+            # A child verified this bundle, and that check includes the model label order.
+            self.catalog_model_compatible = True
+
     def _active_catalog(self):
         """The active catalog. With a bundle, always through the pointer and its verified bundle."""
         if self.active_bundle is not None:
@@ -1502,6 +1516,7 @@ class LiveService:
 
         # Step 7: commit the pointer, then the history. The pointer is the activation.
         object_catalog.write_active_pointer(active_root, bundle_sha256)
+        self._refresh_active_identity()
         retired_at = item_jobs.utc_now()
         evidence = {name: Path(path) for name, path in (candidate.get('evidence') or {}).items()}
         retiring = _bundle_model_manifest(active_root / 'bundles' / previous_sha256)
@@ -1527,6 +1542,8 @@ class LiveService:
         self.preset, self.active_bundle = preset, bundle
         if bundle is not None:
             os.environ[object_catalog.CATALOG_ROOT_ENV] = str(bundle / 'catalog')
+        # The pointer never moved, so this republishes the bundle that is still active.
+        self._refresh_active_identity()
         rolled_back = True
         try:
             await self._swap_worker(self.state.get('session_id'))

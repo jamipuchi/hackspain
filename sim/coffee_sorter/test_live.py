@@ -1649,12 +1649,16 @@ class ActivatorTest(unittest.IsolatedAsyncioTestCase):
                 'evidence': {}, **changes}
 
     @contextlib.contextmanager
-    def fake_swap(self, error=None):
-        """One swap that publishes a new session and a new score epoch, as a real one does."""
+    def fake_swap(self, error=None, failing_swaps=()):
+        """One swap that publishes a new session and a new score epoch, as a real one does.
+
+        `failing_swaps` names the one-based swaps that raise, so a post-stop failure and
+        its rollback can both run inside one activation.
+        """
         async def swap(service, previous_session_id):
             self.swaps.append(previous_session_id)
-            if error is not None:
-                raise error
+            if error is not None or len(self.swaps) in failing_swaps:
+                raise error or RuntimeError('the new engine did not start')
             self.engine.score_epoch_id = f'epoch-{len(self.swaps) + 1}'
             service.state = {'status': 'running', 'session_id': f'session-{len(self.swaps)}',
                              'previous_session_id': previous_session_id,
@@ -1828,6 +1832,147 @@ class ActivatorTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual('replacement_conflict', result)
         self.assertEqual([], self.service.commands.kinds)
+
+    async def test_an_activation_republishes_the_identity_the_pointer_names(self):
+        self.service._refresh_active_identity()
+        before = (self.service.catalog_revision, list(self.service.active_type_ids))
+
+        with self.fake_swap():
+            self.assertEqual('active', await self.service._activate('job-1', self.candidate()))
+
+        after = object_catalog.read_active(self.root / 'active')
+        self.assertNotEqual(before[0], self.service.catalog_revision)
+        self.assertEqual(after['catalog_revision'], self.service.catalog_revision)
+        self.assertEqual(after['active_type_ids'], self.service.active_type_ids)
+        self.assertIs(True, self.service.catalog_model_compatible)
+        health = json.loads((await self.service.health(None)).text)
+        self.assertEqual(self.pointer(), health['active_bundle_sha256'])
+        self.assertIs(True, health['catalog_model_compatible'])
+
+    async def test_a_post_stop_failure_rolls_back_and_never_claims_continuity(self):
+        before = self.pointer()
+        self.service._refresh_active_identity()
+        revision = self.service.catalog_revision
+        session_before, epoch_before = self.identity()
+
+        with self.fake_swap(failing_swaps=(1,)):
+            result = await self.service._activate('job-1', self.candidate())
+
+        self.assertEqual('activation_failed', result)
+        block = self.jobs.last
+        self.assertEqual(('failed', 'activation_failed', True),
+                         (block['phase'], block['result'], block['rolled_back']))
+        # The pointer never moved, so the prior bundle is still the active one.
+        self.assertEqual(before, self.pointer())
+        self.assertEqual(before, self.service.active_bundle.name)
+        self.assertEqual(revision, self.service.catalog_revision)
+        self.assertFalse((self.root / 'history' / 'activations.jsonl').exists())
+        # The old worker is gone, so this is a NEW session and a NEW score epoch.
+        self.assertEqual(2, len(self.swaps))
+        self.assertNotEqual(session_before, block['session_id'])
+        self.assertNotEqual(epoch_before, block['score_epoch_id'])
+        self.assertEqual(self.identity(), (block['session_id'], block['score_epoch_id']))
+
+    async def test_an_exact_retry_starts_no_second_engine_and_no_second_epoch(self):
+        candidate = self.candidate()
+        with self.fake_swap():
+            self.assertEqual('active', await self.service._activate('job-1', candidate))
+        activated, identity, swaps = self.pointer(), self.identity(), list(self.swaps)
+        rows = (self.root / 'history' / 'activations.jsonl').read_text()
+
+        # The same job retries with the bundle the pointer already carries.
+        with self.fake_swap():
+            result = await self.service._activate(
+                'job-1', {**candidate, 'bundle_sha256': activated})
+
+        self.assertEqual('active', result)
+        self.assertEqual('active', self.jobs.last['result'])
+        self.assertEqual(activated, self.jobs.last['bundle_sha256'])
+        # No second restart, no second score epoch, and no second history row.
+        self.assertEqual(swaps, self.swaps)
+        self.assertEqual(identity, self.identity())
+        self.assertEqual(activated, self.pointer())
+        self.assertEqual(rows, (self.root / 'history' / 'activations.jsonl').read_text())
+
+    async def test_the_activated_bundle_starts_a_plain_restart_with_its_changed_labels(self):
+        """The root requirement, through the actual service startup path."""
+        from test_validate_bundle import run_python
+
+        victim_id = self.packaged['active_type_ids'][-1]
+        with self.fake_swap():
+            self.assertEqual('active', await self.service._activate(
+                'job-1', self.candidate(victim_id)))
+        activated = self.pointer()
+        expected = object_catalog.catalog_labels(
+            object_catalog.read_active(self.root / 'active'))
+
+        seen = run_python(ActiveBundleStartupTest.CHILD, self.preset, self.root,
+                          self.work / 'out', 'service order')
+
+        self.assertNotEqual(object_catalog.catalog_labels(self.packaged), expected)
+        self.assertEqual('star_token', expected[0])
+        self.assertEqual(seen['bundle'], activated)
+        self.assertEqual(seen['labels'], expected)
+        self.assertTrue(seen['bundle_preset'])
+        self.assertTrue(seen['exported_before_step_4'])
+        self.assertFalse(seen['profiles_loaded_before_step_4'])
+        self.assertTrue(seen['compatible'])
+
+    async def test_the_activated_bundle_still_starts_after_the_whole_root_moves(self):
+        """The bundle preset is relative, so no absolute path binds it to one parent."""
+        from test_validate_bundle import run_python
+
+        with self.fake_swap():
+            self.assertEqual('active', await self.service._activate('job-1', self.candidate()))
+        activated = self.pointer()
+        expected = object_catalog.catalog_labels(
+            object_catalog.read_active(self.root / 'active'))
+
+        moved_parent = self.work / 'moved'
+        moved_parent.mkdir()
+        moved = moved_parent / 'item-jobs'
+        shutil.move(str(self.root), str(moved))
+        seen = run_python(ActiveBundleStartupTest.CHILD, self.preset, moved,
+                          self.work / 'out', 'service order')
+
+        self.assertEqual(seen['bundle'], activated)
+        self.assertEqual(seen['labels'], expected)
+        self.assertTrue(seen['compatible'])
+        # Only the activated bundle is loaded. No file of the retired one comes with it.
+        loaded = object_catalog.read_active(moved / 'active')
+        self.assertEqual(activated, loaded['active_bundle_sha256'])
+        self.assertEqual(expected, object_catalog.catalog_labels(loaded))
+
+    async def test_files_from_two_bundles_never_load_together(self):
+        before = self.pointer()
+        with self.fake_swap():
+            self.assertEqual('active', await self.service._activate('job-1', self.candidate()))
+        activated = self.pointer()
+
+        bundles = sorted(path.name for path in (self.root / 'active' / 'bundles').iterdir())
+        self.assertEqual(sorted([before, activated]), bundles)
+        # Both bundles stay on disk, and each one verifies as one closed unit.
+        for digest in bundles:
+            with self.subTest(bundle=digest):
+                listed = object_catalog.verify_bundle(
+                    self.root / 'active' / 'bundles' / digest)['files']
+                catalog = object_catalog.load_catalog(
+                    self.root / 'active' / 'bundles' / digest / 'catalog')
+                definitions = sum(name.startswith('catalog/definitions/') for name in listed)
+                self.assertEqual(len(catalog['definitions']), definitions)
+                self.assertEqual(catalog['active_type_ids'],
+                                 [item['object_type_id'] for item in catalog['definitions']])
+        # The pointer selects exactly one of them, and its definitions come from it alone.
+        active = object_catalog.read_active(self.root / 'active')
+        self.assertEqual(activated, active['active_bundle_sha256'])
+        retired = object_catalog.load_catalog(
+            self.root / 'active' / 'bundles' / before / 'catalog')
+        self.assertNotEqual(retired['catalog_revision'], active['catalog_revision'])
+        self.assertEqual([], [item for item in active['definitions']
+                              if item['object_type_id'] not in
+                              object_catalog.load_catalog(
+                                  self.root / 'active' / 'bundles' / activated
+                                  / 'catalog')['active_type_ids']])
 
 
 class ActiveBundleStartupTest(unittest.TestCase):
