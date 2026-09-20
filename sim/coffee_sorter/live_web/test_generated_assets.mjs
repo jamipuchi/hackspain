@@ -88,7 +88,59 @@ test('the registry refuses a stale revision, a bad hash, a foreign path, and a m
   assert.equal(refuse({byte_length: 0}), 'invalid_declaration');
   assert.equal(refuse({triangle_count: 276.5}), 'invalid_declaration');
   assert.equal(refuse({reference_axes_m: [.008474803, 0, .001]}), 'invalid_declaration');
-  assert.equal(refuse({sim_from_asset_quaternion_wxyz: [.70710678, .70710678, 0]}), 'invalid_declaration');
+});
+
+test('the registry enforces one mesh, metre units, the up axes, and the fixed correction', () => {
+  assert.equal(refuse({mesh_count: 2}), 'unsupported_mesh_count');
+  assert.equal(refuse({mesh_count: undefined}), 'unsupported_mesh_count');
+  assert.equal(refuse({units: 'mm'}), 'unsupported_convention');
+  assert.equal(refuse({source_up_axis: '+Z'}), 'unsupported_convention');
+  assert.equal(refuse({engine_up_axis: '+Y'}), 'unsupported_convention');
+  assert.equal(refuse({sim_from_asset_quaternion_wxyz: [1, 0, 0, 0]}), 'unsupported_correction');
+  assert.equal(refuse({sim_from_asset_quaternion_wxyz: [0, 0, 0, 0]}), 'unsupported_correction');
+  assert.equal(refuse({sim_from_asset_quaternion_wxyz: [.70710678, .70710678, 0]}), 'unsupported_correction');
+  assert.equal(refuse({sim_from_asset_quaternion_wxyz: [.70710678, 0, .70710678, 0]}), 'unsupported_correction');
+  // A rounded serialization of the same approved rotation stays acceptable.
+  assert.equal(registryOf([renderAsset(STAR, {sim_from_asset_quaternion_wxyz: [.7071068, .7071068, 0, 0]})]).size, 1);
+  // Measured bounds stay evidence. They must still be three positive metre values.
+  assert.equal(refuse({bounds_dimensions_m: [.016949606, 0, .002]}), 'invalid_bounds');
+  assert.equal(refuse({bounds_dimensions_m: [.016949606, .016120852]}), 'invalid_bounds');
+});
+
+// The same rows in both catalog orders must give the same registry.
+const bothOrders = rows => [rows, [...rows].reverse()]
+  .map(ordered => acceptedAssetRegistry(catalogState(ordered), REVISION));
+
+test('identical duplicate declarations share one pool in any row order', () => {
+  for (const registry of bothOrders([renderAsset(STAR), renderAsset(STAR)])) {
+    assert.deepEqual(registry.refused, []);
+    assert.deepEqual([...registry.accepted.keys()], [idFor(STAR)]);
+    assert.deepEqual([...registry.accepted.get(idFor(STAR)).referenceAxes], [.008474803, .008060426, .001]);
+  }
+});
+
+test('conflicting duplicate declarations refuse the whole group in any row order', () => {
+  const rows = [renderAsset(STAR), renderAsset(STAR, {reference_axes_m: [.02, .01, .001]})];
+  for (const registry of bothOrders(rows)) {
+    assert.equal(registry.accepted.size, 0);
+    assert.equal(registry.refusedAssets.get(idFor(STAR)), 'declaration_conflict');
+    assert.deepEqual(registry.refused.map(entry => entry.reason),
+      ['declaration_conflict', 'declaration_conflict']);
+  }
+});
+
+test('one invalid duplicate refuses its valid sibling and labels the proxy fallback', () => {
+  const rows = [renderAsset(STAR), renderAsset(STAR, {url: `/assets/${STAR}.glb`})];
+  for (const registry of bothOrders(rows)) {
+    assert.equal(registry.accepted.size, 0);
+    assert.equal(registry.refusedAssets.get(idFor(STAR)), 'shared_asset_invalid');
+    assert.deepEqual(registry.refused.map(entry => entry.reason).sort(),
+      ['shared_asset_invalid', 'url_mismatch']);
+    const choice = chooseObjectAsset({visual_asset_id: idFor(STAR)},
+      {accepted: registry.accepted, loaded: new Map(), fallbacks: new Map(),
+       refusedAssets: registry.refusedAssets});
+    assert.deepEqual([choice.source, choice.reason], ['proxy', 'shared_asset_invalid']);
+  }
 });
 
 const capReason = overrides =>
@@ -154,8 +206,13 @@ test('the load order stays deterministic whatever order the catalog rows arrive 
 
 test('parsed counts and bytes must equal the declared registry evidence', () => {
   const asset = registryOf([renderAsset(STAR)]).get(idFor(STAR));
-  const parsed = {primitiveCount: 1, triangleCount: 276, byteLength: 15804};
+  const parsed = {meshCount: 1, primitiveCount: 1, triangleCount: 276, byteLength: 15804};
   assert.equal(parsedAssetRefusal(asset, parsed), null);
+  assert.equal(asset.meshCount, 1);
+  // Version 1 renders exactly one parsed mesh, and it must match the declared count.
+  assert.equal(parsedAssetRefusal(asset, {...parsed, meshCount: 2}), 'parsed_mesh_count_unsupported');
+  assert.equal(parsedAssetRefusal(asset, {...parsed, meshCount: undefined}), 'parsed_mesh_count_unsupported');
+  assert.equal(parsedAssetRefusal({...asset, meshCount: 2}, parsed), 'mesh_count_mismatch');
   assert.equal(parsedAssetRefusal(asset, {...parsed, primitiveCount: 2}), 'primitive_count_mismatch');
   assert.equal(parsedAssetRefusal(asset, {...parsed, triangleCount: 275}), 'triangle_count_mismatch');
   assert.equal(parsedAssetRefusal(asset, {...parsed, byteLength: 15805}), 'byte_length_mismatch');

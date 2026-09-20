@@ -11,6 +11,11 @@ const numbers = (value, count, positive = false) => Array.isArray(value) && valu
 
 const counted = value => Number.isInteger(value) && value >= 1;
 
+// The one approved correction: asset +X to engine +X, +Y to +Z, +Z to minus Y. The
+// registry carries it as rounded text, so compare it with a float tolerance.
+const SIM_FROM_ASSET_WXYZ = Object.freeze([0.70710678, 0.70710678, 0, 0]);
+const CORRECTION_TOLERANCE = 1e-6;
+
 // The safety caps from the contract. They bound download and draw cost against the
 // cached asset. They are not a measured 60 FPS guarantee.
 export const ASSET_CAPS = Object.freeze({
@@ -36,10 +41,39 @@ function assetRefusal(asset, revision) {
   if (asset.url !== assetUrl(revision, hash)) return 'url_mismatch';
   if (!counted(asset.byte_length) || !counted(asset.primitive_count)
       || !counted(asset.triangle_count)) return 'invalid_declaration';
-  // Without these the budget, the parsed check, and the transform would all read NaN.
+  // Version 1 renders one mesh. A primitive count never proves a mesh count.
+  if (asset.mesh_count !== 1) return 'unsupported_mesh_count';
+  if (asset.units !== 'm' || asset.source_up_axis !== '+Y'
+      || asset.engine_up_axis !== '+Z') return 'unsupported_convention';
+  if (!numbers(asset.sim_from_asset_quaternion_wxyz, 4)
+      || SIM_FROM_ASSET_WXYZ.some((value, axis) =>
+        Math.abs(asset.sim_from_asset_quaternion_wxyz[axis] - value) > CORRECTION_TOLERANCE)) {
+    return 'unsupported_correction';
+  }
+  // Measured visual evidence only. It never controls physical scale.
+  if (!numbers(asset.bounds_dimensions_m, 3, true)) return 'invalid_bounds';
+  // Without these the budget and the instance scale would read NaN.
   if (!numbers(asset.reference_axes_m, 3, true)) return 'invalid_declaration';
-  if (!numbers(asset.sim_from_asset_quaternion_wxyz, 4)) return 'invalid_declaration';
   return null;
+}
+
+// Two classes may name one GLB. They share one pool only when every declared render
+// field agrees, so catalog row order can never decide which reference axes an object
+// gets. `runtime_lod_reviewed` is review metadata and never reaches the renderer.
+const RENDER_FIELDS = ['glb_sha256', 'url', 'media_type', 'byte_length', 'mesh_count',
+  'primitive_count', 'triangle_count', 'units', 'source_up_axis', 'engine_up_axis',
+  'bounds_dimensions_m', 'reference_axes_m', 'sim_from_asset_quaternion_wxyz'];
+
+const declarationSignature = asset => JSON.stringify(RENDER_FIELDS.map(field => asset[field] ?? null));
+
+// One reason for every row that names this content ID. It reads the same in any order.
+function groupRefusal(members) {
+  const reasons = new Set(members.map(member => member.reason));
+  if (!reasons.has(null)) return reasons.size === 1 ? [...reasons][0] : 'shared_asset_invalid';
+  // A valid row cannot rescue an invalid sibling that shares its content ID.
+  if (reasons.size > 1) return 'shared_asset_invalid';
+  const signatures = new Set(members.map(member => declarationSignature(member.asset)));
+  return signatures.size > 1 ? 'declaration_conflict' : null;
 }
 
 // Build the accepted registry from one state snapshot. `snapshotRevision` is the catalog
@@ -50,28 +84,48 @@ export function acceptedAssetRegistry(state, snapshotRevision) {
     ? 'revision_mismatch'
     : HEX64.test(revision) ? null : 'invalid_revision';
   const accepted = new Map();
+  const refusedAssets = new Map();
   const refused = [];
+  const groups = new Map();
   for (const row of Array.isArray(state?.class_catalog) ? state.class_catalog : []) {
     const asset = row?.render_asset;
     if (!asset) continue; // A built-in row keeps its current preview data and pools.
+    const objectTypeId = row.object_type_id ?? null;
     const reason = stale || assetRefusal(asset, revision);
     const visualAssetId = typeof asset.visual_asset_id === 'string' ? asset.visual_asset_id : null;
-    if (reason) {
-      refused.push({objectTypeId: row.object_type_id ?? null, visualAssetId, reason});
+    if (visualAssetId === null) {
+      // No object can name this row, so it joins no group.
+      refused.push({objectTypeId, visualAssetId, reason});
       continue;
     }
+    if (!groups.has(visualAssetId)) groups.set(visualAssetId, []);
+    groups.get(visualAssetId).push({objectTypeId, asset, reason});
+  }
+  for (const [visualAssetId, members] of groups) {
+    const groupReason = groupRefusal(members);
+    if (groupReason) {
+      refusedAssets.set(visualAssetId, groupReason);
+      for (const member of members) {
+        refused.push({objectTypeId: member.objectTypeId, visualAssetId,
+                      reason: member.reason || groupReason});
+      }
+      continue;
+    }
+    // Every member declares the same render fields, so any one of them describes the pool.
+    const asset = members[0].asset;
     accepted.set(visualAssetId, Object.freeze({
       visualAssetId,
       glbSha256: asset.glb_sha256,
       url: asset.url,
       byteLength: asset.byte_length,
+      meshCount: asset.mesh_count,
       primitiveCount: asset.primitive_count,
       triangleCount: asset.triangle_count,
       referenceAxes: Object.freeze(asset.reference_axes_m.slice()),
       quaternionWxyz: Object.freeze(asset.sim_from_asset_quaternion_wxyz.slice()),
     }));
   }
-  return {catalogRevision: revision, accepted, refused};
+  return {catalogRevision: revision, accepted, refused, refusedAssets};
 }
 
 // One asset can be too large on its own. That refuses only that asset.
@@ -124,6 +178,8 @@ export function planAssetLoads(accepted, caps = ASSET_CAPS) {
 export function parsedAssetRefusal(asset, parsed) {
   // No parse result at all is a parse failure, never a count mismatch.
   if (!parsed || typeof parsed !== 'object') return 'parse_failed';
+  if (parsed.meshCount !== 1) return 'parsed_mesh_count_unsupported';
+  if (parsed.meshCount !== asset.meshCount) return 'mesh_count_mismatch';
   if (parsed.primitiveCount !== asset.primitiveCount) return 'primitive_count_mismatch';
   if (parsed.triangleCount !== asset.triangleCount) return 'triangle_count_mismatch';
   if (parsed.byteLength !== asset.byteLength) return 'byte_length_mismatch';
@@ -197,13 +253,18 @@ export function instanceScale(shape, objectAxes, referenceAxes) {
 }
 
 // Identity is the only input. Dimensions, predictions, and names never choose an asset.
-export function chooseObjectAsset(object, {accepted, loaded, fallbacks} = {}) {
+export function chooseObjectAsset(object, {accepted, loaded, fallbacks, refusedAssets} = {}) {
   const assetId = object?.visual_asset_id;
   if (assetId === null || assetId === undefined) {
     return {source: 'builtin', assetId: null, asset: null, reason: null};
   }
   const asset = accepted?.get(assetId) || null;
-  if (!asset) return {source: 'proxy', assetId, asset: null, reason: 'unknown_asset'};
+  if (!asset) {
+    // A refused registry group keeps its own label. Only an ID the registry never saw
+    // is unknown.
+    const refusal = refusedAssets?.get(assetId) || 'unknown_asset';
+    return {source: 'proxy', assetId, asset: null, reason: refusal};
+  }
   const refused = fallbacks?.get(assetId) || null;
   if (refused) return {source: 'proxy', assetId, asset, reason: refused};
   if (loaded?.has(assetId)) return {source: 'generated', assetId, asset, reason: null};
