@@ -1,4 +1,4 @@
-"""Serve bounded or continuous coffee engine sessions on loopback."""
+"""Serve bounded or continuous coffee engine sessions on configured hosts."""
 from __future__ import annotations
 
 import argparse
@@ -11,11 +11,13 @@ import logging
 from logging.handlers import RotatingFileHandler
 import multiprocessing as mp
 import os
+import re
 import signal
 from pathlib import Path
 from queue import Empty, Full
 import time
 import traceback
+from urllib.parse import urlsplit
 import uuid
 
 from aiohttp import WSMsgType, web
@@ -27,10 +29,85 @@ MAX_PENDING_COMMANDS = 16
 MAX_COMMANDS_PER_EPOCH = 256
 COMMAND_EPOCH_SECONDS = 60
 PUMP_STALE_SECONDS = 3.0
+SOURCE_REVISION_PATTERN = re.compile(r'[0-9a-f]{40}')
 
 
 def _file_hash(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _normalize_allowed_host(value):
+    value = value.strip().lower()
+    if not value or value == '*' or any(character.isspace() for character in value):
+        raise ValueError('Allowed hosts must name one explicit DNS host or IPv4 address.')
+    parsed = urlsplit('//' + value)
+    if (parsed.hostname is None or parsed.username is not None or parsed.password is not None
+            or parsed.path or parsed.query or parsed.fragment or ':' in parsed.hostname):
+        raise ValueError('Allowed hosts must name one explicit DNS host or IPv4 address.')
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise ValueError('Allowed host ports must be between 1 and 65535.') from exc
+    if port is not None and not 1 <= port <= 65535:
+        raise ValueError('Allowed host ports must be between 1 and 65535.')
+    return f'{parsed.hostname}:{port}' if port is not None else parsed.hostname
+
+
+def _normalize_allowed_origin(value):
+    parsed = urlsplit(value.strip())
+    if (parsed.scheme not in ('http', 'https') or parsed.hostname is None
+            or parsed.username is not None or parsed.password is not None
+            or parsed.path or parsed.query or parsed.fragment):
+        raise ValueError('Allowed origins must be exact HTTP or HTTPS origins without paths.')
+    host = _normalize_allowed_host(parsed.netloc)
+    return f'{parsed.scheme}://{host}'
+
+
+def access_rules(port, public_hosts=(), public_origins=()):
+    hosts = {f'127.0.0.1:{port}', f'localhost:{port}'}
+    origins = {'http://' + host for host in hosts}
+    hosts.update(_normalize_allowed_host(value) for value in public_hosts)
+    origins.update(_normalize_allowed_origin(value) for value in public_origins)
+    if any(urlsplit(origin).netloc not in hosts for origin in origins):
+        raise ValueError('Every allowed origin must use an allowed host.')
+    return frozenset(hosts), frozenset(origins)
+
+
+def configured_access_rules(bind_host, port, public_hosts=(), public_origins=()):
+    if bind_host == '0.0.0.0' and (not public_hosts or not public_origins):
+        raise ValueError('Public binding requires at least one allowed host and origin.')
+    return access_rules(port, public_hosts, public_origins)
+
+
+def _configured_source_revision():
+    value = os.environ.get('CINTA_SOURCE_REVISION')
+    if value is None:
+        return None
+    value = value.strip().lower()
+    if SOURCE_REVISION_PATTERN.fullmatch(value) is None:
+        raise ValueError('CINTA_SOURCE_REVISION must be a full Git SHA.')
+    return value
+
+
+def access_middleware(allowed_hosts, allowed_origins):
+    @web.middleware
+    async def validate_access(request, handler):
+        if request.host.lower() not in allowed_hosts:
+            raise web.HTTPForbidden(text='Use an allowed service host.')
+        origin = request.headers.get('Origin')
+        if origin is not None:
+            try:
+                origin = _normalize_allowed_origin(origin)
+            except ValueError as exc:
+                raise web.HTTPForbidden(text='Use an allowed page origin.') from exc
+        origin_required = request.path == '/ws' or (request.path == '/restart' and request.method == 'POST')
+        if (origin and origin not in allowed_origins) or (origin_required and not origin):
+            raise web.HTTPForbidden(text='Use an allowed page origin.')
+        response = await handler(request)
+        response.headers['Cache-Control'] = 'no-store'
+        return response
+
+    return validate_access
 
 
 def load_preset(preset_path):
@@ -173,6 +250,9 @@ def worker(preset, states, acknowledgments, commands, stop, out):
     try:
         from engine import Engine
         engine = Engine(Path(preset))
+        release_revision = _configured_source_revision()
+        if release_revision is not None:
+            engine.source_revision = release_revision
         continuous = engine.continuous
         if continuous:
             command_results = deque(maxlen=MAX_COMMANDS_PER_EPOCH * 2)
@@ -874,28 +954,24 @@ class LiveService:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--host', choices=['127.0.0.1'], default='127.0.0.1')
+    parser.add_argument('--host', choices=['127.0.0.1', '0.0.0.0'], default='127.0.0.1')
     parser.add_argument('--port', type=int, default=8890)
+    parser.add_argument('--allowed-host', action='append', default=[],
+                        help='Exact public Host value. Repeat for more than one host.')
+    parser.add_argument('--allowed-origin', action='append', default=[],
+                        help='Exact public HTTP or HTTPS Origin. Repeat for more than one origin.')
     parser.add_argument('--preset', type=Path, default=HERE / 'configs/default_demo.json')
     parser.add_argument('--out', type=Path, default=HERE / 'runs' / time.strftime('live-%Y%m%d-%H%M%S'))
     args = parser.parse_args()
     if not 1 <= args.port <= 65535:
         parser.error('Port must be between 1 and 65535.')
+    try:
+        allowed_hosts, allowed_origins = configured_access_rules(
+            args.host, args.port, args.allowed_host, args.allowed_origin)
+        _configured_source_revision()
+    except ValueError as exc:
+        parser.error(str(exc))
     service = LiveService(args.preset.resolve(), args.out.resolve())
-    allowed_hosts = {f'127.0.0.1:{args.port}', f'localhost:{args.port}'}
-    allowed_origins = {'http://' + host for host in allowed_hosts}
-
-    @web.middleware
-    async def local_access(request, handler):
-        if request.host not in allowed_hosts:
-            raise web.HTTPForbidden(text='Use the loopback service URL.')
-        origin = request.headers.get('Origin')
-        origin_required = request.path == '/ws' or (request.path == '/restart' and request.method == 'POST')
-        if (origin and origin not in allowed_origins) or (origin_required and not origin):
-            raise web.HTTPForbidden(text='Use the page served by this loopback service.')
-        response = await handler(request)
-        response.headers['Cache-Control'] = 'no-store'
-        return response
 
     async def page(request):
         return web.FileResponse(HERE / 'live_web/index.html')
@@ -906,7 +982,8 @@ def main():
     async def timeline(request):
         return web.FileResponse(HERE / 'live_web/timeline.mjs')
 
-    app = web.Application(middlewares=[local_access], client_max_size=2048)
+    app = web.Application(
+        middlewares=[access_middleware(allowed_hosts, allowed_origins)], client_max_size=2048)
     app.cleanup_ctx.append(service.lifecycle)
     app.on_shutdown.append(service.shutdown)
     app.add_routes([web.get('/', page), web.get('/live.js', script),
