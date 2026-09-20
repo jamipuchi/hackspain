@@ -104,6 +104,180 @@ export function emptyMetricState({metric, warmingUp, catalogSize, rejectSize}) {
   return warmingUp && cohortCanReceiveSamples ? 'Computing' : 'No samples';
 }
 
+const JOB_STATE_LABELS = {
+  queued: 'Queued',
+  generating_recipe: 'Generating recipe',
+  operator_required: 'Operator action needed',
+  interrupted_uncertain: 'Provider interrupted',
+  waiting_for_render: 'Waiting for render',
+  rendering_previews: 'Rendering previews',
+  worker_unavailable: 'Worker unavailable',
+  preview_ready: 'Preview ready',
+  proposing_physics: 'Proposing physics',
+  validating_physics: 'Validating physics',
+  physics_blocked: 'Physics blocked',
+  selecting_training_baseline: 'Selecting training baseline',
+  queued_for_training: 'Queued for training',
+  training: 'Training',
+  validating_candidate: 'Validating candidate',
+  waiting_for_replacement: 'Waiting for replacement',
+  draining_for_activation: 'Draining for activation',
+  activating: 'Activating',
+  active: 'Active',
+  replacement_conflict: 'Replacement conflict',
+  activation_conflict: 'Activation conflict',
+  failed: 'Failed',
+};
+const JOB_ACTION_LABELS = {
+  resolve_provider: 'Resolve provider',
+  resolve_replacement: 'Resolve replacement',
+  confirm_cleanup: 'Confirm cleanup',
+};
+const JOB_ACTION_PATHS = {
+  resolve_provider: 'resolve-provider',
+  resolve_replacement: 'resolve-replacement',
+  confirm_cleanup: 'confirm-cleanup',
+};
+const JOB_ERROR_LABELS = {
+  invalid_description: 'Use 1 to 600 characters for the description.',
+  invalid_request: 'The service does not accept those request fields.',
+  invalid_action: 'That action is not supported.',
+  origin_required: 'Use the page served by this loopback service.',
+  not_available: 'That recovery action is not available yet.',
+  unknown_job: 'That job is no longer available.',
+  unknown_preview: 'That preview name is not served.',
+  preview_unavailable: 'The preview is not available.',
+  unsupported_job_schema: 'The stored job record uses an unsupported schema version.',
+  fake_provider_not_activatable: 'A fake job can never be activated.',
+  stale_token: 'A newer worker owns this job.',
+  request_conflict: 'That request id already carries a different description.',
+  queue_full: 'The queue was full.',
+  catalog_revision_conflict: 'The catalog changed before admission.',
+  credentials_missing: 'No credential was available for an authorized request.',
+  provider_cache_miss: 'Not in the provider cache. Nothing was sent and nothing was billed.',
+  paid_mode_disabled: 'Paid mode is disabled, so no billable request is possible.',
+  provider_interrupted: 'A provider request was interrupted. Its billing state is unknown.',
+  generation_failed: 'Recipe generation failed.',
+  render_failed: 'Preview rendering failed.',
+  cache_entry_invalid: 'The cached provider evidence failed verification.',
+  worker_timeout: 'The worker exceeded its lease.',
+  worker_unavailable: 'A worker process group did not confirm its exit.',
+  physics_unsupported: 'The engine has no honest contact proxy for this shape.',
+  training_failed: 'Candidate training failed.',
+  candidate_validation_failed: 'Candidate validation failed.',
+  replacement_conflict: 'The replacement type changed.',
+  activation_failed: 'Activation failed and the previous bundle stayed active.',
+};
+// Plain wording for the one row an operator must act on.
+const JOB_STATE_NOTES = {
+  operator_required: 'An operator must act. Nothing was sent to a provider and nothing was billed.',
+  interrupted_uncertain: 'An operator must act. One request may have reached the provider.',
+  worker_unavailable: 'An operator must confirm that the worker process group exited.',
+};
+// A definitive rejection proves the server holds NO job for the pending id. A network
+// error, a timeout, an aborted fetch, or a 5xx proves nothing and never resolves.
+const PENDING_RESOLVING_ERRORS = new Set([
+  'invalid_description', 'invalid_request', 'queue_full', 'catalog_revision_conflict',
+  'origin_required',
+]);
+
+export function jobStateLabel(state) {
+  // An unknown state stays visible, verbatim, with a cue. It must never vanish.
+  return JOB_STATE_LABELS[state] || `Unknown state: ${state}`;
+}
+
+export function jobStateNote(state) {
+  return JOB_STATE_NOTES[state] || null;
+}
+
+export function jobErrorLabel(error) {
+  if (!error) return null;
+  return JOB_ERROR_LABELS[error] || `Unknown error: ${error}`;
+}
+
+export function jobStateLabelKeys() {
+  return Object.keys(JOB_STATE_LABELS);
+}
+
+export function jobErrorLabelKeys() {
+  return Object.keys(JOB_ERROR_LABELS);
+}
+
+// One immutable snapshot per pending request. A retry sends exactly these bytes, so an
+// edited form or a moved catalog revision can never turn a retry into a second job.
+export function freezeItemRequest({requestId, description, requesterName, catalogRevision}) {
+  const body = {request_id: requestId, description, expected_catalog_revision: catalogRevision};
+  if (requesterName) body.requester_name = requesterName;
+  return Object.freeze(body);
+}
+
+export function resolvePendingRequest(snapshot, outcome) {
+  if (!snapshot) return {resolved: true, adopt: false, failed: false, cue: ''};
+  const id = snapshot.request_id;
+  if (outcome?.kind === 'accepted' && outcome.requestId === id) {
+    return {resolved: true, adopt: false, failed: false, cue: 'Queued'};
+  }
+  if (outcome?.kind === 'queue' && (outcome.requestIds || []).includes(id)) {
+    // The first response was lost but the job exists. Adopt it and never resend.
+    return {resolved: true, adopt: true, failed: false,
+            cue: 'Your request is already queued.'};
+  }
+  if (outcome?.kind === 'rejected') {
+    if (outcome.errorCode === 'request_conflict') {
+      // The server already holds a job for this id. A new id would duplicate it.
+      return {resolved: true, adopt: true, failed: true,
+              cue: 'The server already holds this request. Showing the existing job.'};
+    }
+    if (PENDING_RESOLVING_ERRORS.has(outcome.errorCode)) {
+      // Proven that no job exists. Keep what the user typed so they can edit and resend.
+      return {resolved: true, adopt: false, failed: true,
+              cue: jobErrorLabel(outcome.errorCode) || 'The service rejected the request.'};
+    }
+  }
+  return {resolved: false, adopt: false, failed: true,
+          cue: 'Waiting for the server to confirm your request. Retry sends the same request.'};
+}
+
+export function jobActionLabel(action) {
+  return JOB_ACTION_LABELS[action] || null;
+}
+
+export function jobActionPath(requestId, action) {
+  const suffix = JOB_ACTION_PATHS[action];
+  return suffix && requestId ? `/item-jobs/${encodeURIComponent(requestId)}/${suffix}` : null;
+}
+
+// The server owns queue truth. This keeps one presentation shape and rejects anything else.
+export function normalizedJobSummary(value) {
+  const requestId = value?.request_id;
+  // An unknown state is shown verbatim with a cue. Dropping the row would hide a job.
+  if (typeof requestId !== 'string' || typeof value.state !== 'string' || !value.state) return null;
+  const text = (item, limit) => typeof item === 'string' && item.trim() ? item.trim().slice(0, limit) : null;
+  const previewPrefix = `/item-jobs/${requestId}/previews/`;
+  return {
+    requestId,
+    name: text(value.display_name, 120) || text(value.description, 120) || 'Untitled item',
+    description: text(value.description, 600),
+    requester: text(value.requester_name, 80),
+    state: value.state,
+    error: text(value.error, 80),
+    progress: text(value.progress, 120),
+    updatedAt: text(value.updated_at, 20),
+    createdAt: text(value.created_at, 20),
+    preview: typeof value.preview === 'string' && value.preview.startsWith(previewPrefix) ? value.preview : null,
+    attempts: value.attempts && typeof value.attempts === 'object' ? {...value.attempts} : {},
+    action: JOB_ACTION_LABELS[value.primary_action] ? value.primary_action : null,
+    providerMode: text(value.provider_mode, 16),
+    cacheHit: typeof value.provider_cache_hit === 'boolean' ? value.provider_cache_hit : null,
+  };
+}
+
+export function jobQueueSignature(summaries) {
+  return (Array.isArray(summaries) ? summaries : []).map(item =>
+    [item?.request_id, item?.state, item?.error, item?.updated_at, item?.preview,
+     item?.progress, item?.primary_action].join(':')).join('|');
+}
+
 export function compareExpectedOutcome(expected, outcome) {
   const expectedLabel = expected === 'reject' ? 'Reject' : expected === 'accept' ? 'Keep' : 'In progress';
   const actualLabel = outcome === 'reject' ? 'Rejected' : outcome === 'accept' ? 'Passed' : outcome === 'spilled' ? 'Spilled' : 'In progress';

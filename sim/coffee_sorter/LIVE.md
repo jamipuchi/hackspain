@@ -29,6 +29,35 @@ PY
 python sim/coffee_sorter/live.py --host 127.0.0.1 --port 8890 --preset sim/coffee_sorter/configs/continuous_demo.json
 ```
 
+## Generated item queue
+
+The item queue starts with the service and needs no extra argument locally. The
+defaults are `--item-jobs-provider cached`, the packaged generator at
+`sim/coffee_sorter/generator`, and the recorded provider cache under
+`thoughts/taras/research/coffee-quality/object-generation/results`, used
+read-only. The cache layout is `<provider-cache>/cache/<request digest>.json`.
+
+`--live` is never automatic. Cached mode sends no provider request: a cache hit
+continues to rendering, and a miss stops at `operator_required` with
+`provider_cache_miss`, having sent nothing and billed nothing. One operator
+`new_request` approval covers ONE generation attempt, and that attempt can send
+up to TWO provider requests: the Jev classification and then the recipe.
+
+```bash
+python sim/coffee_sorter/live.py --port 8890 --preset sim/coffee_sorter/configs/continuous_demo.json --out /tmp/coffee-live --item-jobs-provider cached --item-jobs-provider-cache thoughts/taras/research/coffee-quality/object-generation/results --item-jobs-generator-root sim/coffee_sorter/generator --item-jobs-root /tmp/coffee-live/item-jobs --item-jobs-runtime-lock /tmp/cinta-runtime/render.lock
+```
+
+Paid mode also needs `--item-jobs-provider-env`, which must stay outside
+`--item-jobs-root`. The service never opens that file: only the generation child
+receives its path. A public deployment must not run paid mode.
+
+Fake mode is local only. It shows a permanent test-data banner, and a fake job
+can never reach activation.
+
+```bash
+python sim/coffee_sorter/live.py --port 8890 --preset sim/coffee_sorter/configs/continuous_demo.json --item-jobs-provider fake
+```
+
 Open [the local page](http://127.0.0.1:8890). The conveyor starts automatically, including when no browser is connected.
 Select **Inject stone** to add an object. A ring identifies that object in both projections.
 Prediction, jet contact, and physical outcome appear separately.

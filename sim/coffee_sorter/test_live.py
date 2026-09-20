@@ -1,6 +1,11 @@
 import asyncio
+import builtins
 from collections import deque
+import hashlib
 import json
+import shlex
+import shutil
+import os
 from pathlib import Path
 from queue import Full
 import sys
@@ -16,10 +21,16 @@ from aiohttp import web
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
+import item_jobs
+import live
+import object_catalog
 from live import (COMMAND_EPOCH_SECONDS, MAX_COMMANDS, MAX_COMMANDS_PER_EPOCH,
                   MAX_PENDING_COMMANDS, PUMP_STALE_SECONDS, LiveService,
                   _configured_source_revision, access_middleware, access_rules,
                   configured_access_rules, load_preset, worker)
+
+CATALOG_REVISION = 'a' * 64
+ORIGIN = 'http://127.0.0.1:8890'
 
 
 class RecordingQueue:
@@ -203,6 +214,60 @@ def service(continuous=True):
     value.service_samples = {key: deque(maxlen=4096)
                              for key in ('json_encode_ms', 'send_wait_ms')}
     return value
+
+
+class FakeRequest:
+    def __init__(self, body=None, origin=ORIGIN, query=None, **match_info):
+        self.headers = {'Origin': origin} if origin else {}
+        self.match_info = match_info
+        self.query = query or {}
+        self.body = body
+
+    async def text(self):
+        return self.body if isinstance(self.body, str) else json.dumps(self.body)
+
+
+def item_service(test, provider_mode='cached'):
+    """One service with a real job store and an unstarted runner. No child ever spawns."""
+    directory = tempfile.TemporaryDirectory()
+    test.addCleanup(directory.cleanup)
+    value = service()
+    value.item_jobs_root = Path(directory.name)
+    value.item_jobs_provider = provider_mode
+    value.provider_cache = value.item_jobs_root / 'provider-cache'
+    # A path that never exists. Opening it would raise, so any read is visible.
+    value.provider_env = value.item_jobs_root.parent / 'absent-secret.env'
+    value.generator_root = item_jobs.GENERATOR_ROOT
+    value.item_jobs = item_jobs.ItemJobStore(value.item_jobs_root, provider_mode=provider_mode)
+    test.addCleanup(value.item_jobs.close)
+    value.runtime_lock = value.item_jobs_root / 'render.lock'
+    value.item_jobs_unhealthy = False
+    value.item_runner = item_jobs.ItemJobRunner(
+        value.item_jobs, item_jobs.fake_commands(), runtime_lock_path=value.runtime_lock)
+    value.catalog_root = object_catalog.CATALOG_ROOT
+    value.catalog_revision = CATALOG_REVISION
+    value.active_type_ids = ['builtin.green_arabica.good']
+    value.item_jobs_state = value._item_jobs_packet()
+    return value
+
+
+def item_arguments(**overrides):
+    values = {'item_jobs_provider': 'cached', 'item_jobs_provider_cache': None,
+              'item_jobs_provider_env': None,
+              'item_jobs_generator_root': item_jobs.GENERATOR_ROOT}
+    return types.SimpleNamespace(**{**values, **overrides})
+
+
+class StubParser:
+    """argparse.error exits the process. The tests need the message instead."""
+
+    def error(self, message):
+        raise ValueError(message)
+
+
+def item_request(description='A small brass star token', request_id=None, origin=ORIGIN, **extra):
+    return FakeRequest({'request_id': request_id or str(uuid.uuid4()), 'description': description,
+                        'expected_catalog_revision': CATALOG_REVISION, **extra}, origin=origin)
 
 
 def command(value, command_id=None, epoch=None, class_name='stone'):
@@ -694,6 +759,314 @@ class BoundedCommandTest(unittest.IsolatedAsyncioTestCase):
         await value._handle_command(payload, ws)
         self.assertNotIn(canonical_id, value.requests)
         self.assertIn('queue is full', ws.packets[-1]['error'])
+
+
+class ItemJobRouteTest(unittest.IsolatedAsyncioTestCase):
+    async def test_submit_retry_returns_the_same_job_and_a_changed_payload_conflicts(self):
+        value = item_service(self)
+        request_id = str(uuid.uuid4())
+
+        created = await value.submit_item_job(item_request(request_id=request_id,
+                                                           requester_name='Taras'))
+        retried = await value.submit_item_job(item_request(request_id=request_id,
+                                                           requester_name='Taras'))
+        changed = await value.submit_item_job(item_request('A brass moon token',
+                                                          request_id=request_id))
+
+        self.assertEqual(created.status, 201)
+        self.assertEqual(retried.status, 200)
+        body = json.loads(retried.text)
+        self.assertFalse(body['created'])
+        self.assertEqual(body['job']['request_id'], request_id)
+        self.assertEqual(body['job']['requester_name'], 'Taras')
+        self.assertEqual(body['job']['state'], 'queued')
+        self.assertEqual(changed.status, 409)
+        self.assertEqual(json.loads(changed.text)['error_code'], 'request_conflict')
+        self.assertEqual(len(value.item_jobs.jobs()), 1)
+
+    async def test_queue_limit_stale_revision_and_invalid_description(self):
+        value = item_service(self)
+        for _ in range(item_jobs.MAX_QUEUED_JOBS):
+            self.assertEqual((await value.submit_item_job(item_request())).status, 201)
+
+        full = await value.submit_item_job(item_request())
+        stale = await value.submit_item_job(
+            FakeRequest({'request_id': str(uuid.uuid4()), 'description': 'A token',
+                         'expected_catalog_revision': 'b' * 64}))
+        empty = await value.submit_item_job(item_request(description='   '))
+
+        self.assertEqual(full.status, 429)
+        self.assertEqual(json.loads(full.text)['error_code'], 'queue_full')
+        self.assertEqual(stale.status, 409)
+        self.assertEqual(json.loads(stale.text)['error_code'], 'catalog_revision_conflict')
+        self.assertEqual(empty.status, 400)
+        self.assertEqual(json.loads(empty.text)['error_code'], 'invalid_description')
+
+    async def test_item_job_posts_require_a_present_origin(self):
+        value = item_service(self)
+        request_id = str(uuid.uuid4())
+        await value.submit_item_job(item_request(request_id=request_id))
+
+        for response in (await value.submit_item_job(item_request(origin=None)),
+                         await value.resolve_item_provider(
+                             FakeRequest({'action': 'use_cache'}, origin=None,
+                                         request_id=request_id)),
+                         await value.resolve_item_replacement(
+                             FakeRequest(origin=None, request_id=request_id)),
+                         await value.confirm_item_cleanup(
+                             FakeRequest(origin=None, request_id=request_id))):
+            self.assertEqual(response.status, 403)
+            self.assertEqual(json.loads(response.text)['error_code'], 'origin_required')
+        self.assertEqual(len(value.item_jobs.jobs()), 1)
+
+    async def test_unknown_job_and_preview_name_allowlist(self):
+        value = item_service(self)
+        request_id = str(uuid.uuid4())
+        await value.submit_item_job(item_request(request_id=request_id))
+
+        missing = await value.get_item_job(FakeRequest(request_id=str(uuid.uuid4())))
+        malformed = await value.get_item_job(FakeRequest(request_id='../../etc'))
+        blocked = await value.item_job_preview(
+            FakeRequest(request_id=request_id, name='object.blend'))
+        too_early = await value.item_job_preview(
+            FakeRequest(request_id=request_id, name='perspective.png'))
+
+        self.assertEqual(missing.status, 404)
+        self.assertEqual(json.loads(missing.text)['error_code'], 'unknown_job')
+        self.assertEqual(malformed.status, 400)
+        self.assertEqual(json.loads(blocked.text)['error_code'], 'unknown_preview')
+        self.assertEqual(json.loads(too_early.text)['error_code'], 'preview_unavailable')
+
+        previews = value.item_jobs.job_dir(request_id) / 'previews'
+        (previews / 'perspective.png').write_bytes(b'fixture')
+        value.item_jobs.transition(request_id, 'preview_ready', artifacts={'previews': {
+            'perspective.png': {'sha256': hashlib.sha256(b'fixture').hexdigest(), 'bytes': 7}}})
+        served = await value.item_job_preview(
+            FakeRequest(request_id=request_id, name='perspective.png'))
+        self.assertEqual(served.status, 200)
+        self.assertEqual(served.body, b'fixture')
+
+    async def test_get_item_job_never_publishes_the_worker_token(self):
+        value = item_service(self)
+        request_id = str(uuid.uuid4())
+        await value.submit_item_job(item_request(request_id=request_id))
+        value.item_jobs.record(request_id, worker={
+            'stage': 'render', 'pid': 1, 'pgid': 1, 'token': 'secret',
+            'lease_deadline': '2026-09-20T09:00:00Z', 'started': '2026-09-20T09:00:00Z',
+            'pid_start': None})
+
+        response = await value.get_item_job(FakeRequest(request_id=request_id))
+
+        self.assertEqual(response.status, 200)
+        self.assertNotIn('secret', response.text)
+        self.assertEqual(json.loads(response.text)['job']['worker']['stage'], 'render')
+
+    async def test_replacement_resolution_stays_unavailable_in_this_phase(self):
+        value = item_service(self)
+        request_id = str(uuid.uuid4())
+        await value.submit_item_job(item_request(request_id=request_id))
+
+        response = await value.resolve_item_replacement(FakeRequest(request_id=request_id))
+
+        self.assertEqual(response.status, 409)
+        self.assertEqual(json.loads(response.text)['error_code'], 'not_available')
+
+    async def test_wall_of_fame_reports_bounded_pages_and_rejects_invalid_paging(self):
+        value = item_service(self)
+
+        page = await value.wall_of_fame(FakeRequest(query={'offset': '0', 'limit': '12'}))
+        negative = await value.wall_of_fame(FakeRequest(query={'offset': '-1'}))
+        text = await value.wall_of_fame(FakeRequest(query={'limit': 'all'}))
+
+        body = json.loads(page.text)
+        self.assertEqual(page.status, 200)
+        self.assertEqual(body['limit'], 12)
+        self.assertLessEqual(len(body['entries']), 12)
+        self.assertEqual(negative.status, 400)
+        self.assertEqual(text.status, 400)
+
+    async def test_new_request_is_refused_with_paid_mode_disabled(self):
+        value = item_service(self)
+        request_id = str(uuid.uuid4())
+        await value.submit_item_job(item_request(request_id=request_id))
+        value.item_jobs.transition(request_id, 'operator_required', error='provider_cache_miss')
+
+        refused = await value.resolve_item_provider(
+            FakeRequest({'action': 'new_request'}, request_id=request_id))
+        cached = await value.resolve_item_provider(
+            FakeRequest({'action': 'use_cache'}, request_id=request_id))
+
+        self.assertEqual(refused.status, 403)
+        self.assertEqual(json.loads(refused.text)['error_code'], 'paid_mode_disabled')
+        self.assertEqual(cached.status, 200)
+        self.assertEqual(json.loads(cached.text)['job']['state'], 'generating_recipe')
+        self.assertIsNone(value.item_jobs.get(request_id)['provider_permission'])
+
+    async def test_the_service_never_opens_the_credential_file(self):
+        value = item_service(self, provider_mode='paid')
+        names_before = sorted(os.environ)
+        opened = []
+        real_open = builtins.open
+
+        def recording_open(path, *arguments, **keywords):
+            opened.append(str(path))
+            return real_open(path, *arguments, **keywords)
+
+        with patch.object(builtins, 'open', recording_open):
+            commands = value._item_commands()
+            argv = commands['generation'](
+                {'description': 'A token', 'attempts': {'generation': 1},
+                 'provider_permission': None}, value.item_jobs_root / 'jobs' / 'x')
+
+        credential = str(value.provider_env)
+        self.assertNotIn(credential, opened)
+        self.assertIn(credential, argv)
+        self.assertNotIn('--live', argv)
+        # Names only. The service adds no provider name to its own environment, and the
+        # engine child inherits that environment. A value is never held or printed here.
+        self.assertEqual(sorted(os.environ), names_before)
+        self.assertNotIn('CINTA_PROVIDER_KEY', sorted(os.environ))
+
+    def test_startup_validation_refuses_an_unsafe_provider_configuration(self):
+        parser = StubParser()
+        root = Path('/tmp/cinta-jobs').resolve()
+        credential = Path(tempfile.mkdtemp()) / 'provider.env'
+        credential.write_text('')
+        self.addCleanup(credential.unlink)
+        cases = [
+            (item_arguments(item_jobs_provider='paid', item_jobs_provider_env=None),
+             'requires --item-jobs-provider-env'),
+            (item_arguments(item_jobs_provider_cache=Path('/tmp/cinta-absent-cache')),
+             '--item-jobs-provider-cache does not exist'),
+            (item_arguments(item_jobs_generator_root=Path('/tmp/cinta-absent-generator')),
+             '--item-jobs-generator-root does not exist'),
+        ]
+        for arguments, message in cases:
+            with self.assertRaises(ValueError) as raised:
+                live._validate_item_job_arguments(parser, arguments, root)
+            self.assertIn(message, str(raised.exception))
+
+        # T6: a real credential file inside a real job root must be refused for that
+        # reason, not because the path happens to be absent.
+        real_root = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, real_root, ignore_errors=True)
+        inside = real_root / 'provider.env'
+        inside.write_text('')
+        with self.assertRaises(ValueError) as raised:
+            live._validate_item_job_arguments(
+                parser, item_arguments(item_jobs_provider='paid',
+                                       item_jobs_provider_env=inside), real_root)
+        self.assertIn('must stay outside --item-jobs-root', str(raised.exception))
+
+        # Compatible defaults keep starting: no cache path and no credential is not a contradiction.
+        live._validate_item_job_arguments(parser, item_arguments(item_jobs_provider_cache=None), root)
+        live._validate_item_job_arguments(
+            parser, item_arguments(item_jobs_provider='fake', item_jobs_provider_cache=None), root)
+        live._validate_item_job_arguments(
+            parser, item_arguments(item_jobs_provider='paid',
+                                   item_jobs_provider_env=credential), root)
+
+    async def test_deployment_controlled_fields_are_refused_in_a_request_body(self):
+        value = item_service(self)
+        for name, field in (('source_revision', 'c' * 40), ('provider_mode', 'paid'),
+                            ('live', True), ('env_file', '/etc/passwd')):
+            response = await value.submit_item_job(item_request(**{name: field}))
+            self.assertEqual(response.status, 400)
+            self.assertEqual(json.loads(response.text)['error_code'], 'invalid_request')
+        self.assertEqual(value.item_jobs.jobs(), [])
+
+    async def test_no_public_response_carries_a_host_path(self):
+        """M1: worker.log and artifacts.runtime_lock are absolute host paths."""
+        value = item_service(self)
+        request_id = str(uuid.uuid4())
+        await value.submit_item_job(item_request(request_id=request_id))
+        value.item_jobs.record(request_id, worker={
+            'stage': 'render', 'pid': 1, 'pgid': 1, 'token': 'secret',
+            'lease_deadline': '2026-09-20T09:00:00Z', 'started': '2026-09-20T09:00:00Z',
+            'pid_start': None, 'log': str(value.item_jobs_root / 'jobs' / request_id / 'render.log')})
+        value.item_jobs.record(request_id, token='secret', artifacts={
+            'runtime_lock': str(value.runtime_lock), 'previews': {}})
+        value.item_jobs_state = value._item_jobs_packet()
+
+        body = json.loads((await value.get_item_job(FakeRequest(request_id=request_id))).text)
+        packet = value._state_packet()
+        root = str(value.item_jobs_root)
+
+        for label, document in (('job', body), ('state', packet)):
+            for text in _string_values(document):
+                self.assertNotIn(root, text, f'{label} leaked the job root')
+                self.assertNotIn(str(value.runtime_lock), text, f'{label} leaked the lock path')
+                if text.startswith('/'):
+                    # The only permitted absolute value is a route, not a host path.
+                    self.assertTrue(text.startswith('/item-jobs/'), f'{label}: {text}')
+        self.assertNotIn('secret', json.dumps(body))
+        self.assertIsNone(body['job']['worker'].get('log'))
+        self.assertNotIn('runtime_lock', body['job']['artifacts'])
+
+
+    def test_every_documented_launch_command_is_accepted(self):
+        """A documented command the real parser refuses is a broken document."""
+        repository = Path(live.HERE).parents[1]
+        document = (Path(live.HERE) / 'LIVE.md').read_text()
+        commands = [line.strip() for line in document.splitlines()
+                    if 'live.py' in line and line.strip().startswith(('python', '.venv'))]
+        self.assertGreaterEqual(len(commands), 4)
+        parser = live.build_parser()
+        previous = os.getcwd()
+        os.chdir(repository)
+        try:
+            for command in commands:
+                words = shlex.split(command)
+                arguments = words[words.index('sim/coffee_sorter/live.py') + 1:]
+                parsed = parser.parse_args(arguments)
+                root = (parsed.item_jobs_root or parsed.out / 'item-jobs').resolve()
+                live._validate_item_job_arguments(StubParser(), parsed, root)
+        finally:
+            os.chdir(previous)
+
+    def test_a_plain_local_command_still_starts_with_compatible_defaults(self):
+        parser = live.build_parser()
+        parsed = parser.parse_args(['--preset', 'sim/coffee_sorter/configs/default_demo.json',
+                                    '--out', '/tmp/cinta-plain'])
+
+        self.assertEqual(parsed.item_jobs_provider, 'cached')
+        self.assertIsNone(parsed.item_jobs_provider_cache)
+        self.assertEqual(parsed.item_jobs_generator_root, item_jobs.GENERATOR_ROOT)
+        self.assertEqual(parsed.item_jobs_runtime_lock, live.DEFAULT_RUNTIME_LOCK)
+        # No contradiction, so the service starts and the queue uses the local defaults.
+        live._validate_item_job_arguments(StubParser(), parsed, Path('/tmp/cinta-plain/item-jobs'))
+
+    async def test_state_packet_carries_item_job_summaries_and_limits(self):
+        value = item_service(self)
+        await value.submit_item_job(item_request(requester_name='Taras'))
+        value.item_jobs_state = value._item_jobs_packet()
+
+        packet = value._state_packet()
+
+        self.assertEqual(packet['item_jobs']['limits'],
+                         {'max_queued_jobs': 4, 'max_retained_open_jobs': 32,
+                          'max_summaries': 32, 'max_attempts': 2})
+        self.assertEqual(packet['item_jobs']['provider_mode'], 'cached')
+        self.assertEqual(packet['item_jobs']['catalog_revision'], CATALOG_REVISION)
+        self.assertEqual(packet['item_jobs']['active_type_ids'], ['builtin.green_arabica.good'])
+        summary = packet['item_jobs']['summaries'][0]
+        self.assertEqual(summary['requester_name'], 'Taras')
+        self.assertEqual(summary['state'], 'queued')
+        self.assertIsNone(summary['preview'])
+        self.assertIsNone(summary['primary_action'])
+        self.assertNotIn('item_jobs', service()._state_packet())
+
+
+def _string_values(document):
+    if isinstance(document, str):
+        yield document
+    elif isinstance(document, dict):
+        for key, value in document.items():
+            yield from _string_values(value)
+    elif isinstance(document, list):
+        for value in document:
+            yield from _string_values(value)
+
 
 
 if __name__ == '__main__':

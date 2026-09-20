@@ -569,10 +569,13 @@ lsof -nP -iTCP:8899 -sTCP:LISTEN
   --port 8899 \
   --preset sim/coffee_sorter/configs/continuous_demo.json \
   --out /tmp/cinta-item-jobs \
-  --item-jobs-root /tmp/cinta-item-jobs
+  --item-jobs-root /tmp/cinta-item-jobs \
+  --item-jobs-provider cached \
+  --item-jobs-provider-cache thoughts/taras/research/coffee-quality/object-generation/results \
+  --item-jobs-generator-root sim/coffee_sorter/generator
 ```
 
-Create one authorized job. The eventual implementation may perform a paid provider request.
+Create one job in cached mode. Cached mode never sends a provider request. A cache miss stops in `operator_required` with `provider_cache_miss`. A paid request needs paid mode, an explicit operator `new_request`, and explicit authorization from Taras.
 
 ```sh
 REQUEST_ID=$(python3 -c 'import uuid; print(uuid.uuid4())')
@@ -691,3 +694,17 @@ Taras owns final functional acceptance.
 - The service never reads provider credentials and never changes its environment. A fake job carries a visible marker and can never activate.
 - The final E2E uses the fake provider or exact cached artifacts, plus real rendering, physics, training, and activation.
 - Final training, final validation, and final model hashes wait for the verified Astra physics fix (`codex/cinta-physics-repair`).
+
+
+### Phase 2 (shared queue and early previews)
+
+- `item_jobs.py` holds the filesystem queue, the runner, and one stage table. Generation and rendering run in child processes with their own process groups, ownership tokens, and leases.
+- `--live` is never automatic. It comes only from one persisted, unconsumed operator `new_request` in paid mode, consumed before the spawn. One such grant permits one generation attempt, which can send up to two provider requests (the Jev classification, then the recipe).
+- The generator now lives in `sim/coffee_sorter/generator/`. A local hook refuses writes under `thoughts/**/research/`, and production code does not belong under research notes. The research copies stay untouched as evidence. The source copy reproduces the cached star request digests without a credential: Jev `fb801b56fe4855844e7d4a92d4df62054baf9e7213e97a04ae5fe69ac646d4a9`, recipe `c5d88ad700875432803b4c9016746ff64e03740d65a373d73e2812af48ed27f8`, recipe sha256 `ab172827287041a6d98b836b37e7297ff9d5438e397ef7c213ed25f47293549b`.
+- A cached entry is verified before reuse: endpoint, canonical request digest, response metadata, and recorded artifact hashes. A failed check is `cache_entry_invalid`. It is never treated as a miss.
+- Deviations from the state and error lists of this plan: state `operator_required`; errors `provider_cache_miss`, `paid_mode_disabled`, `catalog_revision_conflict`, `cache_entry_invalid`, `invalid_request`. The description limit is 600 characters, because the service body limit of 2048 bytes stays unchanged.
+- Two admission bounds: 4 queued jobs and 32 retained open jobs. Blocked jobs count toward the second bound, so anonymous requests cannot grow the job tree without limit.
+- Release gates from the deployment design review: explicit runtime lock path, complete cached-mode arguments with fail-fast when no cache exists, process identity from `/proc/<pid>/stat`, confirmed runner-thread shutdown, preview serving from a no-follow descriptor with size and hash checks, queue fields in `/health`, a job record schema version.
+- Two review rounds ran. Round 1 found two Critical defects: an unauthorized billable retry after `use_cache`, and a recovery that never confirmed the process group. Round 2 reproduced both as fixed.
+- Not verified yet: no browser check, no real Blender render, no real provider call. The `/proc` branch of the process identity code ran only against fakes, because the development host is macOS.
+- Fake mode is not yet refused under public access. The public-access setting exists only on `main`, and this branch does not merge `main` before the coordinated integration.

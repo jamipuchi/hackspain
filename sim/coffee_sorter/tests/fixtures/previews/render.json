@@ -1,0 +1,7 @@
+{
+  "recipe_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "renderer_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "glb_units": "meters",
+  "glb_scale_from_recipe_mm": 0.001,
+  "note": "Fixture metrics. The fake worker rewrites recipe_sha256 for the job recipe."
+}

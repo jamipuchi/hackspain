@@ -1,0 +1,35 @@
+{
+  "name": "Fixture token",
+  "design_notes": "A tiny deterministic fixture recipe. It never reaches a provider.",
+  "parts": [
+    {
+      "name": "body",
+      "kind": "box",
+      "position_mm": [
+        0,
+        0,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "size_mm": [
+        8,
+        8,
+        3
+      ],
+      "color": [
+        0.72,
+        0.58,
+        0.2
+      ],
+      "metallic": 0.8,
+      "roughness": 0.3,
+      "tube_mm": 0,
+      "outline": [],
+      "text": ""
+    }
+  ]
+}

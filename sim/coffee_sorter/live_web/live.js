@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {OrbitControls} from '/vendor/OrbitControls.js';
 import {RoomEnvironment} from '/vendor/RoomEnvironment.js';
 import {GLTFLoader} from '/assets/vendor/loaders/GLTFLoader.js';
-import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, normalizedClassPreview, profilePreviewScale, samePresentationTimeline} from './timeline.mjs';
+import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, freezeItemRequest, jobActionLabel, jobActionPath, jobErrorLabel, jobQueueSignature, jobStateLabel, jobStateNote, normalizedClassPreview, normalizedJobSummary, profilePreviewScale, resolvePendingRequest, samePresentationTimeline} from './timeline.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('scene');
@@ -26,6 +26,13 @@ let itemCatalogSignature = '';
 let currentView = '3d';
 let itemPreview = null;
 let selectedPreviewName = null;
+let itemQueueSignature = null;
+// One frozen snapshot of the request in flight. It never rebuilds from the form.
+let pendingItemRequest = null;
+let wallEntries = [];
+let wallOffset = 0;
+let wallTotal = null;
+let wallLoading = false;
 let shownSession = null;
 let frames = 0;
 let fpsStart = performance.now();
@@ -48,6 +55,8 @@ const DISPLAY_DELAY_MS = 240;
 const SNAPSHOT_LIMIT = 32;
 const SNAPSHOT_MAX_AGE_MS = 1500;
 const POLICY_COALESCE_MS = 60;
+const ITEM_VIEWS = ['active', 'queue', 'wall'];
+const WALL_PAGE = 12;
 const continuousMode = () => state?.mode === 'continuous';
 const liveContinuousMode = () => liveState?.mode === 'continuous';
 const latestRequest = () => latestCommandId ? requests.get(latestCommandId) : null;
@@ -129,6 +138,8 @@ function connect() {
       window.cintaLiveState = liveState;
       syncPolicyTransport(packet.reject_policy);
       pendingPolicyIntents.setCatalog((packet.class_catalog || []).map(item => item.name));
+      // Queue rows follow the server packet directly. Pose buffering must not delay them.
+      updateItemQueue();
       enqueueSnapshot(packet, arrivedAt);
       processPolicyQueue();
       // Retry each retained command after a new connection or an acknowledgment timeout.
@@ -600,7 +611,254 @@ function closeItems() {
   itemPreview = null;
 }
 
+// Queue and Wall of Fame views. The server owns queue truth; every client shows the same rows.
+function itemJobsPacket() {
+  return liveState?.item_jobs || state?.item_jobs || null;
+}
+
+function setItemsView(name) {
+  for (const view of ITEM_VIEWS) {
+    $(`items-tab-${view}`).setAttribute('aria-pressed', String(view === name));
+    $(`items-view-${view}`).hidden = view !== name;
+  }
+  if (name === 'wall' && wallTotal === null) loadWallPage();
+}
+
+function setItemAddStatus(text, failed = false) {
+  $('item-add-status').textContent = text;
+  $('item-add-status').classList.toggle('error', failed);
+}
+
+function jobDetails(job) {
+  const details = document.createElement('details'); details.className = 'job-details';
+  const summary = document.createElement('summary'); summary.textContent = 'Details';
+  const list = document.createElement('dl');
+  const attempts = Object.entries(job.attempts).map(([stage, count]) => `${stage} ${count}`).join(' · ');
+  for (const [term, value] of [
+    ['Request', job.requestId], ['Description', job.description || 'Not recorded'],
+    ['Requester', job.requester || 'Not given'], ['State', jobStateLabel(job.state)],
+    ['Created', job.createdAt || 'Unknown'], ['Updated', job.updatedAt || 'Unknown'],
+    ['Attempts', attempts || 'None'], ['Progress', job.progress || 'None reported'],
+    ['Error', jobErrorLabel(job.error) || 'None'],
+    ['Provider', job.providerMode ? `${job.providerMode}${job.cacheHit === true ? ', cache hit' : job.cacheHit === false ? ', live request' : ''}` : 'Unknown'],
+    ['What happens next', jobStateNote(job.state) || 'The queue continues without an operator.'],
+    ['Recovery', jobActionLabel(job.action) || 'None required'],
+  ]) {
+    const term_ = document.createElement('dt'); term_.textContent = term;
+    const value_ = document.createElement('dd'); value_.textContent = value;
+    list.append(term_, value_);
+  }
+  details.append(summary, list);
+  // The compact row replays the cache. A billable call needs paid mode and this choice.
+  if (job.action === 'resolve_provider' && itemJobsPacket()?.provider_mode === 'paid') {
+    const billable = document.createElement('button');
+    billable.type = 'button'; billable.className = 'job-action';
+    billable.textContent = 'New paid request';
+    billable.onclick = () => sendJobAction(job, job.action, 'new_request');
+    details.append(billable);
+  }
+  return details;
+}
+
+// One head layout for queue rows and Wall of Fame rows. Wall of Fame preview images
+// stay a Phase 4 item, so the helper accepts a null preview.
+function buildJobHead({name, meta, preview = null, failed = false, action = null}) {
+  const head = document.createElement('div'); head.className = 'job-head';
+  const thumb = document.createElement('img'); thumb.className = 'job-thumb'; thumb.alt = '';
+  if (preview) thumb.src = preview;
+  const copy = document.createElement('div'); copy.className = 'job-name';
+  copy.append(document.createTextNode(name));
+  const line = document.createElement('small'); line.className = 'job-meta';
+  line.textContent = meta;
+  line.classList.toggle('error', failed);
+  copy.append(line);
+  const slot = document.createElement(action ? 'button' : 'span');
+  if (action) {
+    slot.type = 'button'; slot.className = 'job-action'; slot.textContent = action.label;
+    slot.onclick = action.run;
+  }
+  head.append(thumb, copy, slot);
+  return head;
+}
+
+function jobRow(job) {
+  const row = document.createElement('div'); row.className = 'job-row'; row.dataset.requestId = job.requestId;
+  const label = jobActionLabel(job.action);
+  const head = buildJobHead({
+    name: job.name,
+    meta: [jobStateLabel(job.state), job.updatedAt, job.requester && `by ${job.requester}`,
+           jobErrorLabel(job.error) || job.progress].filter(Boolean).join(' · '),
+    preview: job.preview,
+    failed: Boolean(job.error),
+    action: label && {label, run: () => sendJobAction(job, job.action, job.action === 'resolve_provider' ? 'use_cache' : null)},
+  });
+  row.append(head, jobDetails(job));
+  return row;
+}
+
+function updateItemQueue() {
+  // Production never shows a fake successful job without saying so.
+  $('item-fake-banner').hidden = itemJobsPacket()?.provider_mode !== 'fake';
+  const summaries = itemJobsPacket()?.summaries || [];
+  if (pendingItemRequest) {
+    // Only resolve here. A packet that does not hold the id must not restate a waiting
+    // cue, otherwise every healthy submit flashes an error at packet rate.
+    const known = summaries.map(item => item?.request_id);
+    if (known.includes(pendingItemRequest.request_id)) {
+      applyPendingOutcome({kind: 'queue', requestIds: known});
+    }
+  }
+  const signature = jobQueueSignature(itemJobsPacket()?.summaries);
+  if (signature === itemQueueSignature) return;
+  itemQueueSignature = signature;
+  const jobs = (itemJobsPacket()?.summaries || []).map(normalizedJobSummary).filter(Boolean);
+  if (!jobs.length) {
+    const empty = document.createElement('p');
+    empty.textContent = 'No generated items are queued.';
+    $('item-queue').replaceChildren(empty);
+    return;
+  }
+  $('item-queue').replaceChildren(...jobs.map(jobRow));
+}
+
+async function postItemJob(path, body) {
+  const response = await fetch(path, {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body),
+  });
+  const result = await response.json().catch(() => ({}));
+  return {ok: response.ok, result};
+}
+
+function applyPendingOutcome(outcome) {
+  const decision = resolvePendingRequest(pendingItemRequest, outcome);
+  if (decision.resolved) {
+    pendingItemRequest = null;
+    // Clear the form only when the request really landed. A rejection keeps the text,
+    // so the user can edit it and send a NEW request with a new id.
+    if (!decision.failed) $('item-description').value = '';
+  }
+  if (decision.cue) setItemAddStatus(decision.cue, decision.failed);
+  updatePendingControls();
+  return decision;
+}
+
+function updatePendingControls() {
+  const waiting = Boolean(pendingItemRequest);
+  // While a snapshot waits, the form cannot change what a retry would send.
+  for (const id of ('item-description item-requester item-submit').split(' ')) $(id).disabled = waiting;
+  $('item-retry').hidden = !waiting;
+}
+
+async function sendPendingItemRequest() {
+  if (!pendingItemRequest) return;
+  const snapshot = pendingItemRequest;
+  $('item-submit').disabled = true;
+  $('item-retry').disabled = true;
+  setItemAddStatus('Submitting');
+  try {
+    // Exactly the frozen bytes. Never a payload rebuilt from the form or from state.
+    const {ok, result} = await postItemJob('/item-jobs', snapshot);
+    applyPendingOutcome(ok
+      ? {kind: 'accepted', requestId: snapshot.request_id}
+      : {kind: 'rejected', errorCode: result.error_code});
+  } catch (error) {
+    // A network error proves nothing. The server may already hold the job.
+    applyPendingOutcome({kind: 'network'});
+  } finally {
+    $('item-retry').disabled = false;
+    updatePendingControls();
+  }
+}
+
+function submitItemJob(event) {
+  event.preventDefault();
+  if (pendingItemRequest) return sendPendingItemRequest();
+  const description = $('item-description').value.trim();
+  const revision = itemJobsPacket()?.catalog_revision;
+  if (!description || !revision) {
+    setItemAddStatus('Describe the item and wait for the catalog.', true);
+    return;
+  }
+  pendingItemRequest = freezeItemRequest({
+    requestId: crypto.randomUUID(), description, catalogRevision: revision,
+    requesterName: $('item-requester').value.trim(),
+  });
+  updatePendingControls();
+  return sendPendingItemRequest();
+}
+
+async function sendJobAction(job, action, choice) {
+  const path = jobActionPath(job.requestId, action);
+  if (!path) return;
+  setItemAddStatus(`${jobActionLabel(action)} sent`);
+  try {
+    const {ok, result} = await postItemJob(path, choice ? {action: choice} : {});
+    if (!ok) setItemAddStatus(jobErrorLabel(result.error_code) || 'The recovery action failed.', true);
+    else setItemAddStatus(`${jobActionLabel(action)} accepted`);
+  } catch (error) {
+    setItemAddStatus('The service did not answer.', true);
+  }
+}
+
+function wallRow(entry) {
+  const row = document.createElement('div'); row.className = 'job-row';
+  // The one shared preview renderer stays the single WebGL context. No card holds one.
+  row.append(buildJobHead({
+    name: String(entry?.display_name || entry?.object_type_id || 'Archived item'),
+    meta: [`Retired ${entry?.retired_at || 'at an unknown time'}`,
+           entry?.classifier_label, entry?.provenance?.kind].filter(Boolean).join(' · '),
+  }));
+  row.onclick = () => selectWallEntry(entry);
+  return row;
+}
+
+function selectWallEntry(entry) {
+  $('items-preview-name').textContent = String(entry?.display_name || entry?.object_type_id || 'Archived item');
+  $('items-preview-meta').textContent = `Archived ${entry?.retired_at || 'at an unknown time'}. `
+    + `Label ${entry?.classifier_label || 'unknown'}. Definition ${String(entry?.definition_sha256 || '').slice(0, 12)}. `
+    + 'An archived definition stays read-only and never re-enters the active catalog.';
+}
+
+function renderWallPage(unreadable) {
+  $('wall-rows').replaceChildren(...(wallEntries.length ? wallEntries.map(wallRow) : [(() => {
+    const empty = document.createElement('p');
+    empty.textContent = 'No replaced types are archived yet.';
+    return empty;
+  })()]));
+  const total = wallTotal === null ? wallEntries.length : wallTotal;
+  $('wall-status').textContent = `${wallEntries.length} of ${total} archived`
+    + (unreadable ? ` · ${unreadable} unreadable` : '');
+}
+
+async function loadWallPage() {
+  if (wallLoading) return;
+  wallLoading = true;
+  $('wall-more').disabled = true;
+  $('wall-status').textContent = 'Loading';
+  try {
+    const response = await fetch(`/wall-of-fame?offset=${wallOffset}&limit=${WALL_PAGE}`);
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      $('wall-status').textContent = 'The archived page did not load.';
+      return;
+    }
+    wallEntries = wallEntries.concat(Array.isArray(result.entries) ? result.entries : []);
+    wallTotal = Number.isInteger(result.total) ? result.total : wallEntries.length;
+    wallOffset = wallEntries.length;
+    renderWallPage(result.unreadable);
+  } catch (error) {
+    $('wall-status').textContent = 'The service did not answer.';
+  } finally {
+    wallLoading = false;
+    $('wall-more').disabled = wallTotal !== null && wallOffset >= wallTotal;
+  }
+}
+
 $('items-open').onclick = openItems;
+for (const view of ITEM_VIEWS) $(`items-tab-${view}`).onclick = () => setItemsView(view);
+$('item-add').onsubmit = submitItemJob;
+$('item-retry').onclick = sendPendingItemRequest;
+$('wall-more').onclick = loadWallPage;
 $('items-close').onclick = closeItems;
 $('items-dialog').addEventListener('cancel', event => { event.preventDefault(); closeItems(); });
 $('keep-all').onclick = () => queuePolicySet(false);

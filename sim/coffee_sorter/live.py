@@ -23,6 +23,9 @@ import uuid
 
 from aiohttp import WSMsgType, web
 
+import item_jobs
+import object_catalog
+
 HERE = Path(__file__).resolve().parent
 MAX_COMMANDS = 64
 MAX_CLIENTS = 4
@@ -32,6 +35,17 @@ COMMAND_EPOCH_SECONDS = 60
 PUMP_STALE_SECONDS = 3.0
 SOURCE_REVISION_PATTERN = re.compile(r'[0-9a-f]{40}')
 DNS_LABEL_PATTERN = re.compile(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?')
+DEFAULT_RUNTIME_LOCK = Path('/private/tmp/hackspain-coffee-runtime.lock')
+# Local development replays the recorded research cache. The service never writes there.
+DEFAULT_PROVIDER_CACHE = (HERE.parents[1]
+                          / 'thoughts/taras/research/coffee-quality/object-generation/results')
+ITEM_JOB_STATUS = {
+    'invalid_request': 400, 'invalid_description': 400, 'invalid_action': 400,
+    'paid_mode_disabled': 403, 'unknown_job': 404, 'unknown_preview': 404,
+    'preview_unavailable': 404, 'unsupported_job_schema': 500, 'request_conflict': 409,
+    'catalog_revision_conflict': 409, 'not_available': 409, 'worker_unavailable': 409,
+    'fake_provider_not_activatable': 409, 'queue_full': 429,
+}
 
 
 def _file_hash(path):
@@ -123,6 +137,52 @@ def access_middleware(allowed_hosts, allowed_origins):
         return response
 
     return validate_access
+def _item_job_response(error_code):
+    return web.json_response({'ok': False, 'error_code': error_code},
+                             status=ITEM_JOB_STATUS.get(error_code, 500))
+
+
+_PRIVATE_WORKER_FIELDS = ('token', 'log')
+_PRIVATE_ARTIFACTS = ('runtime_lock',)
+
+
+def _public_worker(worker):
+    """Publish worker ownership without its fencing token or any host path."""
+    if not worker:
+        return None
+    return {key: value for key, value in worker.items() if key not in _PRIVATE_WORKER_FIELDS}
+
+
+def _public_job(job):
+    """One job record for a public response. No value may carry a host path."""
+    artifacts = {key: value for key, value in (job.get('artifacts') or {}).items()
+                 if key not in _PRIVATE_ARTIFACTS}
+    return {**job, 'worker': _public_worker(job.get('worker')), 'artifacts': artifacts}
+
+
+def _validate_item_job_arguments(parser, args, item_jobs_root):
+    """Fail fast only on a contradiction. Compatible defaults must keep starting."""
+    mode = args.item_jobs_provider
+    if mode == 'paid' and args.item_jobs_provider_env is None:
+        parser.error('--item-jobs-provider paid requires --item-jobs-provider-env.')
+    # An explicitly named path that does not exist is a contradiction, not a default.
+    for name, value, check in (
+            ('--item-jobs-provider-cache', args.item_jobs_provider_cache, 'is_dir'),
+            ('--item-jobs-generator-root', args.item_jobs_generator_root, 'is_dir'),
+            ('--item-jobs-provider-env', args.item_jobs_provider_env, 'is_file')):
+        if value is not None and not getattr(Path(value), check)():
+            parser.error(f'{name} does not exist: {value}')
+    # The local default applies only when it really exists. A packaged image without a
+    # provider cache must refuse to start instead of dead-ending every job.
+    if mode in ('cached', 'paid') and args.item_jobs_provider_cache is None \
+            and not (DEFAULT_PROVIDER_CACHE / 'cache').is_dir():
+        parser.error(f'--item-jobs-provider {mode} requires --item-jobs-provider-cache '
+                     f'because no provider cache exists at the development default.')
+    if args.item_jobs_provider_env is None:
+        return
+    credential = args.item_jobs_provider_env.resolve()
+    if credential == item_jobs_root or item_jobs_root in credential.parents:
+        parser.error('--item-jobs-provider-env must stay outside --item-jobs-root.')
 
 
 def load_preset(preset_path):
@@ -357,7 +417,9 @@ def worker(preset, states, acknowledgments, commands, stop, out):
 
 
 class LiveService:
-    def __init__(self, preset, out):
+    def __init__(self, preset, out, *, item_jobs_root=None, item_jobs_provider='cached',
+                 catalog_root=None, provider_cache=None, provider_env=None,
+                 generator_root=None, runtime_lock=None):
         self.ctx = mp.get_context('spawn')
         self.preset = Path(preset)
         self.preset_config = load_preset(self.preset)
@@ -383,7 +445,176 @@ class LiveService:
         self.service_timings = {'snapshot_reads': 0, 'broadcasts': 0, 'json_encode_ms': 0.0, 'send_wait_ms': 0.0}
         self.service_samples = {key: deque(maxlen=4096) for key in ('json_encode_ms', 'send_wait_ms')}
         self.profile_written = False
+        # The item job queue owns its own store, runner thread, and child processes.
+        self.item_jobs_root = Path(item_jobs_root) if item_jobs_root else self.out / 'item-jobs'
+        self.item_jobs_provider = item_jobs_provider
+        self.provider_cache = Path(provider_cache) if provider_cache else DEFAULT_PROVIDER_CACHE
+        self.provider_env = Path(provider_env) if provider_env else None
+        self.generator_root = Path(generator_root) if generator_root else item_jobs.GENERATOR_ROOT
+        self.runtime_lock = Path(runtime_lock) if runtime_lock else DEFAULT_RUNTIME_LOCK
+        self.catalog_root = (Path(catalog_root) if catalog_root
+                             else self.item_jobs_root / 'object_catalog')
+        self.item_jobs = None
+        self.item_runner = None
+        self.item_jobs_state = None
+        self.item_jobs_revision = None
+        self.item_jobs_unhealthy = False
+        self.catalog_revision = None
+        self.active_type_ids = []
         self._create_worker(self.session_out)
+
+    def _open_item_jobs(self):
+        """Own one job store and one runner thread. Generation and rendering stay in children."""
+        # Phase 4 seeds the persistent catalog root. Until then a fresh writable root reads
+        # the packaged catalog for display and admission only, and nothing writes there.
+        if not (self.catalog_root / 'active/catalog.json').is_file():
+            print(f'Item jobs: runtime catalog root holds no active manifest, reading the '
+                  f'packaged catalog read-only: {object_catalog.CATALOG_ROOT}', flush=True)
+            self.catalog_root = object_catalog.CATALOG_ROOT
+        if not (self.provider_cache / 'cache').is_dir():
+            print(f'Item jobs: no provider cache at {self.provider_cache}/cache. Every new job '
+                  f'stops at operator_required with provider_cache_miss.', flush=True)
+        catalog = object_catalog.load_catalog(self.catalog_root)
+        self.catalog_revision = catalog['catalog_revision']
+        self.active_type_ids = list(catalog['active_type_ids'])
+        self.item_jobs_root.mkdir(parents=True, exist_ok=True)
+        # The heavy worker takes this lock. The service only guarantees a writable parent.
+        self.runtime_lock.parent.mkdir(parents=True, exist_ok=True)
+        self.item_jobs = item_jobs.ItemJobStore(self.item_jobs_root,
+                                                provider_mode=self.item_jobs_provider)
+        self.item_runner = item_jobs.ItemJobRunner(self.item_jobs, self._item_commands(),
+                                                   runtime_lock_path=self.runtime_lock)
+        self.item_runner.start()
+        self.item_jobs_state = self._item_jobs_packet()
+        self.item_jobs_revision = self.item_jobs.revision
+
+    def _item_commands(self):
+        """Fake mode runs fixtures. Cached and paid modes never pass an automatic --live."""
+        if self.item_jobs_provider == 'fake':
+            return item_jobs.fake_commands()
+        # The service passes the credential FILE PATH to the generation child only. It never
+        # opens that file and never puts a provider value into its own environment.
+        return item_jobs.real_commands(
+            mode=self.item_jobs_provider, provider_cache=self.provider_cache,
+            runtime_lock=self.runtime_lock, generator_root=self.generator_root,
+            env_file=self.provider_env,
+            source_revision=os.environ.get('CINTA_SOURCE_REVISION'))
+
+    def _close_item_jobs(self):
+        if self.item_runner is not None:
+            if not self.item_runner.stop():
+                # An unconfirmed runner thread may still write. Keep the store and the
+                # writer lock, and never report a clean stop.
+                self.item_jobs_unhealthy = True
+                print('Item jobs: the runner thread did not confirm its exit. The job store '
+                      'and its writer lock stay open.', flush=True)
+                return
+            self.item_runner = None
+        if self.item_jobs is not None:
+            self.item_jobs.close()
+            self.item_jobs = None
+
+    def _item_jobs_packet(self):
+        return {'summaries': self.item_jobs.summaries(),
+                'limits': {'max_queued_jobs': item_jobs.MAX_QUEUED_JOBS,
+                           'max_retained_open_jobs': item_jobs.MAX_RETAINED_OPEN_JOBS,
+                           'max_summaries': item_jobs.MAX_SUMMARIES,
+                           'max_attempts': item_jobs.MAX_ATTEMPTS},
+                'provider_mode': self.item_jobs.provider_mode,
+                'catalog_revision': self.catalog_revision,
+                'active_type_ids': list(self.active_type_ids)}
+
+    def _read_preview(self, request_id, name):
+        """Read one verified preview on a worker thread. The HTTP loop never touches disk."""
+        job = self.item_jobs.get(request_id)
+        return item_jobs.read_preview(job, self.item_jobs.job_dir(job['request_id']), name)
+
+    @staticmethod
+    def _require_origin(request):
+        """Every item job POST needs a present Origin. The middleware validates its value."""
+        if request.headers.get('Origin'):
+            return None
+        return web.json_response({'ok': False, 'error_code': 'origin_required'}, status=403)
+
+    async def _item_body(self, request):
+        """Read one bounded JSON object from an item job POST."""
+        refused = self._require_origin(request)
+        if refused is not None:
+            return refused
+        try:
+            body = json.loads(await request.text())
+        except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+            return _item_job_response('invalid_request')
+        return body if isinstance(body, dict) else _item_job_response('invalid_request')
+
+    async def _item_action(self, request, action, *arguments):
+        refused = self._require_origin(request)
+        if refused is not None:
+            return refused
+        try:
+            job = await asyncio.to_thread(action, request.match_info['request_id'], *arguments)
+        except item_jobs.ItemJobError as error:
+            return _item_job_response(error.code)
+        return web.json_response({'ok': True, 'job': self.item_jobs.summary(job)})
+
+    async def submit_item_job(self, request):
+        body = await self._item_body(request)
+        if isinstance(body, web.Response):
+            return body
+        try:
+            job, created = await asyncio.to_thread(
+                self.item_jobs.submit, body, self.catalog_revision)
+        except item_jobs.ItemJobError as error:
+            return _item_job_response(error.code)
+        return web.json_response({'ok': True, 'created': created,
+                                  'job': self.item_jobs.summary(job)},
+                                 status=201 if created else 200)
+
+    async def list_item_jobs(self, request):
+        return web.json_response({'ok': True, **await asyncio.to_thread(self._item_jobs_packet)})
+
+    async def get_item_job(self, request):
+        try:
+            job = await asyncio.to_thread(self.item_jobs.get, request.match_info['request_id'])
+        except item_jobs.ItemJobError as error:
+            return _item_job_response(error.code)
+        return web.json_response({'ok': True, 'job': _public_job(job)})
+
+    async def resolve_item_provider(self, request):
+        body = await self._item_body(request)
+        if isinstance(body, web.Response):
+            return body
+        return await self._item_action(request, self.item_runner.resolve_provider,
+                                       body.get('action'))
+
+    async def resolve_item_replacement(self, request):
+        # Phase 4 owns replacement. The conflict stays visible and unchanged until then.
+        return await self._item_action(request, self.item_runner.resolve_replacement)
+
+    async def confirm_item_cleanup(self, request):
+        return await self._item_action(request, self.item_runner.confirm_cleanup)
+
+    async def item_job_preview(self, request):
+        try:
+            data, content_type = await asyncio.to_thread(
+                self._read_preview, request.match_info['request_id'], request.match_info['name'])
+        except item_jobs.ItemJobError as error:
+            # No message repeats a host path.
+            return _item_job_response(error.code)
+        return web.Response(body=data, content_type=content_type)
+
+    async def wall_of_fame(self, request):
+        try:
+            offset = int(request.query.get('offset', 0))
+            limit = int(request.query.get('limit', object_catalog.MAX_WALL_PAGE))
+        except (TypeError, ValueError):
+            return _item_job_response('invalid_request')
+        try:
+            page = await asyncio.to_thread(object_catalog.wall_of_fame_page,
+                                           self.catalog_root, offset, limit)
+        except object_catalog.CatalogError:
+            return _item_job_response('invalid_request')
+        return web.json_response({'ok': True, **page})
 
     def _advance_command_epoch(self, now=None):
         if not self.continuous:
@@ -419,6 +650,9 @@ class LiveService:
         if self.continuous:
             packet.update(command_epoch=self.command_epoch,
                           command_epoch_seconds=self.command_epoch_seconds)
+        item_jobs_state = getattr(self, 'item_jobs_state', None)
+        if item_jobs_state is not None:
+            packet['item_jobs'] = item_jobs_state
         return packet
 
     def _create_worker(self, out):
@@ -544,6 +778,7 @@ class LiveService:
         self.profile_written = True
 
     async def lifecycle(self, app):
+        await asyncio.to_thread(self._open_item_jobs)
         self.process.start()
         self.task = asyncio.create_task(self.pump())
         try:
@@ -558,7 +793,11 @@ class LiveService:
                     try:
                         self._write_service_profile()
                     finally:
-                        self._close_queues()
+                        try:
+                            # Stopping the runner thread terminates its owned process groups.
+                            await asyncio.to_thread(self._close_item_jobs)
+                        finally:
+                            self._close_queues()
 
     async def shutdown(self, app):
         if self.stop is not None:
@@ -684,6 +923,11 @@ class LiveService:
                                         'error': 'The engine stopped before this injection completed.'}
                     await self.broadcast(entry['ack'])
                     entry['ack_sent'] = True
+            if self.item_jobs is not None and self.item_jobs.revision != self.item_jobs_revision:
+                # A cheap counter comparison keeps the queue in this loop without a second one.
+                self.item_jobs_revision = self.item_jobs.revision
+                self.item_jobs_state = await asyncio.to_thread(self._item_jobs_packet)
+                changed = True
             now = time.monotonic()
             epoch_changed = self._advance_command_epoch(now)
             heartbeat_due = self.continuous and now - self.last_state_broadcast >= 1.0
@@ -818,8 +1062,21 @@ class LiveService:
               and time.monotonic() - self.last_state_broadcast > PUMP_STALE_SECONDS):
             status = 'failed'
             error = 'The service state pump stopped publishing application heartbeats.'
-        return web.json_response({'status': status, 'session_id': self.state.get('session_id'),
-                                  'error': error}, status=503 if status == 'failed' else 200)
+        packet = {'status': status, 'session_id': self.state.get('session_id'), 'error': error}
+        # Additive queue liveness. A valid temporary child is never an extra engine.
+        runner = getattr(self, 'item_runner', None)
+        queue = runner.health() if runner is not None else None
+        if queue is not None:
+            queue['unhealthy_shutdown'] = (queue['unhealthy_shutdown']
+                                           or getattr(self, 'item_jobs_unhealthy', False))
+            packet['item_jobs'] = queue
+            if not queue['runner_thread_alive'] or queue['unhealthy_shutdown']:
+                packet['status'] = status = 'failed'
+                packet['error'] = error or 'The item job runner thread stopped.'
+            elif queue['faults']:
+                packet['status'] = status = 'failed'
+                packet['error'] = 'The item job runner reported ' + str(queue['last_fault']) + '.'
+        return web.json_response(packet, status=503 if status == 'failed' else 200)
 
     async def state_handler(self, request):
         self._advance_command_epoch()
@@ -967,7 +1224,8 @@ class LiveService:
         return ws
 
 
-def main():
+def build_parser():
+    """One parser. The documented launch commands are tested against it."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--host', choices=['127.0.0.1', '0.0.0.0'], default='127.0.0.1')
     parser.add_argument('--port', type=int, default=8890)
@@ -977,6 +1235,27 @@ def main():
                         help='Exact public HTTP or HTTPS Origin. Repeat for more than one origin.')
     parser.add_argument('--preset', type=Path, default=HERE / 'configs/default_demo.json')
     parser.add_argument('--out', type=Path, default=HERE / 'runs' / time.strftime('live-%Y%m%d-%H%M%S'))
+    parser.add_argument('--item-jobs-root', type=Path, default=None,
+                        help='Stable writable job root. Default: <out>/item-jobs.')
+    parser.add_argument('--object-catalog-root', type=Path, default=None,
+                        help='Runtime catalog root. Default: <item-jobs-root>/object_catalog.')
+    parser.add_argument('--item-jobs-provider', choices=list(item_jobs.PROVIDER_MODES),
+                        default='cached',
+                        help='cached and paid never pass an automatic --live. fake is local only.')
+    parser.add_argument('--item-jobs-provider-cache', type=Path, default=None,
+                        help='Provider cache root, layout <root>/cache/<request digest>.json. '
+                             'Default: the packaged research results, used read-only.')
+    parser.add_argument('--item-jobs-provider-env', type=Path, default=None,
+                        help='Read-only credential file. Required for paid, never opened otherwise.')
+    parser.add_argument('--item-jobs-generator-root', type=Path, default=item_jobs.GENERATOR_ROOT,
+                        help='Directory holding probe.py and render_suite.py.')
+    parser.add_argument('--item-jobs-runtime-lock', type=Path, default=DEFAULT_RUNTIME_LOCK,
+                        help='Shared render lock path. A deployment passes a writable path.')
+    return parser
+
+
+def main():
+    parser = build_parser()
     args = parser.parse_args()
     if not 1 <= args.port <= 65535:
         parser.error('Port must be between 1 and 65535.')
@@ -986,7 +1265,16 @@ def main():
         _configured_source_revision()
     except ValueError as exc:
         parser.error(str(exc))
-    service = LiveService(args.preset.resolve(), args.out.resolve())
+    item_jobs_root = (args.item_jobs_root or args.out / 'item-jobs').resolve()
+    _validate_item_job_arguments(parser, args, item_jobs_root)
+    service = LiveService(
+        args.preset.resolve(), args.out.resolve(), item_jobs_root=item_jobs_root,
+        item_jobs_provider=args.item_jobs_provider,
+        catalog_root=args.object_catalog_root.resolve() if args.object_catalog_root else None,
+        provider_cache=args.item_jobs_provider_cache.resolve() if args.item_jobs_provider_cache else None,
+        provider_env=args.item_jobs_provider_env.resolve() if args.item_jobs_provider_env else None,
+        generator_root=args.item_jobs_generator_root.resolve(),
+        runtime_lock=args.item_jobs_runtime_lock.resolve())
 
     async def page(request):
         return web.FileResponse(HERE / 'live_web/index.html')
@@ -1005,6 +1293,14 @@ def main():
                     web.get('/timeline.mjs', timeline), web.get('/health', service.health),
                     web.get('/state', service.state_handler), web.get('/ws', service.websocket),
                     web.post('/restart', service.restart),
+                    web.post('/item-jobs', service.submit_item_job),
+                    web.get('/item-jobs', service.list_item_jobs),
+                    web.get('/item-jobs/{request_id}', service.get_item_job),
+                    web.post('/item-jobs/{request_id}/resolve-provider', service.resolve_item_provider),
+                    web.post('/item-jobs/{request_id}/resolve-replacement', service.resolve_item_replacement),
+                    web.post('/item-jobs/{request_id}/confirm-cleanup', service.confirm_item_cleanup),
+                    web.get('/item-jobs/{request_id}/previews/{name}', service.item_job_preview),
+                    web.get('/wall-of-fame', service.wall_of_fame),
                     # The 3D view reuses the replay viewer's vendored three.js build (no network requests).
                     web.static('/vendor', HERE / 'web/vendor', follow_symlinks=False),
                     # Blender bean/machine GLBs plus the vendored GLTFLoader used by the 3D view.

@@ -559,8 +559,8 @@ def _proposal_provenance(value: Any) -> dict[str, Any]:
 
 
 def _load_generator_probe():
-    root = Path(__file__).resolve().parents[2]
-    path = root / "thoughts/taras/research/coffee-quality/object-generation/probe.py"
+    # One generator. The service and this physics proposal path load the same module.
+    path = Path(__file__).resolve().parent / "generator" / "probe.py"
     spec = importlib.util.spec_from_file_location("coffee_object_generator_probe", path)
     if spec is None or spec.loader is None:
         raise RuntimeError("object generator probe cannot be loaded")
