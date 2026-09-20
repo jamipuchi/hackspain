@@ -239,6 +239,8 @@ def item_service(test, provider_mode='cached'):
     value = service()
     value.item_jobs_root = Path(directory.name)
     value.item_jobs_provider = provider_mode
+    # The real constructor always sets this, and every packet publishes it.
+    value.item_jobs_quality_gate = 'strict'
     value.provider_cache = value.item_jobs_root / 'provider-cache'
     # A path that never exists. Opening it would raise, so any read is visible.
     value.provider_env = value.item_jobs_root.parent / 'absent-secret.env'
@@ -2598,14 +2600,77 @@ class ActiveBundleStartupTest(unittest.TestCase):
         health = json.loads(asyncio.run(value.health(None)).text)
         self.assertIsNone(health['active_bundle_sha256'])
         self.assertIs(health['catalog_model_compatible'], True)
-        with patch.object(item_jobs.ItemJobRunner, 'start'), \
-                contextlib.redirect_stdout(io.StringIO()):
-            value._open_item_jobs()
-        self.addCleanup(value._close_item_jobs)
+        runner = self.open_queue(value)
+        # No bundle, so nothing can be activated and nothing can be reported.
+        self.assertIsNone(runner.activator)
+        self.assertIsNone(runner.active_bundle_sha256())
+        self.assertNotEqual(runner.record_activation, value.record)
         self.assertTrue((value.item_jobs_root / 'writer.lock').is_file())
         self.assertEqual(sorted(path.name for path in value.item_jobs_root.iterdir()
                                 if path.name in ('active', 'history')), [])
         self.assertEqual(value.catalog_root, object_catalog.PACKAGED_CATALOG_ROOT)
+
+    def open_queue(self, value):
+        with patch.object(item_jobs.ItemJobRunner, 'start'), \
+                contextlib.redirect_stdout(io.StringIO()):
+            value._open_item_jobs()
+        self.addCleanup(value._close_item_jobs)
+        return value.item_runner
+
+    def seeded_service(self, quality_gate='strict'):
+        """Seed bundle zero directly, so this process never rebinds its loaded profiles."""
+        preset = json.loads(self.preset.read_text())
+        model = self.preset.parent / 'live_green_arabica.joblib'
+        files = object_catalog.seed_bundle_files(
+            object_catalog.PACKAGED_CATALOG_ROOT, model, model.with_suffix('.manifest.json'),
+            preset, {'reject_classes': live.default_reject_classes(self.packaged, preset)},
+            live._bundle_sources())
+        digest = object_catalog.publish_bundle(self.root / 'active' / 'bundles', files)
+        object_catalog.write_active_pointer(self.root / 'active', digest)
+        bundle = self.root / 'active' / 'bundles' / digest
+        return LiveService(bundle / object_catalog.BUNDLE_PRESET, self.work / 'out',
+                           item_jobs_root=self.root, item_jobs_provider='fake',
+                           active_bundle=bundle, quality_gate=quality_gate)
+
+    def test_a_seeded_service_wires_its_activator_pointer_and_reporting_path(self):
+        """The wiring, the published gate, and one real reporting round trip."""
+        value = self.seeded_service()
+        runner = self.open_queue(value)
+
+        self.assertEqual(value.activate, runner.activator)
+        self.assertEqual(value.active_bundle.name, runner.active_bundle_sha256())
+        # The one construction cycle is closed after both objects exist.
+        self.assertEqual(value.item_runner.record_activation, value.record)
+        self.assertEqual('strict', value.item_jobs_quality_gate)
+        health = json.loads(asyncio.run(value.health(None)).text)
+        self.assertEqual('strict', health['item_jobs_quality_gate'])
+        self.assertEqual('strict', value._item_jobs_packet()['item_jobs_quality_gate'])
+
+        job, _ = value.item_jobs.submit(
+            {'request_id': str(uuid.uuid4()), 'description': 'A small brass star token',
+             'expected_catalog_revision': value.catalog_revision}, value.catalog_revision)
+        value.record(job['request_id'], activation=live.activation_block(
+            phase='draining', active_objects=2))
+        stored = value.item_jobs.get(job['request_id'])
+
+        self.assertEqual('draining', stored['activation']['phase'])
+        self.assertEqual(2, stored['activation']['active_objects'])
+        self.assertEqual(sorted(live.ACTIVATION_MEMBERS), sorted(stored['activation']))
+
+    def test_the_demo_quality_gate_reaches_the_service_and_is_published(self):
+        self.assertEqual('strict', self.arguments().item_jobs_quality_gate)
+        self.assertEqual('demo',
+                         self.arguments('--item-jobs-quality-gate', 'demo').item_jobs_quality_gate)
+
+        value = self.seeded_service(quality_gate='demo')
+        self.open_queue(value)
+
+        self.assertEqual('demo', value.item_jobs_quality_gate)
+        # The runner is what passes the flag to the trainer child.
+        self.assertEqual('demo', value.item_runner.quality_gate)
+        health = json.loads(asyncio.run(value.health(None)).text)
+        self.assertEqual('demo', health['item_jobs_quality_gate'])
+        self.assertEqual('demo', value._item_jobs_packet()['item_jobs_quality_gate'])
 
     def test_an_object_catalog_root_contradicts_an_item_jobs_root(self):
         arguments = self.arguments('--item-jobs-root', self.root,

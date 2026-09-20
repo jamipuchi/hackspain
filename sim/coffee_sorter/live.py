@@ -760,7 +760,7 @@ class LiveService:
     def __init__(self, preset, out, *, item_jobs_root=None, item_jobs_provider='cached',
                  catalog_root=None, provider_cache=None, provider_env=None,
                  generator_root=None, runtime_lock=None, physics_replay=None,
-                 active_bundle=None, record=None):
+                 active_bundle=None, record=None, quality_gate='strict'):
         self.ctx = mp.get_context('spawn')
         # The one reporting seam. The job runner injects it, so the activator never
         # touches the queue store. Without it the activation still runs and reports nothing.
@@ -798,6 +798,9 @@ class LiveService:
         # The item job queue owns its own store, runner thread, and child processes.
         self.item_jobs_root = Path(item_jobs_root) if item_jobs_root else self.out / 'item-jobs'
         self.item_jobs_provider = item_jobs_provider
+        # The accepted demonstration switch. It is always published, so nobody can read a
+        # demo run as a strict one.
+        self.item_jobs_quality_gate = quality_gate
         self.provider_cache = Path(provider_cache) if provider_cache else DEFAULT_PROVIDER_CACHE
         self.provider_env = Path(provider_env) if provider_env else None
         self.generator_root = Path(generator_root) if generator_root else item_jobs.GENERATOR_ROOT
@@ -839,12 +842,26 @@ class LiveService:
         # The heavy worker takes this lock. The service only guarantees a writable parent.
         self.runtime_lock.parent.mkdir(parents=True, exist_ok=True)
         self.item_jobs = item_jobs.ItemJobStore(store_root, provider_mode=self.item_jobs_provider)
+        # Only a service that owns a verified bundle can activate. Without one the queue
+        # keeps a validated candidate waiting, exactly as before.
+        activation = self.active_bundle is not None
         self.item_runner = item_jobs.ItemJobRunner(
             self.item_jobs, self._item_commands(), runtime_lock_path=self.runtime_lock,
-            catalog_provider=self._active_catalog, policy_provider=self._item_jobs_policy)
+            catalog_provider=self._active_catalog, policy_provider=self._item_jobs_policy,
+            activator=self.activate if activation else None,
+            active_bundle_sha256=self._active_bundle_sha256 if activation else None,
+            quality_gate=self.item_jobs_quality_gate)
+        if activation:
+            # The runner needs the service's activator and the activator needs the
+            # runner's reporting path. That one cycle is closed here, after both exist.
+            self.record = self.item_runner.record_activation
         self.item_runner.start()
         self.item_jobs_state = self._item_jobs_packet()
         self.item_jobs_revision = self.item_jobs.revision
+
+    def _active_bundle_sha256(self):
+        """The sha the pointer names. The queue reads it for an exact activation retry."""
+        return _pointer_bundle(self.item_jobs_root / 'active')
 
     def _refresh_active_identity(self):
         """Republish the identity of the bundle the pointer names right now.
@@ -919,6 +936,7 @@ class LiveService:
                            'max_summaries': item_jobs.MAX_SUMMARIES,
                            'max_attempts': item_jobs.MAX_ATTEMPTS},
                 'provider_mode': self.item_jobs.provider_mode,
+                'item_jobs_quality_gate': self.item_jobs_quality_gate,
                 'catalog_revision': self.catalog_revision,
                 'active_type_ids': list(self.active_type_ids)}
 
@@ -1827,7 +1845,8 @@ class LiveService:
         # Additive bundle identity. Null means that the service runs without an active bundle.
         bundle = getattr(self, 'active_bundle', None)
         packet.update(active_bundle_sha256=bundle.name if bundle else None,
-                      catalog_model_compatible=getattr(self, 'catalog_model_compatible', None))
+                      catalog_model_compatible=getattr(self, 'catalog_model_compatible', None),
+                      item_jobs_quality_gate=getattr(self, 'item_jobs_quality_gate', 'strict'))
         # Additive queue liveness. A valid temporary child is never an extra engine.
         runner = getattr(self, 'item_runner', None)
         queue = runner.health() if runner is not None else None
@@ -2010,6 +2029,10 @@ def build_parser():
     parser.add_argument('--item-jobs-provider', choices=list(item_jobs.PROVIDER_MODES),
                         default='cached',
                         help='cached and paid never pass an automatic --live. fake is local only.')
+    parser.add_argument('--item-jobs-quality-gate', choices=('strict', 'demo'),
+                        default='strict',
+                        help='strict keeps every candidate gate. demo is the accepted '
+                             'demonstration switch. The published value always states which.')
     parser.add_argument('--item-jobs-provider-cache', type=Path, default=None,
                         help='Provider cache root, layout <root>/cache/<request digest>.json. '
                              'Default: the packaged research results, used read-only.')
@@ -2051,7 +2074,7 @@ def build_service(parser, args):
         runtime_lock=args.item_jobs_runtime_lock.resolve(),
         physics_replay=args.item_jobs_physics_replay.resolve()
         if args.item_jobs_physics_replay else None,
-        active_bundle=active_bundle)
+        active_bundle=active_bundle, quality_gate=args.item_jobs_quality_gate)
 
 
 def main():
