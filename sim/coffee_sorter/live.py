@@ -220,6 +220,9 @@ def _validate_item_job_arguments(parser, args, item_jobs_root):
         parser.error('--item-jobs-provider fake requires the loopback host 127.0.0.1.')
     if mode == 'paid' and args.item_jobs_provider_env is None:
         parser.error('--item-jobs-provider paid requires --item-jobs-provider-env.')
+    if args.item_jobs_root is not None and args.object_catalog_root is not None:
+        parser.error('--object-catalog-root cannot be used with --item-jobs-root: the '
+                     'active bundle under that root selects the catalog.')
     # An explicitly named path that does not exist is a contradiction, not a default.
     for name, value, check in (
             ('--item-jobs-provider-cache', args.item_jobs_provider_cache, 'is_dir'),
@@ -379,19 +382,26 @@ def bind_active_bundle(preset_path, item_jobs_root):
     after the validator child accepts that seed. profiles loads its catalog once, at its
     import, from the root exported here. It must not exist yet, and the caller loads the
     bundled preset only afterwards. The engine worker inherits the export through spawn.
+
+    A seeded root already carries its own catalog, preset, and model. `--preset` is not
+    read again there, so a missing or malformed file never breaks a plain restart.
     """
     if 'profiles' in sys.modules:
         raise RuntimeError('profiles loaded before the active bundle catalog was bound.')
     preset_path, item_jobs_root = Path(preset_path), Path(item_jobs_root)
-    preset = json.loads(preset_path.read_text())
-    model_path = resolve_model_path(preset, preset_path, HERE)
-    packaged = object_catalog.load_catalog(object_catalog.PACKAGED_CATALOG_ROOT)
-    bundle = object_catalog.ensure_active_bundle(
-        item_jobs_root / 'active', catalog_root=object_catalog.PACKAGED_CATALOG_ROOT,
-        model_path=model_path, model_manifest_path=model_path.with_suffix('.manifest.json'),
-        preset=preset, policy={'reject_classes': default_reject_classes(packaged, preset)},
-        sources=_bundle_sources(), validate=validate_bundle_child,
-        history_root=item_jobs_root / 'history')
+    active_root = item_jobs_root / 'active'
+    if os.path.lexists(object_catalog.active_pointer_path(active_root)):
+        bundle = object_catalog.resolve_active_bundle(active_root)
+    else:
+        preset = json.loads(preset_path.read_text())
+        model_path = resolve_model_path(preset, preset_path, HERE)
+        packaged = object_catalog.load_catalog(object_catalog.PACKAGED_CATALOG_ROOT)
+        bundle = object_catalog.ensure_active_bundle(
+            active_root, catalog_root=object_catalog.PACKAGED_CATALOG_ROOT,
+            model_path=model_path, model_manifest_path=model_path.with_suffix('.manifest.json'),
+            preset=preset, policy={'reject_classes': default_reject_classes(packaged, preset)},
+            sources=_bundle_sources(), validate=validate_bundle_child,
+            history_root=item_jobs_root / 'history')
     os.environ[object_catalog.CATALOG_ROOT_ENV] = str(bundle / 'catalog')
     return bundle
 
@@ -1568,9 +1578,6 @@ def build_service(parser, args):
     _validate_item_job_arguments(parser, args, item_jobs_root)
     preset_path, active_bundle = args.preset.resolve(), None
     if args.item_jobs_root is not None:
-        if args.object_catalog_root is not None:
-            parser.error('--object-catalog-root cannot be used with --item-jobs-root: the '
-                         'active bundle under that root selects the catalog.')
         try:
             active_bundle = bind_active_bundle(preset_path, item_jobs_root)
         except object_catalog.CatalogError as error:

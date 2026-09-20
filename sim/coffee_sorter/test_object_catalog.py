@@ -4,11 +4,14 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
 import shutil
+import stat
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import object_catalog
 from object_catalog import (
@@ -1148,6 +1151,33 @@ class WriteCatalogGuardTest(CatalogRootTest):
             object_catalog._publish_staged(target, {"active/catalog.json": b"{}"})
         self.assertEqual(before, sorted(item.name for item in target.rglob("*")))
         self.assertEqual([target.name], [item.name for item in target.parent.iterdir()])
+
+
+class AtomicReplaceTest(unittest.TestCase):
+    """The seed marker and the active pointer both commit through this one helper."""
+
+    def test_the_rename_is_made_durable_by_fsyncing_the_directory(self):
+        order = []
+        real_fsync, real_replace = os.fsync, os.replace
+
+        def fsync(descriptor):
+            kind = "directory" if stat.S_ISDIR(os.fstat(descriptor).st_mode) else "file"
+            order.append(kind)
+            return real_fsync(descriptor)
+
+        def replace(source, target):
+            order.append("replace")
+            return real_replace(source, target)
+
+        with tempfile.TemporaryDirectory() as raw:
+            path = Path(raw) / "pointer.json"
+            with patch.object(os, "fsync", fsync), patch.object(os, "replace", replace):
+                object_catalog._replace_atomically(path, b'{"ok": true}')
+
+            # The bytes alone are not enough. The name itself lives in the directory.
+            self.assertEqual(["file", "replace", "directory"], order)
+            self.assertEqual(b'{"ok": true}', path.read_bytes())
+            self.assertEqual(["pointer.json"], [item.name for item in Path(raw).iterdir()])
 
 
 class RepoWallOfFameTest(unittest.TestCase):

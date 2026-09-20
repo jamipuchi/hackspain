@@ -742,7 +742,7 @@ def ensure_active_bundle(active_root: Path, *, catalog_root: Path, model_path: P
     """
     active_root = Path(active_root)
     marker = active_root / SEED_MARKER
-    if not os.path.lexists(active_root / "active" / "catalog.json"):
+    if not os.path.lexists(active_pointer_path(active_root)):
         if history_root is not None and os.path.lexists(Path(history_root) / "activations.jsonl"):
             raise CatalogError("the activation history exists but the active pointer is lost")
         files = seed_bundle_files(catalog_root, model_path, model_manifest_path,
@@ -755,11 +755,22 @@ def ensure_active_bundle(active_root: Path, *, catalog_root: Path, model_path: P
         active_root.mkdir(parents=True, exist_ok=True)
         _replace_atomically(marker, _pretty({"bundle_sha256": digest}))
         write_active_pointer(active_root, publish_bundle(active_root / "bundles", files))
+    return resolve_active_bundle(active_root)
+
+
+def active_pointer_path(active_root: Path) -> Path:
+    """The one file that commits a root to a bundle."""
+    return Path(active_root) / "active" / "catalog.json"
+
+
+def resolve_active_bundle(active_root: Path) -> Path:
+    """Return the bundle the pointer already names. No seed input is needed here."""
+    active_root = Path(active_root)
     bundle_sha256 = read_active(active_root)["active_bundle_sha256"]
     if bundle_sha256 is None:
         raise CatalogError("the active pointer names no bundle")
     # The pointer is the commit, so a marker that outlived it is a finished transaction.
-    marker.unlink(missing_ok=True)
+    (active_root / SEED_MARKER).unlink(missing_ok=True)
     return active_root / "bundles" / bundle_sha256
 
 
@@ -929,7 +940,12 @@ def _host_name() -> str | None:
 
 
 def _replace_atomically(path: Path, data: bytes) -> None:
-    """One temp file in the same directory, flushed to disk, then one rename."""
+    """One temp file in the same directory, flushed to disk, then one durable rename.
+
+    The seed marker and the active pointer both come through here. Flushing the bytes is
+    not enough: the rename itself lives in the containing directory, so that directory is
+    fsynced too, or a power loss could leave the name behind after the data is safe.
+    """
     handle = tempfile.NamedTemporaryFile("wb", dir=path.parent, prefix=".tmp-", delete=False)
     try:
         handle.write(data)
@@ -937,6 +953,11 @@ def _replace_atomically(path: Path, data: bytes) -> None:
         os.fsync(handle.fileno())
         handle.close()
         os.replace(handle.name, path)
+        directory = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
     except BaseException:
         handle.close()
         try:

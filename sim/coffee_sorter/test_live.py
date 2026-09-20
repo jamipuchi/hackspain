@@ -259,9 +259,12 @@ def item_service(test, provider_mode='cached'):
 
 
 def item_arguments(**overrides):
-    values = {'host': '127.0.0.1', 'item_jobs_provider': 'cached', 'item_jobs_provider_cache': None,
+    # Every field the real parser always supplies, so the validator sees a whole record.
+    values = {'host': '127.0.0.1', 'item_jobs_provider': 'cached',
+              'item_jobs_provider_cache': None,
               'item_jobs_provider_env': None, 'item_jobs_physics_replay': None,
-              'item_jobs_generator_root': item_jobs.GENERATOR_ROOT}
+              'item_jobs_generator_root': item_jobs.GENERATOR_ROOT,
+              'item_jobs_root': None, 'object_catalog_root': None}
     return types.SimpleNamespace(**{**values, **overrides})
 
 
@@ -1653,10 +1656,50 @@ class ActiveBundleStartupTest(unittest.TestCase):
         self.assertEqual(value.catalog_root, object_catalog.PACKAGED_CATALOG_ROOT)
 
     def test_an_object_catalog_root_contradicts_an_item_jobs_root(self):
+        arguments = self.arguments('--item-jobs-root', self.root,
+                                   '--object-catalog-root', self.work / 'catalog')
         with self.assertRaisesRegex(ValueError, '--object-catalog-root cannot be used'):
-            live.build_service(StubParser(), self.arguments(
-                '--item-jobs-root', self.root, '--object-catalog-root', self.work / 'catalog'))
+            live.build_service(StubParser(), arguments)
+        # The contradiction is refused with the other item job rules, before any startup.
+        with self.assertRaisesRegex(ValueError, '--object-catalog-root cannot be used'):
+            live._validate_item_job_arguments(StubParser(), arguments, self.root)
         self.assertFalse(self.root.exists())
+
+    def test_the_source_revision_is_deployment_controlled_and_never_asked_of_the_host(self):
+        """With the variable absent the field is None, and no child is ever spawned."""
+        entries = ('run', 'Popen', 'call', 'check_call', 'check_output')
+
+        with patch.dict(os.environ), contextlib.ExitStack() as stack:
+            os.environ.pop('CINTA_SOURCE_REVISION', None)
+            spawns = {name: stack.enter_context(patch.object(subprocess, name))
+                      for name in entries}
+            sources = live._bundle_sources()
+
+        self.assertIsNone(sources['source_revision'])
+        for name, spawn in spawns.items():
+            self.assertFalse(spawn.called, f'subprocess.{name} was called')
+        self.assertEqual(sorted(sources['files']), sorted(live.BUNDLE_SOURCE_FILES))
+        self.assertTrue(all(len(digest) == 64 for digest in sources['files'].values()))
+
+    def test_a_seeded_root_restarts_without_reading_the_preset(self):
+        """LIVE.md: --preset matters again only for an empty root."""
+        from test_validate_bundle import continuous_bundle_files
+
+        digest = object_catalog.publish_bundle(self.root / 'active' / 'bundles',
+                                               continuous_bundle_files())
+        object_catalog.write_active_pointer(self.root / 'active', digest)
+        absent = self.work / 'gone' / 'preset.json'
+        malformed = self.work / 'malformed.json'
+        malformed.write_text('{ this is not json')
+
+        for unusable in (absent, malformed):
+            with self.subTest(preset=unusable.name), self.fresh_process_state():
+                bundle = live.bind_active_bundle(unusable, self.root)
+                self.assertEqual(bundle, self.root / 'active' / 'bundles' / digest)
+                self.assertTrue(self.exported(bundle))
+        # An empty root still reads it, so the documented sentence stays true.
+        with self.fresh_process_state(), self.assertRaises(OSError):
+            live.bind_active_bundle(absent, self.work / 'empty-root')
 
 
 def _string_values(document):
