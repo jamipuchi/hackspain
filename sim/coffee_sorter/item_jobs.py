@@ -1627,19 +1627,19 @@ def _child_environment(job_dir: Path) -> dict[str, str]:
     never land in it.
     """
     root = _child_temp_root(Path(job_dir).name)
-    try:
-        os.mkdir(root, 0o700)
-    except FileExistsError:
-        # A leftover of this job is reused. Anything else at that name is refused, and a
-        # symlink is never followed.
-        found = os.lstat(root)
-        if not stat.S_ISDIR(found.st_mode) or found.st_uid != os.getuid():
-            raise OSError("the child temporary root is not an owned directory") from None
-        os.chmod(root, 0o700)
     names = {"HOME": "home", "XDG_CACHE_HOME": "cache", "XDG_CONFIG_HOME": "config",
              "XDG_STATE_HOME": "state", "TMPDIR": "tmp"}
-    for name in names.values():
-        (root / name).mkdir(mode=0o700, exist_ok=True)
+    # The root and each of the five fixed children take the same rule, so a symlink
+    # planted at any of those names is refused and never followed.
+    for directory in (root, *(root / name for name in names.values())):
+        try:
+            os.mkdir(directory, 0o700)
+        except FileExistsError:
+            # A leftover of this job is reused. Anything else at that name is refused.
+            found = os.lstat(directory)
+            if not stat.S_ISDIR(found.st_mode) or found.st_uid != os.getuid():
+                raise OSError("a child temporary directory is not an owned directory") from None
+            os.chmod(directory, 0o700)
     return {**os.environ, **{variable: str(root / name) for variable, name in names.items()}}
 
 

@@ -758,6 +758,29 @@ class ChildTempRootTest(QueueTest):
         self.assertEqual(sorted(path.name for path in outside.iterdir()), ['keep.txt'])
         self.assertTrue(self.temp_root(request_id).is_symlink())
 
+    def test_a_symlink_planted_at_a_child_name_is_refused_and_never_followed(self):
+        """A leftover owned root is reused, so each fixed child takes the root's own rule."""
+        for name in ('home', 'tmp', 'cache'):
+            with self.subTest(child=name):
+                request_id = self.submit(description=f'Token {name}')['request_id']
+                outside = self.root / f'outside-{name}'
+                outside.mkdir()
+                root = self.temp_root(request_id)
+                root.mkdir(mode=0o700)
+                (root / name).symlink_to(outside, target_is_directory=True)
+
+                with self.assertRaises(OSError):
+                    item_jobs._child_environment(self.store.job_dir(request_id))
+
+                self.assertTrue((root / name).is_symlink())
+                self.assertEqual(list(outside.iterdir()), [])
+        # A plain file at a child name is refused by the same rule.
+        request_id = self.submit(description='Token file')['request_id']
+        self.temp_root(request_id).mkdir(mode=0o700)
+        (self.temp_root(request_id) / 'config').write_text('not a directory')
+        with self.assertRaises(OSError):
+            item_jobs._child_environment(self.store.job_dir(request_id))
+
     def test_a_confirmed_exit_cleans_the_root_on_success_and_on_failure(self):
         for scenario, final in (('ok', 'preview_ready'), ('fail_hard', 'failed')):
             with self.subTest(render=scenario):
