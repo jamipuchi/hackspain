@@ -12,6 +12,7 @@ services:
       CINTA_RUNS_ROOT: /var/lib/hackspain-coffee/runs
       CINTA_ITEM_CONTROL_ROOT: /var/lib/hackspain-coffee/item-control
       CINTA_ITEM_JOBS_PROVIDER: paid
+      CINTA_ITEM_JOBS_QUALITY_GATE: demo
       CINTA_PROVIDER_CACHE_ROOT: /var/lib/hackspain-coffee/provider-cache
       CINTA_PROVIDER_ENV: /run/secrets/cinta-provider.env
       CINTA_PHYSICS_REPLAY_ROOT: /run/cinta/provider-replay

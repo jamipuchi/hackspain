@@ -15,6 +15,7 @@ runs_root=${CINTA_RUNS_ROOT:-/var/lib/hackspain-coffee/runs}
 item_control_root=${CINTA_ITEM_CONTROL_ROOT:-/var/lib/hackspain-coffee/item-control}
 provider_cache_root=${CINTA_PROVIDER_CACHE_ROOT:-$item_control_root/provider-cache}
 provider_mode=${CINTA_ITEM_JOBS_PROVIDER:-cached}
+quality_gate=${CINTA_ITEM_JOBS_QUALITY_GATE:-strict}
 provider_env=${CINTA_PROVIDER_ENV:-}
 physics_replay_root=${CINTA_PHYSICS_REPLAY_ROOT:-/run/cinta/provider-replay}
 runtime_root=${CINTA_RUNTIME_ROOT:-/tmp/cinta-runtime}
@@ -46,6 +47,7 @@ set -- python /app/sim/coffee_sorter/live.py \
   --preset /app/sim/coffee_sorter/configs/continuous_demo.json \
   --item-jobs-root "$item_control_root" \
   --item-jobs-provider "$provider_mode" \
+  --item-jobs-quality-gate "$quality_gate" \
   --item-jobs-provider-cache "$provider_cache_root" \
   --item-jobs-physics-replay "$physics_replay_root" \
   --item-jobs-generator-root /app/sim/coffee_sorter/generator \
