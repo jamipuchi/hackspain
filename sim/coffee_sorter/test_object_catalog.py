@@ -17,17 +17,15 @@ from object_catalog import (
     archive_type,
     catalog_labels,
     catalog_revision,
-    class_spec,
     definition_sha256,
     load_catalog,
     load_definition,
-    profile_from_catalog,
     require_label_order,
     validate_type_definition,
     wall_of_fame_page,
 )
 from object_definitions import SIM_FROM_ASSET_QUATERNION_WXYZ
-from profiles import PROFILES
+from profiles import PROFILES, class_spec, profile_from_catalog
 
 # Frozen copy of the pre-migration literals in profiles.py at afad65b. Each row is
 # (name, prior, shape, size_mm, rgb, rgb_jitter, density, texture, defect, severity).
@@ -642,11 +640,30 @@ class TextureFamilyTest(unittest.TestCase):
         with self.assertRaisesRegex(CatalogError, "material family"):
             validate_type_definition(value)
 
-    def test_the_families_equal_the_tuple_that_the_engine_compiles(self):
+    def test_the_validator_and_the_engine_use_the_same_families(self):
         import re
+        import assets
+        self.assertIs(object_catalog.TEXTURE_FAMILIES, assets.FAMILIES)
         source = (Path(object_catalog.__file__).parent / "sim.py").read_text()  # importing sim needs mujoco
         families = re.search(r"for fam in \(([^)]*)\):\s*\n\s*self\.material_ids\[fam\]", source).group(1)
-        self.assertEqual(object_catalog.TEXTURE_FAMILIES, tuple(re.findall(r'"([a-z]+)"', families)))
+        self.assertEqual(set(assets.FAMILIES), set(re.findall(r'"([a-z]+)"', families)))
+
+
+class EnumFieldTypeTest(unittest.TestCase):
+    """A JSON list in an enum-like field is unhashable. It raised TypeError instead of CatalogError."""
+
+    def test_enum_like_fields_reject_non_text_values_as_catalog_errors(self):
+        fields = (("lifecycle_state",), ("provenance", "kind"), ("truth", "severity"),
+                  ("visual", "shape"), ("visual", "texture"))
+        for path in fields:
+            for bad in (["active_ready"], {"a": 1}, 5, True):
+                value = builtin_definition("good")
+                target = value
+                for key in path[:-1]:
+                    target = target[key]
+                target[path[-1]] = bad
+                with self.subTest(path=path, bad=bad), self.assertRaises(CatalogError):
+                    validate_type_definition(value)
 
 
 class CatalogRootContainmentTest(CatalogRootTest):

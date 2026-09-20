@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import numpy as np
 
-from object_catalog import load_catalog, profile_from_catalog
+from object_catalog import load_catalog
 
 # Shape families. Each maps to a body pool in the MJCF (see scene.py).
 ELLIPSOID, HALF, BOX, CAPSULE = "ellipsoid", "half", "box", "capsule"
@@ -46,6 +46,22 @@ class Profile:
 
 # Sizes are semi-axes in mm. A screen-16 bean is ~10 x 7 x 5 mm.
 BEAN = ((4.2, 5.6), (3.1, 4.0), (2.2, 2.9))
+
+def class_spec(definition) -> ClassSpec:
+    """Derive the engine adapter. The catalog definition remains the source of truth."""
+    visual, physics, truth = definition["visual"], definition["physics"], definition["truth"]
+    return ClassSpec(
+        definition["classifier_label"], definition["feed"]["prior"], visual["shape"],
+        tuple(tuple(axis) for axis in visual["size_mm"]), tuple(visual["rgb"]), visual["rgb_jitter"],
+        density=physics["density_kg_m3"], texture=visual["texture"],
+        defect=truth["defect"], severity=truth["severity"],
+    )
+
+
+def profile_from_catalog(catalog) -> Profile:
+    return Profile(catalog["profile_name"], tuple(catalog["belt_rgb"]),
+                   [class_spec(definition) for definition in catalog["definitions"]])
+
 
 # ---------------------------------------------------------------- built-in catalogs
 # green arabica is the active catalog. roasted is the static generalisation demo:

@@ -19,19 +19,17 @@ import tempfile
 from pathlib import Path
 from typing import Any, Mapping
 
+from assets import FAMILIES as TEXTURE_FAMILIES  # the material families that the engine compiles
 from object_definitions import SIM_FROM_ASSET_QUATERNION_WXYZ, SUPPORTED_PROXY_SHAPES
 
 SCHEMA_VERSION = 1
 CATALOG_ROOT = Path(__file__).resolve().parent / "object_catalog"
 MAX_WALL_PAGE = 24
-# profiles.py derives PROFILES from this module, so its adapters are imported lazily below.
 BUILTIN_SHAPES = frozenset({"ellipsoid", "half", "box", "capsule"})
 SEVERITIES = frozenset({"none", "minor", "major", "foreign"})
 ACTIVE_LIFECYCLE = "active_ready"
 ARCHIVED_LIFECYCLE = "archived"
 MASS_BASIS = "density_times_contact_proxy_volume"
-# The material families that the engine compiles (sim.py). Another name fails during spawn.
-TEXTURE_FAMILIES = ("good", "faded", "black", "sour", "insect", "roast")
 _ID_RE = re.compile(r"^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
 _LABEL_RE = re.compile(r"^[a-z][a-z0-9_]{0,79}$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -75,7 +73,7 @@ def validate_type_definition(value: Any) -> None:
     _text(value["display_name"], "display_name", 120)
     if not isinstance(value["classifier_label"], str) or not _LABEL_RE.fullmatch(value["classifier_label"]):
         raise CatalogError("classifier_label has an invalid format")
-    if value["lifecycle_state"] not in {ACTIVE_LIFECYCLE, ARCHIVED_LIFECYCLE}:
+    if not _one_of(value["lifecycle_state"], {ACTIVE_LIFECYCLE, ARCHIVED_LIFECYCLE}):
         raise CatalogError("draft or unknown lifecycle states cannot enter a catalog")
     if value["validation_status"] != "validated":
         raise CatalogError("definition validation_status must be validated")
@@ -83,7 +81,7 @@ def validate_type_definition(value: Any) -> None:
     provenance = _mapping(value["provenance"], "provenance")
     _exact(provenance, {"kind", "source", "source_sha256"}, "provenance")
     kind = provenance["kind"]
-    if kind not in {"builtin", "generated"}:
+    if not _one_of(kind, {"builtin", "generated"}):
         raise CatalogError("provenance.kind is invalid")
     _text(provenance["source"], "provenance.source", 400)
     if kind == "generated":
@@ -99,7 +97,7 @@ def validate_type_definition(value: Any) -> None:
 
     truth = _mapping(value["truth"], "truth")
     _exact(truth, {"defect", "severity"}, "truth")
-    if not isinstance(truth["defect"], bool) or truth["severity"] not in SEVERITIES:
+    if not isinstance(truth["defect"], bool) or not _one_of(truth["severity"], SEVERITIES):
         raise CatalogError("truth fields are invalid")
     if truth["defect"] == (truth["severity"] == "none"):
         raise CatalogError("truth.defect must agree with truth.severity")
@@ -107,7 +105,7 @@ def validate_type_definition(value: Any) -> None:
     visual = _mapping(value["visual"], "visual")
     _exact(visual, {"shape", "size_mm", "rgb", "rgb_jitter", "texture", "asset"}, "visual")
     allowed = BUILTIN_SHAPES if kind == "builtin" else SUPPORTED_PROXY_SHAPES
-    if visual["shape"] not in allowed:
+    if not _one_of(visual["shape"], allowed):
         raise CatalogError(f"visual.shape is not a supported {kind} contact shape")
     size = visual["size_mm"]
     if not isinstance(size, list) or len(size) != 3:
@@ -125,7 +123,7 @@ def validate_type_definition(value: Any) -> None:
         raise CatalogError("visual.rgb_jitter must be in [0, 1]")
     # The inspection camera sees a generated type as a flat colour proxy, so it has no texture.
     texture = visual["texture"]
-    if texture is not None and (kind == "generated" or texture not in TEXTURE_FAMILIES):
+    if texture is not None and (kind == "generated" or not _one_of(texture, TEXTURE_FAMILIES)):
         raise CatalogError("visual.texture must be null or a built-in engine material family")
     _validate_asset(visual["asset"], kind)
 
@@ -198,26 +196,6 @@ def load_catalog(root: Path = CATALOG_ROOT, manifest: str = "active/catalog.json
         raise CatalogError("classifier labels must be unique in one catalog")
     catalog["definitions"] = definitions
     return catalog
-
-
-def class_spec(definition: Mapping[str, Any]) -> "ClassSpec":
-    """Derive the engine adapter. The definition remains the source of truth."""
-    from profiles import ClassSpec  # profiles derives PROFILES from this module.
-
-    visual, physics, truth = definition["visual"], definition["physics"], definition["truth"]
-    return ClassSpec(
-        definition["classifier_label"], definition["feed"]["prior"], visual["shape"],
-        tuple(tuple(axis) for axis in visual["size_mm"]), tuple(visual["rgb"]), visual["rgb_jitter"],
-        density=physics["density_kg_m3"], texture=visual["texture"],
-        defect=truth["defect"], severity=truth["severity"],
-    )
-
-
-def profile_from_catalog(catalog: Mapping[str, Any]) -> "Profile":
-    from profiles import Profile  # profiles derives PROFILES from this module.
-
-    return Profile(catalog["profile_name"], tuple(catalog["belt_rgb"]),
-                   [class_spec(definition) for definition in catalog["definitions"]])
 
 
 def catalog_labels(catalog: Mapping[str, Any]) -> list[str]:
@@ -339,6 +317,11 @@ def _rfc3339_utc(value: Any, path: str) -> None:
         raise CatalogError(f"{path} must be an RFC 3339 UTC timestamp") from error
     if not isinstance(value, str) or not value.endswith("Z") or parsed.utcoffset() != datetime.timedelta(0):
         raise CatalogError(f"{path} must be an RFC 3339 UTC timestamp")
+
+
+def _one_of(value: Any, allowed) -> bool:
+    """Check the type first. A JSON list or object is unhashable and would raise TypeError."""
+    return isinstance(value, str) and value in allowed
 
 
 def _mapping(value: Any, path: str) -> Mapping[str, Any]:
