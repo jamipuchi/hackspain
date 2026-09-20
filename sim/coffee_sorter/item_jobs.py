@@ -5,10 +5,10 @@ loop and never in the engine worker. This module imports no aiohttp and no
 mujoco, so the queue is testable without a service or a simulator. Model output
 stays data: a recipe is read and hashed, never imported or executed.
 
-Provider safety is structural. `--live` is never automatic in any mode. It is
-passed only when the job record holds an unconsumed operator `new_request` and
-the service runs in paid mode, and that grant is consumed and persisted before
-the child starts. One process owns the writer lock for one job root, and one
+Provider safety is structural. Paid mode authorizes the first provider call for
+each exact job and stage after a cache miss. The grant is consumed and persisted
+before the child starts, and never restored after a response may have arrived.
+One process owns the writer lock for one job root, and one
 re-entrant lock serializes every store mutation between the HTTP handler threads
 and the runner thread.
 """
@@ -323,7 +323,7 @@ def is_open(job: Mapping[str, Any]) -> bool:
 
 
 def live_permitted(job: Mapping[str, Any], provider_mode: str, stage: str) -> bool:
-    """The only source of `--live`. There is no automatic path and no fallthrough.
+    """The only source of `--live`. There is no implicit fallback or fallthrough.
 
     A grant is bound to the stage the operator saw. An approval of a PHYSICS request can
     never authorize a GENERATION request, so one stage never spends another's grant.
@@ -716,6 +716,14 @@ class ItemJobRunner:
         """One scheduling pass. A blocked or failed job never stops a later job."""
         self._reap()
         for job in self.store.open_jobs():
+            if (self.provider_mode == "paid" and job["state"] == "operator_required"
+                    and job.get("error") == "provider_cache_miss"):
+                try:
+                    job = self.resolve_provider(job["request_id"], "new_request")
+                except ItemJobError:
+                    # A concurrent action or consumed response wins. This pass must not
+                    # schedule the stale snapshot returned by open_jobs().
+                    job = self.store.get(job["request_id"])
             with self._guard:
                 stage = self._ready_stage(job)
                 free = stage is not None and self.slots.get(stage) is None
@@ -750,7 +758,7 @@ class ItemJobRunner:
         with self._release_turn_on_fault(request_id, stage):
             attempts = {**job["attempts"], stage: job["attempts"].get(stage, 0) + 1}
             # The builder reads the record as it stands before this launch, so it can see
-            # an unconsumed operator grant. Nothing else can produce `--live`.
+            # an unconsumed stage grant. Nothing else can produce `--live`.
             pending = {**job, "attempts": attempts}
             fields: dict[str, Any] = {"attempts": attempts, "progress": None, "reason": None}
             if table["provider_backed"]:
@@ -1800,7 +1808,7 @@ def real_commands(*, mode: str, provider_cache: Path, runtime_lock: Path, preset
                   generator_root: Path = GENERATOR_ROOT, env_file: Path | None = None,
                   blender: str = "blender",
                   source_revision: str | None = None) -> dict[str, Callable[..., list[str]]]:
-    """The provider and Blender adapters. A billable call needs an explicit operator grant."""
+    """The provider and Blender adapters. A billable call needs an unconsumed stage grant."""
     return {
         "generation": lambda job, job_dir: generation_command(
             job, job_dir, mode=mode, provider_cache=provider_cache,

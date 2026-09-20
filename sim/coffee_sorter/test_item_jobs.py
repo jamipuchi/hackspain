@@ -434,27 +434,57 @@ class ProviderModeTest(QueueTest):
 class PaidModeTest(QueueTest):
     provider_mode = 'paid'
 
-    def test_new_request_permits_exactly_one_live_call_and_never_the_retry(self):
+    def test_cache_miss_automatically_permits_exactly_one_live_call_and_never_the_retry(self):
         self.scenarios({'generation': ['fail_safe', 'fail_hard', 'fail_hard']})
         log = []
         runner = self.open_runner(commands=self.recording_commands(log))
         job = self.submit()
         request_id = job['request_id']
-        self.drive(runner, lambda: self.state(request_id) == 'operator_required')
-        self.assertEqual([argv.count('--live') for argv in log], [0])
-
-        runner.resolve_provider(request_id, 'new_request')
-        self.assertEqual(self.store.get(request_id)['provider_permission'], 'new_request')
         self.drive(runner, lambda: self.state(request_id) == 'failed')
         for _ in range(10):
             runner.step()
 
         flags = [argv.count('--live') for argv in log]
+        self.assertEqual(flags[0], 0)
         self.assertEqual(sum(flags), 1)
         self.assertEqual(flags[1], 1)
         self.assertEqual(flags[2:], [0] * len(flags[2:]))
         # The grant is consumed before the child can exist.
         self.assertIsNone(self.store.get(request_id)['provider_permission'])
+
+    def test_stored_cached_mode_miss_resumes_the_same_job_in_paid_mode(self):
+        self.scenarios({'generation': ['ok']})
+        log = []
+        runner = self.open_runner(commands=self.recording_commands(log))
+        job = self.submit()
+        request_id = job['request_id']
+        self.store.transition(request_id, 'operator_required', error='provider_cache_miss',
+                              blocked_stage='generation')
+
+        self.drive(runner, lambda: self.state(request_id) == 'preview_ready')
+
+        self.assertEqual(self.store.get(request_id)['request_id'], request_id)
+        self.assertEqual([argv.count('--live') for argv in log], [1])
+
+    def test_completed_or_uncertain_stage_never_receives_an_automatic_grant(self):
+        log = []
+        runner = self.open_runner(commands=self.recording_commands(log))
+        completed = self.submit(description='Completed response')
+        self.store.transition(completed['request_id'], 'operator_required',
+                              error='provider_cache_miss', blocked_stage='generation',
+                              provider_submission='completed',
+                              response_received_stage='generation')
+        uncertain = self.submit(description='Uncertain response')
+        self.store.transition(uncertain['request_id'], 'interrupted_uncertain',
+                              error='provider_interrupted', blocked_stage='generation',
+                              provider_submission='uncertain')
+
+        for _ in range(3):
+            runner.step()
+
+        self.assertEqual(self.state(completed['request_id']), 'operator_required')
+        self.assertEqual(self.state(uncertain['request_id']), 'interrupted_uncertain')
+        self.assertEqual(log, [])
 
     def test_paid_argv_carries_the_credential_path_and_the_service_never_opens_it(self):
         log = []
