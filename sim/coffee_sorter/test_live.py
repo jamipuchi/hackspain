@@ -1300,6 +1300,57 @@ class ItemJobRouteTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(body['total'], 1)
         self.assertEqual(body['entries'][0]['object_type_id'], 'builtin.test.stone')
 
+    async def test_the_asset_route_serves_only_the_pair_the_active_bundle_lists(self):
+        from test_object_catalog import generated_definition, tiny_glb
+
+        work = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
+        glb = tiny_glb(index_count=6)
+        sha = hashlib.sha256(glb).hexdigest()
+        star = generated_definition('star_token')
+        star['visual']['asset'].update(visual_asset_id=f'sha256:{sha}', glb_sha256=sha)
+        packaged = object_catalog.load_catalog(object_catalog.PACKAGED_CATALOG_ROOT)
+        catalog = object_catalog.candidate_catalog(packaged, star, packaged['active_type_ids'][-1])
+        object_catalog.write_catalog(work / 'catalog', catalog)
+        for name, data in {'object.glb': glb, 'm.joblib': b'model', 'm.manifest.json': b'{}'}.items():
+            (work / name).write_bytes(data)
+        evidence = {'media_type': 'model/gltf-binary', 'runtime_lod_reviewed': False,
+                    'bounds_dimensions_m': [0.017, 0.016, 0.002]}
+        files = object_catalog.seed_bundle_files(
+            work / 'catalog', work / 'm.joblib', work / 'm.manifest.json', {'name': 'route'},
+            {'reject_classes': []}, {'files': {}},
+            assets={star['object_type_id']: {'glb': work / 'object.glb', 'evidence': evidence}})
+        value = service()
+        value.active_bundle = work / 'bundles' / object_catalog.publish_bundle(
+            work / 'bundles', files)
+        value.catalog_revision = revision = catalog['catalog_revision']
+
+        def get(revision, digest):
+            return value.catalog_asset(FakeRequest(catalog_revision=revision, glb_sha256=digest))
+
+        served = await get(revision, sha)
+        self.assertEqual((served.status, served.body), (200, glb))
+        self.assertEqual(served.content_type, 'model/gltf-binary')
+        self.assertEqual(served.headers['ETag'], f'"{sha}"')
+        self.assertIn('immutable', served.headers['Cache-Control'])
+
+        refused = {'an inactive revision': ('0' * 64, sha), 'an unlisted hash': (revision, '0' * 64),
+                   'an uppercase hash': (revision, sha.upper()),
+                   'a caller path': (revision, '../policy'),
+                   'a listed file that is no GLB row': (revision, 'policy.json')}
+        for name, pair in refused.items():
+            with self.subTest(name):
+                self.assertEqual((await get(*pair)).status, 404)
+
+        asset = value.active_bundle / 'assets' / f'{sha}.glb'
+        asset.unlink()
+        asset.symlink_to(work / 'object.glb')
+        self.assertEqual((await get(revision, sha)).status, 404, 'a symlink')
+        asset.unlink()
+        asset.write_bytes(tiny_glb(index_count=9))
+        self.assertEqual((await get(revision, sha)).status, 404, 'substituted bytes')
+        value.active_bundle = None
+        self.assertEqual((await get(revision, sha)).status, 404, 'no active bundle')
+
     async def test_new_request_is_refused_with_paid_mode_disabled(self):
         value = item_service(self)
         request_id = str(uuid.uuid4())

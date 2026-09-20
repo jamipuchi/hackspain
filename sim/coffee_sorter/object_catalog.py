@@ -16,6 +16,7 @@ import os
 import re
 import shutil
 import socket
+import stat
 import struct
 import tempfile
 from pathlib import Path
@@ -933,6 +934,38 @@ def read_visual_registry(bundle_dir: Path) -> list[dict[str, Any]]:
     if registry.get("schema_version") != VISUAL_REGISTRY_VERSION or not isinstance(rows, list):
         raise CatalogError("visual registry is unsupported")
     return [dict(_mapping(row, "visual registry row")) for row in rows]
+
+
+def read_confined(root: Path, components: tuple[str, ...], limit: int) -> bytes:
+    """Read one regular file below `root` through descriptors that follow no link.
+
+    The chain of the preview route: every component opens from the descriptor of its
+    parent, so nothing can be substituted between a check and the open. No message
+    repeats a host path.
+    """
+    directories: list[int] = []
+    try:
+        directories.append(os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW))
+        for component in components[:-1]:
+            directories.append(os.open(component, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                                       dir_fd=directories[-1]))
+        descriptor = os.open(components[-1], os.O_RDONLY | os.O_NOFOLLOW,
+                             dir_fd=directories[-1])
+    except OSError:
+        raise CatalogError("the file is unavailable") from None
+    finally:
+        for opened in directories:
+            os.close(opened)
+    try:
+        data = b""
+        while stat.S_ISREG(os.fstat(descriptor).st_mode) and len(data) <= limit:
+            chunk = os.read(descriptor, limit + 1 - len(data))
+            if not chunk:
+                return data
+            data += chunk
+    finally:
+        os.close(descriptor)
+    raise CatalogError("the file is unavailable")
 
 
 def render_asset(row: Mapping[str, Any], revision: str) -> dict[str, Any]:
