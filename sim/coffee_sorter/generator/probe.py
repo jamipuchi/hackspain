@@ -441,7 +441,11 @@ def call(url, key, payload, out, live):
         # The response is a known completed provider interaction even when local storage
         # fails. The caller must retain that billing truth without inferring it from a
         # cache file that does not exist.
-        _record(url, digest, path, cached=False, outcome="response_persistence_failed")
+        try:
+            _record(url, digest, path, cached=False, outcome="response_persistence_failed")
+        except OSError:
+            # The diagnostic is best-effort. It must never hide the known response.
+            pass
         raise ResponsePersistenceFailed(
             "provider response was received but its cache entry could not be written",
             request_sha256=digest,

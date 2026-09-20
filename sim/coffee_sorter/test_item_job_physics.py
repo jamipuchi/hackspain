@@ -213,6 +213,19 @@ class TypedOutcomeTest(WrapperTest):
         self.assertEqual('response_persistence_failed', probe.REQUESTS[-1]['outcome'])
         self.assertIsNone(probe.REQUESTS[-1]['cache_entry_sha256'])
 
+    def test_a_diagnostic_failure_cannot_hide_a_received_response(self):
+        payload = {'model': 'test', 'messages': []}
+        body = io.BytesIO(json.dumps({'choices': []}).encode())
+
+        with unittest.mock.patch.object(probe.urllib.request, 'urlopen', return_value=body), \
+                unittest.mock.patch.object(probe, 'save', side_effect=OSError('disk full')), \
+                unittest.mock.patch.object(probe, '_record', side_effect=OSError('read failed')):
+            with self.assertRaises(probe.ResponsePersistenceFailed) as raised:
+                probe.call(probe.OPENROUTER_URL, 'fake-key', payload,
+                           self.root / 'run', live=True)
+
+        self.assertEqual(probe.OPENROUTER_URL, raised.exception.endpoint)
+
     def test_a_cached_provider_failure_is_a_known_failure_not_an_uncertain_call(self):
         """The cached entry records a provider failure. No call happened here."""
         digest = self.digest()
@@ -371,6 +384,24 @@ class SubmissionEvidenceTest(WrapperTest):
         self.assertEqual('completed', self.status()['provider_submission'])
         self.assertIn('local physics evidence', self.status()['reason'])
         self.assertFalse((self.job / 'physics.json').exists())
+
+    def test_a_cache_hash_read_failure_keeps_the_completed_response(self):
+        entry = self.cache_root / 'cache' / f'{self.digest()}.json'
+        real_sha256 = item_job_physics.sha256_file
+
+        def fail_entry(path):
+            if Path(path).name == entry.name:
+                raise OSError('cache read failed')
+            return real_sha256(path)
+
+        with unittest.mock.patch.object(item_job_physics, 'sha256_file', side_effect=fail_entry):
+            code = self.run_with_fake_provider(
+                '--live', mode='paid', side_effect=self.answered_then())
+
+        self.assertEqual(item_job_physics.EXIT_RESPONSE_RECEIVED, code)
+        self.assertEqual('completed', self.status()['provider_submission'])
+        self.assertIsNone(json.loads((self.job / 'physics.json').read_text())[
+            'physics_cache_entry_sha256'])
 
     def test_a_definition_failure_after_a_live_answer_keeps_the_completed_submission(self):
         """Path 2, and the evidence is already durable when the definition is built."""

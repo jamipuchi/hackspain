@@ -262,6 +262,13 @@ def main(argv: list[str] | None = None) -> int:
         then uses EXIT_RESPONSE_RECEIVED, which carries the billing truth independently
         of both files.
         """
+        failures = []
+        cache_entry_sha256 = metadata["cache_entry_sha256"] if metadata else None
+        if cache_entry_sha256 is None:
+            try:
+                cache_entry_sha256 = sha256_file(entry)
+            except OSError:
+                failures.append("cache evidence")
         physics = {
             # A real call is never labeled as a replay. The same cache hit that keeps the
             # submission `not_submitted` is what makes this a replay.
@@ -270,20 +277,19 @@ def main(argv: list[str] | None = None) -> int:
             "physics_description_source": source,
             "physics_replay_metadata_sha256": metadata["metadata_sha256"] if metadata else None,
             "physics_request_sha256": digest,
-            "physics_cache_entry_sha256": (metadata["cache_entry_sha256"] if metadata
-                                           else sha256_file(entry)),
+            "physics_cache_entry_sha256": cache_entry_sha256,
             "physics_measurement_status": MEASUREMENT_STATUS,
             "recipe_sha256": recipe_sha256,
             "glb_sha256": glb_sha256,
         }
-        failures = []
         try:
             _write_json(job_dir / "physics.json", physics)
         except (OSError, TypeError, ValueError):
             failures.append("physics evidence")
         status_reason = reason
         if failures:
-            status_reason = "the provider answered but local physics evidence could not be written"
+            status_reason = ("the provider answered but local " + ", ".join(failures)
+                             + " could not be persisted")
         try:
             report("not_submitted" if cache_hit else "completed", status_reason,
                    cache_hit=cache_hit, request_sha256=digest,
