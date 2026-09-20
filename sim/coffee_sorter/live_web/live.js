@@ -1344,7 +1344,7 @@ function initThree() {
       const r = renderer.domElement.getBoundingClientRect();
       pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
       raycaster.setFromCamera(pointer, three.camera);
-      if (raycaster.intersectObjects(clickTargets, false).length) injectStone();
+      if (raycaster.intersectObjects(clickTargets.filter(target => target.visible), false).length) injectStone();
     });
     three.ready = true;
     measurements.webgl = gpuName;
