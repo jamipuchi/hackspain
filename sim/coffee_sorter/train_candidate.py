@@ -80,6 +80,10 @@ MIN_KEEP_RESOLVED = 30
 MIN_KEEP_ACCEPT_FRACTION = 0.95
 KEEP_OUTCOME_SIM_SECONDS = 20.0
 PHASES = ("collect_train", "collect_holdout", "fit", "validate")
+# Demo-mode-only codes: root accepted these as review-worthy, not release-blocking, for a
+# demo. No threshold changes, and gate_failures itself never changes.
+QUALITY_WARNING_CODES = ("anomaly_fraction", "keep_outcome_accept_fraction",
+                         "keep_outcome_resolved", "holdout_accuracy")
 
 
 def write_atomic_json(path: Path, value: Mapping[str, Any]) -> None:
@@ -228,6 +232,19 @@ def gate_failures(validation: Mapping[str, Any]) -> list[str]:
     return failures
 
 
+def split_quality_warnings(failures: list[str]) -> dict[str, Any]:
+    """Split one `gate_failures` list for demo mode. `gate_failures` itself never changes.
+
+    The `QUALITY_WARNING_CODES` move out of `failures` into `quality_warnings`, in the
+    order `gate_failures` returned them. Every other code stays hard. `review_status`
+    follows only from whether a warning exists.
+    """
+    warnings = [code for code in failures if code in QUALITY_WARNING_CODES]
+    hard = [code for code in failures if code not in QUALITY_WARNING_CODES]
+    return {"failures": hard, "quality_warnings": warnings,
+            "review_status": "needs_review" if warnings else "clean"}
+
+
 def resolve_policy(profile, new_label: str, preset: Mapping[str, Any],
                    policy_path: Path | None) -> tuple[list[str], str | None, str]:
     """The reject classes the closed-loop run applies. The new label is never rejected.
@@ -330,6 +347,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--runtime-lock", type=Path, default=RUNTIME_LOCK)
     parser.add_argument("--policy", type=Path,
                         help='training baseline policy: {"reject_classes": [...], "policy_version": "..."}')
+    parser.add_argument("--quality-gate", choices=("strict", "demo"), default="strict",
+                        help="strict blocks on every code (default). demo moves "
+                             "QUALITY_WARNING_CODES to quality_warnings and keeps the rest hard.")
     return parser
 
 
@@ -530,6 +550,12 @@ def train(args, preset, preset_path: Path, layout: Layout, rate: float, capture_
             validation, preset, preset_out, new_label, applied_reject_classes)
         validation["preset_compatibility"] = preset_compatibility(preset_out)
     validation["failures"] = gate_failures(validation)
+    if args.quality_gate == "demo":
+        # Strict output stays byte-identical to today, so this label lives only here.
+        validation["classifier"]["new_label_recall_basis"] = (
+            "simulator heuristic, not calibrated confidence")
+        validation.update(split_quality_warnings(validation["failures"]))
+        validation["quality_gate"] = "demo"
     validation["passed"] = not validation["failures"]
     write_atomic_json(out / "validation.json", validation)
 

@@ -45,6 +45,7 @@ from train_candidate import (
     gate_failures,
     holdout_metrics,
     keep_outcome,
+    split_quality_warnings,
 )
 from validate_object_route import route_verdict, static_verdict
 
@@ -473,6 +474,45 @@ class CandidateGateTest(unittest.TestCase):
         self.assertNotIn("commanded", {**classifier, **anomaly, **outcomes})
         self.assertNotIn("new_label_recall", {**anomaly, **pulses, **outcomes})
         self.assertNotIn("fraction_above_threshold", {**classifier, **pulses, **outcomes})
+
+
+class QualityGateModeTest(unittest.TestCase):
+    """The demo quality gate moves four named codes out of the strict failures list.
+
+    `gate_failures` itself never changes: `CandidateGateTest.test_a_defect_truth_candidate_
+    is_gated_exactly_like_any_other` already proves strict keeps quality codes (here,
+    `anomaly_fraction` and `keep_outcome_accept_fraction`) inside `failures`, unmoved.
+    """
+
+    def test_demo_moves_exactly_the_four_quality_codes_and_passes(self):
+        failures = ["anomaly_fraction", "keep_outcome_accept_fraction",
+                    "keep_outcome_resolved", "holdout_accuracy"]
+
+        split = split_quality_warnings(failures)
+
+        self.assertEqual([], split["failures"])
+        self.assertEqual(failures, split["quality_warnings"])
+        self.assertEqual("needs_review", split["review_status"])
+
+    def test_a_hard_code_still_blocks_under_demo_even_with_warnings(self):
+        failures = ["label_order", "anomaly_fraction", "holdout_accuracy"]
+
+        split = split_quality_warnings(failures)
+
+        self.assertEqual(["label_order"], split["failures"])
+        self.assertEqual(["anomaly_fraction", "holdout_accuracy"], split["quality_warnings"])
+        self.assertEqual("needs_review", split["review_status"])
+
+    def test_review_status_is_clean_without_a_warning(self):
+        self.assertEqual([], split_quality_warnings(["label_order"])["quality_warnings"])
+        self.assertEqual("clean", split_quality_warnings(["label_order"])["review_status"])
+        self.assertEqual("clean", split_quality_warnings([])["review_status"])
+
+    def test_the_quality_gate_argument_defaults_to_strict(self):
+        args = train_candidate.build_parser().parse_args(
+            ["--catalog-root", "c", "--preset", "p", "--out", "o"])
+
+        self.assertEqual("strict", args.quality_gate)
 
 
 class CandidateMetricsTest(unittest.TestCase):
@@ -1115,7 +1155,7 @@ class TrainerInputTest(unittest.TestCase):
         dests = {action.dest for action in train_candidate.build_parser()._actions}
 
         self.assertEqual({"help", "catalog_root", "preset", "out", "seconds", "runtime_lock",
-                          "policy"}, dests)
+                          "policy", "quality_gate"}, dests)
 
     def test_recorded_source_files_contain_no_preview_or_render_path(self):
         for name in bootstrap_model.SOURCE_FILES:
