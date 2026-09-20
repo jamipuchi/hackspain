@@ -18,9 +18,6 @@ ENV PYTHONUNBUFFERED=1 \
     OPENBLAS_NUM_THREADS=1 \
     MKL_NUM_THREADS=1 \
     VECLIB_MAXIMUM_THREADS=1 \
-    HOME=/tmp \
-    XDG_CONFIG_HOME=/tmp \
-    TMPDIR=/tmp \
     CINTA_SOURCE_REVISION="${SOURCE_REVISION}"
 
 RUN apt-get update \
@@ -40,6 +37,10 @@ RUN test "$TARGETARCH" = amd64 \
     && rm /tmp/blender.tar.xz \
     && if ldd /opt/blender/blender | grep -q 'not found'; then ldd /opt/blender/blender; exit 1; fi \
     && blender --background --version
+
+ENV HOME=/tmp \
+    XDG_CONFIG_HOME=/tmp \
+    TMPDIR=/tmp
 
 WORKDIR /app
 
