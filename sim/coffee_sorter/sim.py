@@ -60,6 +60,8 @@ class Fire:
 class SorterSim:
     def __init__(self, profile: Profile, layout: Layout = Layout(), rate: float = 1500.0,
                  seed: int = 0, defect_boost: float = 1.0):
+        if mujoco.__version__ != "3.13.0":
+            raise RuntimeError("Pooled physics requires MuJoCo 3.13.0. Revalidate the constant refresh before changing versions.")
         self.P, self.L = profile, layout
         self.rate = rate
         self.rng = np.random.default_rng(seed)
@@ -121,6 +123,15 @@ class SorterSim:
         # The local refresh below depends on independent free bodies and fixed frames.
         if m.ntendon or m.nflex or m.nu or m.neq or m.nplugin:
             raise ValueError("Pooled physics requires no coupled model elements.")
+        if (np.any(m.cam_mode != mujoco.mjtCamLight.mjCAMLIGHT_FIXED)
+                or np.any(m.light_mode != mujoco.mjtCamLight.mjCAMLIGHT_FIXED)):
+            raise ValueError("Pooled physics requires fixed cameras and lights.")
+        expected_geoms = {
+            ELLIPSOID: (mujoco.mjtGeom.mjGEOM_ELLIPSOID, mujoco.mjtGeom.mjGEOM_CAPSULE),
+            HALF: (mujoco.mjtGeom.mjGEOM_MESH, mujoco.mjtGeom.mjGEOM_CAPSULE),
+            BOX: (mujoco.mjtGeom.mjGEOM_BOX,), CAPSULE: (mujoco.mjtGeom.mjGEOM_CAPSULE,),
+        }
+        shape_of = {body: shape for shape, bodies in self.pools.items() for body in bodies}
         self.inertia_axes = {}
         for b in self.all_bodies:
             j, qa = m.body_jntadr[b], self.body_qpos[b]
@@ -130,6 +141,9 @@ class SorterSim:
                     or m.body_bvhnum[b] != 1 or m.bvh_nodeid[leaf] != self.body_col[b]
                     or not np.array_equal(m.qpos0[qa + 3:qa + 7], [1, 0, 0, 0])):
                 raise ValueError("Pooled physics requires independent free bodies with one collision leaf and an identity reference rotation.")
+            geoms = slice(m.body_geomadr[b], m.body_geomadr[b] + m.body_geomnum[b])
+            if tuple(m.geom_type[geoms]) != expected_geoms[shape_of[b]]:
+                raise ValueError("Pooled physics requires the compiled geometry types for each pool.")
             rotation = np.empty(9)
             mujoco.mju_quat2Mat(rotation, m.body_iquat[b])
             axes = np.abs(rotation.reshape(3, 3))
@@ -142,11 +156,13 @@ class SorterSim:
         self._stat_radii = np.zeros(len(self._stat_points))
 
     def _refresh_body_constants(self, b):
-        """Match mj_setConst for the guarded free-body topology without changing live data.
+        """Refresh operational physics constants without changing live data.
 
         MuJoCo 3.13 caches simple-body inertia in dof_M0. Full mj_setConst is
         quadratic in pool size. This local equivalent also includes armature,
         offset COM, inverse weights, subtree mass, and solver length scales.
+        The read-only ngravcomp count retains its compiled value. Runtime gravity
+        uses flg_gravcomp and body_gravcomp instead.
         """
         m, va = self.model, self.body_qvel[b]
         mass, inertia = m.body_mass[b], m.body_inertia[b]
@@ -184,6 +200,58 @@ class SorterSim:
         m.stat.center[:] = (lower + upper) / 2
         m.stat.extent = max(1e-5, np.max(upper - lower), 2 * m.stat.meansize)
 
+    def _configure_body(self, b, shape, axes, mass):
+        """Apply sampled geometry and physical properties for both feeder paths."""
+        m, g = self.model, self.body_geom[b]
+        gc = self.body_col[b]
+        if shape == ELLIPSOID:
+            m.geom_size[g] = axes
+            m.geom_rbound[g] = np.max(axes)
+            half = axes
+            r, hl = axes[2], max(axes[0] - axes[2], 1e-4)     # collision capsule: same length & resting height
+            m.geom_size[gc, 0], m.geom_size[gc, 1] = r, hl
+            m.geom_rbound[gc] = hl + r
+            # Bounds use the capsule's local z axis, before geom_quat rotates it.
+            m.geom_aabb[gc, 3:6] = [r, r, hl + r]
+            inertia = mass / 5 * np.array([axes[1] ** 2 + axes[2] ** 2, axes[0] ** 2 + axes[2] ** 2, axes[0] ** 2 + axes[1] ** 2])
+        elif shape == BOX:
+            m.geom_size[g] = axes
+            m.geom_rbound[g] = np.linalg.norm(axes)
+            half = axes
+            inertia = mass / 3 * np.array([axes[1] ** 2 + axes[2] ** 2, axes[0] ** 2 + axes[2] ** 2, axes[0] ** 2 + axes[1] ** 2])
+        elif shape == CAPSULE:
+            r, hl = axes[1], axes[0]
+            m.geom_size[g, 0], m.geom_size[g, 1] = r, hl
+            m.geom_rbound[g] = hl + r
+            half = np.array([r, r, hl + r])
+            inertia = np.array([mass * (r ** 2 / 4 + hl ** 2 / 3)] * 2 + [mass * r ** 2 / 2])
+        else:  # HALF mesh: fixed scale variants, read the compiled size back
+            half = m.geom_aabb[g, 3:6].copy()
+            axes = half
+            # Ellipsoid approximation from visual bounds, around the compiled collider COM.
+            inertia = mass / 5 * np.array([axes[1] ** 2 + axes[2] ** 2, axes[0] ** 2 + axes[2] ** 2, axes[0] ** 2 + axes[1] ** 2])
+        if shape != HALF:
+            m.geom_aabb[g, 3:6] = half
+            # Each pooled body has one collision leaf, stored in its inertial frame.
+            inertial_rotation, geom_rotation = np.empty(9), np.empty(9)
+            mujoco.mju_quat2Mat(inertial_rotation, m.body_iquat[b])
+            mujoco.mju_quat2Mat(geom_rotation, m.geom_quat[gc])
+            inertial_rotation = inertial_rotation.reshape(3, 3).T
+            geom_rotation = geom_rotation.reshape(3, 3)
+            leaf = m.body_bvhadr[b]
+            m.bvh_aabb[leaf, :3] = inertial_rotation @ (
+                m.geom_pos[gc] + geom_rotation @ m.geom_aabb[gc, :3] - m.body_ipos[b])
+            m.bvh_aabb[leaf, 3:] = np.abs(inertial_rotation @ geom_rotation) @ m.geom_aabb[gc, 3:]
+        m.body_mass[b] = mass
+        # Analytic inertia uses body axes, while MuJoCo stores principal-frame axes.
+        m.body_inertia[b] = np.maximum(inertia[self.inertia_axes[b]], 1e-12)
+        va0 = self.body_qvel[b]
+        i_mean = m.body_inertia[b].mean()
+        m.dof_damping[va0 + 3:va0 + 6] = i_mean / ROT_TAU
+        m.dof_armature[va0 + 3:va0 + 6] = ROT_ARMATURE_FACTOR * i_mean
+        self._refresh_body_constants(b)
+        return axes, half
+
     # ------------------------------------------------------------------ spawning
     def _sample_class(self) -> ClassSpec:
         return self.P.classes[self.rng.choice(len(self.P.classes), p=self.priors)]
@@ -197,55 +265,9 @@ class SorterSim:
         b = self.free[spec.shape].pop()
         g = self.body_geom[b]
         axes, rgba, mass = sample_instance(spec, rng)
-        gc = self.body_col[b]
-        if spec.shape == ELLIPSOID:
-            m.geom_size[g] = axes
-            m.geom_rbound[g] = np.max(axes)
-            half = axes
-            r, hl = axes[2], max(axes[0] - axes[2], 1e-4)     # collision capsule: same length & resting height
-            m.geom_size[gc, 0], m.geom_size[gc, 1] = r, hl
-            m.geom_rbound[gc] = hl + r
-            # Bounds use the capsule's local z axis, before geom_quat rotates it.
-            m.geom_aabb[gc, 3:6] = [r, r, hl + r]
-            inertia = mass / 5 * np.array([axes[1] ** 2 + axes[2] ** 2, axes[0] ** 2 + axes[2] ** 2, axes[0] ** 2 + axes[1] ** 2])
-        elif spec.shape == BOX:
-            m.geom_size[g] = axes
-            m.geom_rbound[g] = np.linalg.norm(axes)
-            half = axes
-            inertia = mass / 3 * np.array([axes[1] ** 2 + axes[2] ** 2, axes[0] ** 2 + axes[2] ** 2, axes[0] ** 2 + axes[1] ** 2])
-        elif spec.shape == CAPSULE:
-            r, hl = axes[1], axes[0]
-            m.geom_size[g, 0], m.geom_size[g, 1] = r, hl
-            m.geom_rbound[g] = hl + r
-            half = np.array([r, r, hl + r])
-            inertia = np.array([mass * (r ** 2 / 4 + hl ** 2 / 3)] * 2 + [mass * r ** 2 / 2])
-        else:  # HALF mesh: fixed scale variants, read the compiled size back
-            half = m.geom_aabb[g, 3:6].copy()
-            axes = half
-            # Ellipsoid approximation from visual bounds, around the compiled collider COM.
-            inertia = mass / 5 * np.array([axes[1] ** 2 + axes[2] ** 2, axes[0] ** 2 + axes[2] ** 2, axes[0] ** 2 + axes[1] ** 2])
-        if spec.shape != HALF:
-            m.geom_aabb[g, 3:6] = half
-            # Each pooled body has one collision leaf, stored in its inertial frame.
-            inertial_rotation, geom_rotation = np.empty(9), np.empty(9)
-            mujoco.mju_quat2Mat(inertial_rotation, m.body_iquat[b])
-            mujoco.mju_quat2Mat(geom_rotation, m.geom_quat[gc])
-            inertial_rotation = inertial_rotation.reshape(3, 3).T
-            geom_rotation = geom_rotation.reshape(3, 3)
-            leaf = m.body_bvhadr[b]
-            m.bvh_aabb[leaf, :3] = inertial_rotation @ (
-                m.geom_pos[gc] + geom_rotation @ m.geom_aabb[gc, :3] - m.body_ipos[b])
-            m.bvh_aabb[leaf, 3:] = np.abs(inertial_rotation @ geom_rotation) @ m.geom_aabb[gc, 3:]
+        axes, half = self._configure_body(b, spec.shape, axes, mass)
         m.geom_rgba[g] = rgba
         m.geom_matid[g] = int(rng.choice(self.material_ids[spec.texture])) if spec.texture else -1
-        m.body_mass[b] = mass
-        # Analytic inertia uses body axes, while MuJoCo stores principal-frame axes.
-        m.body_inertia[b] = np.maximum(inertia[self.inertia_axes[b]], 1e-12)
-        va0 = self.body_qvel[b]
-        i_mean = m.body_inertia[b].mean()
-        m.dof_damping[va0 + 3:va0 + 6] = i_mean / ROT_TAU
-        m.dof_armature[va0 + 3:va0 + 6] = ROT_ARMATURE_FACTOR * i_mean
-        self._refresh_body_constants(b)
         # pose: flat on the belt with random yaw, small random tilt; capsule lies along x by default (z-axis -> x)
         yaw = rng.uniform(-np.pi, np.pi)
         tilt = rng.normal(0, 0.15, 2)
@@ -255,6 +277,7 @@ class SorterSim:
         else:
             mujoco.mju_euler2Quat(q, np.array([tilt[0], tilt[1], yaw]), "xyz")
         if spec.shape == CAPSULE:
+            r, hl = axes[1], axes[0]
             rotation = np.empty(9)
             mujoco.mju_quat2Mat(rotation, q)
             half[2] = r + hl * abs(rotation[8])
@@ -269,6 +292,7 @@ class SorterSim:
         d.qpos[qa:qa + 3] = pos
         d.qpos[qa + 3:qa + 7] = q
         d.qvel[va:va + 6] = [L.feed_vx + rng.normal(0, 0.15), rng.normal(0, 0.08), 0, *rng.normal(0, 3.0, 3)]
+        d.qacc_warmstart[va:va + 6] = 0
         bean = Bean(self.uid, b, spec.name, spec.defect, d.time, axes.copy(), mass)
         self.uid += 1
         self.bean_of[b] = bean
@@ -309,10 +333,13 @@ class SorterSim:
         self.active[i] = False
         self.retire_at[i] = np.inf
         m.body_gravcomp[b] = 1.0
+        # Keep this flag enabled for reusable bodies, even if a reference refresh cleared it.
+        m.flg_gravcomp = True
         qa, va = self.body_qpos[b], self.body_qvel[b]
         d.qpos[qa:qa + 3] = [6.0, -2 + (i % 400) * 0.01, 1 + (i // 400) * 0.05]
         d.qpos[qa + 3:qa + 7] = [1, 0, 0, 0]
         d.qvel[va:va + 6] = 0
+        d.qacc_warmstart[va:va + 6] = 0
         d.xfrc_applied[b] = 0
         bean = self.bean_of.pop(b)
         if self.continuous:

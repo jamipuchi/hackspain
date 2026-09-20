@@ -12,6 +12,12 @@ from sim import SorterSim
 
 
 class PooledPhysicsTests(unittest.TestCase):
+    def test_unsupported_mujoco_version_fails_before_compilation(self):
+        with patch('sim.mujoco.__version__', '3.14.0'), patch('sim.build_xml') as compiler_input:
+            with self.assertRaisesRegex(RuntimeError, 'requires MuJoCo 3.13.0'):
+                self.make_sim()
+        compiler_input.assert_not_called()
+
     def make_sim(self, seed=7):
         return SorterSim(GREEN_ARABICA, Layout(
             n_ellipsoid=2, n_half=1, n_box=1, n_capsule=1, timestep=.001),
@@ -66,11 +72,28 @@ class PooledPhysicsTests(unittest.TestCase):
             xml.replace('<freejoint/>', '<joint type="slide"/>'),
             xml.replace('<freejoint/>', '<freejoint/><geom type="sphere" size=".001"/>'),
             xml.replace('<freejoint/>', '<freejoint/><body><geom type="sphere" size=".001"/></body>'),
+            xml.replace('type="box" size="0.004 0.003 0.0025"', 'type="sphere" size="0.004"'),
+            xml.replace('<camera name="inspect"', '<camera mode="trackcom" name="inspect"'),
         )
         for changed in changes:
             with self.subTest(xml=changed[-200:]), patch('sim.build_xml', return_value=changed):
                 with self.assertRaisesRegex(ValueError, 'Pooled physics requires'):
                     SorterSim(GREEN_ARABICA, layout, rate=0)
+
+    def test_retirement_clears_only_its_warmstart_and_restores_compensation(self):
+        sim = self.make_sim()
+        bean = sim.spawn(GREEN_ARABICA.by_name('stone'))
+        va = sim.body_qvel[bean.body]
+        sim.data.qacc_warmstart[:] = 17
+        sim.model.flg_gravcomp = False
+        sim._park(bean.body)
+        expected = np.full(sim.model.nv, 17.)
+        expected[va:va + 6] = 0
+        np.testing.assert_array_equal(sim.data.qacc_warmstart, expected)
+        self.assertTrue(sim.model.flg_gravcomp)
+        sim.data.qacc_warmstart[va:va + 6] = 99
+        sim.spawn(GREEN_ARABICA.by_name('stone'))
+        np.testing.assert_array_equal(sim.data.qacc_warmstart, expected)
 
     def test_spawn_preserves_other_live_state(self):
         sim = self.make_sim()
@@ -166,6 +189,25 @@ class PooledPhysicsTests(unittest.TestCase):
         bean = sim.spawn(GREEN_ARABICA.by_name('stone'))
         self.airborne(sim, bean)
         self.assertAlmostEqual(sim.data.qacc[va + 2], -9.81)
+
+    def test_sensor_feeder_uses_the_same_physical_refresh(self):
+        from sensor_realism import PhysicalConfig, SensorSorterSim
+
+        sim = SensorSorterSim(GREEN_ARABICA, Layout(
+            n_ellipsoid=1, n_half=1, n_box=1, n_capsule=1),
+            rate=0, seed=7, physical_config=PhysicalConfig())
+        for name in ('stone', 'good', 'stick', 'broken', 'stone'):
+            bean = sim.spawn(GREEN_ARABICA.by_name(name))
+            va = self.airborne(sim, bean)
+            with self.subTest(name=name):
+                np.testing.assert_allclose(sim.data.qacc[va:va + 3], [0, 0, -9.81], atol=1e-8)
+                actual = sim.model.dof_invweight0.copy()
+                mujoco.mj_setConst(sim.model, mujoco.MjData(sim.model))
+                np.testing.assert_allclose(actual, sim.model.dof_invweight0, rtol=1e-10)
+            sim._park(bean.body)
+        with patch.object(sim, '_free_spot', return_value=None):
+            self.assertIsNone(sim.spawn(GREEN_ARABICA.by_name('stone')))
+        self.assertEqual(sim.model.body_gravcomp[sim.pools['box'][0]], 1)
 
 
 if __name__ == '__main__':
