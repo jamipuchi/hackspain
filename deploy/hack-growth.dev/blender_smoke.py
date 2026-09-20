@@ -1,3 +1,4 @@
+import math
 import pathlib
 import sys
 
@@ -36,16 +37,20 @@ material = bpy.data.materials.new(name="CINTA smoke material")
 material.diffuse_color = (0.13, 0.48, 0.22, 1.0)
 cube.data.materials.append(material)
 
-bpy.ops.object.camera_add(location=(0.05, -0.05, 0.04))
+bpy.ops.object.camera_add(location=(0.0, -0.08, 0.0))
 camera = bpy.context.object
+camera.data.type = "ORTHO"
+camera.data.ortho_scale = 0.04
 camera.data.clip_start = 0.001
-camera.rotation_euler = (-camera.location).to_track_quat("-Z", "Y").to_euler()
+camera.rotation_euler = (math.radians(90.0), 0.0, 0.0)
 scene.camera = camera
 
 bpy.ops.object.light_add(type="AREA", location=(0.02, -0.02, 0.06))
-bpy.context.object.data.energy = 250.0
-bpy.context.object.data.shape = "DISK"
-bpy.context.object.data.size = 0.05
+light = bpy.context.object
+light.data.energy = 250.0
+light.data.shape = "DISK"
+light.data.size = 0.05
+light.rotation_euler = (-light.location).to_track_quat("-Z", "Y").to_euler()
 
 scene.render.film_transparent = True
 bpy.ops.render.render(write_still=True)
