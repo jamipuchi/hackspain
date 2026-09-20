@@ -142,6 +142,8 @@ test('queue states and primary actions use one label table', () => {
   assert.equal(jobActionLabel('delete_everything'), null);
   assert.equal(jobActionPath('abc', 'resolve_provider'), '/item-jobs/abc/resolve-provider');
   assert.equal(jobActionPath('abc', 'delete_everything'), null);
+  assert.equal(jobErrorLabel('activation_conflict'),
+    'The active catalog changed before activation.');
 });
 
 test('queue summaries normalize text and reject foreign preview URLs', () => {

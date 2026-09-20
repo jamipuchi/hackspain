@@ -195,6 +195,7 @@ const JOB_ERROR_LABELS = {
   training_failed: 'Candidate training failed.',
   candidate_validation_failed: 'Candidate validation failed.',
   replacement_conflict: 'The replacement type changed.',
+  activation_conflict: 'The active catalog changed before activation.',
   activation_failed: 'Activation failed and the previous bundle stayed active.',
 };
 // Plain wording for the one row an operator must act on.
