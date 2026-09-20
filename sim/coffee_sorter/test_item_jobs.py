@@ -1882,11 +1882,11 @@ class PhysicsAndTrainingFlowTest(QueueTest):
         self.assertEqual('physics_proposal_failed', stored['error'])
         self.assertEqual(MAX_ATTEMPTS, stored['attempts']['physics_proposal'])
 
-    def proposing(self, submission):
+    def proposing(self, submission, attempt=1):
         """One job whose physics proposal child just exited. Its status file is a fake."""
         job = self.submit()
         job = self.store.transition(job['request_id'], 'proposing_physics',
-                                    attempts={**job['attempts'], 'physics_proposal': 1},
+                                    attempts={**job['attempts'], 'physics_proposal': attempt},
                                     provider_submission=submission)
         return job, self.store.job_dir(job['request_id'])
 
@@ -1907,6 +1907,33 @@ class PhysicsAndTrainingFlowTest(QueueTest):
                 self.assertEqual('validating_physics', stored['state'])
                 self.assertEqual(settled, stored['provider_submission'])
                 self.assertNotEqual('in_flight', stored['provider_submission_history'][-1])
+
+    def test_a_failed_stage_after_a_completed_call_settles_completed(self):
+        """The provider answered and a later step failed. Known evidence wins."""
+        runner = self.open_runner()
+        for code in (item_jobs.EXIT_FAILED, item_jobs.EXIT_CACHE_ENTRY_INVALID):
+            with self.subTest(exit_code=code):
+                job, job_dir = self.proposing('in_flight', attempt=MAX_ATTEMPTS)
+                (job_dir / 'physics.json').write_text(json.dumps(
+                    {'physics_source': 'paid_llm_call', 'physics_request_sha256': 'd' * 64}))
+                (job_dir / 'provider_status.json').write_text(json.dumps(
+                    {'provider_submission': 'completed', 'request_sha256': 'd' * 64,
+                     'reason': 'the draft definition is invalid: no proxy fits'}))
+
+                runner._settle_physics_proposal(job, job_dir, None, code)
+
+                stored = self.store.get(job['request_id'])
+                self.assertEqual(('failed', 'physics_proposal_failed'),
+                                 (stored['state'], stored['error']))
+                self.assertEqual('completed', stored['provider_submission'])
+                self.assertEqual('completed', stored['provider_submission_history'][-1])
+                self.assertNotIn('uncertain', stored['provider_submission_history'])
+                # This path neither returns the attempt nor touches a grant.
+                self.assertEqual(job['attempts'], stored['attempts'])
+                self.assertIsNone(stored['provider_permission'])
+                self.assertIsNone(stored['provider_permission_stage'])
+                self.assertEqual('d' * 64, stored['artifacts']['physics']['physics_request_sha256'])
+                self.assertTrue(stored['progress'].startswith('the draft definition is invalid'))
 
     def test_a_known_provider_failure_shows_its_short_path_free_reason(self):
         runner = self.open_runner()

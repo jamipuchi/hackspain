@@ -877,6 +877,16 @@ class ItemJobRunner:
                                                job["provider_submission"]),
                 provider_cache_hit=bool(status.get("cache_hit")))
             return
+        if status.get("provider_submission") == "completed":
+            # The provider answered and a later step failed. That is known evidence, so
+            # it is never uncertain, never unconsumed, and never "no submission". The
+            # request identity stays with it.
+            self._stage_failure(
+                job, "physics_proposal", "physics_proposal_failed", token,
+                reason="physics_proposal_failed", provider_submission="completed",
+                artifacts={**job["artifacts"], "physics": _read_json(job_dir / "physics.json")},
+                **_status_progress(status))
+            return
         if code == EXIT_NOT_SUBMITTED:
             self._unconsumed(job, "physics_proposal", token, "operator_required",
                              "provider_cache_miss")

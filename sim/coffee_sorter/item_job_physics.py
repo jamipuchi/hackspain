@@ -30,9 +30,12 @@ submitted, 4 submission uncertain, 5 credentials missing, 6 cache entry invalid.
 typed probe outcomes decide that code, so a recorded provider failure stays a known
 failure and never reads as an uncertain call.
 
-The status records what THIS invocation did: `live_requested`, and `completed` only when
-a real call returned the proposal. An exact cache hit stays `not_submitted`, and only
-that hit records `physics_source: cached_llm_replay`. A real call records `paid_llm_call`.
+The status records what THIS invocation did: `live_requested`, and `completed` as soon as
+a real call returned an answer. That evidence is written at once, with the request
+identity in `physics.json`, and it survives every later failure: a rejected answer or an
+invalid draft definition never reads as "no submission". An exact cache hit stays
+`not_submitted`, and only that hit records `physics_source: cached_llm_replay`. A real
+call records `paid_llm_call`.
 """
 from __future__ import annotations
 
@@ -230,12 +233,38 @@ def main(argv: list[str] | None = None) -> int:
         report("not_submitted", f"the physics request is invalid: {error}")
         return EXIT_FAILED
 
-    cache_hit = (physics_dir / "cache" / f"{digest}.json").is_file()
+    entry = physics_dir / "cache" / f"{digest}.json"
+    cache_hit = entry.is_file()
     if not cache_hit and not live:
         # Stop before submission. The operator decides, and paid mode is off by default.
         report("not_submitted", "physics request is not cached", request_sha256=digest,
                physics_description_source=source)
         return EXIT_NOT_SUBMITTED
+
+    def provider_answered(reason: str | None) -> None:
+        """Persist the submission evidence the moment the provider answer exists.
+
+        A later failure must never read as "no submission". The request identity and the
+        source of the answer go to physics.json now, and the status says `completed` only
+        for a real call: an exact cache hit submitted nothing.
+        """
+        _write_json(job_dir / "physics.json", {
+            # A real call is never labeled as a replay. The same cache hit that keeps the
+            # submission `not_submitted` is what makes this a replay.
+            "physics_source": "cached_llm_replay" if cache_hit else "paid_llm_call",
+            "physics_description": description,
+            "physics_description_source": source,
+            "physics_replay_metadata_sha256": metadata["metadata_sha256"] if metadata else None,
+            "physics_request_sha256": digest,
+            "physics_cache_entry_sha256": (metadata["cache_entry_sha256"] if metadata
+                                           else sha256_file(entry)),
+            "physics_measurement_status": MEASUREMENT_STATUS,
+            "recipe_sha256": recipe_sha256,
+            "glb_sha256": glb_sha256,
+        })
+        report("not_submitted" if cache_hit else "completed", reason, cache_hit=cache_hit,
+               request_sha256=digest, physics_description_source=source)
+
     try:
         proposal = propose_physics(
             description=description, visual_dimensions_m=bounds, evidence_dir=evidence,
@@ -253,12 +282,19 @@ def main(argv: list[str] | None = None) -> int:
         # An unrecognized fault could still have reached the provider.
         report("uncertain", f"physics provider call was interrupted: {error}")
         return EXIT_UNCERTAIN
-    except ValueError as error:
-        report("not_submitted", f"physics proposal verification failed: {error}")
-        return EXIT_CACHE_ENTRY_INVALID
-    except OSError as error:
-        report("not_submitted", f"physics evidence cannot be written: {error}")
-        return EXIT_FAILED
+    except (ValueError, OSError) as error:
+        verification = isinstance(error, ValueError)
+        reason = (f"physics proposal verification failed: {error}" if verification
+                  else f"physics evidence cannot be written: {error}")
+        if not cache_hit and entry.is_file():
+            # probe.call saves its entry before it returns, so the provider answered THIS
+            # call and the failure came afterwards. The submission stays known.
+            provider_answered(reason)
+            return EXIT_FAILED
+        report("not_submitted", reason)
+        return EXIT_CACHE_ENTRY_INVALID if verification else EXIT_FAILED
+    # The answer exists. Its evidence is durable before anything else can fail.
+    provider_answered(None)
 
     # Rebuild the definition through the real adapter on THIS job's own artifacts.
     def build(sorting_proposal):
@@ -280,27 +316,10 @@ def main(argv: list[str] | None = None) -> int:
             definition = build({"class_name": definition["object_key"], "defect": False,
                                 "severity": "none", "proposed_action": "keep"})
     except (ValueError, OSError) as error:
-        report("not_submitted", f"the draft definition is invalid: {error}")
+        # The same evidence with the failure reason. A real call stays `completed`.
+        provider_answered(f"the draft definition is invalid: {error}")
         return EXIT_FAILED
     _write_json(job_dir / "definition.json", definition)
-    _write_json(job_dir / "physics.json", {
-        # A real call is never labeled as a replay. The same cache hit that keeps the
-        # submission `not_submitted` is what makes this a replay.
-        "physics_source": "cached_llm_replay" if cache_hit else "paid_llm_call",
-        "physics_description": description,
-        "physics_description_source": source,
-        "physics_replay_metadata_sha256": metadata["metadata_sha256"] if metadata else None,
-        "physics_request_sha256": digest,
-        "physics_cache_entry_sha256": metadata["cache_entry_sha256"] if metadata else (
-            sha256_file(physics_dir / "cache" / f"{digest}.json")),
-        "physics_measurement_status": MEASUREMENT_STATUS,
-        "recipe_sha256": recipe_sha256,
-        "glb_sha256": glb_sha256,
-    })
-    # Exactly the generation rule: a cache hit submitted nothing, so only a real call
-    # that returned a proposal may report a completed submission.
-    report("not_submitted" if cache_hit else "completed", None, cache_hit=cache_hit,
-           request_sha256=digest, physics_description_source=source)
     return EXIT_OK
 
 

@@ -215,12 +215,12 @@ class SubmissionEvidenceTest(WrapperTest):
                   'visual': {'uri': 'previews/object.glb'}}
 
     def run_with_fake_provider(self, *extra, mode='cached', side_effect=None,
-                               proposal=None):
+                               proposal=None, build=None):
         """A fake provider result. Nothing is sent, and nothing can be billed."""
         patch = unittest.mock.patch.object
         with patch(item_job_physics, 'propose_physics', side_effect=side_effect,
                    return_value=proposal or self.PROPOSAL), \
-                patch(item_job_physics, 'build_object_definition',
+                patch(item_job_physics, 'build_object_definition', side_effect=build,
                       return_value=self.DEFINITION):
             return self.run_wrapper(*extra, mode=mode)
 
@@ -272,6 +272,70 @@ class SubmissionEvidenceTest(WrapperTest):
 
         self.assertEqual('cached_llm_replay', physics['physics_source'])
         self.assertEqual('unmeasured_proxy_estimate', physics['physics_measurement_status'])
+
+    def answered_then(self, failure=None):
+        """A fake live call: the provider answers, the call saves its entry, then it may fail."""
+        entry = self.cache_root / 'cache' / f'{self.digest()}.json'
+
+        def call(**kwargs):
+            entry.write_text('{}')
+            if failure is not None:
+                raise failure
+            return self.PROPOSAL
+
+        return call
+
+    def assert_completed_evidence(self, code, reason):
+        status = self.status()
+        physics = json.loads((self.job / 'physics.json').read_text())
+        self.assertEqual(item_jobs.EXIT_FAILED, code)
+        self.assertEqual('completed', status['provider_submission'])
+        self.assertIn(reason, status['reason'])
+        # The exact request identity stays with the completed submission.
+        self.assertEqual(self.digest(), status['request_sha256'])
+        self.assertEqual(self.digest(), physics['physics_request_sha256'])
+        self.assertEqual('paid_llm_call', physics['physics_source'])
+        self.assertFalse((self.job / 'definition.json').exists())
+
+    def test_a_rejected_live_answer_keeps_the_completed_submission(self):
+        """Path 1: a ValueError inside propose_physics AFTER the provider responded."""
+        call = self.answered_then(ValueError('physics proposal did not finish'))
+
+        code = self.run_with_fake_provider('--live', mode='paid', side_effect=call)
+
+        self.assert_completed_evidence(code, 'physics proposal verification failed')
+
+    def test_a_definition_failure_after_a_live_answer_keeps_the_completed_submission(self):
+        """Path 2, and the evidence is already durable when the definition is built."""
+        seen = []
+
+        def build(**kwargs):
+            seen.append(self.status()['provider_submission'])
+            raise ValueError('the proxy does not fit the visual bounds')
+
+        code = self.run_with_fake_provider('--live', mode='paid',
+                                           side_effect=self.answered_then(), build=build)
+
+        self.assertEqual(['completed'], seen)
+        self.assert_completed_evidence(code, 'the draft definition is invalid')
+
+    def test_a_failure_before_any_submission_still_reads_not_submitted(self):
+        def never_sent(**kwargs):
+            raise ValueError('the request is invalid before any call')
+
+        def build(**kwargs):
+            raise ValueError('the proxy does not fit the visual bounds')
+
+        with self.subTest(case='a live request that failed before the call'):
+            code = self.run_with_fake_provider('--live', mode='paid', side_effect=never_sent)
+            self.assertEqual(item_jobs.EXIT_CACHE_ENTRY_INVALID, code)
+            self.assertEqual('not_submitted', self.status()['provider_submission'])
+        with self.subTest(case='an exact cache hit whose definition fails'):
+            (self.cache_root / 'cache' / f'{self.digest()}.json').write_text('{}')
+            code = self.run_with_fake_provider(build=build)
+            self.assertEqual(item_jobs.EXIT_FAILED, code)
+            self.assertEqual('not_submitted', self.status()['provider_submission'])
+            self.assertTrue(self.status()['cache_hit'])
 
 
 if __name__ == '__main__':
