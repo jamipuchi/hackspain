@@ -38,8 +38,10 @@ RUN test "$TARGETARCH" = amd64 \
     && if ldd /opt/blender/blender | grep -q 'not found'; then ldd /opt/blender/blender; exit 1; fi \
     && blender --background --version
 
-ENV HOME=/tmp \
-    XDG_CONFIG_HOME=/tmp \
+ENV HOME=/tmp/cinta-home \
+    XDG_CACHE_HOME=/tmp/cinta-home/cache \
+    XDG_CONFIG_HOME=/tmp/cinta-home/config \
+    XDG_STATE_HOME=/tmp/cinta-home/state \
     TMPDIR=/tmp
 
 WORKDIR /app
@@ -55,18 +57,31 @@ RUN python -m pip install --no-cache-dir -r /app/requirements-resolved.txt
 
 COPY sim/coffee_sorter/assets /app/sim/coffee_sorter/assets
 COPY sim/coffee_sorter/configs/continuous_demo.json /app/sim/coffee_sorter/configs/continuous_demo.json
+COPY sim/coffee_sorter/generator /app/sim/coffee_sorter/generator
 COPY sim/coffee_sorter/live_web /app/sim/coffee_sorter/live_web
+COPY sim/coffee_sorter/object_catalog /app/sim/coffee_sorter/object_catalog
 COPY sim/coffee_sorter/visual_assets/browser /app/sim/coffee_sorter/visual_assets/browser
 COPY sim/coffee_sorter/web/vendor /app/sim/coffee_sorter/web/vendor
 COPY sim/coffee_sorter/assets.py \
+     sim/coffee_sorter/bootstrap_model.py \
      sim/coffee_sorter/classifier.py \
      sim/coffee_sorter/controller.py \
      sim/coffee_sorter/engine.py \
+     sim/coffee_sorter/item_job_generate.py \
+     sim/coffee_sorter/item_job_physics.py \
+     sim/coffee_sorter/item_job_render.py \
+     sim/coffee_sorter/item_jobs.py \
      sim/coffee_sorter/live.py \
+     sim/coffee_sorter/object_catalog.py \
+     sim/coffee_sorter/object_definitions.py \
      sim/coffee_sorter/profiles.py \
+     sim/coffee_sorter/requirements.txt \
      sim/coffee_sorter/rolling_scores.py \
      sim/coffee_sorter/scene.py \
      sim/coffee_sorter/sim.py \
+     sim/coffee_sorter/train_candidate.py \
+     sim/coffee_sorter/validate_bundle.py \
+     sim/coffee_sorter/validate_object_route.py \
      sim/coffee_sorter/vision.py \
      /app/sim/coffee_sorter/
 
@@ -78,6 +93,20 @@ RUN mkdir -p /app/sim/coffee_sorter/models \
     && echo '89513398373c6e0e81286419962feb3e312742de14a76d02dd0d819ad5264a5a  /app/sim/coffee_sorter/models/live_green_arabica.joblib' | sha256sum -c - \
     && echo '6409f13385bc0e7335ed48546a13999dd3e5d10a23d48491baeeae1e95015387  /app/sim/coffee_sorter/models/live_green_arabica.manifest.json' | sha256sum -c - \
     && rm /tmp/model.joblib.gz /tmp/model.manifest.json.gz
+
+RUN python -m py_compile \
+      /app/sim/coffee_sorter/object_catalog.py \
+      /app/sim/coffee_sorter/object_definitions.py \
+      /app/sim/coffee_sorter/item_jobs.py \
+      /app/sim/coffee_sorter/item_job_generate.py \
+      /app/sim/coffee_sorter/item_job_render.py \
+      /app/sim/coffee_sorter/item_job_physics.py \
+      /app/sim/coffee_sorter/validate_object_route.py \
+      /app/sim/coffee_sorter/train_candidate.py \
+      /app/sim/coffee_sorter/bootstrap_model.py \
+      /app/sim/coffee_sorter/validate_bundle.py \
+    && cd /app/sim/coffee_sorter \
+    && python -c 'import item_jobs, object_catalog, profiles; object_catalog.load_catalog(object_catalog.CATALOG_ROOT)'
 
 COPY deploy/hack-growth.dev/start.sh /app/deploy/start.sh
 COPY deploy/hack-growth.dev/check_live.py /app/deploy/check_live.py

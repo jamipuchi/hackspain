@@ -12,8 +12,24 @@ if [ "$CINTA_SOURCE_REVISION" != "$image_revision" ]; then
 fi
 
 runs_root=${CINTA_RUNS_ROOT:-/var/lib/hackspain-coffee/runs}
+item_control_root=${CINTA_ITEM_CONTROL_ROOT:-/var/lib/hackspain-coffee/item-control}
+provider_cache_root=${CINTA_PROVIDER_CACHE_ROOT:-$item_control_root/provider-cache}
+physics_replay_root=${CINTA_PHYSICS_REPLAY_ROOT:-/run/cinta/provider-replay}
+runtime_root=${CINTA_RUNTIME_ROOT:-/tmp/cinta-runtime}
 port=${CINTA_INTERNAL_PORT:-8890}
-mkdir -p "$runs_root"
+mkdir -p "$runs_root" "$item_control_root" "$runtime_root" \
+  "${HOME:-/tmp/cinta-home}" \
+  "${XDG_CACHE_HOME:-/tmp/cinta-home/cache}" \
+  "${XDG_CONFIG_HOME:-/tmp/cinta-home/config}" \
+  "${XDG_STATE_HOME:-/tmp/cinta-home/state}"
+if [ ! -d "$provider_cache_root/cache" ]; then
+  echo 'The cached provider root has no verified cache directory.' >&2
+  exit 64
+fi
+if [ ! -d "$physics_replay_root" ]; then
+  echo 'The reviewed physics replay directory is unavailable.' >&2
+  exit 64
+fi
 out=$(mktemp -d "$runs_root/$(date -u +%Y%m%dT%H%M%SZ)-XXXXXX")
 
 exec python /app/sim/coffee_sorter/live.py \
@@ -22,4 +38,10 @@ exec python /app/sim/coffee_sorter/live.py \
   --allowed-host "$CINTA_PUBLIC_HOST" \
   --allowed-origin "$CINTA_PUBLIC_ORIGIN" \
   --preset /app/sim/coffee_sorter/configs/continuous_demo.json \
+  --item-jobs-root "$item_control_root" \
+  --item-jobs-provider cached \
+  --item-jobs-provider-cache "$provider_cache_root" \
+  --item-jobs-physics-replay "$physics_replay_root" \
+  --item-jobs-generator-root /app/sim/coffee_sorter/generator \
+  --item-jobs-runtime-lock "$runtime_root/render.lock" \
   --out "$out"
