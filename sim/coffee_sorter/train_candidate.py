@@ -32,7 +32,6 @@ import argparse
 import fcntl
 import json
 import math
-import platform
 import sys
 import tempfile
 import time
@@ -332,9 +331,6 @@ def train(args, preset, preset_path: Path, layout: Layout, rate: float, capture_
         },
     }
     expected = provenance(config)
-    # `sys.version` carries an interpreter build date. A hashed or bundled file carries
-    # no timestamp, so the manifest and the model meta share this plain version instead.
-    expected["runtime"]["python"] = platform.python_version()
 
     write_progress(out, "collect_train", 0.0)
     X_train, y_train, train_rows = collect_partition(

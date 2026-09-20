@@ -11,7 +11,6 @@ import hashlib
 import json
 import math
 import platform
-import sys
 import time
 from collections import Counter
 from dataclasses import asdict
@@ -63,7 +62,9 @@ def provenance(config: dict) -> dict:
         "source": {name: sha256(HERE / name) for name in SOURCE_FILES},
         "assets": consumed_assets(),
         "runtime": {
-            "python": sys.version,
+            # The plain version, never sys.version: its build date is a timestamp, and a
+            # hashed or bundled manifest carries no timestamp.
+            "python": platform.python_version(),
             "implementation": platform.python_implementation(),
             "platform": platform.platform(),
             "packages": {
