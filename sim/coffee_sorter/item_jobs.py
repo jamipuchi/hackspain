@@ -1335,15 +1335,26 @@ class ItemJobRunner:
                      "preset": out["out"] / "candidate.preset.json",
                      "victim_id": baseline["victim_id"],
                      "expected_catalog_revision": baseline["catalog_revision"],
-                     "evidence": self._victim_evidence(baseline["victim_id"])}
-        asset = job_dir / "previews" / "object.glb"
-        if asset.is_file():
-            candidate["assets"] = {baseline["new_type_id"]: asset}
+                     "evidence": self._victim_evidence(baseline["victim_id"]),
+                     "assets": self._candidate_assets(baseline.get("new_type_id"), job_dir)}
         recorded = (job.get("activation") or {}).get("bundle_sha256")
         if recorded:
             # An exact retry: the activator answers `active` without a second restart.
             candidate["bundle_sha256"] = recorded
         return candidate
+
+    def _candidate_assets(self, new_type_id: Any, job_dir: Path) -> dict[str, dict[str, Any]]:
+        """The rendered GLB of the new type and the visual block of its ACTUAL draft.
+
+        Never fabricated. Without the type id, the GLB, or a readable draft the map is
+        empty, and the service then shows the contact proxy honestly.
+        """
+        glb = job_dir / "previews" / "object.glb"
+        draft = _read_json(job_dir / "definition.json")
+        visual = draft.get("visual") if isinstance(draft, Mapping) else None
+        if not isinstance(new_type_id, str) or not glb.is_file() or not isinstance(visual, Mapping):
+            return {}
+        return {new_type_id: {"glb": glb, "evidence": dict(visual)}}
 
     def _victim_evidence(self, victim_id: str) -> dict[str, Path]:
         """The rendered files of a GENERATED victim, from the job that activated it."""

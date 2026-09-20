@@ -2259,7 +2259,14 @@ class ActivationRunnerTest(QueueTest):
                           'preset': job_dir / 'training' / 'out' / 'candidate.preset.json',
                           'victim_id': stored['training_baseline']['victim_id'],
                           'expected_catalog_revision': self.catalog['catalog_revision'],
-                          'evidence': {}}, candidate)
+                          'evidence': {},
+                          'assets': {stored['training_baseline']['new_type_id']: {
+                              'glb': job_dir / 'previews' / 'object.glb',
+                              'evidence': json.loads(
+                                  (job_dir / 'definition.json').read_text())['visual']}}},
+                         candidate)
+        self.assertTrue(candidate['assets'][stored['training_baseline']['new_type_id']]
+                        ['glb'].is_file())
         self.assertIsNone(stored['error'])
         self.assertEqual('activating', self.store.summary(stored)['activation']['phase'])
         self.assertIsNone(self.lease_owner())
@@ -2513,6 +2520,26 @@ class ActivationRunnerTest(QueueTest):
         for value in ('lenient', '', None, 'DEMO'):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 self.open(quality_gate=value)
+
+    def test_missing_asset_evidence_gives_an_empty_assets_map(self):
+        """Never fabricated: without the id, the GLB, or the draft, the proxy shows."""
+        runner = self.open()
+        job = self.submit()
+        self.drive(runner, lambda: self.state(job['request_id']) == 'active')
+        job_dir = self.store.job_dir(job['request_id'])
+        new_type_id = self.store.get(job['request_id'])['training_baseline']['new_type_id']
+        self.assertEqual([new_type_id], list(runner._candidate_assets(new_type_id, job_dir)))
+
+        self.assertEqual({}, runner._candidate_assets(None, job_dir))
+        (job_dir / 'definition.json').write_text('{not json')
+        self.assertEqual({}, runner._candidate_assets(new_type_id, job_dir))
+        (job_dir / 'definition.json').write_text(json.dumps({'visual': {'units': 'm'}}))
+        (job_dir / 'previews' / 'object.glb').unlink()
+        self.assertEqual({}, runner._candidate_assets(new_type_id, job_dir))
+        # A crafted job with no recorded new type id still activates, with no assets.
+        self.validated()
+        runner.step()
+        self.assertEqual({}, self.calls[-1][1]['assets'])
 
     def test_a_replacement_also_leaves_waiting_for_replacement(self):
         runner = self.open()
