@@ -91,7 +91,7 @@ RUN printf '%s' "$SOURCE_REVISION" | grep -Eq '^[0-9a-f]{40}$' \
 
 RUN install --directory --owner 10001 --group 10001 /tmp/blender-smoke \
     && su --shell /bin/sh cinta --command \
-       'blender --background --threads 1 --factory-startup --python /app/deploy/blender_smoke.py -- /tmp/blender-smoke' \
+       'blender --background --threads 1 --factory-startup --python-exit-code 1 --python /app/deploy/blender_smoke.py -- /tmp/blender-smoke' \
     && test -s /tmp/blender-smoke/smoke.png \
     && test -s /tmp/blender-smoke/smoke.glb \
     && rm -rf /tmp/blender-smoke

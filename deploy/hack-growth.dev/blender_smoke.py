@@ -1,4 +1,3 @@
-import math
 import pathlib
 import sys
 
@@ -37,29 +36,28 @@ material = bpy.data.materials.new(name="CINTA smoke material")
 material.diffuse_color = (0.13, 0.48, 0.22, 1.0)
 cube.data.materials.append(material)
 
-bpy.ops.object.camera_add(location=(0.0, -0.08, 0.0))
+bpy.ops.object.camera_add(location=(0.0, 0.0, 0.08))
 camera = bpy.context.object
 camera.data.type = "ORTHO"
 camera.data.ortho_scale = 0.04
 camera.data.clip_start = 0.001
-camera.rotation_euler = (math.radians(90.0), 0.0, 0.0)
 scene.camera = camera
 
-bpy.ops.object.light_add(type="AREA", location=(0.02, -0.02, 0.06))
+bpy.ops.object.light_add(type="AREA", location=(0.0, 0.0, 0.05))
 light = bpy.context.object
 light.data.energy = 250.0
 light.data.shape = "DISK"
 light.data.size = 0.05
-light.rotation_euler = (-light.location).to_track_quat("-Z", "Y").to_euler()
 
 scene.render.film_transparent = True
 bpy.ops.render.render(write_still=True)
-render_result = bpy.data.images.get("Render Result")
-if render_result is None:
-    raise RuntimeError("missing Blender render result")
-alpha = list(render_result.pixels)[3::4]
-if sum(value >= 0.5 for value in alpha) < 16:
-    raise RuntimeError("Blender smoke render has no visible object")
+saved_render = bpy.data.images.load(str(root / "smoke.png"), check_existing=False)
+try:
+    alpha = list(saved_render.pixels)[3::4]
+    if sum(value >= 0.5 for value in alpha) < 16:
+        raise RuntimeError("Blender smoke render has no visible object")
+finally:
+    bpy.data.images.remove(saved_render)
 
 bpy.ops.object.select_all(action="DESELECT")
 bpy.context.view_layer.objects.active = cube
