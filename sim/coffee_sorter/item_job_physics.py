@@ -28,14 +28,15 @@ restart with changed configuration never reuses an old root.
 Exit codes match the generation wrapper: 0 proposal present, 3 cache miss and never
 submitted, 4 submission uncertain, 5 credentials missing, 6 cache entry invalid. The
 typed probe outcomes decide that code, so a recorded provider failure stays a known
-failure and never reads as an uncertain call.
+failure and never reads as an uncertain call. Exit 7 means a provider response is known,
+but its local response evidence could not be fully persisted.
 
 The status records what THIS invocation did: `live_requested`, and `completed` as soon as
-a real call returned an answer. That evidence is written at once, with the request
-identity in `physics.json`, and it survives every later failure: a rejected answer or an
-invalid draft definition never reads as "no submission". An exact cache hit stays
-`not_submitted`, and only that hit records `physics_source: cached_llm_replay`. A real
-call records `paid_llm_call`.
+a real call returned an answer. The wrapper writes that evidence at once, with the
+request identity in `physics.json`. Exit 7 preserves the same truth if those writes fail.
+A rejected answer or an invalid draft definition never reads as "no submission". An exact
+cache hit stays `not_submitted`, and only that hit records
+`physics_source: cached_llm_replay`. A real call records `paid_llm_call`.
 """
 from __future__ import annotations
 
@@ -44,6 +45,7 @@ import hashlib
 import json
 import os
 import sys
+import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -58,6 +60,9 @@ REPLAY_FIELDS = {"schema_version", "binding", "physics_description",
 BINDING_FIELDS = {"recipe_sha256", "glb_sha256"}
 SCHEMA_VERSION = 1
 MEASUREMENT_STATUS = "unmeasured_proxy_estimate"
+# This exit proves that a live provider response was received even when every local
+# evidence write failed. Queue settlement owns the matching retained-state transition.
+EXIT_RESPONSE_RECEIVED = 7
 
 
 class ReplayError(Exception):
@@ -76,6 +81,11 @@ PROBE_OUTCOMES = {
                           "credentials missing for a live request"),
     "SubmissionUncertain": (EXIT_UNCERTAIN, "uncertain",
                             "the physics provider call was interrupted"),
+    "ResponsePersistenceFailed": (
+        EXIT_RESPONSE_RECEIVED,
+        "completed",
+        "the provider answered but local response evidence could not be written",
+    ),
     "CacheEntryInvalid": (EXIT_CACHE_ENTRY_INVALID, "not_submitted",
                           "the physics cache entry failed verification"),
     "CachedProviderFailure": (EXIT_FAILED, "not_submitted",
@@ -241,14 +251,18 @@ def main(argv: list[str] | None = None) -> int:
                physics_description_source=source)
         return EXIT_NOT_SUBMITTED
 
-    def provider_answered(reason: str | None) -> None:
+    def provider_answered(reason: str | None) -> bool:
         """Persist the submission evidence the moment the provider answer exists.
 
         A later failure must never read as "no submission". The request identity and the
         source of the answer go to physics.json now, and the status says `completed` only
         for a real call: an exact cache hit submitted nothing.
+
+        Return false when either local record could not be persisted. A paid response
+        then uses EXIT_RESPONSE_RECEIVED, which carries the billing truth independently
+        of both files.
         """
-        _write_json(job_dir / "physics.json", {
+        physics = {
             # A real call is never labeled as a replay. The same cache hit that keeps the
             # submission `not_submitted` is what makes this a replay.
             "physics_source": "cached_llm_replay" if cache_hit else "paid_llm_call",
@@ -261,9 +275,22 @@ def main(argv: list[str] | None = None) -> int:
             "physics_measurement_status": MEASUREMENT_STATUS,
             "recipe_sha256": recipe_sha256,
             "glb_sha256": glb_sha256,
-        })
-        report("not_submitted" if cache_hit else "completed", reason, cache_hit=cache_hit,
-               request_sha256=digest, physics_description_source=source)
+        }
+        failures = []
+        try:
+            _write_json(job_dir / "physics.json", physics)
+        except (OSError, TypeError, ValueError):
+            failures.append("physics evidence")
+        status_reason = reason
+        if failures:
+            status_reason = "the provider answered but local physics evidence could not be written"
+        try:
+            report("not_submitted" if cache_hit else "completed", status_reason,
+                   cache_hit=cache_hit, request_sha256=digest,
+                   physics_description_source=source)
+        except (OSError, TypeError, ValueError):
+            failures.append("provider status")
+        return not failures
 
     try:
         proposal = propose_physics(
@@ -273,8 +300,12 @@ def main(argv: list[str] | None = None) -> int:
         typed = probe_outcome(error)
         if typed is not None:
             code, submission, reason = typed
-            report(submission, reason, request_sha256=digest,
-                   physics_description_source=source)
+            try:
+                report(submission, reason, request_sha256=digest,
+                       physics_description_source=source)
+            except (OSError, TypeError, ValueError):
+                if code != EXIT_RESPONSE_RECEIVED:
+                    raise
             return code
         if "OPENROUTER_API_KEY" in str(error):
             report("not_submitted", "credentials missing for a live request")
@@ -289,12 +320,13 @@ def main(argv: list[str] | None = None) -> int:
         if not cache_hit and entry.is_file():
             # probe.call saves its entry before it returns, so the provider answered THIS
             # call and the failure came afterwards. The submission stays known.
-            provider_answered(reason)
-            return EXIT_FAILED
+            persisted = provider_answered(reason)
+            return EXIT_FAILED if persisted else EXIT_RESPONSE_RECEIVED
         report("not_submitted", reason)
         return EXIT_CACHE_ENTRY_INVALID if verification else EXIT_FAILED
-    # The answer exists. Its evidence is durable before anything else can fail.
-    provider_answered(None)
+    # Record the answer before definition construction can fail.
+    if not provider_answered(None):
+        return EXIT_FAILED if cache_hit else EXIT_RESPONSE_RECEIVED
 
     # Rebuild the definition through the real adapter on THIS job's own artifacts.
     def build(sorting_proposal):
@@ -317,9 +349,13 @@ def main(argv: list[str] | None = None) -> int:
                                 "severity": "none", "proposed_action": "keep"})
     except (ValueError, OSError) as error:
         # The same evidence with the failure reason. A real call stays `completed`.
-        provider_answered(f"the draft definition is invalid: {error}")
-        return EXIT_FAILED
-    _write_json(job_dir / "definition.json", definition)
+        persisted = provider_answered(f"the draft definition is invalid: {error}")
+        return EXIT_FAILED if persisted or cache_hit else EXIT_RESPONSE_RECEIVED
+    try:
+        _write_json(job_dir / "definition.json", definition)
+    except (OSError, TypeError, ValueError) as error:
+        persisted = provider_answered(f"the draft definition cannot be written: {error}")
+        return EXIT_FAILED if persisted or cache_hit else EXIT_RESPONSE_RECEIVED
     return EXIT_OK
 
 
@@ -342,7 +378,21 @@ def _read_json(path: Path):
 
 
 def _write_json(path: Path, value) -> None:
-    Path(path).write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile("w", dir=path.parent, prefix=".tmp-",
+                                         delete=False) as handle:
+            temporary = Path(handle.name)
+            json.dump(value, handle, indent=2, sort_keys=True, allow_nan=False)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def _status(path: Path, submission: str, reason: str | None, **extra) -> None:

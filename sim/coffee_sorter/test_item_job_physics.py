@@ -7,6 +7,7 @@ that a request may have reached the provider.
 """
 from __future__ import annotations
 
+import io
 import json
 import sys
 import tempfile
@@ -179,16 +180,38 @@ class TypedOutcomeTest(WrapperTest):
             probe.CacheMiss: (item_jobs.EXIT_NOT_SUBMITTED, 'not_submitted'),
             probe.CredentialMissing: (item_jobs.EXIT_CREDENTIALS, 'not_submitted'),
             probe.SubmissionUncertain: (item_jobs.EXIT_UNCERTAIN, 'uncertain'),
+            probe.ResponsePersistenceFailed: (
+                item_job_physics.EXIT_RESPONSE_RECEIVED, 'completed'),
             probe.CacheEntryInvalid: (item_jobs.EXIT_CACHE_ENTRY_INVALID, 'not_submitted'),
             probe.CachedProviderFailure: (item_jobs.EXIT_FAILED, 'not_submitted'),
         }
 
         for outcome, mapped in expected.items():
             with self.subTest(outcome=outcome.__name__):
-                self.assertEqual(mapped, item_job_physics.probe_outcome(outcome('x'))[:2])
+                error = (outcome('x', request_sha256='a' * 64, endpoint=probe.OPENROUTER_URL)
+                         if outcome is probe.ResponsePersistenceFailed else outcome('x'))
+                self.assertEqual(mapped, item_job_physics.probe_outcome(error)[:2])
         # An unrecognized fault stays unmapped, so the caller keeps it uncertain.
         self.assertIsNone(item_job_physics.probe_outcome(RuntimeError('x')))
         self.assertIsNone(item_job_physics.probe_outcome(probe.ProbeOutcome('x')))
+
+    def test_a_received_response_is_explicit_when_its_cache_write_fails(self):
+        """The response boundary is independent of a digest-named cache file."""
+        payload = {'model': 'test', 'messages': []}
+        body = io.BytesIO(json.dumps({'choices': []}).encode())
+
+        with unittest.mock.patch.object(probe.urllib.request, 'urlopen', return_value=body), \
+                unittest.mock.patch.object(probe, 'save', side_effect=OSError('disk full')):
+            with self.assertRaises(probe.ResponsePersistenceFailed) as raised:
+                probe.call(probe.OPENROUTER_URL, 'fake-key', payload,
+                           self.root / 'run', live=True)
+
+        expected = item_job_physics.hashlib.sha256(json.dumps(
+            [probe.OPENROUTER_URL, payload], sort_keys=True).encode()).hexdigest()
+        self.assertEqual(expected, raised.exception.request_sha256)
+        self.assertEqual(probe.OPENROUTER_URL, raised.exception.endpoint)
+        self.assertEqual('response_persistence_failed', probe.REQUESTS[-1]['outcome'])
+        self.assertIsNone(probe.REQUESTS[-1]['cache_entry_sha256'])
 
     def test_a_cached_provider_failure_is_a_known_failure_not_an_uncertain_call(self):
         """The cached entry records a provider failure. No call happened here."""
@@ -304,6 +327,50 @@ class SubmissionEvidenceTest(WrapperTest):
         code = self.run_with_fake_provider('--live', mode='paid', side_effect=call)
 
         self.assert_completed_evidence(code, 'physics proposal verification failed')
+
+    def test_a_response_with_no_cache_entry_returns_the_completed_response_exit(self):
+        error = probe.ResponsePersistenceFailed(
+            'cache write failed', request_sha256=self.digest(), endpoint=probe.OPENROUTER_URL)
+
+        code = self.run_with_fake_provider('--live', mode='paid', side_effect=error)
+
+        self.assertEqual(item_job_physics.EXIT_RESPONSE_RECEIVED, code)
+        self.assertEqual('completed', self.status()['provider_submission'])
+        self.assertEqual(self.digest(), self.status()['request_sha256'])
+        self.assertFalse((self.cache_root / 'cache' / f'{self.digest()}.json').exists())
+
+    def test_a_status_write_failure_returns_the_completed_response_exit(self):
+        real_write = item_job_physics._write_json
+
+        def fail_status(path, value):
+            if Path(path).name == 'provider_status.json':
+                raise OSError('status write failed')
+            return real_write(path, value)
+
+        with unittest.mock.patch.object(item_job_physics, '_write_json', side_effect=fail_status):
+            code = self.run_with_fake_provider(
+                '--live', mode='paid', side_effect=self.answered_then())
+
+        self.assertEqual(item_job_physics.EXIT_RESPONSE_RECEIVED, code)
+        self.assertTrue((self.job / 'physics.json').is_file())
+        self.assertFalse((self.job / 'provider_status.json').exists())
+
+    def test_a_physics_evidence_write_failure_still_records_the_completed_response(self):
+        real_write = item_job_physics._write_json
+
+        def fail_physics(path, value):
+            if Path(path).name == 'physics.json':
+                raise OSError('physics write failed')
+            return real_write(path, value)
+
+        with unittest.mock.patch.object(item_job_physics, '_write_json', side_effect=fail_physics):
+            code = self.run_with_fake_provider(
+                '--live', mode='paid', side_effect=self.answered_then())
+
+        self.assertEqual(item_job_physics.EXIT_RESPONSE_RECEIVED, code)
+        self.assertEqual('completed', self.status()['provider_submission'])
+        self.assertIn('local physics evidence', self.status()['reason'])
+        self.assertFalse((self.job / 'physics.json').exists())
 
     def test_a_definition_failure_after_a_live_answer_keeps_the_completed_submission(self):
         """Path 2, and the evidence is already durable when the definition is built."""

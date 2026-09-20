@@ -12,6 +12,7 @@ import platform
 import re
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -43,6 +44,15 @@ class CredentialMissing(ProbeOutcome):
 
 class SubmissionUncertain(ProbeOutcome):
     """The request may have reached the provider. Its billing status is unknown."""
+
+
+class ResponsePersistenceFailed(ProbeOutcome):
+    """The provider answered, but its local cache entry could not be persisted."""
+
+    def __init__(self, message, *, request_sha256, endpoint):
+        super().__init__(message)
+        self.request_sha256 = request_sha256
+        self.endpoint = endpoint
 
 
 class CachedProviderFailure(ProbeOutcome):
@@ -233,7 +243,19 @@ def segments_intersect(a, b, c, d):
 
 def save(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2, allow_nan=False) + "\n")
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile("w", dir=path.parent, prefix=".tmp-",
+                                         delete=False) as handle:
+            temporary = Path(handle.name)
+            json.dump(data, handle, indent=2, allow_nan=False)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def save_attempt(path, data):
@@ -413,7 +435,18 @@ def call(url, key, payload, out, live):
         raise SubmissionUncertain(f"provider connection or JSON response failed; diagnostic saved at {path}") from None
     result = {"response": body, "latency_s": time.monotonic() - started,
               "request_sha256": digest, "endpoint": url}
-    save(path, result)
+    try:
+        save(path, result)
+    except (OSError, TypeError, ValueError):
+        # The response is a known completed provider interaction even when local storage
+        # fails. The caller must retain that billing truth without inferring it from a
+        # cache file that does not exist.
+        _record(url, digest, path, cached=False, outcome="response_persistence_failed")
+        raise ResponsePersistenceFailed(
+            "provider response was received but its cache entry could not be written",
+            request_sha256=digest,
+            endpoint=url,
+        ) from None
     _record(url, digest, path, cached=False, outcome="live")
     return {**result, "cached": False}
 
