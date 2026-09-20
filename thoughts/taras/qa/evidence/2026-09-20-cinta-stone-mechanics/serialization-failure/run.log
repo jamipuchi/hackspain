@@ -1,0 +1,21 @@
+{"seed": 7, "reuse": 0, "mode": "reject", "body_id": 471, "mass_kg": 0.0009784160355202044, "original_outcome": "accept", "original_matches_reference": false, "reference_differences": [{"path": "decision.t_available_s", "observed": 0.3087218748368325, "expected": 0.3087596658114346}], "all_non_wall_fields_match_reference": true, "early_score": {"time_s": 0.45200000000000035, "pose": [0.340096236388439, -0.09272636987435641, 0.4923954386803883, 0.0965403503148813, -0.001381331811527133, 0.00014655136749390724, -0.9953281022889913], "velocity": [3.002101610891395, -0.0022288230167833768, -1.7129368522274335, -1.1638334999888448e-11, -3.221910126562333e-11, 5.53212842342293e-12], "applied_force_n": [0.0, 0.0, 0.0], "outcome": "accept"}, "original_retirement": {"time_s": 0.5060000000000003, "pose": [0.5022097233765731, -0.09284672631726289, 0.3853289986601069, 0.0965403503148943, -0.0013813318115998205, 0.00014655136751197474, -0.9953281022889902], "velocity": [3.002101610891395, -0.0022288230167833768, -2.2426768522274334, 4.373692503205195e-15, 2.3081676309683737e-14, 3.111159819483083e-16]}, "first_bin_contact": {"time_s": 0.5390000000000004, "observed_after_step_s": 0.5400000000000004, "geom_id": 18, "geom_name": "bin_accept", "position_m": [0.5980128126974722, -0.0974246733936438, 0.3028874152735613], "distance_m": -0.00022516945287746158, "normal_force_n": 0.1388404643065981}, "bin_contacts": ["bin_accept"], "final_100ms_bin_contacts": ["bin_accept"], "stable_bin_support": ["bin_accept"], "final_100ms_support_fractions": {"bin_accept": 1.0, "bin_reject": 0.0}, "final_100ms_max_displacement_m": 9.147985437351752e-08, "terminal_speed_m_s": 2.866126162187982e-06, "positive_contact_geometries": ["belt_top", "bin_accept"], "continuation_final": {"time_s": 2.00599999999989, "pose": [0.6583921788687369, -0.0931753109109486, 0.3060488552318127, 0.09628942102933165, -1.5414131584569877e-07, -2.737049357612681e-07, -0.9953533781515669], "velocity": [-9.640262664988992e-07, -2.3912341812473894e-06, 1.2519311584558996e-06, -0.00045392558493397326, -0.0001939044563485293, -0.00020915617818784377]}}
+Traceback (most recent call last):
+  File "/private/tmp/cinta-stone-mechanics/observe_routes.py", line 285, in <module>
+    main()
+    ~~~~^^
+  File "/private/tmp/cinta-stone-mechanics/observe_routes.py", line 254, in main
+    json.dump(row, stream, allow_nan=False)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.12_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/__init__.py", line 181, in dump
+    for chunk in iterable:
+                 ^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.12_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/encoder.py", line 435, in _iterencode
+    yield from _iterencode_dict(o, _current_indent_level)
+  File "/opt/homebrew/Cellar/python@3.13/3.13.12_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/encoder.py", line 409, in _iterencode_dict
+    yield from chunks
+  File "/opt/homebrew/Cellar/python@3.13/3.13.12_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/encoder.py", line 442, in _iterencode
+    o = _default(o)
+  File "/opt/homebrew/Cellar/python@3.13/3.13.12_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/encoder.py", line 182, in default
+    raise TypeError(f'Object of type {o.__class__.__name__} '
+                    f'is not JSON serializable')
+TypeError: Object of type int64 is not JSON serializable

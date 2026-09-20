@@ -1,0 +1,325 @@
+{
+  "schema_version": 1,
+  "label": "stone-keep",
+  "seed": 9,
+  "targets": [
+    "stone"
+  ],
+  "policy_mode": "keep",
+  "status": "ok",
+  "attempts": [
+    {
+      "seed": 9,
+      "reuse": 0,
+      "object_id": 0,
+      "spawn_time_s": 0.0,
+      "expected_outcome": "accept",
+      "sampled_body": {
+        "body_id": 471,
+        "mass_kg": 0.0006773685395323714,
+        "axes_m": [
+          0.004675623009925212,
+          0.002573634418175111,
+          0.0027062963001031237
+        ],
+        "initial_pose": [
+          -1.0062751999870492,
+          -0.0071665003588108804,
+          0.6087062963001031,
+          0.4249029247138568,
+          -0.018780329133709604,
+          -0.02958609294501291,
+          0.9045603721761687
+        ],
+        "initial_velocity": [
+          2.811563522601751,
+          -0.0038105789753867148,
+          0.0,
+          7.566982232248304,
+          2.4786547475238483,
+          0.8333415809261482
+        ]
+      },
+      "classification_control": {
+        "observed": true,
+        "predicted_class": "stone",
+        "probabilities": {
+          "good": 2.3170746253307466e-07,
+          "faded": 9.481126885196355e-08,
+          "black": 2.961558432181326e-10,
+          "sour": 2.1538053098543468e-10,
+          "insect": 1.1343740916712271e-09,
+          "broken": 1.6016380597302546e-10,
+          "shell": 5.644238414866078e-09,
+          "husk": 9.904367933708505e-07,
+          "stone": 0.9999986754386804,
+          "stick": 1.554820909576074e-10
+        },
+        "anomaly_score": 8.9690058534651,
+        "anomaly_threshold": 14.96062187496633,
+        "reject_probability": 1.0928538570004857e-06,
+        "class_threshold_reject": false,
+        "anomaly_reject": false,
+        "reject": false,
+        "scheduled": false,
+        "late": false,
+        "pulse_s": 0.0,
+        "relative_t_decided_s": 0.3000000000000002,
+        "relative_t_available_s": 0.30878875008411727,
+        "relative_t_fire_s": 0.3709846964129613,
+        "track_id": 0,
+        "nozzles": [],
+        "observation_count": 3,
+        "expected_outcome": "accept",
+        "expectation_policy_version": "861b3a6e47203b6394ff2ab13479435da8e0a5f096d478a2dd6f38a3236166aa",
+        "associated_rejection_tracks": [],
+        "actual_scheduled_fires": [],
+        "jet_hit_steps": 0,
+        "own_pulse_event_count": 0,
+        "own_pulse_hit": false
+      },
+      "collection": {
+        "outcome": "spilled",
+        "resolved_time_s": 0.6320000000000005,
+        "resolution_age_s": 0.6320000000000005,
+        "last_position_m": [
+          0.769,
+          -0.006,
+          0.432
+        ],
+        "retired": true,
+        "unresolved": false,
+        "stop_reason": "retired",
+        "sim_seconds_observed": 0.6330000000000005,
+        "native_positive_contacts_before_park": [
+          {
+            "object_id": 0,
+            "body_id": 471,
+            "sim_time_s": 0.6330000000000005,
+            "outcome": "spilled",
+            "contacts": [],
+            "final_pose_before_park": [
+              0.7711481343497368,
+              -0.006313097122718768,
+              0.4311335566894994,
+              0.4156477497005084,
+              0.2783639106085432,
+              0.12041934623133527,
+              0.8574670037341621
+            ],
+            "final_velocity_before_park": [
+              2.1535234954873337,
+              0.00260449555454153,
+              -1.012734825881412,
+              2.0057819041845345e-12,
+              -2.0756679113054464e-10,
+              -2.2640165363446186e-10
+            ]
+          }
+        ],
+        "support_observation": null,
+        "retirement_event_count": 1,
+        "outcome_event_count": 1,
+        "event_counts": {
+          "decision": 1,
+          "injected": 1,
+          "outcome": 1
+        }
+      },
+      "events": [
+        {
+          "event_id": 2,
+          "type": "injected",
+          "sim_time_s": 0.0,
+          "object_id": 0
+        },
+        {
+          "event_id": 3,
+          "type": "decision",
+          "sim_time_s": 0.3010000000000002,
+          "object_ids": [
+            0
+          ],
+          "track_id": 0
+        },
+        {
+          "event_id": 4,
+          "type": "outcome",
+          "sim_time_s": 0.6330000000000005,
+          "object_id": 0,
+          "outcome": "spilled"
+        }
+      ]
+    },
+    {
+      "seed": 9,
+      "reuse": 1,
+      "object_id": 1,
+      "spawn_time_s": 0.6330000000000005,
+      "expected_outcome": "accept",
+      "sampled_body": {
+        "body_id": 471,
+        "mass_kg": 0.0004896076275023411,
+        "axes_m": [
+          0.003289008724945683,
+          0.003410667409178908,
+          0.0020983621463964933
+        ],
+        "initial_pose": [
+          -0.9587189948216082,
+          0.0991064911131101,
+          0.6080983621463965,
+          0.03914206892931821,
+          -0.000206259211772207,
+          -0.17497252515693593,
+          0.9837949335797962
+        ],
+        "initial_velocity": [
+          2.4662942245762203,
+          0.0614085820602724,
+          0.0,
+          -3.513721214490203,
+          1.6357253144859352,
+          -3.1323787176474074
+        ]
+      },
+      "classification_control": {
+        "observed": true,
+        "predicted_class": "stone",
+        "probabilities": {
+          "good": 1.0768053132575487e-06,
+          "faded": 1.0330600922519043e-08,
+          "black": 2.475389794079025e-10,
+          "sour": 3.479674892712143e-10,
+          "insect": 5.2125493693603e-10,
+          "broken": 2.6211060414684136e-10,
+          "shell": 2.600198880844256e-07,
+          "husk": 1.9375031257741198e-10,
+          "stone": 0.9999986511416171,
+          "stick": 1.2995819259762041e-10
+        },
+        "anomaly_score": 8.461747279421573,
+        "anomaly_threshold": 14.96062187496633,
+        "reject_probability": 2.720530695218817e-07,
+        "class_threshold_reject": false,
+        "anomaly_reject": false,
+        "reject": false,
+        "scheduled": false,
+        "late": false,
+        "pulse_s": 0.0,
+        "relative_t_decided_s": 0.29100000000000026,
+        "relative_t_available_s": 0.2992844999115917,
+        "relative_t_fire_s": 0.3606813848920617,
+        "track_id": 1,
+        "nozzles": [],
+        "observation_count": 3,
+        "expected_outcome": "accept",
+        "expectation_policy_version": "861b3a6e47203b6394ff2ab13479435da8e0a5f096d478a2dd6f38a3236166aa",
+        "associated_rejection_tracks": [],
+        "actual_scheduled_fires": [],
+        "jet_hit_steps": 0,
+        "own_pulse_event_count": 0,
+        "own_pulse_hit": false
+      },
+      "collection": {
+        "outcome": "accept",
+        "resolved_time_s": 1.3759999999999593,
+        "resolution_age_s": 0.7429999999999588,
+        "last_position_m": [
+          0.726,
+          0.106,
+          0.306
+        ],
+        "retired": true,
+        "unresolved": false,
+        "stop_reason": "retired",
+        "sim_seconds_observed": 0.7439999999999587,
+        "native_positive_contacts_before_park": [
+          {
+            "object_id": 1,
+            "body_id": 471,
+            "sim_time_s": 1.3769999999999591,
+            "outcome": "accept",
+            "contacts": [
+              {
+                "surface": "accept",
+                "geom_name": "bin_accept",
+                "normal_force_n": 0.11921590974595009,
+                "distance_m": -0.0001982031109662068,
+                "solve_time_s": 1.3759999999999593,
+                "observed_after_step_s": 1.3769999999999591
+              }
+            ],
+            "final_pose_before_park": [
+              0.7255400869057521,
+              0.10625948256855143,
+              0.30439561290974926,
+              -0.018876125957328106,
+              0.039173552327479044,
+              0.028169028761821445,
+              0.9986569133018134
+            ],
+            "final_velocity_before_park": [
+              -0.2666297025231856,
+              -0.05979293875231529,
+              -1.125929477584156,
+              -28.1257752417052,
+              30.199933065650658,
+              -4.198206594127767
+            ]
+          }
+        ],
+        "support_observation": null,
+        "retirement_event_count": 1,
+        "outcome_event_count": 1,
+        "event_counts": {
+          "decision": 1,
+          "injected": 1,
+          "outcome": 1
+        }
+      },
+      "events": [
+        {
+          "event_id": 5,
+          "type": "injected",
+          "sim_time_s": 0.6330000000000005,
+          "object_id": 1
+        },
+        {
+          "event_id": 6,
+          "type": "decision",
+          "sim_time_s": 0.9250000000000007,
+          "object_ids": [
+            1
+          ],
+          "track_id": 1
+        },
+        {
+          "event_id": 7,
+          "type": "outcome",
+          "sim_time_s": 1.3769999999999591,
+          "object_id": 1,
+          "outcome": "accept"
+        }
+      ]
+    }
+  ],
+  "identity": {
+    "repo": "/private/tmp/hackspain-cinta-collection-scoring",
+    "model": "/private/tmp/hackspain-cinta-collection-scoring/sim/coffee_sorter/models/live_green_arabica.joblib",
+    "model_sha256": "f5b26f26aed62db18fbef23b4df712b96b2946b1ae2fce699e1a2e85a20844a3",
+    "preset_sha256": "5fc5033ea62ceb4f640b4e642990d014d6de09ce706c20501eecd6c30d5c428b",
+    "source_revision": "38de1d01468646d7116bd2bec03960c2f5e5f0ff",
+    "source_hashes": {
+      "sim.py": "b66b440d156d6f1e0f2096b6ce740fc3e2dc4760a3205e84085b1ae8065f1114",
+      "scene.py": "90678e917131474289b95392a457be252afe42bc903b645fb35d5ea595974093",
+      "engine.py": "ca2db6187bd2523e44af401c68c86f95fed5f715bd2b0f0d4cf5e6062e2e1a89",
+      "rolling_scores.py": "d3ad84f67d17b3a8861ec604e084661313a988dceddc0c131ac6e5149a9e9f4c",
+      "controller.py": "fac051ba53641f1c98dc78ce021ed8502864059adc391169af77474bc27c1c8f",
+      "profiles.py": "c186725ad3ca2c65327a60aec332eb6fce0fce5099ac2eaee65788e273f2b899",
+      "runner": "7ca2894be8484e0f5189f4c2c7559feb495897848092148b3d60f4bc53b12723"
+    }
+  },
+  "lock_wait_s": 9.709037840366364e-06,
+  "lock_released_after_close": true
+}

@@ -1,0 +1,62 @@
+{
+  "description": "A gold hoop earring with a turquoise pendant. The hoop has an open ring body and a separate post and pendant.",
+  "display_name": "Gold Hoop With Turquoise Pendant",
+  "generator": {
+    "provider_model": "google/gemini-3.8-flash",
+    "recipe_sha256": "22fcd535f56a9eb27c660088164de40c68e9ac464917146130396108dfe2762c"
+  },
+  "lifecycle_state": "draft",
+  "object_key": "gold_hoop_with_turquoise_pendant",
+  "object_type_id": "generated.gold_hoop_with_turquoise_pendant.sha256-26dd1eddb3db144756d50e25a00498e6ef90321df316bc0fc91a42c13cfc9729",
+  "physics": {
+    "density_kg_m3": null,
+    "limitations": "The engine has box and capsule contact primitives only. A solid proxy would not be measured ring behaviour, and this object stays unsupported until a reviewed compound or concave contact representation exists.",
+    "mass_basis": null,
+    "mass_kg": null,
+    "material_assumption": null,
+    "proposal_provenance": {
+      "generator_probe_sha256": null,
+      "kind": "manual",
+      "provider_model": null,
+      "request_sha256": null
+    },
+    "proposal_source": "human_or_llm_unreviewed",
+    "proxy": null,
+    "proxy_volume_m3": null,
+    "review_status": "draft_unreviewed",
+    "unsupported_reason": "The ring opening is meaningful geometry. A box or a capsule fills the hole, so neither primitive can represent how this object rests, tumbles, or catches."
+  },
+  "review_status": "draft_unreviewed",
+  "schema_version": 1,
+  "sorting": {
+    "class_name": null,
+    "defect": null,
+    "proposed_action": null,
+    "severity": null,
+    "status": "unassigned"
+  },
+  "visual": {
+    "asset_quaternion_order": "xyzw",
+    "bounds_dimensions_m": [
+      0.014,
+      0.023799999237060547,
+      0.006
+    ],
+    "engine_coordinate_system": "right_handed_z_up",
+    "engine_up_axis": "+Z",
+    "media_type": "model/gltf-binary",
+    "mesh_count": 8,
+    "runtime_lod_reviewed": false,
+    "server_quaternion_order": "wxyz",
+    "sim_from_asset_quaternion_wxyz": [
+      0.7071067811865476,
+      0.7071067811865476,
+      0.0,
+      0.0
+    ],
+    "source_up_axis": "+Y",
+    "units": "m",
+    "uri": "thoughts/taras/research/coffee-quality/object-generation/results/gemini/earring/render/object.glb",
+    "visual_asset_id": "sha256:5b926d681542ce1d5116ba446d89e39da7ed8a0cda1b042c5a8914c8adc18171"
+  }
+}

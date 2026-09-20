@@ -1,12 +1,16 @@
 """Product profiles: what travels on the belt and how each class looks.
 
-A profile is *data*, not code. Adding a new product (roasted coffee, chickpeas, ...)
-or a new defect class means adding an entry here and re-running `train`.
+A profile is *data*, not code. The values live in `object_catalog/` as validated JSON.
+Adding a new product (roasted coffee, chickpeas, ...) or a new defect class means adding
+a definition file plus a catalog manifest entry, then re-running `train`. Nothing here
+needs editing. `ClassSpec` and `Profile` stay engine adapters derived from that data.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 import numpy as np
+
+from object_catalog import load_catalog
 
 # Shape families. Each maps to a body pool in the MJCF (see scene.py).
 ELLIPSOID, HALF, BOX, CAPSULE = "ellipsoid", "half", "box", "capsule"
@@ -40,40 +44,30 @@ class Profile:
         return p / p.sum()
 
 
-# ---------------------------------------------------------------- green arabica
 # Sizes are semi-axes in mm. A screen-16 bean is ~10 x 7 x 5 mm.
 BEAN = ((4.2, 5.6), (3.1, 4.0), (2.2, 2.9))
-GREEN_ARABICA = Profile(
-    name="green_arabica",
-    belt_rgb=(0.10, 0.22, 0.62),
-    classes=[
-        ClassSpec("good",   0.86,  ELLIPSOID, BEAN, (0.50, 0.60, 0.46), 0.06, texture="good",   defect=False, severity="none"),
-        ClassSpec("faded",  0.03,  ELLIPSOID, BEAN, (0.70, 0.66, 0.42), 0.05, texture="faded",  severity="minor"),
-        ClassSpec("black",  0.025, ELLIPSOID, BEAN, (0.13, 0.11, 0.09), 0.03, texture="black"),
-        ClassSpec("sour",   0.025, ELLIPSOID, BEAN, (0.50, 0.32, 0.18), 0.05, texture="sour"),
-        ClassSpec("insect", 0.02,  ELLIPSOID, BEAN, (0.50, 0.60, 0.46), 0.06, texture="insect"),
-        ClassSpec("broken", 0.02,  HALF,      BEAN, (0.50, 0.60, 0.46), 0.06, texture="good"),
-        ClassSpec("shell",  0.01,  ELLIPSOID, ((4.0, 5.2), (2.8, 3.6), (0.6, 1.0)), (0.62, 0.70, 0.55), 0.05, density=600, texture="good"),
-        ClassSpec("husk",   0.01,  ELLIPSOID, ((4.5, 7.0), (3.0, 5.0), (0.3, 0.6)), (0.85, 0.78, 0.60), 0.05, density=300, severity="foreign"),
-        ClassSpec("stone",  0.005, BOX,       ((2.5, 5.0), (2.0, 4.0), (1.5, 3.5)), (0.45, 0.44, 0.42), 0.08, density=2600, severity="foreign"),
-        ClassSpec("stick",  0.005, CAPSULE,   ((8.0, 16.0), (0.9, 1.4), (0.9, 1.4)), (0.42, 0.30, 0.16), 0.06, density=700, severity="foreign"),
-    ],
-)
 
-# ---------------------------------------------------------------- roasted (generalisation demo)
-# Good = medium roast brown. Quakers = pale, under-developed beans. Burnt = charcoal.
-ROASTED = Profile(
-    name="roasted",
-    belt_rgb=(0.10, 0.22, 0.62),
-    classes=[
-        ClassSpec("good",   0.90, ELLIPSOID, ((4.6, 6.0), (3.5, 4.4), (2.6, 3.2)), (0.36, 0.22, 0.13), 0.05, density=650, texture="roast", defect=False, severity="none"),
-        ClassSpec("quaker", 0.04, ELLIPSOID, ((4.6, 6.0), (3.5, 4.4), (2.6, 3.2)), (0.72, 0.56, 0.36), 0.05, density=600, texture="faded"),
-        ClassSpec("burnt",  0.02, ELLIPSOID, ((4.6, 6.0), (3.5, 4.4), (2.6, 3.2)), (0.08, 0.07, 0.06), 0.02, density=550, texture="black"),
-        ClassSpec("broken", 0.03, HALF,      ((4.6, 6.0), (3.5, 4.4), (2.6, 3.2)), (0.36, 0.22, 0.13), 0.05, density=650, texture="roast"),
-        ClassSpec("stone",  0.005, BOX,      ((2.5, 5.0), (2.0, 4.0), (1.5, 3.5)), (0.45, 0.44, 0.42), 0.08, density=2600, severity="foreign"),
-        ClassSpec("stick",  0.005, CAPSULE,  ((8.0, 16.0), (0.9, 1.4), (0.9, 1.4)), (0.42, 0.30, 0.16), 0.06, density=700, severity="foreign"),
-    ],
-)
+def class_spec(definition) -> ClassSpec:
+    """Derive the engine adapter. The catalog definition remains the source of truth."""
+    visual, physics, truth = definition["visual"], definition["physics"], definition["truth"]
+    return ClassSpec(
+        definition["classifier_label"], definition["feed"]["prior"], visual["shape"],
+        tuple(tuple(axis) for axis in visual["size_mm"]), tuple(visual["rgb"]), visual["rgb_jitter"],
+        density=physics["density_kg_m3"], texture=visual["texture"],
+        defect=truth["defect"], severity=truth["severity"],
+    )
+
+
+def profile_from_catalog(catalog) -> Profile:
+    return Profile(catalog["profile_name"], tuple(catalog["belt_rgb"]),
+                   [class_spec(definition) for definition in catalog["definitions"]])
+
+
+# ---------------------------------------------------------------- built-in catalogs
+# green arabica is the active catalog. roasted is the static generalisation demo:
+# good = medium roast brown, quakers = pale under-developed beans, burnt = charcoal.
+GREEN_ARABICA = profile_from_catalog(load_catalog())
+ROASTED = profile_from_catalog(load_catalog(manifest="builtin/roasted.catalog.json"))
 
 PROFILES = {p.name: p for p in (GREEN_ARABICA, ROASTED)}
 

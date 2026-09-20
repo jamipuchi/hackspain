@@ -1,0 +1,69 @@
+{
+  "description": "A flat five-point star token.",
+  "display_name": "Five Point Gold Star Token",
+  "generator": {
+    "provider_model": "google/gemini-3.8-flash",
+    "recipe_sha256": "ab172827287041a6d98b836b37e7297ff9d5438e397ef7c213ed25f47293549b"
+  },
+  "lifecycle_state": "draft",
+  "object_key": "five_point_gold_star_token",
+  "object_type_id": "generated.five_point_gold_star_token.sha256-a3d0815f3917c321c4ae4db28d83754f79e8087a78ec96d7b1ba131a5ca00c74",
+  "physics": {
+    "density_kg_m3": 1200.0,
+    "limitations": "The density and the box contact geometry are unmeasured proxy estimates. The box fills the space between the star points, so contact area and tumbling differ from the rendered shape, and the proxy mass is an estimate.",
+    "mass_basis": "density_times_collision_proxy_volume",
+    "mass_kg": 0.0004608,
+    "material_assumption": "Assumed density of a light decorative token. This density is an unmeasured proxy estimate. Nobody weighed this object.",
+    "proposal_provenance": {
+      "generator_probe_sha256": null,
+      "kind": "manual",
+      "provider_model": null,
+      "request_sha256": null
+    },
+    "proposal_source": "human_or_llm_unreviewed",
+    "proxy": {
+      "half_extents_m": [
+        0.008,
+        0.006,
+        0.001
+      ],
+      "shape": "box"
+    },
+    "proxy_volume_m3": 3.84e-07,
+    "review_status": "draft_unreviewed",
+    "unsupported_reason": null
+  },
+  "review_status": "draft_unreviewed",
+  "schema_version": 1,
+  "sorting": {
+    "class_name": null,
+    "defect": null,
+    "proposed_action": null,
+    "severity": null,
+    "status": "unassigned"
+  },
+  "visual": {
+    "asset_quaternion_order": "xyzw",
+    "bounds_dimensions_m": [
+      0.01694960594177246,
+      0.016120851516723635,
+      0.002
+    ],
+    "engine_coordinate_system": "right_handed_z_up",
+    "engine_up_axis": "+Z",
+    "media_type": "model/gltf-binary",
+    "mesh_count": 1,
+    "runtime_lod_reviewed": false,
+    "server_quaternion_order": "wxyz",
+    "sim_from_asset_quaternion_wxyz": [
+      0.7071067811865476,
+      0.7071067811865476,
+      0.0,
+      0.0
+    ],
+    "source_up_axis": "+Y",
+    "units": "m",
+    "uri": "thoughts/taras/research/coffee-quality/object-generation/results/gemini/star/render/object.glb",
+    "visual_asset_id": "sha256:7182c057c83b501438fd6f7a9b1d45700bb0e39579b0a73dce73065af62abbdc"
+  }
+}

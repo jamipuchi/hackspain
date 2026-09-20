@@ -29,6 +29,71 @@ PY
 python sim/coffee_sorter/live.py --host 127.0.0.1 --port 8890 --preset sim/coffee_sorter/configs/continuous_demo.json
 ```
 
+## Generated item queue
+
+The item queue starts with the service and needs no extra argument locally. The
+defaults are `--item-jobs-provider cached`, the packaged generator at
+`sim/coffee_sorter/generator`, and the recorded provider cache under
+`thoughts/taras/research/coffee-quality/object-generation/results`, used
+read-only. The cache layout is `<provider-cache>/cache/<request digest>.json`.
+
+`--live` is never automatic. Cached mode sends no provider request: a cache hit
+continues to rendering, and a miss stops at `operator_required` with
+`provider_cache_miss`, having sent nothing and billed nothing. One operator
+`new_request` approval covers ONE generation attempt, and that attempt can send
+up to TWO provider requests: the Jev classification and then the recipe.
+
+```bash
+python sim/coffee_sorter/live.py --port 8890 --preset sim/coffee_sorter/configs/continuous_demo.json --out /tmp/coffee-live --item-jobs-provider cached --item-jobs-provider-cache thoughts/taras/research/coffee-quality/object-generation/results --item-jobs-generator-root sim/coffee_sorter/generator --item-jobs-root /tmp/coffee-live/item-jobs --item-jobs-runtime-lock /tmp/cinta-runtime/render.lock
+```
+
+Paid mode also needs `--item-jobs-provider-env`, which must stay outside
+`--item-jobs-root`. The service never opens that file: only the generation child
+receives its path. A public deployment must not run paid mode.
+
+Fake mode is local only. It shows a permanent test-data banner, and a fake job
+can never reach activation.
+
+```bash
+python sim/coffee_sorter/live.py --port 8890 --preset sim/coffee_sorter/configs/continuous_demo.json --item-jobs-provider fake
+```
+
+### Active bundle under `--item-jobs-root`
+
+Without `--item-jobs-root` no bundle exists. The service starts from `--preset` and the
+packaged catalog, and the job store lives in `<out>/item-jobs`.
+
+With `--item-jobs-root` the root holds two units:
+
+- `active/` holds `bundles/<bundle_sha256>/` and the pointer `active/catalog.json`. A
+  bundle carries the catalog, its definitions, the model, the model manifest, the preset,
+  and the policy as one verified unit. A rollback repoints this unit and nothing else.
+- `history/` holds the job store and the Wall of Fame. It is append-only. A rollback
+  never touches it.
+
+The startup order is fixed. The service resolves and verifies the active bundle. Then it
+exports `COFFEE_OBJECT_CATALOG_ROOT=<bundle>/catalog`. Only then does it load
+`<bundle>/preset.json`, which imports `profiles`. The engine worker inherits the export.
+`--object-catalog-root` cannot be combined with `--item-jobs-root`.
+
+On an empty root the first start seeds bundle zero from the packaged catalog, `--preset`,
+and its model. The packaged tree is only read. Bundle zero states the reject classes that
+the engine derives from the preset severities. `validate_bundle.py` checks the seed in a
+fresh child before anything is written. The model manifest must record
+`provenance.config.catalog_revision`. A model without it stops the start with one error
+that names `model_catalog_unrecorded`. Later starts use the bundle preset. `--preset`
+matters again only for an empty root.
+
+The seed is one transaction. The marker `seed-transaction.json` in `active/` names the
+expected bundle before the publication and goes after the pointer write. A start that finds that marker,
+no pointer, and at most that one bundle completes the same seed. Every other root without
+a pointer is a startup error, and so is a root whose `history/activations.jsonl` exists.
+The service never reseeds over an existing pointer.
+
+`/health` adds `active_bundle_sha256` (null without a bundle) and
+`catalog_model_compatible` (the label order check of the preset loader, null when a
+bounded preset ran no such check).
+
 Open [the local page](http://127.0.0.1:8890). The conveyor starts automatically, including when no browser is connected.
 Select **Inject stone** to add an object. A ring identifies that object in both projections.
 Prediction, jet contact, and physical outcome appear separately.

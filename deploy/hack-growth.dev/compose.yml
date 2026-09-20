@@ -10,7 +10,19 @@ services:
       CINTA_PUBLIC_HOST: hack-growth.dev
       CINTA_PUBLIC_ORIGIN: https://hack-growth.dev
       CINTA_RUNS_ROOT: /var/lib/hackspain-coffee/runs
+      CINTA_ITEM_CONTROL_ROOT: /var/lib/hackspain-coffee/item-control
+      CINTA_ITEM_JOBS_PROVIDER: paid
+      CINTA_ITEM_JOBS_QUALITY_GATE: demo
+      CINTA_PROVIDER_CACHE_ROOT: /var/lib/hackspain-coffee/provider-cache
+      CINTA_PROVIDER_ENV: /run/secrets/cinta-provider.env
+      CINTA_PHYSICS_REPLAY_ROOT: /run/cinta/provider-replay
+      CINTA_RUNTIME_ROOT: /tmp/cinta-runtime
       CINTA_SOURCE_REVISION: ${CINTA_SOURCE_REVISION:?Set the full reviewed release SHA}
+      HOME: /tmp/cinta-home
+      XDG_CACHE_HOME: /tmp/cinta-home/cache
+      XDG_CONFIG_HOME: /tmp/cinta-home/config
+      XDG_STATE_HOME: /tmp/cinta-home/state
+      TMPDIR: /tmp
       MUJOCO_GL: osmesa
       PYOPENGL_PLATFORM: osmesa
       OMP_NUM_THREADS: "1"
@@ -23,6 +35,20 @@ services:
       - type: bind
         source: ${CINTA_RUNS_ROOT:-/srv/hackspain-coffee/runs}
         target: /var/lib/hackspain-coffee/runs
+      - type: bind
+        source: ${CINTA_ITEM_CONTROL_ROOT:-/srv/hackspain-coffee/item-control}
+        target: /var/lib/hackspain-coffee/item-control
+      - type: bind
+        source: ${CINTA_PROVIDER_CACHE_ROOT:-/srv/hackspain-coffee/provider-cache}
+        target: /var/lib/hackspain-coffee/provider-cache
+      - type: bind
+        source: ${CINTA_PROVIDER_ENV_FILE:-/srv/hackspain-coffee/secrets/generated-items.env}
+        target: /run/secrets/cinta-provider.env
+        read_only: true
+      - type: bind
+        source: ${CINTA_PHYSICS_REPLAY_ROOT:-/srv/hackspain-coffee/provider-replay}
+        target: /run/cinta/provider-replay
+        read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=1g
     networks:

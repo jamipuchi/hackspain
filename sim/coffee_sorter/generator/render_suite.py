@@ -1,0 +1,77 @@
+"""Render available recipes sequentially while holding the shared runtime lock."""
+
+import argparse
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import time
+
+HERE = Path(__file__).resolve().parent
+DEFAULT_LOCK = "/private/tmp/hackspain-coffee-runtime.lock"
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--results-root", type=Path, default=HERE / "results")
+    parser.add_argument("--blender", default="blender", help="Blender executable name or absolute path.")
+    parser.add_argument("--model", default="*")
+    parser.add_argument("--case", default="*")
+    parser.add_argument("--lock", type=Path, default=Path(DEFAULT_LOCK),
+                        help="Shared runtime lock path. The deployment passes a writable path.")
+    args = parser.parse_args()
+    renderer = HERE / "render_recipe.py"
+    renderer_hash = hashlib.sha256(renderer.read_bytes()).hexdigest()
+    recipes = sorted(args.results_root.resolve().glob(f"{args.model}/{args.case}/recipe.json"))
+    if not recipes:
+        raise SystemExit("No recipes match the requested results root, model folder, and case.")
+    for recipe in recipes:
+        out = recipe.parent / "render"
+        if (out / "render.json").exists():
+            previous = json.loads((out / "render.json").read_text())
+            if previous.get("renderer_sha256") != renderer_hash:
+                raise SystemExit(f"Renderer changed. Preserve prior render before repeating: {out}")
+            if previous.get("recipe_sha256") != hashlib.sha256(recipe.read_bytes()).hexdigest():
+                raise SystemExit(f"Recipe changed. Preserve prior render before repeating: {out}")
+            print(f"Cached render: {recipe.parent}", flush=True)
+            continue
+        with open(args.lock, "a") as lock:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                print("Runtime lock is occupied. No Blender process started.", flush=True)
+                raise SystemExit(75)
+            if out.exists():
+                out.rename(out.with_name(f"render-failed-{time.time_ns()}"))
+            out.mkdir(exist_ok=True)
+            env = {**os.environ, **{key: "1" for key in (
+                "OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "VECLIB_MAXIMUM_THREADS")}}
+            command = [args.blender, "--background", "--threads", "1",
+                       "--python-exit-code", "1", "--python", str(renderer), "--",
+                       "--recipe", str(recipe), "--out", str(out)]
+            started = time.monotonic()
+            load = os.getloadavg()
+            print(f"Rendering: {recipe.parent}", flush=True)
+            with (out / "blender.log").open("w") as log:
+                try:
+                    result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, env=env, timeout=600)
+                    returncode = result.returncode
+                except subprocess.TimeoutExpired:
+                    returncode = 124
+                    log.write("\nBlender exceeded the 600-second subprocess deadline.\n")
+            record = {"returncode": returncode, "subprocess_wall_seconds": time.monotonic() - started,
+                      "host_load_before": load, "host_load_after": os.getloadavg(),
+                      "command": command, "thread_environment": {key: env[key] for key in (
+                          "OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "VECLIB_MAXIMUM_THREADS")},
+                      "exclusive_lock": str(args.lock)}
+            (out / "execution.json").write_text(json.dumps(record, indent=2) + "\n")
+            print(json.dumps({"case": str(recipe.parent.relative_to(args.results_root.resolve())),
+                              "returncode": returncode, "wall_s": record["subprocess_wall_seconds"]}), flush=True)
+            if returncode:
+                raise SystemExit(returncode)
+
+
+if __name__ == "__main__":
+    main()

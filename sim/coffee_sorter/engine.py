@@ -128,17 +128,27 @@ class Engine:
         if profile_name not in PROFILES:
             raise ValueError(f"unsupported profile: {profile_name}")
         self.profile = PROFILES[profile_name]
+        self._catalog = self._profile_catalog()
+        # Copied from each generated type's actual catalog definition. A built-in has none.
+        self._visual_asset_ids = {
+            item["classifier_label"]: item["visual"]["asset"]["visual_asset_id"]
+            for item in (self._catalog or {}).get("definitions", ())
+            if item["provenance"]["kind"] == "generated"}
+        self._class_assets = self._generated_class_assets()
+        # A bundle preset states its starting policy. A bad label fails before the sim exists.
+        initial_reject_classes = self.preset["policy"].get("initial_reject_classes")
+        if initial_reject_classes is not None:
+            try:
+                initial_reject_classes = self._canonical_reject_classes(initial_reject_classes)
+            except ValueError as error:
+                raise ValueError(f"policy.initial_reject_classes: {error}") from None
         layout = Layout(**self.preset["layout"])
         self.sim = SorterSim(self.profile, layout, rate=float(self.preset["requested_rate"]),
                              seed=int(self.preset["seed"]))
         self.sim.continuous = self.continuous
         self.inspector = Inspector(self.sim)
 
-        model_path = Path(self.preset["model_path"])
-        self.model_path = model_path if model_path.is_absolute() else HERE / model_path
-        if not self.model_path.is_file():
-            self.inspector.close()
-            raise FileNotFoundError(f"trusted model is missing: {self.model_path}")
+        self._resolve_model_path()
         self.model = Model.load(self.model_path)
         policy_config = self.preset["policy"]
         self.policy = Policy(
@@ -159,11 +169,20 @@ class Engine:
             item.name for item in self.profile.classes
             if item.defect and item.severity in self.policy.reject_severities
         )
+        if initial_reject_classes is not None:
+            self.reject_classes = initial_reject_classes
+        # The anomaly reference follows the live policy: every label the policy keeps.
+        self.anomaly_reference_labels = self.model.set_anomaly_reference(
+            [name for name in self.model.classes if name not in self.reject_classes])
         self.controller = Controller(
             self.sim, self.inspector, self.model, self.policy,
             jet_force=float(self.preset["jet_force_n"]), continuous=self.continuous,
             timing_limit=timing_limit,
         )
+        if initial_reject_classes is not None:
+            # The controller derives its mask from the severities. No track exists yet, so
+            # this only replaces that mask. The session epoch below stays the only epoch.
+            self.controller.set_reject_classes(self.reject_classes)
         self.model_version = _file_hash(self.model_path)
         self.policy_version = self._policy_version()
         self.score_epoch_id = self.session_id
@@ -185,14 +204,79 @@ class Engine:
         self.source_hashes = {name: _file_hash(HERE / name) for name in SOURCE_FILES}
         self.startup_seconds = time.perf_counter() - startup_started
 
+    def _resolve_model_path(self):
+        """Bind `model_path`. `model_path_root: preset` ties it to the preset directory.
+
+        A bundle carries its model beside its preset, so a relative path must resolve
+        there and must stay there. Without the field the behavior is unchanged: relative
+        to the source directory. `live.resolve_model_path` holds the matching rule for the
+        service, which this child must not import.
+        """
+        model_path = Path(self.preset["model_path"])
+        root = self.preset.get("model_path_root")
+        try:
+            if root is None:
+                self.model_path = model_path if model_path.is_absolute() else HERE / model_path
+            elif root != "preset":
+                raise ValueError('model_path_root must be "preset" when it is present.')
+            elif model_path.is_absolute():
+                raise ValueError('model_path_root "preset" requires a relative model_path.')
+            else:
+                directory = self.preset_path.parent
+                self.model_path = (directory / model_path).resolve()
+                if not self.model_path.is_relative_to(directory):
+                    raise ValueError("model_path must stay inside the preset directory.")
+            if not self.model_path.is_file():
+                raise FileNotFoundError(f"trusted model is missing: {self.model_path}")
+        except (ValueError, FileNotFoundError):
+            self.inspector.close()
+            raise
+
     def _policy_version(self):
         return _json_hash({"base": asdict(self.policy), "reject_classes": self.reject_classes})
+
+    def _profile_catalog(self):
+        """The catalog that this profile came from, or None when the bound root holds another.
+
+        profiles.py keeps no asset block, so the definitions are read again. Both imports
+        stay inside the function, so the module import block is unchanged.
+        """
+        from object_catalog import load_catalog
+        from profiles import class_spec
+        catalog = load_catalog()
+        described = [class_spec(item) for item in catalog["definitions"]]
+        if catalog["profile_name"] != self.profile.name or described != self.profile.classes:
+            return None
+        return catalog
+
+    def _generated_class_assets(self):
+        """The contract members of each generated class row, by label.
+
+        The registry sits beside the bound bundle catalog. A generated type without a row
+        for its own asset states a null `render_asset`, and the browser shows the proxy.
+        """
+        from object_catalog import default_catalog_root, read_visual_registry, render_asset
+        if self._catalog is None:
+            return {}
+        rows = {row.get("object_type_id"): row
+                for row in read_visual_registry(default_catalog_root().parent)}
+        revision, assets = self._catalog["catalog_revision"], {}
+        for item in self._catalog["definitions"]:
+            if item["provenance"]["kind"] != "generated":
+                continue
+            row = rows.get(item["object_type_id"])
+            named = row and row.get("visual_asset_id") == item["visual"]["asset"]["visual_asset_id"]
+            assets[item["classifier_label"]] = {
+                "object_type_id": item["object_type_id"],
+                "render_asset": render_asset(row, revision) if named else None}
+        return assets
 
     def class_catalog(self):
         catalog = []
         for item in self.profile.classes:
             axes_m = [round((low + high) * 0.5e-3, 9) for low, high in item.size_mm]
             catalog.append({
+                **self._class_assets.get(item.name, {}),
                 "name": item.name,
                 "defect": bool(item.defect),
                 "severity": item.severity,
@@ -209,6 +293,7 @@ class Engine:
     def reject_policy(self):
         return {
             "reject_classes": list(self.reject_classes),
+            "anomaly_reference_labels": list(self.anomaly_reference_labels),
             "policy_version": self.policy_version,
             "score_epoch_id": self.score_epoch_id,
             "score_epoch_started_sim_time_s": self.score_epoch_started_sim_time_s,
@@ -227,10 +312,8 @@ class Engine:
             "random": True,
         }
 
-    def set_reject_classes(self, reject_classes):
-        """Apply a class policy at a physics boundary and start a score epoch."""
-        if not self.continuous:
-            raise ValueError("reject policy changes require continuous mode")
+    def _canonical_reject_classes(self, reject_classes):
+        """Validate a class policy and return it in catalog order."""
         if not isinstance(reject_classes, list) or any(
             not isinstance(name, str) for name in reject_classes
         ):
@@ -242,11 +325,18 @@ class Engine:
         if unknown:
             raise ValueError(f"unsupported reject classes: {', '.join(sorted(unknown))}")
         selected = set(reject_classes)
-        canonical = tuple(item.name for item in self.profile.classes if item.name in selected)
+        return tuple(item.name for item in self.profile.classes if item.name in selected)
+
+    def set_reject_classes(self, reject_classes):
+        """Apply a class policy at a physics boundary and start a score epoch."""
+        if not self.continuous:
+            raise ValueError("reject policy changes require continuous mode")
+        canonical = self._canonical_reject_classes(reject_classes)
         if canonical == self.reject_classes:
             return {
                 **self.reject_policy(), "changed": False,
                 "in_flight_excluded": 0, "feed_score_rows_excluded": 0,
+                "undecided_tracks_reset": 0,
             }
 
         in_flight = sum(
@@ -255,7 +345,10 @@ class Engine:
         )
         score_rows = len(self._score_ledger)
         self.reject_classes = canonical
-        self.controller.set_reject_classes(canonical)
+        undecided_reset = self.controller.set_reject_classes(canonical)
+        # The new reference set applies to the next predict call. No retraining.
+        self.anomaly_reference_labels = self.model.set_anomaly_reference(
+            [name for name in self.model.classes if name not in canonical])
         self.policy_version = self._policy_version()
         self.score_epoch_id = str(uuid.uuid4())
         self.score_epoch_started_sim_time_s = float(self.sim.data.time)
@@ -267,15 +360,18 @@ class Engine:
         self._event(
             "reject_policy_changed",
             reject_classes=list(canonical),
+            anomaly_reference_labels=list(self.anomaly_reference_labels),
             policy_version=self.policy_version,
             score_epoch_id=self.score_epoch_id,
             in_flight_excluded=in_flight,
             feed_score_rows_excluded=score_rows,
+            undecided_tracks_reset=undecided_reset,
         )
         return {
             **self.reject_policy(), "changed": True,
             "in_flight_excluded": in_flight,
             "feed_score_rows_excluded": score_rows,
+            "undecided_tracks_reset": undecided_reset,
         }
 
     def start(self):
@@ -319,6 +415,7 @@ class Engine:
             "spawn_wall": time.perf_counter() if injected else None,
             "spawn_to_outcome_wall_s": None,
             "appearance_key": hashlib.sha256(f"{self.session_id}:{bean.uid}".encode()).hexdigest()[:20],
+            "visual_asset_id": self._visual_asset_ids.get(bean.cls),
             "shape": spec.shape,
             "axes": [float(value) for value in bean.axes],
             "rgb": [float(value) for value in self.sim.model.geom_rgba[geom, :3]],
@@ -612,6 +709,7 @@ class Engine:
             "spawn_to_outcome_wall_s": record["spawn_to_outcome_wall_s"],
             "active": active,
             "appearance_key": record["appearance_key"],
+            "visual_asset_id": record["visual_asset_id"],
             "shape": record["shape"],
             "axes": record["axes"],
             "pos": record["pos"],
@@ -668,6 +766,8 @@ class Engine:
             "objects": [self._snapshot_object(uid, uid in active_ids) for uid in sorted(retained)
                         if uid in self._object_records],
             "events": list(self._events)[-50:],
+            # None when the bound catalog does not describe this profile.
+            "catalog_revision": (self._catalog or {}).get("catalog_revision"),
             "class_catalog": self.class_catalog(),
             "reject_policy": self.reject_policy(),
             "spawn_region": self.spawn_region(),
@@ -774,7 +874,7 @@ class Engine:
     def report(self) -> dict:
         """Return post-control evaluation truth, attribution, and timing evidence."""
         sim_time = float(self.sim.data.time)
-        cohort_end = sim_time - 0.6
+        cohort_end = sim_time - SETTLING_SECONDS
         in_cohort = {bean.uid for bean in self.sim.beans if 0.8 <= bean.spawn_t <= cohort_end}
         evidence = [self._object_evidence(bean, bean.uid in in_cohort) for bean in self.sim.beans]
         cohort = [row for row in evidence if row["in_cohort"]]

@@ -1,0 +1,496 @@
+{
+  "schema_version": 2,
+  "experiment": "CINTA bounded pulse lead timing comparison",
+  "force_n": 0.06,
+  "pulse_duration_changed": false,
+  "tuning_seeds": [
+    11,
+    17,
+    23,
+    31
+  ],
+  "repeat_note": "The repeat reuses the tuning seeds. It is a repeated measurement, not independent seed coverage.",
+  "reserved_held_out_seeds": [
+    43,
+    59,
+    71,
+    83
+  ],
+  "held_out_status": "not_run",
+  "held_out_reason": "The counterbalanced repeat did not resolve the wall-cost gate.",
+  "production_configuration_changed": false,
+  "frozen_model_sha256": "89513398373c6e0e81286419962feb3e312742de14a76d02dd0d819ad5264a5a",
+  "release_validation_requirement": "Repeat final validation with the newly trained release model before rollout.",
+  "original": {
+    "baseline_lead_1_5_ms": {
+      "feed": {
+        "runs": 4,
+        "cohort_objects": 5200,
+        "required_reject_objects": 760,
+        "captured_required_reject_objects": 678,
+        "keep_objects": 4440,
+        "keep_objects_lost": 185,
+        "spilled": 7,
+        "unresolved": 0,
+        "stone_objects": 21,
+        "stone_reject": 6,
+        "objects_spawned": 8000,
+        "pool_starved": 0,
+        "reject_decisions": 1230,
+        "scheduled_reject_decisions": 1230,
+        "late_reject_decisions": 0,
+        "own_contact_pairs": 1243,
+        "collateral_contact_pairs": 103,
+        "active_wall_seconds": 77.35907674883492,
+        "execution_wall_seconds": 79.8556276250165,
+        "peak_rss_mb_max": 302.1875,
+        "reject_capture": 0.8921052631578947,
+        "keep_loss": 0.041666666666666664,
+        "spill_rate": 0.001346153846153846
+      },
+      "isolated": {
+        "objects": 8,
+        "reject": 2,
+        "accept": 6,
+        "predicted_stone": 8,
+        "scheduled": 8,
+        "late": 0,
+        "own_contact": 8,
+        "commanded_start_relative_to_entry_ms": {
+          "min": 1.0763641611286623,
+          "mean": 1.4624444884539374,
+          "max": 1.5736891385759177
+        },
+        "activation_relative_to_entry_ms": {
+          "min": 2.0000000000000018,
+          "mean": 2.0000000000000018,
+          "max": 2.0000000000000018
+        },
+        "commanded_end_relative_to_exit_ms": {
+          "min": 4.536973918710608,
+          "mean": 4.689100203105006,
+          "max": 5.179451427635651
+        },
+        "impulse_micro_n_s": {
+          "min": 300.0,
+          "mean": 360.0,
+          "max": 600.0
+        }
+      },
+      "raw_artifacts": [
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-tuning/isolated-lead-1.5-seed-11.json",
+          "bytes": 6784,
+          "sha256": "0e95d1a406d9b77d4a34cf9a7e64a959542ae536d03421653f859986b8a3764d"
+        },
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-tuning/isolated-lead-1.5-seed-17.json",
+          "bytes": 6763,
+          "sha256": "49ede419e9f81e02d57e8893fae689549ac3b679ed9dfee0bb085d1a61bfbbd4"
+        },
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-tuning/isolated-lead-1.5-seed-23.json",
+          "bytes": 6764,
+          "sha256": "14e7e53959a31ac51a6b9a1efd0ad2695cce3e2a052e5ac116c646ddb77ae390"
+        },
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-tuning/isolated-lead-1.5-seed-31.json",
+          "bytes": 6749,
+          "sha256": "6464c970f6d01bd387c32597ac085106438663c7a1476d6536558dc05c79d065"
+        },
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-tuning/feed-lead-1.5-seed-11.json",
+          "bytes": 3207818,
+          "sha256": "63d3781de97b7410f0dea205b1fa27a162d376aeef408909632238411b931d8d"
+        },
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-tuning/feed-lead-1.5-seed-17.json",
+          "bytes": 3252110,
+          "sha256": "a32a92d235b66a85ad09d8237ebd9fc47bbc69d1d4845ccab78846072c31818a"
+        },
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-tuning/feed-lead-1.5-seed-23.json",
+          "bytes": 3259774,
+          "sha256": "1095d9bf6f8fbd59d653abf30193585855a12a5318ce05c53318a71a4b65c8f5"
+        },
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-tuning/feed-lead-1.5-seed-31.json",
+          "bytes": 3277672,
+          "sha256": "92bc442c6759f223f80d746d0c3f22caffce78eaf2bfd5f110c8d58a9add06fd"
+        }
+      ]
+    },
+    "candidate_lead_3_0_ms": {
+      "feed": {
+        "runs": 4,
+        "cohort_objects": 5200,
+        "required_reject_objects": 760,
+        "captured_required_reject_objects": 683,
+        "keep_objects": 4440,
+        "keep_objects_lost": 184,
+        "spilled": 8,
+        "unresolved": 0,
+        "stone_objects": 21,
+        "stone_reject": 10,
+        "objects_spawned": 8000,
+        "pool_starved": 0,
+        "reject_decisions": 1230,
+        "scheduled_reject_decisions": 1229,
+        "late_reject_decisions": 1,
+        "own_contact_pairs": 1250,
+        "collateral_contact_pairs": 102,
+        "active_wall_seconds": 81.68151841685176,
+        "execution_wall_seconds": 84.20715558272786,
+        "peak_rss_mb_max": 301.328125,
+        "reject_capture": 0.8986842105263158,
+        "keep_loss": 0.04144144144144144,
+        "spill_rate": 0.0015384615384615385
+      },
+      "isolated": {
+        "objects": 8,
+        "reject": 3,
+        "accept": 5,
+        "predicted_stone": 8,
+        "scheduled": 8,
+        "late": 0,
+        "own_contact": 8,
+        "commanded_start_relative_to_entry_ms": {
+          "min": -0.42363583887139455,
+          "mean": -0.037555511546091824,
+          "max": 0.07368913857591641
+        },
+        "activation_relative_to_entry_ms": {
+          "min": 0.0,
+          "mean": 0.6250000000000006,
+          "max": 1.0000000000000009
+        },
+        "commanded_end_relative_to_exit_ms": {
+          "min": 3.036973918710606,
+          "mean": 3.1891002031049775,
+          "max": 3.679451427635594
+        },
+        "impulse_micro_n_s": {
+          "min": 360.0,
+          "mean": 465.0,
+          "max": 720.0
+        }
+      },
+      "raw_artifacts": [
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-tuning/isolated-lead-3.0-seed-11.json",
+          "bytes": 6754,
+          "sha256": "45a8669f2cd507aa9010bd1a1aee5d174e78fceba30da62df0b19545d294e0f2"
+        },
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-tuning/isolated-lead-3.0-seed-17.json",
+          "bytes": 6729,
+          "sha256": "039547daa06a09d8b0919ad7a6a8f3020c7d4b7ef1c530f316fc54b616dc6caf"
+        },
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-tuning/isolated-lead-3.0-seed-23.json",
+          "bytes": 6732,
+          "sha256": "b18308bae2506df751e1243e509c455c4b56b2a62f031b2e9f7c89aee1c26c4c"
+        },
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-tuning/isolated-lead-3.0-seed-31.json",
+          "bytes": 6735,
+          "sha256": "bae20d6b3296a5ff454027a0509307033f39edf1d578dfe0967ec9ae44d33683"
+        },
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-tuning/feed-lead-3.0-seed-11.json",
+          "bytes": 3223045,
+          "sha256": "9da1e445fd4f292ef03b91ef272cd60bb4579a8f9f7521e4ba9b4f048928b8d2"
+        },
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-tuning/feed-lead-3.0-seed-17.json",
+          "bytes": 3240226,
+          "sha256": "2903ceb4c0537bb5688a83a24e8451b5d4111717fd98ca6ab6a24e702172c451"
+        },
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-tuning/feed-lead-3.0-seed-23.json",
+          "bytes": 3252562,
+          "sha256": "60f4e54aea65937eca2be182cc50a3c0333b25af456267fedebc0d4d1407b74d"
+        },
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-tuning/feed-lead-3.0-seed-31.json",
+          "bytes": 3279591,
+          "sha256": "1335c343dc7a50a89a1fe1305a7ad12b1fd1065595420f11f60aa894a5b6ca5a"
+        }
+      ]
+    },
+    "candidate_delta": {
+      "mixed_stone_reject_count": 4,
+      "reject_capture_percentage_points": 0.6578947368421018,
+      "keep_loss_percentage_points": -0.022522522522522292,
+      "spill_percentage_points": 0.019230769230769235,
+      "active_wall_cost_percent": 5.5875042072318095,
+      "execution_wall_cost_percent": 5.449243950777189,
+      "peak_rss_percent": -0.2843846949327818,
+      "late_reject_decisions": 1,
+      "own_contact_pairs": 7,
+      "collateral_contact_pairs": -1,
+      "isolated_stone_reject_count": 1
+    }
+  },
+  "counterbalanced_repeat": {
+    "order": [
+      "1.5 ms seed 11",
+      "3.0 ms seed 11",
+      "3.0 ms seed 17",
+      "1.5 ms seed 17",
+      "1.5 ms seed 23",
+      "3.0 ms seed 23",
+      "3.0 ms seed 31",
+      "1.5 ms seed 31"
+    ],
+    "baseline_lead_1_5_ms": {
+      "feed": {
+        "runs": 4,
+        "cohort_objects": 5200,
+        "required_reject_objects": 760,
+        "captured_required_reject_objects": 678,
+        "keep_objects": 4440,
+        "keep_objects_lost": 185,
+        "spilled": 7,
+        "unresolved": 0,
+        "stone_objects": 21,
+        "stone_reject": 6,
+        "objects_spawned": 8000,
+        "pool_starved": 0,
+        "reject_decisions": 1230,
+        "scheduled_reject_decisions": 1230,
+        "late_reject_decisions": 0,
+        "own_contact_pairs": 1243,
+        "collateral_contact_pairs": 103,
+        "active_wall_seconds": 75.76476129097864,
+        "execution_wall_seconds": 78.22705887514167,
+        "peak_rss_mb_max": 299.015625,
+        "reject_capture": 0.8921052631578947,
+        "keep_loss": 0.041666666666666664,
+        "spill_rate": 0.001346153846153846,
+        "process_cpu_seconds": 81.544615,
+        "lock_wait_seconds": 1.8251128494739532e-05,
+        "host_load_average_1m_range": [
+          8.24462890625,
+          11.09716796875
+        ]
+      },
+      "raw_artifacts": [
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-repeat/feed-order-01-lead-1.5-seed-11.json",
+          "bytes": 3208295,
+          "sha256": "bacd3550568a0d817622cdc6790744401212ed3ad70c59d8fb7361be884bd815"
+        },
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-repeat/feed-order-04-lead-1.5-seed-17.json",
+          "bytes": 3252558,
+          "sha256": "5fc5d5f124aa6529956ee0ee07b554136f50f03b7da41ea4db0a80ea42435d42"
+        },
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-repeat/feed-order-05-lead-1.5-seed-23.json",
+          "bytes": 3260245,
+          "sha256": "2e720b14069afc67cfefd3b3b5bca9d6c0c5083d8ab25c6c66aacc748a0d3ba9"
+        },
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-repeat/feed-order-08-lead-1.5-seed-31.json",
+          "bytes": 3278168,
+          "sha256": "dffc3cc77cd9509a71d37d36bdd85a160c8c20bff4e9034e1efbec4690f54141"
+        }
+      ]
+    },
+    "candidate_lead_3_0_ms": {
+      "feed": {
+        "runs": 4,
+        "cohort_objects": 5200,
+        "required_reject_objects": 760,
+        "captured_required_reject_objects": 683,
+        "keep_objects": 4440,
+        "keep_objects_lost": 185,
+        "spilled": 8,
+        "unresolved": 0,
+        "stone_objects": 21,
+        "stone_reject": 10,
+        "objects_spawned": 8000,
+        "pool_starved": 0,
+        "reject_decisions": 1232,
+        "scheduled_reject_decisions": 1231,
+        "late_reject_decisions": 1,
+        "own_contact_pairs": 1252,
+        "collateral_contact_pairs": 102,
+        "active_wall_seconds": 81.33481604186818,
+        "execution_wall_seconds": 83.7956412488129,
+        "peak_rss_mb_max": 300.96875,
+        "reject_capture": 0.8986842105263158,
+        "keep_loss": 0.041666666666666664,
+        "spill_rate": 0.0015384615384615385,
+        "process_cpu_seconds": 83.004222,
+        "lock_wait_seconds": 1.7999904230237007e-05,
+        "host_load_average_1m_range": [
+          10.345703125,
+          11.28955078125
+        ]
+      },
+      "raw_artifacts": [
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-repeat/feed-order-02-lead-3.0-seed-11.json",
+          "bytes": 3223506,
+          "sha256": "0fecfbaf656eae17c1d7a18d2efe6c661d3c0cba439dc652c41759d200fb5c13"
+        },
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-repeat/feed-order-03-lead-3.0-seed-17.json",
+          "bytes": 3244602,
+          "sha256": "2de754536e04596e5c2107a061e2cb909b3e84e58061761da81549640bbc2d00"
+        },
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-repeat/feed-order-06-lead-3.0-seed-23.json",
+          "bytes": 3253038,
+          "sha256": "4283687d7c003f1f0553729159150da928390d1fdb95a6c299967261ff2581d8"
+        },
+        {
+          "path": "/private/tmp/cinta-rejection-calibration/timing-repeat/feed-order-07-lead-3.0-seed-31.json",
+          "bytes": 3279768,
+          "sha256": "ef27457ad12b2706211d472515f3a7661aadc30136d9ca44d58e1b9570d4169e"
+        }
+      ]
+    },
+    "candidate_delta": {
+      "mixed_stone_reject_count": 4,
+      "reject_capture_percentage_points": 0.6578947368421018,
+      "keep_loss_percentage_points": 0.0,
+      "spill_percentage_points": 0.019230769230769235,
+      "active_wall_cost_percent": 7.351774962369967,
+      "execution_wall_cost_percent": 7.118486178240776,
+      "peak_rss_percent": 0.6531849297173016,
+      "late_reject_decisions": 1,
+      "own_contact_pairs": 9,
+      "collateral_contact_pairs": -1
+    }
+  },
+  "combined_repeated_measurements": {
+    "baseline_lead_1_5_ms": {
+      "runs": 8,
+      "cohort_objects": 10400,
+      "required_reject_objects": 1520,
+      "captured_required_reject_objects": 1356,
+      "keep_objects": 8880,
+      "keep_objects_lost": 370,
+      "spilled": 14,
+      "unresolved": 0,
+      "stone_objects": 42,
+      "stone_reject": 12,
+      "objects_spawned": 16000,
+      "pool_starved": 0,
+      "reject_decisions": 2460,
+      "scheduled_reject_decisions": 2460,
+      "late_reject_decisions": 0,
+      "own_contact_pairs": 2486,
+      "collateral_contact_pairs": 206,
+      "active_wall_seconds": 153.12383803981356,
+      "execution_wall_seconds": 158.08268650015816,
+      "peak_rss_mb_max": 302.1875,
+      "reject_capture": 0.8921052631578947,
+      "keep_loss": 0.041666666666666664,
+      "spill_rate": 0.001346153846153846
+    },
+    "candidate_lead_3_0_ms": {
+      "runs": 8,
+      "cohort_objects": 10400,
+      "required_reject_objects": 1520,
+      "captured_required_reject_objects": 1366,
+      "keep_objects": 8880,
+      "keep_objects_lost": 369,
+      "spilled": 16,
+      "unresolved": 0,
+      "stone_objects": 42,
+      "stone_reject": 20,
+      "objects_spawned": 16000,
+      "pool_starved": 0,
+      "reject_decisions": 2462,
+      "scheduled_reject_decisions": 2460,
+      "late_reject_decisions": 2,
+      "own_contact_pairs": 2502,
+      "collateral_contact_pairs": 204,
+      "active_wall_seconds": 163.01633445871994,
+      "execution_wall_seconds": 168.00279683154076,
+      "peak_rss_mb_max": 301.328125,
+      "reject_capture": 0.8986842105263158,
+      "keep_loss": 0.04155405405405405,
+      "spill_rate": 0.0015384615384615385
+    },
+    "candidate_delta": {
+      "mixed_stone_reject_count": 8,
+      "reject_capture_percentage_points": 0.6578947368421018,
+      "keep_loss_percentage_points": -0.011261261261261146,
+      "spill_percentage_points": 0.019230769230769235,
+      "active_wall_cost_percent": 6.460454848535235,
+      "execution_wall_cost_percent": 6.275266792972093,
+      "peak_rss_percent": -0.2843846949327818,
+      "late_reject_decisions": 2,
+      "own_contact_pairs": 16,
+      "collateral_contact_pairs": -2
+    },
+    "statistical_scope": "Two measurements over the same four seeds. Do not treat them as eight independent seeds."
+  },
+  "late_trace": {
+    "interpretation": "The late condition uses t_available > t_fire + 0.002 and does not use pulse lead. Both candidate late events followed compute delays.",
+    "original_seed_17_object_1437": {
+      "baseline": {
+        "t_available_s": 3.200698249934001,
+        "t_fire_s": 3.2607934011984185,
+        "nominal_t_on_s": 3.2592934011984185,
+        "deadline_s": 3.2627934011984183,
+        "outcome": "reject"
+      },
+      "candidate": {
+        "t_available_s": 3.2643112910052223,
+        "t_fire_s": 3.2607823275859444,
+        "nominal_t_on_s": 3.2577823275859443,
+        "deadline_s": 3.262782327585944,
+        "outcome": "accept"
+      }
+    },
+    "repeat_seed_31_object_591": {
+      "baseline": {
+        "t_available_s": 1.4882982918247063,
+        "t_fire_s": 1.548331813260438,
+        "nominal_t_on_s": 1.546831813260438,
+        "deadline_s": 1.550331813260438,
+        "outcome": "reject"
+      },
+      "candidate": {
+        "t_available_s": 1.5915889998617996,
+        "t_fire_s": 1.5482371978370972,
+        "nominal_t_on_s": 1.5452371978370973,
+        "deadline_s": 1.5502371978370972,
+        "outcome": "accept"
+      }
+    }
+  },
+  "gates": {
+    "passive_stone_route": "unchanged by pulse timing override; accepted physics audit remains 8 of 8 Accept",
+    "isolated_prediction_and_contact": "pass",
+    "stone_reject_improves": "pass",
+    "aggregate_reject_capture_no_regression": "pass",
+    "keep_loss_no_increase": "pass",
+    "spill_increase_at_most_0_5_percentage_points": "pass",
+    "admitted_rate_within_5_percent": "pass",
+    "pool_starvation_not_increased": "pass",
+    "peak_memory_within_5_percent": "pass",
+    "original_wall_cost_within_5_percent": "fail",
+    "repeat_wall_cost_within_5_percent": "fail",
+    "combined_wall_cost_within_5_percent": "fail"
+  },
+  "decision": "keep_current_1_5_ms_lead_and_do_not_run_held_out",
+  "archives": [
+    {
+      "path": "thoughts/taras/qa/evidence/cinta-rejection-calibration/timing-tuning-raw.tar.gz",
+      "bytes": 1359306,
+      "sha256": "36cbd3d443b236db5ebdc0677a4975c5f8e9b2a0884bb0c08afb8ecc221201b0"
+    },
+    {
+      "path": "thoughts/taras/qa/evidence/cinta-rejection-calibration/timing-repeat-raw.tar.gz",
+      "bytes": 1351555,
+      "sha256": "80ed42b29f8444f74d071ada6aaee9f4c01415ea8932ffe54abb75f4bfe5c02a"
+    }
+  ]
+}

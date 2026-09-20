@@ -1,0 +1,51 @@
+{
+  "classifier_label": "stick",
+  "display_name": "Roasted stick",
+  "feed": {
+    "prior": 0.005
+  },
+  "lifecycle_state": "active_ready",
+  "object_type_id": "builtin.roasted.stick",
+  "physics": {
+    "contact_shape": "capsule",
+    "density_kg_m3": 700,
+    "mass_basis": "density_times_contact_proxy_volume",
+    "measurement_status": "unmeasured_estimate"
+  },
+  "provenance": {
+    "kind": "builtin",
+    "source": "profiles.py migration at afad65b",
+    "source_sha256": null
+  },
+  "schema_version": 1,
+  "truth": {
+    "defect": true,
+    "severity": "foreign"
+  },
+  "validation_status": "validated",
+  "visual": {
+    "asset": null,
+    "rgb": [
+      0.42,
+      0.3,
+      0.16
+    ],
+    "rgb_jitter": 0.06,
+    "shape": "capsule",
+    "size_mm": [
+      [
+        8.0,
+        16.0
+      ],
+      [
+        0.9,
+        1.4
+      ],
+      [
+        0.9,
+        1.4
+      ]
+    ],
+    "texture": null
+  }
+}

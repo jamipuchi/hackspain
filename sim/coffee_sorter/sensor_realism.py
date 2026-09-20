@@ -209,47 +209,11 @@ class SensorSorterSim(SorterSim):
             return None
         m, d, L = self.model, self.data, self.L
         b = self.free[item.cls.shape].pop()
-        g, gc = self.body_geom[b], self.body_col[b]
+        g = self.body_geom[b]
         axes, rgba, mass = item.axes, item.rgba, item.mass
-        if item.cls.shape == ELLIPSOID:
-            m.geom_size[g] = axes
-            half = axes
-            r, hl = axes[2], max(axes[0] - axes[2], 1e-4)
-            m.geom_size[gc, 0], m.geom_size[gc, 1] = r, hl
-            m.geom_rbound[gc] = hl + r
-            m.geom_aabb[gc, 3:6] = [hl + r, r, r]
-            inertia = mass / 5 * np.array([axes[1] ** 2 + axes[2] ** 2, axes[0] ** 2 + axes[2] ** 2,
-                                           axes[0] ** 2 + axes[1] ** 2])
-        elif item.cls.shape == CAPSULE:
-            r, hl = axes[1], axes[0]
-            m.geom_size[g, 0], m.geom_size[g, 1] = r, hl
-            half = np.array([r, r, hl + r])
-            inertia = np.array([mass * (r ** 2 / 4 + hl ** 2 / 3)] * 2 + [mass * r ** 2 / 2])
-        elif item.cls.shape == HALF:
-            half = m.geom_aabb[g, 3:6].copy()
-            axes = half
-            inertia = mass / 5 * np.array([axes[1] ** 2 + axes[2] ** 2, axes[0] ** 2 + axes[2] ** 2,
-                                           axes[0] ** 2 + axes[1] ** 2])
-        else:
-            m.geom_size[g] = axes
-            half = axes
-            inertia = mass / 3 * np.array([axes[1] ** 2 + axes[2] ** 2, axes[0] ** 2 + axes[2] ** 2,
-                                           axes[0] ** 2 + axes[1] ** 2])
-        if item.cls.shape != HALF:
-            m.geom_rbound[g] = np.linalg.norm(half)
-            m.geom_aabb[g, 3:6] = half
+        axes, half = self._configure_body(b, item.cls.shape, axes, mass)
         m.geom_rgba[g] = rgba
         m.geom_matid[g] = item.material
-        m.body_mass[b] = mass
-        m.body_inertia[b] = np.maximum(inertia, 1e-12)
-        va0 = self.body_qvel[b]
-        m.dof_invweight0[va0:va0 + 3] = 1.0 / mass
-        m.dof_invweight0[va0 + 3:va0 + 6] = 1.0 / m.body_inertia[b].mean()
-        m.body_invweight0[b] = [1.0 / mass, 1.0 / m.body_inertia[b].mean()]
-        i_mean = m.body_inertia[b].mean()
-        m.dof_damping[va0 + 3:va0 + 6] = i_mean / 1.5e-3
-        m.dof_armature[va0 + 3:va0 + 6] = 2 * i_mean
-        m.body_gravcomp[b] = 0.0
         q = np.zeros(4)
         if item.cls.shape == CAPSULE:
             mujoco.mju_euler2Quat(q, np.array([item.tilt[0], np.pi / 2 + item.tilt[1], item.yaw]), "xyz")
@@ -261,10 +225,12 @@ class SensorSorterSim(SorterSim):
             self.pending_feed_item = item
             self._spawn_blocked_this_step = True
             return None
+        m.body_gravcomp[b] = 0.0
         qa, va = self.body_qpos[b], self.body_qvel[b]
         d.qpos[qa:qa + 3] = pos
         d.qpos[qa + 3:qa + 7] = q
         d.qvel[va:va + 6] = item.velocity
+        d.qacc_warmstart[va:va + 6] = 0
         bean = Bean(self.uid, b, item.cls.name, item.cls.defect, d.time, axes.copy(), mass)
         item.admitted_uid = bean.uid
         self.admitted_feed_ids[bean.uid] = item.planned_id

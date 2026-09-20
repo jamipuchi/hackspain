@@ -1,0 +1,1398 @@
+"""Load the active object catalog from validated JSON data.
+
+Built-in and generated object types use one definition contract. The loader
+reads data files only. It never imports or executes a definition. Only the
+active manifest can select active definitions. Physics dimensions and mass are
+unmeasured estimates derived from a contact proxy. A replaced type moves to one
+immutable Wall of Fame entry that a reload never activates.
+"""
+from __future__ import annotations
+
+import datetime
+import hashlib
+import json
+import math
+import os
+import re
+import shutil
+import socket
+import stat
+import struct
+import tempfile
+from pathlib import Path
+from typing import Any, Mapping
+
+from assets import FAMILIES as TEXTURE_FAMILIES  # the material families that the engine compiles
+from object_definitions import SIM_FROM_ASSET_QUATERNION_WXYZ, SUPPORTED_PROXY_SHAPES
+
+SCHEMA_VERSION = 1
+PACKAGED_CATALOG_ROOT = Path(__file__).resolve().parent / "object_catalog"
+CATALOG_ROOT_ENV = "COFFEE_OBJECT_CATALOG_ROOT"
+MAX_WALL_PAGE = 24
+BUILTIN_SHAPES = frozenset({"ellipsoid", "half", "box", "capsule"})
+SEVERITIES = frozenset({"none", "minor", "major", "foreign"})
+ACTIVE_LIFECYCLE = "active_ready"
+ARCHIVED_LIFECYCLE = "archived"
+MASS_BASIS = "density_times_contact_proxy_volume"
+# The anomaly reference is the product cloud. It is never a replacement victim.
+ANOMALY_REFERENCE_LABEL = "good"
+_ID_RE = re.compile(r"^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
+_LABEL_RE = re.compile(r"^[a-z][a-z0-9_]{0,79}$")
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_FILE_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,79}$")
+_MANIFEST_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,79}(?:/[a-z0-9][a-z0-9._-]{0,79}){0,3}$")
+_DEFINITION_FIELDS = {
+    "schema_version", "object_type_id", "display_name", "classifier_label", "provenance",
+    "feed", "truth", "visual", "physics", "lifecycle_state", "validation_status",
+}
+_CATALOG_FIELDS = {
+    "schema_version", "profile_name", "belt_rgb", "catalog_revision", "max_active_types",
+    "active_type_ids", "definition_sha256", "active_bundle_sha256",
+}
+BUNDLE_SCHEMA_VERSION = 1
+BUNDLE_MANIFEST = "bundle.json"
+BUNDLE_CATALOG = "catalog/active/catalog.json"
+BUNDLE_PRESET = "preset.json"
+# The one seed transaction record. It names the expected bundle and nothing else.
+SEED_MARKER = "seed-transaction.json"
+GLB_MAGIC = b"glTF"
+# The one live visual registry. It is built at bundle build time, so the catalog asset
+# block never widens and no definition hash or catalog revision moves.
+VISUAL_REGISTRY = "visual_registry.json"
+VISUAL_REGISTRY_VERSION = 1
+VISUAL_ASSET_DIR = "assets"
+GLB_MEDIA_TYPE = "model/gltf-binary"
+# The preview route serves at most this many bytes, so a live GLB has the same bound.
+MAX_GLB_BYTES = 8 << 20
+MAX_GLB_JSON_BYTES = 1 << 20
+_GLB_JSON_CHUNK = 0x4E4F534A
+_GLB_TRIANGLES = 4
+# A registry row: its identity, then what the definition, the draft, and the bytes say.
+_ASSET_FIELDS = ("visual_asset_id", "glb_sha256", "units", "source_up_axis", "engine_up_axis",
+                 "sim_from_asset_quaternion_wxyz")
+_EVIDENCE_FIELDS = ("media_type", "bounds_dimensions_m", "runtime_lod_reviewed")
+_MEASURED_FIELDS = ("byte_length", "mesh_count", "primitive_count", "triangle_count")
+# The state publishes these members of a row, and one rebuilt `url`.
+_RENDER_FIELDS = (*_ASSET_FIELDS, *_EVIDENCE_FIELDS, *_MEASURED_FIELDS, "reference_axes_m")
+_VISUAL_ROW_FIELDS = {"object_type_id", "classifier_label", "path", *_RENDER_FIELDS}
+# A generated victim carries its rendered asset and the model that recognised it.
+GENERATED_EVIDENCE = ("object.glb", "perspective.png", "top.png", "model.manifest.json")
+_CHUNK_BYTES = 1 << 20
+# User and provider text. A date or a slash inside these is valid content, not metadata.
+_USER_TEXT_FIELDS = frozenset({"display_name", "description", "design_notes",
+                               "material_assumption", "limitations"})
+_COMMON_HOST_NAMES = frozenset({"localhost"})
+_DRIVE_RE = re.compile(r"^[A-Za-z]:[\\/]")
+# A seeded bundle carries no date, so an activation can never be dated by its bytes.
+_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
+_ABSOLUTE_PATH_RE = re.compile(r"(?:[A-Za-z]:[\\/]|/)[^\s\"']*")
+
+
+def _redact_host_paths(text: str) -> str:
+    """No host path reaches a public entry. The operator text stays, its paths do not."""
+    return _ABSOLUTE_PATH_RE.sub("[path]", text)
+
+
+class CatalogError(ValueError):
+    """The catalog or one definition is invalid."""
+
+
+def default_catalog_root() -> Path:
+    """The catalog root for a caller that names none. Resolved per call, never cached.
+
+    The service imports this module long before it exports the active bundle catalog,
+    and profiles loads its catalog at its own import. A value cached here would bind
+    profiles to the packaged catalog. An unset or empty variable means packaged.
+    """
+    return Path(os.environ.get(CATALOG_ROOT_ENV) or PACKAGED_CATALOG_ROOT)
+
+
+def canonical_json(value: Any) -> bytes:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+
+
+def definition_sha256(definition: Mapping[str, Any]) -> str:
+    return hashlib.sha256(canonical_json(definition)).hexdigest()
+
+
+def catalog_revision(active_type_ids: list[str], hashes: Mapping[str, str]) -> str:
+    """Identify one ordered active set and its exact definition contents."""
+    ordered = [[type_id, hashes[type_id]] for type_id in active_type_ids]
+    return hashlib.sha256(canonical_json(ordered)).hexdigest()
+
+
+def validate_type_definition(value: Any) -> None:
+    """Validate one built-in or generated object type definition."""
+    value = _mapping(value, "definition")
+    _exact(value, _DEFINITION_FIELDS, "definition")
+    if value["schema_version"] != SCHEMA_VERSION:
+        raise CatalogError("definition schema version is unsupported")
+    _identifier(value["object_type_id"], "object_type_id")
+    _text(value["display_name"], "display_name", 120)
+    if not isinstance(value["classifier_label"], str) or not _LABEL_RE.fullmatch(value["classifier_label"]):
+        raise CatalogError("classifier_label has an invalid format")
+    if not _one_of(value["lifecycle_state"], {ACTIVE_LIFECYCLE, ARCHIVED_LIFECYCLE}):
+        raise CatalogError("draft or unknown lifecycle states cannot enter a catalog")
+    if value["validation_status"] != "validated":
+        raise CatalogError("definition validation_status must be validated")
+
+    provenance = _mapping(value["provenance"], "provenance")
+    _exact(provenance, {"kind", "source", "source_sha256"}, "provenance")
+    kind = provenance["kind"]
+    if not _one_of(kind, {"builtin", "generated"}):
+        raise CatalogError("provenance.kind is invalid")
+    _text(provenance["source"], "provenance.source", 400)
+    if kind == "generated":
+        _sha256(provenance["source_sha256"], "provenance.source_sha256")
+    elif provenance["source_sha256"] is not None:
+        raise CatalogError("builtin provenance cannot declare a source hash")
+
+    feed = _mapping(value["feed"], "feed")
+    _exact(feed, {"prior"}, "feed")
+    prior = _number(feed["prior"], "feed.prior")
+    if not 0 < prior <= 1:
+        raise CatalogError("feed.prior must be in (0, 1]")
+
+    truth = _mapping(value["truth"], "truth")
+    _exact(truth, {"defect", "severity"}, "truth")
+    if not isinstance(truth["defect"], bool) or not _one_of(truth["severity"], SEVERITIES):
+        raise CatalogError("truth fields are invalid")
+    if truth["defect"] == (truth["severity"] == "none"):
+        raise CatalogError("truth.defect must agree with truth.severity")
+
+    visual = _mapping(value["visual"], "visual")
+    _exact(visual, {"shape", "size_mm", "rgb", "rgb_jitter", "texture", "asset"}, "visual")
+    allowed = BUILTIN_SHAPES if kind == "builtin" else SUPPORTED_PROXY_SHAPES
+    if not _one_of(visual["shape"], allowed):
+        raise CatalogError(f"visual.shape is not a supported {kind} contact shape")
+    size = visual["size_mm"]
+    if not isinstance(size, list) or len(size) != 3:
+        raise CatalogError("visual.size_mm must contain three ranges")
+    for index, axis in enumerate(size):
+        if not isinstance(axis, list) or len(axis) != 2:
+            raise CatalogError(f"visual.size_mm[{index}] must be a low and high pair")
+        low, high = (_number(item, f"visual.size_mm[{index}]") for item in axis)
+        if not 0 < low <= high <= 1000:
+            raise CatalogError(f"visual.size_mm[{index}] must satisfy 0 < low <= high <= 1000 mm")
+    rgb = visual["rgb"]
+    if not isinstance(rgb, list) or len(rgb) != 3 or any(not 0 <= _number(c, "visual.rgb") <= 1 for c in rgb):
+        raise CatalogError("visual.rgb must contain three values in [0, 1]")
+    if not 0 <= _number(visual["rgb_jitter"], "visual.rgb_jitter") <= 1:
+        raise CatalogError("visual.rgb_jitter must be in [0, 1]")
+    # The inspection camera sees a generated type as a flat colour proxy, so it has no texture.
+    texture = visual["texture"]
+    if texture is not None and (kind == "generated" or not _one_of(texture, TEXTURE_FAMILIES)):
+        raise CatalogError("visual.texture must be null or a built-in engine material family")
+    _validate_asset(visual["asset"], kind)
+
+    physics = _mapping(value["physics"], "physics")
+    _exact(physics, {"contact_shape", "density_kg_m3", "mass_basis", "measurement_status"}, "physics")
+    if physics["contact_shape"] != visual["shape"]:
+        raise CatalogError("physics.contact_shape must equal visual.shape")
+    if not 0 < _number(physics["density_kg_m3"], "physics.density_kg_m3") <= 30000:
+        raise CatalogError("physics.density_kg_m3 must be in (0, 30000]")
+    if physics["mass_basis"] != MASS_BASIS or physics["measurement_status"] != "unmeasured_estimate":
+        raise CatalogError("physics must declare an unmeasured proxy-based mass estimate")
+
+
+def load_definition(path: Path, expected_sha256: str | None = None) -> dict[str, Any]:
+    """Read one definition as data and check its declared content hash."""
+    try:
+        definition = json.loads(Path(path).read_text())
+    except (OSError, json.JSONDecodeError) as error:
+        raise CatalogError(f"definition cannot be read: {Path(path).name}") from error
+    validate_type_definition(definition)
+    if expected_sha256 is not None and definition_sha256(definition) != expected_sha256:
+        raise CatalogError(f"definition hash does not match the manifest: {definition['object_type_id']}")
+    return definition
+
+
+def load_catalog(root: Path | None = None, manifest: str = "active/catalog.json",
+                 bundles_root: Path | None = None) -> dict[str, Any]:
+    """Load one validated manifest and only the definitions that it selects.
+
+    A non-null active_bundle_sha256 is a promise about bytes, not a syntax field. It
+    requires a bundles root, a verifying bundle, and an inner catalog that agrees with
+    this pointer. The definitions then come from that bundle, never from the root.
+
+    Without an explicit root the active manifest follows default_catalog_root(), which
+    can be a bundle catalog. A bundle carries no builtin manifest, so a builtin one, such
+    as roasted, then loads whole from the packaged root. One catalog, one root.
+    """
+    # Safe relative segments only. An absolute or parent path would leave the catalog root.
+    if not isinstance(manifest, str) or not _MANIFEST_RE.fullmatch(manifest):
+        raise CatalogError("catalog manifest path must stay inside the catalog root")
+    if root is None:
+        root = (PACKAGED_CATALOG_ROOT if manifest.startswith("builtin/")
+                else default_catalog_root())
+    root = Path(root)
+    try:
+        catalog = json.loads(_inside(root, root / manifest).read_text())
+    except (OSError, json.JSONDecodeError) as error:
+        raise CatalogError(f"catalog manifest cannot be read: {manifest}") from error
+    catalog = dict(_mapping(catalog, "catalog"))
+    _exact(catalog, _CATALOG_FIELDS, "catalog")
+    if catalog["schema_version"] != SCHEMA_VERSION:
+        raise CatalogError("catalog schema version is unsupported")
+    _text(catalog["profile_name"], "profile_name", 80)
+    belt = catalog["belt_rgb"]
+    if not isinstance(belt, list) or len(belt) != 3 or any(not 0 <= _number(c, "belt_rgb") <= 1 for c in belt):
+        raise CatalogError("belt_rgb must contain three values in [0, 1]")
+    ids, hashes = catalog["active_type_ids"], _mapping(catalog["definition_sha256"], "definition_sha256")
+    limit = catalog["max_active_types"]
+    if isinstance(limit, bool) or not isinstance(limit, int) or not 0 < limit <= 32:
+        raise CatalogError("max_active_types must be an integer in [1, 32]")
+    if not isinstance(ids, list) or len(ids) != limit:
+        raise CatalogError("active type count must equal max_active_types")
+    for type_id in ids:
+        _identifier(type_id, "active_type_ids")
+    if len(set(ids)) != len(ids) or set(hashes) != set(ids):
+        raise CatalogError("active type identifiers must be unique and hashed exactly once")
+    if catalog["catalog_revision"] != catalog_revision(ids, hashes):
+        raise CatalogError("catalog_revision does not match the ordered active set")
+    definitions_root = root
+    if catalog["active_bundle_sha256"] is not None:
+        _sha256(catalog["active_bundle_sha256"], "active_bundle_sha256")
+        definitions_root = _bound_bundle_catalog(catalog, bundles_root)
+
+    definitions = []
+    for type_id in ids:
+        _sha256(hashes[type_id], f"definition_sha256[{type_id}]")
+        definition = load_definition(
+            _inside(definitions_root, definitions_root / "definitions" / f"{type_id}.json"),
+            hashes[type_id])
+        if definition["object_type_id"] != type_id:
+            raise CatalogError(f"definition identifier does not match its file name: {type_id}")
+        if definition["lifecycle_state"] != ACTIVE_LIFECYCLE:
+            raise CatalogError(f"archived definition cannot be active: {type_id}")
+        definitions.append(definition)
+    labels = [definition["classifier_label"] for definition in definitions]
+    if len(set(labels)) != len(labels):
+        raise CatalogError("classifier labels must be unique in one catalog")
+    catalog["definitions"] = definitions
+    return catalog
+
+
+def _bound_bundle_catalog(catalog: Mapping[str, Any], bundles_root: Path | None) -> Path:
+    """Verify the pointed bundle and require it to agree with the pointer."""
+    if bundles_root is None:
+        raise CatalogError("an active bundle pointer requires a bundles root")
+    bundle = Path(bundles_root) / catalog["active_bundle_sha256"]
+    verify_bundle(bundle)
+    try:
+        inner = json.loads((bundle / BUNDLE_CATALOG).read_text())
+    except (OSError, json.JSONDecodeError) as error:
+        raise CatalogError(f"the active bundle has no catalog manifest: {bundle.name}") from error
+    inner = _mapping(inner, "bundle catalog")
+    if inner.get("active_bundle_sha256") is not None:
+        raise CatalogError("a bundle catalog must carry a null active_bundle_sha256")
+    # Only the bundle sha may differ. Iterating the field set covers a future field too,
+    # so a pointer can never override an immutable value such as belt_rgb.
+    for field in sorted(_CATALOG_FIELDS - {"active_bundle_sha256"}):
+        if inner.get(field) != catalog[field]:
+            raise CatalogError(f"the active pointer and its bundle disagree on {field}")
+    return bundle / "catalog"
+
+
+def catalog_labels(catalog: Mapping[str, Any]) -> list[str]:
+    return [definition["classifier_label"] for definition in catalog["definitions"]]
+
+
+def require_label_order(catalog: Mapping[str, Any], model_classes: list[str]) -> None:
+    """A model is compatible only when its labels equal the catalog order."""
+    if list(model_classes) != catalog_labels(catalog):
+        raise CatalogError("model label order does not equal the active catalog label order")
+
+
+def label_from_object_key(object_key: Any) -> str:
+    """Derive one classifier label from a draft object key. Only underscores separate words."""
+    label = re.sub(r"[.-]", "_", object_key) if isinstance(object_key, str) else ""
+    if not _LABEL_RE.fullmatch(label):
+        raise CatalogError("object_key does not derive a valid classifier label")
+    return label
+
+
+def recipe_rgb(recipe: Mapping[str, Any]) -> list[float]:
+    """The flat proxy colour of a generated type: the mean of the recipe part colours.
+
+    The inspection camera sees this flat colour, never the GLB. A beauty render is
+    never classifier evidence.
+    """
+    parts = _mapping(recipe, "recipe").get("parts")
+    if not isinstance(parts, list) or not parts:
+        raise CatalogError("a recipe needs at least one part")
+    total = [0.0, 0.0, 0.0]
+    for part in parts:
+        colour = _mapping(part, "recipe part").get("color")
+        if not isinstance(colour, list) or len(colour) != 3:
+            raise CatalogError("a recipe part colour needs three channels")
+        for index, value in enumerate(colour):
+            total[index] += _number(value, "recipe part colour")
+    rgb = [value / len(parts) for value in total]
+    if any(not 0 <= value <= 1 for value in rgb):
+        raise CatalogError("recipe part colours must be in [0, 1]")
+    return rgb
+
+
+def type_definition_from_draft(draft: Mapping[str, Any], *, rgb, prior: float,
+                              source_sha256: str) -> dict[str, Any]:
+    """Build one active generated type from a validated supported draft definition."""
+    physics = _mapping(_mapping(draft, "draft")["physics"], "draft.physics")
+    proxy = physics["proxy"]
+    if proxy is None:
+        raise CatalogError("a draft without a supported contact proxy cannot become a type")
+    sorting = _mapping(draft["sorting"], "draft.sorting")
+    if sorting["status"] == "unassigned":
+        raise CatalogError("a draft without a sorting proposal carries no defect truth")
+    if proxy["shape"] == "box":
+        semi_axes_mm = [value * 1e3 for value in proxy["half_extents_m"]]
+    else:  # capsule: half length along its local axis, then the radius twice
+        radius_mm = proxy["radius_m"] * 1e3
+        semi_axes_mm = [proxy["half_length_m"] * 1e3, radius_mm, radius_mm]
+    try:
+        visual = _mapping(draft["visual"], "draft.visual")
+        asset_id = visual["visual_asset_id"]
+        definition = {
+            "schema_version": SCHEMA_VERSION,
+            "object_type_id": draft["object_type_id"],
+            "display_name": draft["display_name"],
+            "classifier_label": label_from_object_key(draft["object_key"]),
+            "provenance": {"kind": "generated", "source": draft["object_type_id"],
+                           "source_sha256": source_sha256},
+            "feed": {"prior": prior},
+            "truth": {"defect": sorting["defect"], "severity": sorting["severity"]},
+            "visual": {
+                "shape": proxy["shape"],
+                "size_mm": [[value, value] for value in semi_axes_mm],
+                "rgb": list(rgb),
+                "rgb_jitter": 0.0,
+                # The inspection camera sees this flat-colour proxy, never the GLB.
+                "texture": None,
+                "asset": {
+                    "visual_asset_id": asset_id,
+                    "glb_sha256": asset_id.removeprefix("sha256:") if isinstance(asset_id, str) else asset_id,
+                    "units": visual["units"],
+                    "source_up_axis": visual["source_up_axis"],
+                    "engine_up_axis": visual["engine_up_axis"],
+                    "sim_from_asset_quaternion_wxyz": list(visual["sim_from_asset_quaternion_wxyz"]),
+                },
+            },
+            "physics": {
+                "contact_shape": proxy["shape"],
+                "density_kg_m3": physics["density_kg_m3"],
+                "mass_basis": MASS_BASIS,
+                "measurement_status": "unmeasured_estimate",
+            },
+            "lifecycle_state": ACTIVE_LIFECYCLE,
+            "validation_status": "validated",
+        }
+    except (KeyError, TypeError) as error:
+        raise CatalogError("draft definition is missing required fields") from error
+    validate_type_definition(definition)
+    return definition
+
+
+def select_victim(catalog: Mapping[str, Any], reject_labels) -> str | None:
+    """Prefer the last Keep type, then the last non-protected Reject type."""
+    rejected = set(reject_labels)
+    candidates = [definition for definition in reversed(catalog["definitions"])
+                  if definition["classifier_label"] != ANOMALY_REFERENCE_LABEL]
+    for definition in candidates:
+        label = definition["classifier_label"]
+        if label not in rejected:
+            return definition["object_type_id"]
+    return candidates[0]["object_type_id"] if candidates else None
+
+
+def candidate_catalog(catalog: Mapping[str, Any], new_definition: Mapping[str, Any],
+                      victim_id: str) -> dict[str, Any]:
+    """One candidate catalog: the new type first, then every survivor in its existing order."""
+    validate_type_definition(new_definition)
+    survivors = [value for value in catalog["definitions"] if value["object_type_id"] != victim_id]
+    if len(survivors) == len(catalog["definitions"]):
+        raise CatalogError(f"replacement victim is not active: {victim_id}")
+    # select_victim never offers it. A direct caller must not remove it either.
+    if any(value["object_type_id"] == victim_id and value["classifier_label"] == ANOMALY_REFERENCE_LABEL
+           for value in catalog["definitions"]):
+        raise CatalogError("the anomaly reference type cannot be a replacement victim")
+    definitions = [dict(new_definition), *survivors]
+    ids = [value["object_type_id"] for value in definitions]
+    labels = [value["classifier_label"] for value in definitions]
+    if len(set(ids)) != len(ids):
+        raise CatalogError("active type identifiers must be unique and hashed exactly once")
+    if len(set(labels)) != len(labels):
+        raise CatalogError("classifier labels must be unique in one catalog")
+    hashes = {type_id: definition_sha256(value) for type_id, value in zip(ids, definitions)}
+    return {**dict(catalog), "active_type_ids": ids, "definition_sha256": hashes,
+            "catalog_revision": catalog_revision(ids, hashes),
+            # A candidate has no active bundle yet.
+            "active_bundle_sha256": None, "definitions": definitions}
+
+
+def write_catalog(root: Path, catalog: Mapping[str, Any]) -> Path:
+    """Write one loadable catalog root atomically. The root must not exist yet."""
+    root = Path(root)
+    definitions = list(catalog["definitions"])
+    manifest = {key: value for key, value in catalog.items() if key != "definitions"}
+    _exact(manifest, _CATALOG_FIELDS, "catalog")
+    # The file names come from the definitions, so this function checks them itself.
+    for definition in definitions:
+        validate_type_definition(definition)
+    if [definition["object_type_id"] for definition in definitions] != manifest["active_type_ids"]:
+        raise CatalogError("catalog definitions do not match the ordered active set")
+    if root.exists():
+        raise CatalogError(f"catalog root already exists: {root.name}")
+    files = {"active/catalog.json": _pretty(manifest)}
+    for definition in definitions:
+        files[f"definitions/{definition['object_type_id']}.json"] = _pretty(definition)
+    return _publish_staged(root, files)
+
+
+def _publish_staged(target: Path, files: Mapping[str, bytes]) -> Path:
+    """Write one complete directory beside its target, then publish it with one rename."""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    # The dot prefix keeps an interrupted write outside every identifier pattern.
+    staging = Path(tempfile.mkdtemp(prefix=".staging-", dir=target.parent))
+    try:
+        for name, data in files.items():
+            (staging / name).parent.mkdir(parents=True, exist_ok=True)
+            (staging / name).write_bytes(data)
+        # A rename onto an existing directory fails, so a second writer cannot replace the first.
+        if not _replace_directory(staging, target):
+            raise CatalogError(f"directory already exists: {target.name}")
+    except BaseException:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    return target
+
+
+def _replace_directory(staging: Path, target: Path) -> bool:
+    """One rename that never overwrites a published directory.
+
+    Returns False when another writer published that name first, so a raw OSError never
+    reaches a caller. The caller decides whether that is an error or a no-op.
+    """
+    try:
+        os.replace(staging, target)
+        return True
+    except OSError as error:
+        if target.exists():
+            return False
+        raise CatalogError(f"directory cannot be published: {target.name}") from error
+
+
+def archive_type(root: Path, definition: Mapping[str, Any], retired_at: str,
+                 evidence: Mapping[str, Path] | None = None) -> Path:
+    """Store one replaced type and its evidence as one immutable Wall of Fame entry."""
+    validate_type_definition(definition)
+    _rfc3339_utc(retired_at, "retired_at")
+    archived = {**dict(definition), "lifecycle_state": ARCHIVED_LIFECYCLE}
+    files: dict[str, bytes] = {}
+    for name, source in dict(evidence or {}).items():
+        if not isinstance(name, str) or not _FILE_RE.fullmatch(name) or name in {"definition.json", "archive.json"}:
+            raise CatalogError(f"evidence file name is invalid: {name}")
+        try:
+            files[name] = Path(source).read_bytes()
+        except OSError as error:
+            raise CatalogError(f"evidence file cannot be read: {name}") from error
+    model_artifact = _archive_model_artifact(archived, files)
+    files["definition.json"] = _pretty(archived)
+    files["archive.json"] = _pretty({
+        "object_type_id": archived["object_type_id"],
+        "display_name": archived["display_name"],
+        "classifier_label": archived["classifier_label"],
+        "retired_at": retired_at,
+        "definition_sha256": definition_sha256(archived),
+        "provenance": archived["provenance"],
+        "evidence": {name: hashlib.sha256(files[name]).hexdigest() for name in sorted(evidence or {})},
+        "model_artifact_sha256": model_artifact,
+    })
+
+    wall = Path(root) / "wall-of-fame"
+    directory = wall / archived["object_type_id"]
+    # One writer: activation runs serialized inside one service process.
+    if directory.exists():
+        current = {item.name: item.read_bytes() for item in directory.iterdir() if item.is_file()}
+        if current != files:
+            raise CatalogError(f"an archived type is immutable: {archived['object_type_id']}")
+        return directory
+    return _publish_staged(directory, files)
+
+
+def _archive_model_artifact(archived: Mapping[str, Any],
+                            files: Mapping[str, bytes]) -> str | None:
+    """A generated victim needs its rendered asset and its model evidence.
+
+    Every check runs before any write, so a refused archive leaves nothing behind. A
+    built-in victim has no GLB, so its evidence stays optional.
+    """
+    if archived["provenance"]["kind"] == "generated":
+        missing = [name for name in GENERATED_EVIDENCE if name not in files]
+        if missing:
+            raise CatalogError(
+                f"a generated archive requires evidence: {', '.join(missing)}")
+        glb = files["object.glb"]
+        if not glb.startswith(GLB_MAGIC):
+            raise CatalogError("archived object.glb is not a GLB file")
+        if hashlib.sha256(glb).hexdigest() != archived["visual"]["asset"]["glb_sha256"]:
+            raise CatalogError("archived object.glb does not match the definition hash")
+    if "model.manifest.json" not in files:
+        return None
+    return _model_artifact_sha256(files["model.manifest.json"])
+
+
+NEEDS_REVIEW_KIND = "needs_review"
+ARCHIVED_TYPE_KIND = "archived_type"
+NEEDS_REVIEW_PREFIX = "needs-review."
+# Only a rendered preview may be copied. Nothing else about a failed job is evidence.
+NEEDS_REVIEW_PREVIEWS = ("perspective.png", "top.png")
+_NEEDS_REVIEW_FIELDS = ("entry_kind", "entry_id", "request_id", "display_name", "status",
+                        "failure_reason", "created_at", "preview_url")
+
+
+def archive_needs_review(history_root: Path, job: Mapping[str, Any], job_dir: Path) -> Path:
+    """Keep one honest trace of a job that never became an active type.
+
+    A reset mechanism calls this so the Wall of Fame never hides a failure. NOTHING is
+    invented: the entry carries no model, definition, GLB, classifier, provenance, or
+    object type id, because none of those exist for a job that did not activate. A
+    conflicting entry raises BEFORE any write, so the caller can stop its own reset. An
+    identical entry is a no-op.
+
+    `job_dir` is the caller's descriptor-confined job directory. It is never persisted.
+
+    Decisions taken here, stated so they are easy to correct: `entry_id` is
+    `"needs-review." + request_id`; the entry lives at
+    `history_root/wall-of-fame/<entry_id>/entry.json`; `preview_url` is
+    `/wall-of-fame/<entry_id>/<name>`; `failure_reason` is the job's `error` then its
+    `reason`, path-free and bounded; `created_at` is `timestamps.created`;
+    `display_name` is the job's `display_name` or its truncated `description`.
+    """
+    request_id = job["request_id"]
+    if not isinstance(request_id, str) or not _FILE_RE.fullmatch(request_id):
+        raise CatalogError("a needs review entry requires one safe request id")
+    entry_id = f"{NEEDS_REVIEW_PREFIX}{request_id}"
+    directory = Path(history_root) / "wall-of-fame" / entry_id
+    name, data = _needs_review_preview(job, Path(job_dir))
+    record = {
+        "entry_kind": NEEDS_REVIEW_KIND,
+        "entry_id": entry_id,
+        "request_id": request_id,
+        "display_name": _needs_review_name(job),
+        "status": NEEDS_REVIEW_KIND,
+        "failure_reason": _needs_review_reason(job),
+        "created_at": (job.get("timestamps") or {}).get("created"),
+        "preview_url": None if name is None else f"/wall-of-fame/{entry_id}/{name}",
+    }
+    files = {"entry.json": _pretty(record)}
+    if name is not None:
+        files[name] = data
+    if directory.exists():
+        # An identity conflict is refused before anything is written or replaced.
+        current = {item.name: item.read_bytes()
+                   for item in directory.iterdir() if item.is_file()}
+        if current != files:
+            raise CatalogError(f"a needs review entry is immutable: {entry_id}")
+        return directory
+    return _publish_staged(directory, files)
+
+
+def _needs_review_name(job: Mapping[str, Any]) -> str:
+    for value in (job.get("display_name"), job.get("description")):
+        if isinstance(value, str) and value.strip():
+            return _redact_host_paths(value.strip()[:120])
+    return "Untitled item"
+
+
+def _needs_review_reason(job: Mapping[str, Any]) -> str | None:
+    for value in (job.get("error"), job.get("reason")):
+        if isinstance(value, str) and value.strip():
+            return _redact_host_paths(value.strip()[:200])
+    return None
+
+
+def _needs_review_preview(job: Mapping[str, Any], job_dir: Path):
+    """Copy ONE preview whose declared hash matches its bytes, or nothing at all.
+
+    A null preview is valid. No declared hash, a mismatch, a symlink, a missing file, or
+    an unreadable one all give the same honest answer.
+    """
+    declared = ((job.get("artifacts") or {}).get("previews") or {})
+    if not isinstance(declared, Mapping):
+        return None, None
+    for name in NEEDS_REVIEW_PREVIEWS:
+        evidence = declared.get(name)
+        digest = evidence.get("sha256") if isinstance(evidence, Mapping) else None
+        if not isinstance(digest, str) or not _SHA256_RE.fullmatch(digest):
+            continue
+        path = job_dir / "previews" / name
+        try:
+            if path.is_symlink() or not path.is_file():
+                continue
+            _inside(job_dir, path)
+            data = path.read_bytes()
+        except (OSError, CatalogError):
+            continue
+        if hashlib.sha256(data).hexdigest() == digest:
+            return name, data
+    return None, None
+
+
+def wall_of_fame_page(root: Path | None = None, offset: int = 0,
+                      limit: int = MAX_WALL_PAGE) -> dict[str, Any]:
+    """Return one bounded, newest-first page of inactive archived definitions."""
+    for name, number in (("offset", offset), ("limit", limit)):
+        if isinstance(number, bool) or not isinstance(number, int) or number < 0:
+            raise CatalogError(f"{name} must be a non-negative integer")
+    limit = min(limit, MAX_WALL_PAGE)
+    wall = Path(default_catalog_root() if root is None else root) / "wall-of-fame"
+    entries, unreadable = [], 0
+    for directory in sorted(wall.iterdir()) if wall.is_dir() else []:
+        if not (directory.is_dir() and _ID_RE.fullmatch(directory.name)):
+            continue
+        review = directory / "entry.json"
+        if review.is_file():
+            # A job that never activated. It carries no definition, so it never goes
+            # through the archived-type rules below.
+            try:
+                entry = json.loads(review.read_text())
+                if [entry[name] for name in _NEEDS_REVIEW_FIELDS][1] != directory.name:
+                    raise CatalogError("entry identifier does not match its directory")
+                _rfc3339_utc(entry["created_at"], "created_at")
+            except (OSError, ValueError, KeyError, TypeError):
+                unreadable += 1
+                continue
+            entries.append({**entry, "retired_at": entry["created_at"],
+                            "object_type_id": entry["entry_id"], "preview": None})
+            continue
+        record = directory / "archive.json"
+        if not record.is_file():
+            continue
+        # One damaged entry must not hide the other archived types. The page reports the count.
+        try:
+            entry = json.loads(record.read_text())
+            _rfc3339_utc(entry["retired_at"], "retired_at")
+            if entry["object_type_id"] != directory.name:
+                raise CatalogError("archive identifier does not match its directory")
+        except (OSError, ValueError, KeyError, TypeError):
+            unreadable += 1
+            continue
+        # An archived type without a readable definition is incomplete. The page counts
+        # it with the other damaged entries instead of showing a name with no geometry.
+        preview = _archive_preview(directory / "definition.json")
+        if preview is None:
+            unreadable += 1
+            continue
+        # An existing archive is never rewritten, so its kind is stated for the reader.
+        entries.append({"entry_kind": ARCHIVED_TYPE_KIND, **entry, "preview": preview})
+    entries.sort(key=lambda entry: (entry["retired_at"], entry["object_type_id"]), reverse=True)
+    return {"total": len(entries), "unreadable": unreadable, "offset": offset, "limit": limit,
+            "entries": entries[offset:offset + limit]}
+
+
+def write_bundle_manifest(staging_dir: Path) -> str:
+    """Describe every file under one staging directory and return the bundle identity.
+
+    The manifest lists relative posix paths only, so the same content in two different
+    parent directories produces the same identity. Nothing inside a bundle names it.
+    """
+    staging = Path(staging_dir)
+    files: dict[str, dict[str, Any]] = {}
+    for path in sorted(staging.rglob("*")):
+        if path.is_symlink():
+            raise CatalogError("a bundle cannot contain a symlink")
+        if path.is_dir():
+            continue
+        name = path.relative_to(staging).as_posix()
+        if name == BUNDLE_MANIFEST:
+            continue
+        _bundle_relative(name)
+        digest, size = _file_sha256(path)
+        files[name] = {"sha256": digest, "bytes": size}
+    data = canonical_json({"schema_version": BUNDLE_SCHEMA_VERSION, "files": files})
+    (staging / BUNDLE_MANIFEST).write_bytes(data)
+    return hashlib.sha256(data).hexdigest()
+
+
+def publish_bundle(bundles_root: Path, files: Mapping[str, Any]) -> str:
+    """Stage one bundle, name it from its own content, and publish it with one rename.
+
+    Each value is either the file bytes or a source path to copy. An identical bundle is
+    a no-op. A directory of that name that does not verify is an error.
+    """
+    bundles_root = Path(bundles_root)
+    bundles_root.mkdir(parents=True, exist_ok=True)
+    # The dot prefix keeps an interrupted write outside every identifier pattern.
+    staging = Path(tempfile.mkdtemp(prefix=".staging-", dir=bundles_root))
+    try:
+        for name, source in files.items():
+            _bundle_relative(name)
+            target = staging / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if isinstance(source, (bytes, bytearray)):
+                target.write_bytes(bytes(source))
+            else:
+                _copy_file(Path(source), target)
+        digest = write_bundle_manifest(staging)
+        # Never publish a bundle that verify_bundle would refuse. The name check needs the
+        # final directory, so only the content rules can run here.
+        listed = json.loads((staging / BUNDLE_MANIFEST).read_text())["files"]
+        _verify_bundle_content(staging, listed)
+        directory = bundles_root / digest
+        # The check and the rename cannot be atomic, so a second writer can win between
+        # them. Either answer ends here: the name is the content hash, so a directory of
+        # that name that verifies holds exactly this content.
+        if directory.exists() or not _replace_directory(staging, directory):
+            verify_bundle(directory)
+    except BaseException:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    # A successful rename already moved the staging directory away.
+    shutil.rmtree(staging, ignore_errors=True)
+    return digest
+
+
+def verify_bundle(bundle_dir: Path) -> dict[str, Any]:
+    """Recompute one bundle from its own bytes. Any violation refuses the whole bundle.
+
+    No message names a host path: a bundle is identified by its sha and by the relative
+    paths it lists.
+    """
+    directory = Path(bundle_dir)
+    name = directory.name
+    if directory.is_symlink() or not directory.is_dir():
+        raise CatalogError(f"bundle directory is missing: {name}")
+    if not _SHA256_RE.fullmatch(name):
+        raise CatalogError(f"bundle directory name is not a sha256: {name}")
+    try:
+        data = (directory / BUNDLE_MANIFEST).read_bytes()
+    except OSError as error:
+        raise CatalogError(f"bundle manifest cannot be read: {name}") from error
+    if hashlib.sha256(data).hexdigest() != name:
+        raise CatalogError(f"bundle manifest hash does not match its directory: {name}")
+    try:
+        manifest = json.loads(data)
+    except json.JSONDecodeError as error:
+        raise CatalogError(f"bundle manifest is not JSON: {name}") from error
+    manifest = dict(_mapping(manifest, "bundle"))
+    _exact(manifest, {"schema_version", "files"}, "bundle")
+    if manifest["schema_version"] != BUNDLE_SCHEMA_VERSION:
+        raise CatalogError(f"bundle schema version is unsupported: {name}")
+    listed = _mapping(manifest["files"], "bundle.files")
+
+    present = set()
+    for path in directory.rglob("*"):
+        if path.is_symlink():
+            raise CatalogError(f"bundle contains a symlink: {name}")
+        if path.is_dir():
+            continue
+        relative = path.relative_to(directory).as_posix()
+        if relative != BUNDLE_MANIFEST:
+            present.add(relative)
+    if present != set(listed):
+        raise CatalogError(f"bundle files do not match its manifest: {name}")
+
+    for relative in sorted(listed):
+        _bundle_relative(relative)
+        record = _mapping(listed[relative], f"bundle.files[{relative}]")
+        _exact(record, {"sha256", "bytes"}, f"bundle.files[{relative}]")
+        _sha256(record["sha256"], f"bundle.files[{relative}].sha256")
+        size = record["bytes"]
+        if isinstance(size, bool) or not isinstance(size, int) or size < 0:
+            raise CatalogError(f"bundle file size is invalid: {relative}")
+        path = _inside(directory, directory / relative)
+        if not path.is_file():
+            raise CatalogError(f"bundle file is missing: {relative}")
+        digest, actual = _file_sha256(path)
+        if digest != record["sha256"] or actual != size:
+            raise CatalogError(f"bundle file does not match its manifest: {relative}")
+
+    _verify_bundle_content(directory, listed)
+    return {"bundle_sha256": name, "files": {key: dict(listed[key]) for key in sorted(listed)}}
+
+
+def write_active_pointer(active_root: Path, bundle_sha256: str) -> Path:
+    """Point one persistent root at a verified bundle with one atomic replace."""
+    bundle = _verified_bundle(active_root, bundle_sha256)
+    try:
+        inner = json.loads((bundle / BUNDLE_CATALOG).read_text())
+    except (OSError, json.JSONDecodeError) as error:
+        raise CatalogError(f"the bundle has no catalog manifest: {bundle.name}") from error
+    pointer = {**dict(_mapping(inner, "bundle catalog")), "active_bundle_sha256": bundle.name}
+    _exact(pointer, _CATALOG_FIELDS, "catalog")
+    target = Path(active_root) / "active" / "catalog.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    _replace_atomically(target, _pretty(pointer))
+    return target
+
+
+def read_active(active_root: Path) -> dict[str, Any]:
+    """Load the catalog the pointer selects, always through its verified bundle."""
+    active_root = Path(active_root)
+    return load_catalog(active_root, bundles_root=active_root / "bundles")
+
+
+def rollback_active(active_root: Path, bundle_sha256: str) -> Path:
+    """Repoint to a previously published bundle after verifying it.
+
+    Rollback is one pointer move. It never touches a history directory and never deletes
+    a bundle, so job records written after a snapshot survive.
+    """
+    return write_active_pointer(active_root, bundle_sha256)
+
+
+def read_glb_evidence(data: bytes) -> dict[str, int]:
+    """Measure one GLB from its own bytes. Only the bounded JSON chunk is parsed.
+
+    The binary chunk is never read, so no geometry is loaded. Anything but indexed
+    triangle primitives is refused: a count that cannot be derived is never guessed.
+    """
+    if not isinstance(data, bytes) or not 20 <= len(data) <= MAX_GLB_BYTES:
+        raise CatalogError("a visual asset is not a bounded GLB")
+    magic, version, total, chunk_length, chunk_type = struct.unpack_from("<4sIIII", data)
+    if magic != GLB_MAGIC or version != 2 or total != len(data):
+        raise CatalogError("the GLB header does not describe these bytes")
+    if chunk_type != _GLB_JSON_CHUNK or chunk_length > min(MAX_GLB_JSON_BYTES, len(data) - 20):
+        raise CatalogError("the first GLB chunk is not bounded JSON")
+    try:
+        document = json.loads(data[20:20 + chunk_length])
+    except (ValueError, RecursionError) as error:
+        raise CatalogError("the GLB JSON chunk cannot be read") from error
+    document = _mapping(document, "glb")
+    meshes, accessors = document.get("meshes"), document.get("accessors")
+    if not isinstance(meshes, list) or not meshes or not isinstance(accessors, list):
+        raise CatalogError("the GLB declares no mesh")
+    primitives = triangles = 0
+    for mesh in meshes:
+        parts = _mapping(mesh, "glb.mesh").get("primitives")
+        if not isinstance(parts, list) or not parts:
+            raise CatalogError("a GLB mesh declares no primitive")
+        for part in parts:
+            part = _mapping(part, "glb.primitive")
+            index = part.get("indices")
+            if part.get("mode", _GLB_TRIANGLES) != _GLB_TRIANGLES or type(index) is not int \
+                    or not 0 <= index < len(accessors):
+                raise CatalogError("only indexed triangle primitives are supported")
+            count = _mapping(accessors[index], "glb.accessor").get("count")
+            if type(count) is not int or count <= 0 or count % 3:
+                raise CatalogError("a GLB indices accessor is not a triangle list")
+            primitives += 1
+            triangles += count // 3
+    return {"byte_length": len(data), "mesh_count": len(meshes),
+            "primitive_count": primitives, "triangle_count": triangles}
+
+
+def visual_bundle_files(catalog: Mapping[str, Any],
+                        assets: Mapping[str, Any] | None = None) -> dict[str, bytes]:
+    """The visual registry and every GLB it lists, keyed by bundle path.
+
+    `assets` maps an object type id to `{"glb": path, "evidence": draft visual block}`.
+    A generated type without that evidence gets NO row: the browser then shows its
+    authoritative proxy. Only three evidence members are copied, so a draft `uri` never
+    enters a bundle. `reference_axes_m` follows the engine rule for nominal proxy axes
+    (engine.py `class_catalog`), never the GLB bounds.
+    """
+    files, rows = {}, []
+    for definition in _mapping(catalog, "catalog")["definitions"]:
+        entry = (assets or {}).get(definition["object_type_id"])
+        if definition["provenance"]["kind"] != "generated" or entry is None:
+            continue
+        evidence = _mapping(entry, "asset").get("evidence") or {}
+        if any(name not in evidence for name in _EVIDENCE_FIELDS):
+            continue
+        asset = definition["visual"]["asset"]
+        data = _read_glb(Path(entry["glb"]))
+        if hashlib.sha256(data).hexdigest() != asset["glb_sha256"]:
+            raise CatalogError("the visual asset bytes do not match the definition: "
+                               f"{definition['object_type_id']}")
+        path = f"{VISUAL_ASSET_DIR}/{asset['glb_sha256']}.glb"
+        files[path] = data
+        rows.append({
+            "object_type_id": definition["object_type_id"],
+            "classifier_label": definition["classifier_label"],
+            "path": path,
+            **{name: asset[name] for name in _ASSET_FIELDS},
+            **{name: evidence[name] for name in _EVIDENCE_FIELDS},
+            **read_glb_evidence(data),
+            "reference_axes_m": [round((low + high) * 0.5e-3, 9)
+                                 for low, high in definition["visual"]["size_mm"]],
+        })
+    files[VISUAL_REGISTRY] = _pretty({"schema_version": VISUAL_REGISTRY_VERSION, "assets": rows})
+    return files
+
+
+def read_visual_registry(bundle_dir: Path) -> list[dict[str, Any]]:
+    """The registry rows of one bundle. A bundle without the file has none.
+
+    Only a verified bundle is ever bound or served, so the rows are not verified again.
+    """
+    try:
+        registry = json.loads((Path(bundle_dir) / VISUAL_REGISTRY).read_bytes())
+    except FileNotFoundError:
+        return []
+    except (OSError, ValueError) as error:
+        raise CatalogError("the visual registry cannot be read") from error
+    rows = _mapping(registry, "visual registry").get("assets")
+    if registry.get("schema_version") != VISUAL_REGISTRY_VERSION or not isinstance(rows, list):
+        raise CatalogError("visual registry is unsupported")
+    return [dict(_mapping(row, "visual registry row")) for row in rows]
+
+
+def read_confined(root: Path, components: tuple[str, ...], limit: int) -> bytes:
+    """Read one regular file below `root` through descriptors that follow no link.
+
+    The chain of the preview route: every component opens from the descriptor of its
+    parent, so nothing can be substituted between a check and the open. No message
+    repeats a host path.
+    """
+    directories: list[int] = []
+    try:
+        directories.append(os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW))
+        for component in components[:-1]:
+            directories.append(os.open(component, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                                       dir_fd=directories[-1]))
+        descriptor = os.open(components[-1], os.O_RDONLY | os.O_NOFOLLOW,
+                             dir_fd=directories[-1])
+    except OSError:
+        raise CatalogError("the file is unavailable") from None
+    finally:
+        for opened in directories:
+            os.close(opened)
+    try:
+        data = b""
+        while stat.S_ISREG(os.fstat(descriptor).st_mode) and len(data) <= limit:
+            chunk = os.read(descriptor, limit + 1 - len(data))
+            if not chunk:
+                return data
+            data += chunk
+    finally:
+        os.close(descriptor)
+    raise CatalogError("the file is unavailable")
+
+
+def render_asset(row: Mapping[str, Any], revision: str) -> dict[str, Any]:
+    """One registry row as the state contract publishes it. The URL is rebuilt, never stored."""
+    return {**{name: row[name] for name in _RENDER_FIELDS},
+            "url": f"/catalog-assets/{revision}/{row['glb_sha256']}.glb"}
+
+
+def seed_bundle_files(catalog_root: Path, model_path: Path, model_manifest_path: Path,
+                      preset: Mapping[str, Any], policy: Mapping[str, Any],
+                      sources: Mapping[str, Any],
+                      assets: Mapping[str, Any] | None = None) -> dict[str, bytes]:
+    """Build one bundle from the given assets. No source tree is ever modified.
+
+    Without `assets` the visual registry is empty, which is exactly bundle zero: the
+    packaged catalog has no generated type.
+    """
+    catalog_root, model_path = Path(catalog_root), Path(model_path)
+    catalog = load_catalog(catalog_root)
+    manifest = {key: value for key, value in catalog.items() if key != "definitions"}
+    manifest["active_bundle_sha256"] = None
+    files: dict[str, bytes] = {BUNDLE_CATALOG: _pretty(manifest)}
+    for definition in catalog["definitions"]:
+        files[f"catalog/definitions/{definition['object_type_id']}.json"] = _pretty(definition)
+    files[f"model/{model_path.name}"] = model_path.read_bytes()
+    files[f"model/{Path(model_manifest_path).name}"] = Path(model_manifest_path).read_bytes()
+
+    reject_classes = list(_mapping(policy, "policy").get("reject_classes", []))
+    seeded = dict(_mapping(preset, "preset"))
+    seeded["model_path"] = f"model/{model_path.name}"
+    seeded["model_path_root"] = "preset"
+    # The engine reads its whole policy block from the preset, so the block is kept.
+    seeded["policy"] = {**dict(_mapping(seeded.get("policy", {}), "preset.policy")),
+                        "initial_reject_classes": reject_classes}
+    files[BUNDLE_PRESET] = _pretty(seeded)
+    files["policy.json"] = _pretty(dict(_mapping(policy, "policy")))
+    files["sources.json"] = _pretty(dict(_mapping(sources, "sources")))
+    files.update(visual_bundle_files(catalog, assets))
+    return files
+
+
+def ensure_active_bundle(active_root: Path, *, catalog_root: Path, model_path: Path,
+                         model_manifest_path: Path, preset: Mapping[str, Any],
+                         policy: Mapping[str, Any], sources: Mapping[str, Any],
+                         validate=None, history_root: Path | None = None) -> Path:
+    """Return the verified active bundle directory. Only an empty root gets bundle zero.
+
+    The service calls this before any profiles import, so the catalog and the model start
+    as one verified unit. The packaged tree is only read. `validate(bundle_dir)` raises to
+    refuse a seed, and it runs on a scratch copy, so a refusal writes nothing to the root.
+
+    A missing pointer alone never permits a seed. The seed is one transaction: a durable
+    marker names the expected bundle before anything is published and remains as the
+    immutable reset target. A start that finds that marker, no pointer, and at most that
+    one bundle completes the same seed. Every other root without a pointer is an error,
+    and so is a root whose history already records an activation.
+    """
+    active_root = Path(active_root)
+    marker = active_root / SEED_MARKER
+    if not os.path.lexists(active_pointer_path(active_root)):
+        if history_root is not None and os.path.lexists(Path(history_root) / "activations.jsonl"):
+            raise CatalogError("the activation history exists but the active pointer is lost")
+        files = seed_bundle_files(catalog_root, model_path, model_manifest_path,
+                                  preset, policy, sources)
+        with tempfile.TemporaryDirectory() as scratch:
+            digest = publish_bundle(scratch, files)
+            _require_seedable(active_root, marker, digest)
+            if validate is not None:
+                validate(Path(scratch) / digest)
+        active_root.mkdir(parents=True, exist_ok=True)
+        _replace_atomically(marker, _pretty({"bundle_sha256": digest}))
+        write_active_pointer(active_root, publish_bundle(active_root / "bundles", files))
+    return resolve_active_bundle(active_root)
+
+
+def active_pointer_path(active_root: Path) -> Path:
+    """The one file that commits a root to a bundle."""
+    return Path(active_root) / "active" / "catalog.json"
+
+
+def resolve_active_bundle(active_root: Path) -> Path:
+    """Return the bundle the pointer already names. No seed input is needed here."""
+    active_root = Path(active_root)
+    bundle_sha256 = read_active(active_root)["active_bundle_sha256"]
+    if bundle_sha256 is None:
+        raise CatalogError("the active pointer names no bundle")
+    return active_root / "bundles" / bundle_sha256
+
+
+def _require_seedable(active_root: Path, marker: Path, digest: str) -> None:
+    """Allow a first seed on an empty root, or the completion of this exact seed."""
+    def names(directory: Path) -> list[str]:
+        # A dot-prefixed name is an interrupted write, never content.
+        return sorted(path.name for path in directory.iterdir()
+                      if not path.name.startswith(".")) if directory.is_dir() else []
+
+    entries = names(active_root)
+    if not entries:
+        return
+    try:
+        expected = json.loads(marker.read_text())
+    except (OSError, json.JSONDecodeError) as error:
+        raise CatalogError("the active root holds no pointer and no seed marker") from error
+    if expected != {"bundle_sha256": digest}:
+        raise CatalogError("the seed marker names another bundle than this seed")
+    if (set(entries) - {SEED_MARKER, "bundles", "active"}
+            or names(active_root / "bundles") not in ([], [digest])
+            or names(active_root / "active")):
+        raise CatalogError("the active root holds more than the interrupted seed")
+
+
+def _verified_bundle(active_root: Path, bundle_sha256: Any) -> Path:
+    if not isinstance(bundle_sha256, str) or not _SHA256_RE.fullmatch(bundle_sha256):
+        raise CatalogError("a bundle identity must be a lowercase sha256")
+    bundle = Path(active_root) / "bundles" / bundle_sha256
+    verify_bundle(bundle)
+    return bundle
+
+
+def _verify_bundle_content(directory: Path, listed: Mapping[str, Any]) -> None:
+    """Content rules for every JSON file a bundle carries.
+
+    Every producer runs these: publish_bundle on the staged tree and verify_bundle on a
+    published one. A fixed file list would let a later producer past them, and the
+    per-definition files would then have no cover at all.
+    """
+    for relative in sorted(listed):
+        if not relative.endswith(".json"):
+            continue
+        try:
+            value = json.loads((directory / relative).read_text())
+        except (OSError, json.JSONDecodeError) as error:
+            raise CatalogError(f"bundle file is not JSON: {relative}") from error
+        # The bundle identity needs no rule here: embedding a digest changes the digest,
+        # so no bundle can name itself. test_no_file_inside_a_bundle_names_the_bundle
+        # asserts that property directly.
+        for text in _structural_strings(value):
+            reason = _volatile_reason(text)
+            if reason is not None:
+                raise CatalogError(f"bundle file carries {reason}: {relative}")
+        if relative == BUNDLE_CATALOG and _mapping(
+                value, "bundle catalog").get("active_bundle_sha256") is not None:
+            raise CatalogError("a bundle catalog must carry a null active_bundle_sha256")
+        if relative == BUNDLE_PRESET:
+            _verify_bundle_preset(directory, value)
+        if relative == "policy.json":
+            _mapping(value, "policy")
+        if relative == VISUAL_REGISTRY:
+            _verify_visual_registry(directory, listed, value)
+
+
+def _verify_visual_registry(directory: Path, listed: Mapping[str, Any], value: Any) -> None:
+    """Every row must describe one GLB that THIS bundle lists, measured from its bytes.
+
+    A bundle published before the registry existed carries no such file and stays valid:
+    it serves no generated asset.
+    """
+    registry = _mapping(value, "visual registry")
+    _exact(registry, {"schema_version", "assets"}, "visual registry")
+    if registry["schema_version"] != VISUAL_REGISTRY_VERSION \
+            or not isinstance(registry["assets"], list):
+        raise CatalogError("visual registry is unsupported")
+    seen = set()
+    for row in registry["assets"]:
+        row = _mapping(row, "visual registry row")
+        _exact(row, _VISUAL_ROW_FIELDS, "visual registry row")
+        _identifier(row["object_type_id"], "visual registry row object_type_id")
+        _validate_asset({name: row[name] for name in _ASSET_FIELDS}, "generated")
+        # One row per type, and one row per GLB, so a hash selects exactly one row.
+        for key in (("type", row["object_type_id"]), ("glb", row["glb_sha256"])):
+            if key in seen:
+                raise CatalogError("visual registry rows repeat one type or one GLB")
+            seen.add(key)
+        # The path is rebuilt from the hash, so a row can never name another file.
+        relative = f"{VISUAL_ASSET_DIR}/{row['glb_sha256']}.glb"
+        if row["path"] != relative or relative not in listed:
+            raise CatalogError("a visual registry row names a file the bundle does not list")
+        _inside(directory, directory / relative)
+        data = _read_glb(directory / relative)
+        if hashlib.sha256(data).hexdigest() != row["glb_sha256"]:
+            raise CatalogError(f"a visual registry asset does not match its hash: {relative}")
+        measured = read_glb_evidence(data)
+        for name in _MEASURED_FIELDS:
+            if type(row[name]) is not int or row[name] != measured[name]:
+                raise CatalogError(f"a visual registry row misreports {name}")
+        if row["media_type"] != GLB_MEDIA_TYPE or not isinstance(row["runtime_lod_reviewed"], bool):
+            raise CatalogError("a visual registry row carries invalid draft evidence")
+        for name in ("bounds_dimensions_m", "reference_axes_m"):
+            vector = row[name]
+            if not isinstance(vector, list) or len(vector) != 3 \
+                    or any(_number(item, name) <= 0 for item in vector):
+                raise CatalogError(f"{name} must be three positive numbers")
+
+
+def _read_glb(path: Path) -> bytes:
+    """Read at most one byte past the cap. The last path component is never followed."""
+    try:
+        with os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW), "rb") as handle:
+            return handle.read(MAX_GLB_BYTES + 1)
+    except OSError as error:
+        raise CatalogError(f"a visual asset cannot be read: {Path(path).name}") from error
+
+
+def _verify_bundle_preset(directory: Path, preset: Any) -> None:
+    """The model travels with the bundle, so its path stays relative and inside."""
+    preset = _mapping(preset, "preset")
+    if preset.get("model_path_root") != "preset":
+        raise CatalogError("a bundle preset must declare model_path_root preset")
+    model_path = preset.get("model_path")
+    if not isinstance(model_path, str) or not model_path:
+        raise CatalogError("a bundle preset must declare a relative model_path")
+    _bundle_relative(model_path)
+    if not _inside(directory, directory / model_path).is_file():
+        raise CatalogError("the bundle preset model path is missing")
+
+
+def _bundle_relative(name: Any) -> str:
+    """A bundle key is one safe relative posix path."""
+    if not isinstance(name, str) or not name or "\\" in name or "\x00" in name:
+        raise CatalogError(f"bundle path is invalid: {name if isinstance(name, str) else type(name).__name__}")
+    if name.startswith("/") or _DRIVE_RE.match(name):
+        raise CatalogError(f"bundle path must be relative: {name}")
+    segments = name.split("/")
+    if any(segment in ("", ".", "..") for segment in segments):
+        raise CatalogError(f"bundle path has an unsafe segment: {name}")
+    return name
+
+
+def _file_sha256(path: Path) -> tuple[str, int]:
+    """Hash one file in chunks, so a large model never loads into memory."""
+    digest, size = hashlib.sha256(), 0
+    with open(path, "rb") as handle:
+        while True:
+            chunk = handle.read(_CHUNK_BYTES)
+            if not chunk:
+                break
+            digest.update(chunk)
+            size += len(chunk)
+    return digest.hexdigest(), size
+
+
+def _copy_file(source: Path, target: Path) -> None:
+    with open(source, "rb") as reader, open(target, "wb") as writer:
+        shutil.copyfileobj(reader, writer, _CHUNK_BYTES)
+
+
+def _string_values(value: Any):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, Mapping):
+        for item in value.values():
+            yield from _string_values(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _string_values(item)
+
+
+def _structural_strings(value: Any, key: str | None = None):
+    """Yield only the strings this code writes.
+
+    User and provider text may legitimately hold a date, a dotted word, or a slash, so a
+    display name or a description is never a path or a timestamp for these rules.
+    """
+    if key in _USER_TEXT_FIELDS:
+        return
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, Mapping):
+        for name, item in value.items():
+            # A key can carry a host path as easily as a value can.
+            if isinstance(name, str):
+                yield name
+            yield from _structural_strings(item, name if isinstance(name, str) else None)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _structural_strings(item, key)
+
+
+def _volatile_reason(text: str) -> str | None:
+    """Why one structural value may not travel inside a bundle.
+
+    Only the approved exclusions: a host path and runtime metadata. A version string, a
+    hex digest, an object type id, and a plain relative file name are ordinary content.
+    """
+    if text.startswith("/") or _DRIVE_RE.match(text):
+        return "an absolute path"
+    if text == ".." or text.startswith("../") or "/../" in text:
+        return "a path that leaves the bundle"
+    if _DATE_RE.search(text):
+        return "a timestamp"
+    host = _host_name()
+    if host is not None and host in text:
+        return "a host name"
+    return None
+
+
+def _host_name() -> str | None:
+    """Only this machine's exact name, and only when it carries signal.
+
+    A broader guess would reject valid content, which is worse than missing a name.
+    """
+    try:
+        name = socket.gethostname()
+    except OSError:
+        return None
+    return None if len(name) < 4 or name.lower() in _COMMON_HOST_NAMES else name
+
+
+def _replace_atomically(path: Path, data: bytes) -> None:
+    """One temp file in the same directory, flushed to disk, then one durable rename.
+
+    The seed marker and the active pointer both come through here. Flushing the bytes is
+    not enough: the rename itself lives in the containing directory, so that directory is
+    fsynced too, or a power loss could leave the name behind after the data is safe.
+    """
+    handle = tempfile.NamedTemporaryFile("wb", dir=path.parent, prefix=".tmp-", delete=False)
+    try:
+        handle.write(data)
+        handle.flush()
+        os.fsync(handle.fileno())
+        handle.close()
+        os.replace(handle.name, path)
+        directory = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    except BaseException:
+        handle.close()
+        try:
+            os.unlink(handle.name)
+        except OSError:
+            pass
+        raise
+
+
+def _model_artifact_sha256(data: bytes) -> str:
+    try:
+        manifest = json.loads(data)
+    except json.JSONDecodeError as error:
+        raise CatalogError("archived model.manifest.json is not JSON") from error
+    value = _mapping(manifest, "model manifest").get("artifact_sha256")
+    _sha256(value, "model manifest artifact_sha256")
+    return value
+
+
+def _archive_preview(path: Path) -> dict[str, Any] | None:
+    """Describe one archived type so the UI can draw it with its one existing renderer."""
+    try:
+        visual = json.loads(Path(path).read_text())["visual"]
+        axes = [round((low + high) / 2000.0, 9) for low, high in visual["size_mm"]]
+        return {"shape": visual["shape"], "axes_m": axes, "rgb": list(visual["rgb"])}
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+def _inside(root: Path, path: Path) -> Path:
+    """Follow symlinks, then require that the file remains below the catalog root."""
+    resolved = path.resolve()
+    if not resolved.is_relative_to(root.resolve()):
+        raise CatalogError(f"catalog path leaves the catalog root: {path.name}")
+    return resolved
+
+
+def _validate_asset(asset: Any, kind: str) -> None:
+    if asset is None:
+        if kind == "generated":
+            raise CatalogError("a generated definition requires a visual asset")
+        return
+    asset = _mapping(asset, "visual.asset")
+    _exact(asset, set(_ASSET_FIELDS), "visual.asset")
+    _sha256(asset["glb_sha256"], "visual.asset.glb_sha256")
+    if asset["visual_asset_id"] != f"sha256:{asset['glb_sha256']}":
+        raise CatalogError("visual_asset_id must equal the GLB content hash")
+    if asset["units"] != "m" or asset["source_up_axis"] != "+Y" or asset["engine_up_axis"] != "+Z":
+        raise CatalogError("visual asset units or axes are invalid")
+    if asset["sim_from_asset_quaternion_wxyz"] != list(SIM_FROM_ASSET_QUATERNION_WXYZ):
+        raise CatalogError("visual asset pose correction is invalid")
+
+
+def _pretty(value: Any) -> bytes:
+    return (json.dumps(value, indent=2, sort_keys=True, allow_nan=False) + "\n").encode()
+
+
+def _rfc3339_utc(value: Any, path: str) -> None:
+    try:
+        parsed = datetime.datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError) as error:
+        raise CatalogError(f"{path} must be an RFC 3339 UTC timestamp") from error
+    if not isinstance(value, str) or not value.endswith("Z") or parsed.utcoffset() != datetime.timedelta(0):
+        raise CatalogError(f"{path} must be an RFC 3339 UTC timestamp")
+
+
+def _one_of(value: Any, allowed) -> bool:
+    """Check the type first. A JSON list or object is unhashable and would raise TypeError."""
+    return isinstance(value, str) and value in allowed
+
+
+def _mapping(value: Any, path: str) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping):
+        raise CatalogError(f"{path} must be an object")
+    return value
+
+
+def _exact(value: Mapping[str, Any], expected: set[str], path: str) -> None:
+    if set(value) != expected:
+        raise CatalogError(f"{path} has incorrect fields")
+
+
+def _text(value: Any, path: str, maximum: int) -> None:
+    if not isinstance(value, str) or not value.strip() or len(value) > maximum:
+        raise CatalogError(f"{path} must be nonempty text of at most {maximum} characters")
+
+
+def _number(value: Any, path: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        raise CatalogError(f"{path} must be a finite number")
+    return float(value)
+
+
+def _identifier(value: Any, path: str) -> None:
+    if not isinstance(value, str) or len(value) > 160 or not _ID_RE.fullmatch(value):
+        raise CatalogError(f"{path} has an invalid format")
+
+
+def _sha256(value: Any, path: str) -> None:
+    if not isinstance(value, str) or not _SHA256_RE.fullmatch(value):
+        raise CatalogError(f"{path} must be a lowercase SHA-256 digest")

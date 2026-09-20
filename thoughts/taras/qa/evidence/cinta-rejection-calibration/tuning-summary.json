@@ -1,0 +1,472 @@
+{
+  "schema_version": 1,
+  "selection": "none",
+  "selection_reason": "0.075 N did not improve isolated Stone routing. 0.09 N exceeded the spill regression cap and reduced aggregate capture.",
+  "held_out_seeds_run": [],
+  "tuning_seeds": [
+    11,
+    17,
+    23,
+    31
+  ],
+  "held_out_seeds_reserved": [
+    43,
+    59,
+    71,
+    83
+  ],
+  "forces_n": [
+    0.06,
+    0.075,
+    0.09
+  ],
+  "wrapper_sha256": "7138cf94fe6cab3c2d9a6b7119e6f8d79f0a7163162cd93df719b159efebc558",
+  "raw_artifacts": [
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/feed-force-0.06-seed-11.json",
+      "bytes": 2708348,
+      "sha256": "ee6d9b738694977e025cdd4c1b4934fac6c16ac564a35dcbf3753fc061f1efbb"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/feed-force-0.06-seed-17.json",
+      "bytes": 2708925,
+      "sha256": "7648741246ea91200831649b7bd7dfd234fa880829a7d9e91df3caa5f7683348"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/feed-force-0.06-seed-23.json",
+      "bytes": 2706197,
+      "sha256": "db07ccac2171e1cb6e431a9a599931f6955f301e95fa487829f284c42ae5d168"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/feed-force-0.06-seed-31.json",
+      "bytes": 2706637,
+      "sha256": "b3ce8622b6467e8826087f0c6e3c9b7418b21a2951f0fb0129049db0ca413719"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/feed-force-0.075-seed-11.json",
+      "bytes": 2707557,
+      "sha256": "c6f29021e2de2b0b83259c78a29d198c5dbbd0f4d0af5aeafe6c5cd12112abb1"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/feed-force-0.075-seed-17.json",
+      "bytes": 2708418,
+      "sha256": "eb625db77e32da2fc9b639f918c344e8cda70ea4e58b1f90e50bd462123fec67"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/feed-force-0.075-seed-23.json",
+      "bytes": 2706157,
+      "sha256": "dbeb64d1e5532df244f2ff4c04d2761911e13aba35b4781d33b17811c41c673e"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/feed-force-0.075-seed-31.json",
+      "bytes": 2703539,
+      "sha256": "530cece2556b1df8db8b2bcba470df9005b8cbbc40b880a5a719fc4d5d5aaa65"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/feed-force-0.09-seed-11.json",
+      "bytes": 2708354,
+      "sha256": "e68ec1ee7666b93bf698e2f9a72a361c5b93300301a8f5491fb01fc2864feeb5"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/feed-force-0.09-seed-17.json",
+      "bytes": 2709613,
+      "sha256": "4abde739cb3e1904449a0fc66f8917bc4a4f2ffa249ddcef65aa46961e6a32ac"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/feed-force-0.09-seed-23.json",
+      "bytes": 2704644,
+      "sha256": "7555ad716450b16cbe6f5e7357409f37626370a10d95d1a76e51b89108ee04d2"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/feed-force-0.09-seed-31.json",
+      "bytes": 2708549,
+      "sha256": "f1b4109af04128d072a34d138fb5c806479f19e760a80768bfc4218efa40bd15"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/isolated-force-0.06-seed-11.json",
+      "bytes": 6110,
+      "sha256": "1feff657ac0f65f9cd314e7e54c06458f5980aacd86a72c6e5e7eda499582fe3"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/isolated-force-0.06-seed-17.json",
+      "bytes": 6090,
+      "sha256": "779e8022726c0ee8dbff43c78e6d26b53af1d3a1207bd9d3e5dee73fa9d88042"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/isolated-force-0.06-seed-23.json",
+      "bytes": 6088,
+      "sha256": "a8995df51e9a5ded491c1610303d75cdd384913b920e3b9d417776760cc3466b"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/isolated-force-0.06-seed-31.json",
+      "bytes": 6073,
+      "sha256": "6bb110e55a6ecf0bf47fb645154f43c4ab1b87d033313d2f26554980ff71a44b"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/isolated-force-0.075-seed-11.json",
+      "bytes": 6111,
+      "sha256": "2f440cde54803634744c3f4f61139c579ce61f0ca855721c4f493dbc373d8744"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/isolated-force-0.075-seed-17.json",
+      "bytes": 6097,
+      "sha256": "09208f274aca4e67016a6d32d432ebfc84c3c47416de1b5d2a76f368ffede888"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/isolated-force-0.075-seed-23.json",
+      "bytes": 6093,
+      "sha256": "2f73a1938355e736312fd622f67e1fd593447fe06568a1b8a322973ea488c518"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/isolated-force-0.075-seed-31.json",
+      "bytes": 6083,
+      "sha256": "ba8be10d30d88befd2c9f134a395dadb09893f1cee3c176d9c2a5ad0c3ac3fa4"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/isolated-force-0.09-seed-11.json",
+      "bytes": 6080,
+      "sha256": "7822e637256fb8b69bf5eb7c3fcd660a424616b032fe78d3ccb011da415cd41a"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/isolated-force-0.09-seed-17.json",
+      "bytes": 6060,
+      "sha256": "92dc82ace966aad7e299326edea31407627910e2c818750a7ffb9b1cf2719f13"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/isolated-force-0.09-seed-23.json",
+      "bytes": 6061,
+      "sha256": "c491180734847a0087f1e24d4e897d8a6d645c0f06df7c9908db62062582c609"
+    },
+    {
+      "path": "/private/tmp/cinta-rejection-calibration/tuning/isolated-force-0.09-seed-31.json",
+      "bytes": 6073,
+      "sha256": "5e66ad64a5c3461e34c4be8b1db83d281c033f4015865bd596fc15665cde5ad1"
+    }
+  ],
+  "results": {
+    "0.06": {
+      "isolated": {
+        "stone_reject": 2,
+        "stone_accept": 6,
+        "stone_spilled": 0,
+        "total": 8,
+        "own_contact": 8,
+        "on_time_scheduled": 8,
+        "impulse_uNs": {
+          "minimum": 300.0,
+          "mean": 360.0,
+          "maximum": 600.0
+        }
+      },
+      "mixed_feed": {
+        "eligible": 5200,
+        "required_reject_captured": 678,
+        "required_reject_total": 760,
+        "reject_capture": 0.8921052631578947,
+        "keep_lost": 185,
+        "keep_total": 4440,
+        "keep_loss": 0.041666666666666664,
+        "spilled": 7,
+        "spill_rate": 0.001346153846153846,
+        "unresolved": 0,
+        "stone_reject": 6,
+        "stone_total": 21,
+        "admitted_rate_mean": 500.0000000000412,
+        "engine_rate_mean": 0.19356517859579403,
+        "wall_seconds_mean": 21.347067354246974,
+        "peak_rss_mb_maximum": 298.703125,
+        "pool_starved": 0
+      },
+      "per_seed": [
+        {
+          "seed": 11,
+          "isolated_stone_reject": 0,
+          "isolated_stone_total": 2,
+          "mixed_stone_reject": 1,
+          "mixed_stone_total": 5,
+          "required_reject_captured": 163,
+          "required_reject_total": 182,
+          "keep_lost": 33,
+          "keep_total": 1118,
+          "spilled": 2,
+          "eligible": 1300,
+          "admitted_rate": 500.0000000000412,
+          "engine_rate": 0.20137230062772501,
+          "wall_seconds": 20.565315542044118,
+          "peak_rss_mb": 294.265625,
+          "pool_starved": 0
+        },
+        {
+          "seed": 17,
+          "isolated_stone_reject": 1,
+          "isolated_stone_total": 2,
+          "mixed_stone_reject": 2,
+          "mixed_stone_total": 7,
+          "required_reject_captured": 165,
+          "required_reject_total": 190,
+          "keep_lost": 48,
+          "keep_total": 1110,
+          "spilled": 1,
+          "eligible": 1300,
+          "admitted_rate": 500.0000000000412,
+          "engine_rate": 0.19055498760335637,
+          "wall_seconds": 21.6738694999367,
+          "peak_rss_mb": 298.703125,
+          "pool_starved": 0
+        },
+        {
+          "seed": 23,
+          "isolated_stone_reject": 0,
+          "isolated_stone_total": 2,
+          "mixed_stone_reject": 1,
+          "mixed_stone_total": 3,
+          "required_reject_captured": 174,
+          "required_reject_total": 193,
+          "keep_lost": 55,
+          "keep_total": 1107,
+          "spilled": 2,
+          "eligible": 1300,
+          "admitted_rate": 500.0000000000412,
+          "engine_rate": 0.19408739204450204,
+          "wall_seconds": 21.279568457975984,
+          "peak_rss_mb": 295.34375,
+          "pool_starved": 0
+        },
+        {
+          "seed": 31,
+          "isolated_stone_reject": 1,
+          "isolated_stone_total": 2,
+          "mixed_stone_reject": 2,
+          "mixed_stone_total": 6,
+          "required_reject_captured": 176,
+          "required_reject_total": 195,
+          "keep_lost": 49,
+          "keep_total": 1105,
+          "spilled": 2,
+          "eligible": 1300,
+          "admitted_rate": 500.0000000000412,
+          "engine_rate": 0.18824603410759275,
+          "wall_seconds": 21.869515917031094,
+          "peak_rss_mb": 294.578125,
+          "pool_starved": 0
+        }
+      ]
+    },
+    "0.075": {
+      "isolated": {
+        "stone_reject": 2,
+        "stone_accept": 6,
+        "stone_spilled": 0,
+        "total": 8,
+        "own_contact": 8,
+        "on_time_scheduled": 8,
+        "impulse_uNs": {
+          "minimum": 374.99999999999994,
+          "mean": 449.99999999999994,
+          "maximum": 749.9999999999999
+        }
+      },
+      "mixed_feed": {
+        "eligible": 5200,
+        "required_reject_captured": 677,
+        "required_reject_total": 762,
+        "reject_capture": 0.8884514435695539,
+        "keep_lost": 202,
+        "keep_total": 4438,
+        "keep_loss": 0.04551599819738621,
+        "spilled": 18,
+        "spill_rate": 0.0034615384615384616,
+        "unresolved": 0,
+        "stone_reject": 10,
+        "stone_total": 22,
+        "admitted_rate_mean": 500.0000000000412,
+        "engine_rate_mean": 0.20301540827481887,
+        "wall_seconds_mean": 20.42021513573127,
+        "peak_rss_mb_maximum": 299.65625,
+        "pool_starved": 0
+      },
+      "per_seed": [
+        {
+          "seed": 11,
+          "isolated_stone_reject": 0,
+          "isolated_stone_total": 2,
+          "mixed_stone_reject": 3,
+          "mixed_stone_total": 6,
+          "required_reject_captured": 163,
+          "required_reject_total": 184,
+          "keep_lost": 41,
+          "keep_total": 1116,
+          "spilled": 2,
+          "eligible": 1300,
+          "admitted_rate": 500.0000000000412,
+          "engine_rate": 0.19666736053815445,
+          "wall_seconds": 21.011862666811794,
+          "peak_rss_mb": 299.65625,
+          "pool_starved": 0
+        },
+        {
+          "seed": 17,
+          "isolated_stone_reject": 1,
+          "isolated_stone_total": 2,
+          "mixed_stone_reject": 3,
+          "mixed_stone_total": 7,
+          "required_reject_captured": 163,
+          "required_reject_total": 190,
+          "keep_lost": 57,
+          "keep_total": 1110,
+          "spilled": 8,
+          "eligible": 1300,
+          "admitted_rate": 500.0000000000412,
+          "engine_rate": 0.20392974097519437,
+          "wall_seconds": 20.29589741700329,
+          "peak_rss_mb": 294.15625,
+          "pool_starved": 0
+        },
+        {
+          "seed": 23,
+          "isolated_stone_reject": 0,
+          "isolated_stone_total": 2,
+          "mixed_stone_reject": 1,
+          "mixed_stone_total": 3,
+          "required_reject_captured": 178,
+          "required_reject_total": 193,
+          "keep_lost": 55,
+          "keep_total": 1107,
+          "spilled": 5,
+          "eligible": 1300,
+          "admitted_rate": 500.0000000000412,
+          "engine_rate": 0.19160607783188513,
+          "wall_seconds": 21.581370166968554,
+          "peak_rss_mb": 294.59375,
+          "pool_starved": 0
+        },
+        {
+          "seed": 31,
+          "isolated_stone_reject": 1,
+          "isolated_stone_total": 2,
+          "mixed_stone_reject": 3,
+          "mixed_stone_total": 6,
+          "required_reject_captured": 173,
+          "required_reject_total": 195,
+          "keep_lost": 49,
+          "keep_total": 1105,
+          "spilled": 3,
+          "eligible": 1300,
+          "admitted_rate": 500.0000000000412,
+          "engine_rate": 0.21985845375404153,
+          "wall_seconds": 18.791730292141438,
+          "peak_rss_mb": 292.1875,
+          "pool_starved": 0
+        }
+      ]
+    },
+    "0.09": {
+      "isolated": {
+        "stone_reject": 4,
+        "stone_accept": 4,
+        "stone_spilled": 0,
+        "total": 8,
+        "own_contact": 8,
+        "on_time_scheduled": 8,
+        "impulse_uNs": {
+          "minimum": 450.0,
+          "mean": 540.0,
+          "maximum": 900.0
+        }
+      },
+      "mixed_feed": {
+        "eligible": 5200,
+        "required_reject_captured": 665,
+        "required_reject_total": 762,
+        "reject_capture": 0.8727034120734908,
+        "keep_lost": 220,
+        "keep_total": 4438,
+        "keep_loss": 0.04957187922487607,
+        "spilled": 42,
+        "spill_rate": 0.008076923076923077,
+        "unresolved": 0,
+        "stone_reject": 13,
+        "stone_total": 22,
+        "admitted_rate_mean": 500.0000000000412,
+        "engine_rate_mean": 0.2224744205349546,
+        "wall_seconds_mean": 18.558935531473253,
+        "peak_rss_mb_maximum": 300.21875,
+        "pool_starved": 0
+      },
+      "per_seed": [
+        {
+          "seed": 11,
+          "isolated_stone_reject": 1,
+          "isolated_stone_total": 2,
+          "mixed_stone_reject": 4,
+          "mixed_stone_total": 6,
+          "required_reject_captured": 157,
+          "required_reject_total": 184,
+          "keep_lost": 47,
+          "keep_total": 1116,
+          "spilled": 12,
+          "eligible": 1300,
+          "admitted_rate": 500.0000000000412,
+          "engine_rate": 0.22324507327965604,
+          "wall_seconds": 18.499307583086193,
+          "peak_rss_mb": 293.984375,
+          "pool_starved": 0
+        },
+        {
+          "seed": 17,
+          "isolated_stone_reject": 1,
+          "isolated_stone_total": 2,
+          "mixed_stone_reject": 3,
+          "mixed_stone_total": 7,
+          "required_reject_captured": 158,
+          "required_reject_total": 190,
+          "keep_lost": 60,
+          "keep_total": 1110,
+          "spilled": 14,
+          "eligible": 1300,
+          "admitted_rate": 500.0000000000412,
+          "engine_rate": 0.22376912836102197,
+          "wall_seconds": 18.454770791810006,
+          "peak_rss_mb": 298.625,
+          "pool_starved": 0
+        },
+        {
+          "seed": 23,
+          "isolated_stone_reject": 1,
+          "isolated_stone_total": 2,
+          "mixed_stone_reject": 1,
+          "mixed_stone_total": 3,
+          "required_reject_captured": 172,
+          "required_reject_total": 193,
+          "keep_lost": 60,
+          "keep_total": 1107,
+          "spilled": 9,
+          "eligible": 1300,
+          "admitted_rate": 500.0000000000412,
+          "engine_rate": 0.22159873826871102,
+          "wall_seconds": 18.62903541699052,
+          "peak_rss_mb": 300.21875,
+          "pool_starved": 0
+        },
+        {
+          "seed": 31,
+          "isolated_stone_reject": 1,
+          "isolated_stone_total": 2,
+          "mixed_stone_reject": 5,
+          "mixed_stone_total": 6,
+          "required_reject_captured": 178,
+          "required_reject_total": 195,
+          "keep_lost": 53,
+          "keep_total": 1105,
+          "spilled": 7,
+          "eligible": 1300,
+          "admitted_rate": 500.0000000000412,
+          "engine_rate": 0.22128474223042932,
+          "wall_seconds": 18.652628334006295,
+          "peak_rss_mb": 294.171875,
+          "pool_starved": 0
+        }
+      ]
+    }
+  }
+}

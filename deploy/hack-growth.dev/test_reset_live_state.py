@@ -1,0 +1,303 @@
+"""Focused tests for the CINTA live-state reset tool."""
+
+from __future__ import annotations
+
+import fcntl
+import hashlib
+import json
+import os
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+HERE = Path(__file__).resolve().parent
+COFFEE_ROOT = HERE.parents[1] / "sim" / "coffee_sorter"
+sys.path.insert(0, str(COFFEE_ROOT))
+sys.path.insert(0, str(HERE))
+
+import object_catalog
+import reset_live_state
+from test_object_catalog import generated_definition
+from test_validate_bundle import bundle_files, catalog_manifest, pretty
+
+
+def snapshot(root: Path) -> dict[str, str]:
+    return {path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in sorted(root.rglob("*")) if path.is_file()}
+
+
+def assert_preserved(test: unittest.TestCase, before: dict[str, str], root: Path) -> None:
+    after = snapshot(root)
+    test.assertEqual(before, {name: after.get(name) for name in before})
+
+
+class ResetLiveStateTest(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name) / "item-control"
+        self.active = self.root / "active"
+        self.history = self.root / "history"
+        self.jobs = self.history / "jobs"
+        self.cache = self.root / "provider-cache"
+        for path in (self.jobs, self.history / "wall-of-fame" / "retired-token",
+                     self.cache / "cache"):
+            path.mkdir(parents=True)
+        (self.history / "writer.lock").write_text("")
+        (self.history / "training.lease").write_text('{"owner":"retained"}\n')
+
+        baseline_files = bundle_files()
+        candidate_files = bundle_files(labels=("new_token", "stone"),
+                                       model_classes=("new_token", "stone"))
+        glb = b"glTFactive-generated-token"
+        self.active_glb = glb
+        generated = generated_definition("new_token")
+        generated["visual"]["asset"]["glb_sha256"] = hashlib.sha256(glb).hexdigest()
+        generated["visual"]["asset"]["visual_asset_id"] = \
+            f"sha256:{generated['visual']['asset']['glb_sha256']}"
+        stone = json.loads(candidate_files[
+            "catalog/definitions/builtin.test.stone.json"])
+        candidate_manifest = catalog_manifest([generated, stone])
+        candidate_files[object_catalog.BUNDLE_CATALOG] = pretty(candidate_manifest)
+        del candidate_files["catalog/definitions/builtin.test.new_token.json"]
+        candidate_files[f"catalog/definitions/{generated['object_type_id']}.json"] = \
+            pretty(generated)
+        self.baseline = object_catalog.publish_bundle(self.active / "bundles", baseline_files)
+        self.candidate = object_catalog.publish_bundle(self.active / "bundles", candidate_files)
+        object_catalog.write_active_pointer(self.active, self.candidate)
+        (self.active / reset_live_state.SEED_MARKER).write_text(json.dumps(
+            {"bundle_sha256": self.baseline}) + "\n")
+
+        self.active_request_id = "11111111-1111-4111-8111-111111111111"
+        job = self.jobs / self.active_request_id
+        (job / "previews").mkdir(parents=True)
+        (job / "job.json").write_text(json.dumps({
+            "request_id": self.active_request_id, "state": "training"}) + "\n")
+        (job / "definition.json").write_text(json.dumps(
+            {"object_type_id": generated["object_type_id"]}) + "\n")
+        (job / "previews" / "object.glb").write_bytes(glb)
+        (job / "previews" / "perspective.png").write_bytes(b"active-perspective")
+        (job / "previews" / "top.png").write_bytes(b"active-top")
+        archive = self.history / "wall-of-fame" / "retired-token"
+        (archive / "archive.json").write_text('{"object_type_id":"retired-token"}\n')
+        (archive / "object.glb").write_bytes(b"glTFarchive")
+        (archive / "perspective.png").write_bytes(b"archive-preview")
+        (archive / "model.joblib").write_bytes(b"archive-model")
+        (self.history / "activations.jsonl").write_text('{"result":"active"}\n')
+        (self.cache / "cache" / "provider.json").write_text('{"cached":true}\n')
+
+    def test_dry_run_changes_no_bytes(self):
+        before = snapshot(self.root)
+
+        result = reset_live_state.reset_state(self.root, apply=False)
+
+        self.assertEqual("dry-run", result["mode"])
+        self.assertEqual(self.candidate, result["previous_bundle_sha256"])
+        self.assertEqual(self.baseline, result["baseline_bundle_sha256"])
+        self.assertEqual(1, result["retained_job_count"])
+        self.assertEqual(["generated.new_token"], result["active_generated_type_ids"])
+        self.assertEqual(before, snapshot(self.root))
+
+    def test_apply_archives_jobs_and_repoints_to_the_builtin_bundle(self):
+        history_before = {
+            name: digest for name, digest in snapshot(self.history).items()
+            if not name.startswith("jobs/") and name != "training.lease"
+        }
+        bundles_before = snapshot(self.active / "bundles")
+        cache_before = snapshot(self.cache)
+        jobs_before = snapshot(self.jobs)
+
+        result = reset_live_state.reset_state(self.root, apply=True)
+
+        backup = self.root / reset_live_state.BACKUPS / result["backup"]
+        self.assertEqual(self.baseline,
+                         object_catalog.read_active(self.active)["active_bundle_sha256"])
+        self.assertEqual([], list(self.jobs.iterdir()))
+        self.assertEqual(jobs_before, snapshot(backup / "jobs"))
+        self.assertTrue((backup / "active.catalog.json").is_file())
+        self.assertTrue((backup / reset_live_state.SEED_MARKER).is_file())
+        self.assertEqual('{"owner":"retained"}\n',
+                         (backup / "training.lease").read_text())
+        self.assertFalse((self.history / "training.lease").exists())
+        assert_preserved(self, history_before, self.history)
+        self.assertEqual(bundles_before, snapshot(self.active / "bundles"))
+        self.assertEqual(cache_before, snapshot(self.cache))
+        self.assertEqual(b"glTFarchive",
+                         (self.history / "wall-of-fame" / "retired-token" / "object.glb").read_bytes())
+        generated_archive = self.history / "wall-of-fame" / "generated.new_token"
+        self.assertEqual(self.active_glb, (generated_archive / "object.glb").read_bytes())
+        self.assertEqual(b"active-perspective",
+                         (generated_archive / "perspective.png").read_bytes())
+        self.assertTrue((generated_archive / "model.manifest.json").is_file())
+
+    def test_unknown_layout_is_refused(self):
+        (self.root / "mystery").mkdir()
+        with self.assertRaisesRegex(reset_live_state.ResetError, "unknown entries"):
+            reset_live_state.reset_state(self.root, apply=False)
+
+    def test_an_external_provider_cache_needs_no_internal_cache_directory(self):
+        shutil.rmtree(self.cache)
+
+        result = reset_live_state.reset_state(self.root, apply=False)
+
+        self.assertEqual("dry-run", result["mode"])
+
+    def test_a_running_writer_is_refused(self):
+        with (self.history / "writer.lock").open("r+") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            preview = reset_live_state.reset_state(self.root, apply=False)
+            self.assertFalse(preview["writer_lock_available"])
+            with self.assertRaisesRegex(reset_live_state.ResetError, "still owns"):
+                reset_live_state.reset_state(self.root, apply=True)
+
+    def test_missing_generated_archive_evidence_is_refused_before_mutation(self):
+        (self.jobs / self.active_request_id /
+         "previews" / "top.png").unlink()
+        before = snapshot(self.root)
+
+        with self.assertRaisesRegex(reset_live_state.ResetError,
+                                    "archive evidence top.png"):
+            reset_live_state.reset_state(self.root, apply=True)
+
+        self.assertEqual(before, snapshot(self.root))
+
+    def test_pointer_write_failure_restores_jobs_and_state(self):
+        before = snapshot(self.root)
+
+        with mock.patch.object(object_catalog, "write_active_pointer",
+                               side_effect=OSError("pointer unavailable")):
+            with self.assertRaisesRegex(OSError, "pointer unavailable"):
+                reset_live_state.reset_state(self.root, apply=True)
+
+        self.assertEqual(before, snapshot(self.root))
+        self.assertEqual(
+            self.candidate,
+            object_catalog.read_active(self.active)["active_bundle_sha256"])
+        self.assertEqual([], list((self.root / reset_live_state.BACKUPS).iterdir()))
+
+    def test_terminal_invalid_jobs_require_the_needs_review_archiver(self):
+        request_id = "22222222-2222-4222-8222-222222222222"
+        job_dir = self.jobs / request_id
+        job_dir.mkdir()
+        (job_dir / "job.json").write_text(json.dumps(
+            {"request_id": request_id, "state": "failed"}) + "\n")
+        before = snapshot(self.root)
+
+        with mock.patch.object(object_catalog, "archive_needs_review", None,
+                               create=True):
+            with self.assertRaisesRegex(reset_live_state.ResetError,
+                                        "does not support Needs review"):
+                reset_live_state.reset_state(self.root, apply=True)
+
+        self.assertEqual(before, snapshot(self.root))
+
+    def test_terminal_invalid_jobs_enter_needs_review_before_jobs_reset(self):
+        request_ids = (
+            "22222222-2222-4222-8222-222222222222",
+            "33333333-3333-4333-8333-333333333333",
+        )
+        states = ("failed", "physics_blocked")
+        for request_id, state in zip(request_ids, states):
+            job_dir = self.jobs / request_id
+            (job_dir / "previews").mkdir(parents=True)
+            preview = f"preview-{request_id}".encode()
+            (job_dir / "previews" / "perspective.png").write_bytes(preview)
+            (job_dir / "job.json").write_text(json.dumps({
+                "request_id": request_id,
+                "state": state,
+                "display_name": None,
+                "description": "An invalid token",
+                "error": "generation_failed",
+                "timestamps": {"created": "2026-09-20T08:00:00Z"},
+                "artifacts": {"previews": {"perspective.png": {
+                    "sha256": hashlib.sha256(preview).hexdigest(),
+                    "bytes": len(preview),
+                }}},
+            }) + "\n")
+
+        def archive_needs_review(history_root, job, job_dir):
+            self.assertEqual(job_dir.parent, self.jobs)
+            preview = (job_dir / "previews" / "perspective.png").read_bytes()
+            recorded = job["artifacts"]["previews"]["perspective.png"]
+            self.assertEqual(recorded["sha256"], hashlib.sha256(preview).hexdigest())
+            target = Path(history_root) / "wall-of-fame" / \
+                f"needs-review.{job['request_id']}"
+            target.mkdir(parents=True)
+            (target / "archive.json").write_text(json.dumps({
+                "entry_kind": "needs_review",
+                "entry_id": target.name,
+                "request_id": job["request_id"],
+                "display_name": None,
+                "status": "needs_review",
+                "failure_reason": job["error"],
+                "created_at": job["timestamps"]["created"],
+                "preview_url": "perspective.png",
+            }) + "\n")
+            (target / "perspective.png").write_bytes(preview)
+            return target
+
+        with mock.patch.object(object_catalog, "archive_needs_review",
+                               side_effect=archive_needs_review, create=True):
+            result = reset_live_state.reset_state(self.root, apply=True)
+
+        self.assertEqual(list(request_ids), result["needs_review_request_ids"])
+        for request_id in request_ids:
+            archive = self.history / "wall-of-fame" / f"needs-review.{request_id}"
+            self.assertTrue((archive / "archive.json").is_file())
+            self.assertTrue((archive / "perspective.png").is_file())
+
+    def test_post_replace_pointer_failure_restores_the_authoritative_pointer(self):
+        before = snapshot(self.root)
+        original = object_catalog.write_active_pointer
+        calls = 0
+
+        def fail_after_replace(active_root, bundle_sha256):
+            nonlocal calls
+            calls += 1
+            result = original(active_root, bundle_sha256)
+            if calls == 1:
+                raise OSError("directory fsync failed")
+            return result
+
+        with mock.patch.object(object_catalog, "write_active_pointer",
+                               side_effect=fail_after_replace):
+            with self.assertRaisesRegex(OSError, "directory fsync failed"):
+                reset_live_state.reset_state(self.root, apply=True)
+
+        self.assertEqual(before, snapshot(self.root))
+        self.assertEqual(
+            self.candidate,
+            object_catalog.read_active(self.active)["active_bundle_sha256"])
+
+    def test_laptop_wrapper_defaults_to_dry_run_and_scopes_apply_to_coffee(self):
+        capture = Path(self.temporary.name) / "capture"
+        fake_ssh = Path(self.temporary.name) / "ssh"
+        fake_ssh.write_text(
+            "#!/bin/sh\n"
+            "printf '%s\\n' \"$@\" > \"$CAPTURE.args\"\n"
+            "cat > \"$CAPTURE.stdin\"\n")
+        fake_ssh.chmod(fake_ssh.stat().st_mode | stat.S_IXUSR)
+        environment = {**os.environ, "SSH_BIN": str(fake_ssh), "CAPTURE": str(capture)}
+        wrapper = HERE / "reset-live-state.sh"
+
+        subprocess.run([str(wrapper)], check=True, env=environment)
+        dry_args = (capture.with_suffix(".args")).read_text()
+        self.assertIn("hackspain", dry_args)
+        self.assertIn("--dry-run", dry_args)
+
+        subprocess.run([str(wrapper), "--apply"], check=True, env=environment)
+        remote = (capture.with_suffix(".stdin")).read_text()
+        self.assertIn("compose stop coffee", remote)
+        self.assertEqual(2, remote.count("compose up -d --no-deps coffee"))
+        self.assertLess(remote.index("--dry-run"), remote.index("compose stop coffee"))
+        self.assertNotIn("compose down", remote)
+        self.assertNotIn("docker stop", remote)
+
+
+if __name__ == "__main__":
+    unittest.main()

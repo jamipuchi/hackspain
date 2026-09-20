@@ -42,6 +42,14 @@ def calculate(beans, reject_severities, decisions=(), fired_targets=(), fire_hit
 
 
 class MetricsTest(unittest.TestCase):
+    def test_collection_still_settling_after_point_six_seconds_is_excluded(self):
+        result = calculate([
+            bean(1, "black", "reject", spawn_t=0.8),
+            bean(2, "black", None, spawn_t=1.2),
+        ], ("major",))
+        self.assertEqual(result["beans_evaluated"], 1)
+        self.assertEqual(result["beans_unresolved"], 0)
+
     def test_accept_purity_handles_mutable_bean_records(self):
         result = calculate(
             [bean(1, "good", "accept"), bean(2, "black", "accept")],

@@ -157,28 +157,23 @@ def build_object_definition(
     return value
 
 
-def propose_physics(
+def physics_request(
     *,
     description: str,
     visual_dimensions_m: Sequence[float],
-    evidence_dir: str | Path,
-    env_file: str | Path = ".env",
     model: str = "google/gemini-3.8-flash",
-    live: bool = False,
-) -> dict[str, Any]:
-    """Request one cached, unreviewed physics proposal from the existing flow.
+) -> tuple[dict[str, Any], str]:
+    """Build the physics request payload and its identity digest.
 
-    A cache miss requires ``live=True``. The function never retries a provider
-    request. The returned proposal is suitable for ``build_object_definition``.
+    ONE definition of request identity. `propose_physics` sends this payload, and a
+    caller that must know the cache location before it calls (a replay that verifies
+    the entry before reuse) reads the same digest from here. The digest names the cache
+    file: `<cache>/<digest>.json`.
     """
     description = _nonempty_text(description, "description", maximum=2000)
     dimensions = _positive_vector(visual_dimensions_m, "visual_dimensions_m")
     model = _nonempty_text(model, "model", maximum=200)
-    evidence_path = Path(evidence_dir)
-    evidence_path.mkdir(parents=True, exist_ok=True)
-    probe, probe_path = _load_generator_probe()
-    keys = probe.credentials(Path(env_file))
-
+    probe, _ = _load_generator_probe()
     payload = {
         "model": model,
         "max_tokens": 1800,
@@ -202,10 +197,35 @@ def propose_physics(
     }
     if model != "google/gemini-3.8-flash":
         payload["temperature"] = 0
-    _save_immutable(evidence_path / "physics_request.json", payload)
-    expected_request_sha256 = hashlib.sha256(
+    digest = hashlib.sha256(
         json.dumps([probe.OPENROUTER_URL, payload], sort_keys=True).encode()
     ).hexdigest()
+    return payload, digest
+
+
+def propose_physics(
+    *,
+    description: str,
+    visual_dimensions_m: Sequence[float],
+    evidence_dir: str | Path,
+    env_file: str | Path = ".env",
+    model: str = "google/gemini-3.8-flash",
+    live: bool = False,
+) -> dict[str, Any]:
+    """Request one cached, unreviewed physics proposal from the existing flow.
+
+    A cache miss requires ``live=True``. The function never retries a provider
+    request. The returned proposal is suitable for ``build_object_definition``.
+    """
+    payload, expected_request_sha256 = physics_request(
+        description=description, visual_dimensions_m=visual_dimensions_m, model=model)
+    model = _nonempty_text(model, "model", maximum=200)
+    evidence_path = Path(evidence_dir)
+    evidence_path.mkdir(parents=True, exist_ok=True)
+    probe, probe_path = _load_generator_probe()
+    keys = probe.credentials(Path(env_file))
+
+    _save_immutable(evidence_path / "physics_request.json", payload)
     cache_path = evidence_path.parent / "cache" / f"{expected_request_sha256}.json"
     key = keys.get("OPENROUTER_API_KEY", "")
     if live and not key and not cache_path.exists():
@@ -559,8 +579,8 @@ def _proposal_provenance(value: Any) -> dict[str, Any]:
 
 
 def _load_generator_probe():
-    root = Path(__file__).resolve().parents[2]
-    path = root / "thoughts/taras/research/coffee-quality/object-generation/probe.py"
+    # One generator. The service and this physics proposal path load the same module.
+    path = Path(__file__).resolve().parent / "generator" / "probe.py"
     spec = importlib.util.spec_from_file_location("coffee_object_generator_probe", path)
     if spec is None or spec.loader is None:
         raise RuntimeError("object generator probe cannot be loaded")

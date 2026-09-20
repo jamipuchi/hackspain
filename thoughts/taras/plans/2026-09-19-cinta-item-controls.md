@@ -2,9 +2,11 @@
 date: 2026-09-20
 owner: taras
 planner: Codex
-status: ready
+status: in-progress
 baseline_revision: baa797f50561679412a1b25321588ca87eca1f00
-implementation_branch: future-from-main
+implementation_branch: codex/cinta-generated-items
+implementation_base: afad65b58159573990d4d3d0ac644aba64b83802
+implementer: Claude Code
 ---
 
 # CINTA generated-item controls implementation plan
@@ -567,10 +569,13 @@ lsof -nP -iTCP:8899 -sTCP:LISTEN
   --port 8899 \
   --preset sim/coffee_sorter/configs/continuous_demo.json \
   --out /tmp/cinta-item-jobs \
-  --item-jobs-root /tmp/cinta-item-jobs
+  --item-jobs-root /tmp/cinta-item-jobs \
+  --item-jobs-provider cached \
+  --item-jobs-provider-cache thoughts/taras/research/coffee-quality/object-generation/results \
+  --item-jobs-generator-root sim/coffee_sorter/generator
 ```
 
-Create one authorized job. The eventual implementation may perform a paid provider request.
+Create one job in cached mode. Cached mode never sends a provider request. A cache miss stops in `operator_required` with `provider_cache_miss`. A paid request needs paid mode, an explicit operator `new_request`, and explicit authorization from Taras.
 
 ```sh
 REQUEST_ID=$(python3 -c 'import uuid; print(uuid.uuid4())')
@@ -630,3 +635,90 @@ Taras verifies these points:
 18. Candidate evidence includes classifier-label and anomaly validation.
 
 Taras owns final functional acceptance.
+
+## Implementation log
+
+### Narrowed object-addition demo scope (2026-09-20)
+
+Taras narrowed the immediate release to object creation, activation, restart, recovery, and reset.
+
+The reset targets only the coffee service. It restores the verified built-in seed bundle and preserves Wall of Fame history and assets.
+
+The immediate demo uses cached provider replay. It performs no paid request and mounts no provider credentials.
+
+The current mixed-feed geometry candidate failed its Keep-loss gate. Collection geometry and sorting improvements are deferred and remain unaccepted.
+
+The immediate checklist no longer waits for replacement geometry. It still requires source-bound model validation, one real cached object flow, generated asset loading, restart, recovery, and reset evidence.
+
+The existing detailed sections remain the long-term engineering plan. Their deferred quality gates must not appear as passed.
+
+### Base gate and baseline (2026-09-20)
+
+- Implementation base: `afad65b58159573990d4d3d0ac644aba64b83802`. The verified release `d26952ddc6e7cccdd36dd9d1519df577e49c9057` is an ancestor, and both trees are identical.
+- `test_generalization.py` fails 3 subtests on the untouched base. `controller.py`, `vision.py`, and `sim.py` changed after its reference commit `511f104`. This work does not edit that test.
+- The canonical model is a gitignored artifact. Its hash is `89513398373c6e0e81286419962feb3e312742de14a76d02dd0d819ad5264a5a`.
+
+### Object spike
+
+- Measured: free-flight vertical acceleration equals -9.81 m/s2 multiplied by (sampled mass / 0.00015 kg).
+- Cause: `SorterSim.spawn()` writes `body_mass` at runtime. MuJoCo takes the inertia of these simple free bodies from the compile-time `dof_M0`. Setting `dof_M0` to the sampled mass gives -9.8 m/s2 for every mass.
+- Effect: the seeded no-air route gate acts as a mass gate. Bodies above about 0.3 g fall under the splitter. The built-in stone fails the isolated route 4 of 4 times.
+- `sim.py` stays unchanged. It is a protected source, and the canonical model was trained on this behavior.
+- The `generated_box` fixture uses a light box that passes honestly: 8 x 8 x 3 mm, 1200 kg/m3, 0.23 g.
+
+### Phase 1 decisions
+
+- `roasted` uses a static second manifest, `object_catalog/builtin/roasted.catalog.json`. It uses the same validator and loader. Activation never touches it.
+- `profiles.py` keeps `PROFILES`, `GREEN_ARABICA`, `ROASTED`, and `BEAN` as derived adapters. 19 modules import them.
+- `profiles.py` is part of the recorded model source hashes. The canonical model still loads. The next `bootstrap_model.py` run retrains instead of reusing the artifact.
+- `require_label_order` has no caller in Phase 1. `live.py` already compares model labels with `profile.names`, which now derive from the catalog. Phase 3 candidate validation calls it for the final newest-first order.
+- `archive_type` assumes one writer. Activation runs inside one service process.
+
+### Phase 1 review fixes
+
+- `9ba7880`: a built-in texture must be an engine material family, and a generated type has no texture. The loader resolves the manifest and each definition and requires that they remain below the catalog root.
+- Enum-like fields are checked as text before set membership. A JSON list in such a field raised `TypeError`. It now raises `CatalogError`.
+- The texture families come from `assets.FAMILIES`. `object_catalog.py` holds no second copy.
+- `class_spec` and `profile_from_catalog` moved to `profiles.py`. The import cycle is gone.
+- Two findings stay open as Phase 4 release gates: archive completeness for generated victims, and verification of `active_bundle_sha256` against the bundle bytes.
+
+### Measured candidate behavior and owner decisions (2026-09-20)
+
+- A light `Keep` box that replaces `stick` trains in about 25 s. The classifier recognizes it with recall 1.0 over 77 holdout observations.
+- All 77 observations of that box exceed the anomaly threshold (median 401.11 against 14.339). The anomaly reference is the `good` cloud only, and the controller fires on anomaly. The controller would therefore fire on this measured box.
+- This result applies only to that one measured light box (8 x 8 x 3 mm, 1200 kg/m3, flat colour 0.80, 0.62, 0.20). No other generated item type was measured. Other shapes, sizes, and colours can score differently, and each candidate needs its own measurement.
+- Phase 3 ships the strict validation gate. No threshold changes. One separate commit later makes the anomaly reference cover every `Keep` type.
+- `good` is never a replacement victim. It is the product class and the anomaly reference.
+
+### Closed-loop Keep smoke gate
+
+- The Codex coordinator accepted this gate under the overnight authorization from Taras. Taras did not accept it directly.
+- Gate: at least 30 resolved candidate objects, and a physical `Accept` fraction of at least 0.95, in a closed-loop run with the controller and the air jets on.
+- This gate is a minimum engineering release gate. It is not a statistical claim of 95 percent production accuracy. With 30 objects, the gate only shows that routine rejection of the new `Keep` type does not occur.
+- Classifier recall alone does not prove compatibility. The measured box has recall 1.0, and all of its observations still exceed the anomaly threshold. Its physical outcome was not measured yet.
+- Every tested seed and every resolved count is recorded, including failed runs.
+- Four kinds of evidence stay separate: the no-air route, the anomaly scores, the commanded pulses, and the physical outcomes.
+- The gate is never weakened to force an activation. A candidate that fails it ends as `failed` with `candidate_validation_failed` and the measured evidence.
+
+### Provider and deployment rules (2026-09-20)
+
+- `--live` is never automatic. Every job runs from the provider cache first.
+- A cache miss stops before submission in the blocked state `operator_required` with `provider_cache_miss`. This state and the errors `provider_cache_miss` and `paid_mode_disabled` extend the state and error lists of this plan.
+- Paid mode is off by default. One explicit operator action permits one billable request. No new paid request runs without explicit authorization from Taras.
+- The service never reads provider credentials and never changes its environment. A fake job carries a visible marker and can never activate.
+- The final E2E uses the fake provider or exact cached artifacts, plus real rendering, physics, training, and activation.
+- Final training, final validation, and final model hashes wait for the verified Astra physics fix (`codex/cinta-physics-repair`).
+
+
+### Phase 2 (shared queue and early previews)
+
+- `item_jobs.py` holds the filesystem queue, the runner, and one stage table. Generation and rendering run in child processes with their own process groups, ownership tokens, and leases.
+- `--live` is never automatic. It comes only from one persisted, unconsumed operator `new_request` in paid mode, consumed before the spawn. One such grant permits one generation attempt, which can send up to two provider requests (the Jev classification, then the recipe).
+- The generator now lives in `sim/coffee_sorter/generator/`. A local hook refuses writes under `thoughts/**/research/`, and production code does not belong under research notes. The research copies stay untouched as evidence. The source copy reproduces the cached star request digests without a credential: Jev `fb801b56fe4855844e7d4a92d4df62054baf9e7213e97a04ae5fe69ac646d4a9`, recipe `c5d88ad700875432803b4c9016746ff64e03740d65a373d73e2812af48ed27f8`, recipe sha256 `ab172827287041a6d98b836b37e7297ff9d5438e397ef7c213ed25f47293549b`.
+- A cached entry is verified before reuse: endpoint, canonical request digest, response metadata, and recorded artifact hashes. A failed check is `cache_entry_invalid`. It is never treated as a miss.
+- Deviations from the state and error lists of this plan: state `operator_required`; errors `provider_cache_miss`, `paid_mode_disabled`, `catalog_revision_conflict`, `cache_entry_invalid`, `invalid_request`. The description limit is 600 characters, because the service body limit of 2048 bytes stays unchanged.
+- Two admission bounds: 4 queued jobs and 32 retained open jobs. Blocked jobs count toward the second bound, so anonymous requests cannot grow the job tree without limit.
+- Release gates from the deployment design review: explicit runtime lock path, complete cached-mode arguments with fail-fast when no cache exists, process identity from `/proc/<pid>/stat`, confirmed runner-thread shutdown, preview serving from a no-follow descriptor with size and hash checks, queue fields in `/health`, a job record schema version.
+- Two review rounds ran. Round 1 found two Critical defects: an unauthorized billable retry after `use_cache`, and a recovery that never confirmed the process group. Round 2 reproduced both as fixed.
+- Not verified yet: no browser check, no real Blender render, no real provider call. The `/proc` branch of the process identity code ran only against fakes, because the development host is macOS.
+- Fake mode is not yet refused under public access. The public-access setting exists only on `main`, and this branch does not merge `main` before the coordinated integration.

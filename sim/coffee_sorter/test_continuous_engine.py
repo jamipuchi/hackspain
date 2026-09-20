@@ -1,14 +1,26 @@
+import hashlib
+import json
+import math
+import os
+import re
+import tempfile
 import unittest
 from collections import deque
+from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import numpy as np
 
 from controller import Policy
-from engine import Engine, MAX_COMPLETED_INJECTIONS
-from profiles import PROFILES
-from rolling_scores import RollingScoreLedger
+from engine import HERE, Engine, MAX_COMPLETED_INJECTIONS
+from object_catalog import CATALOG_ROOT_ENV, load_catalog, visual_bundle_files
+from profiles import PROFILES, profile_from_catalog
+from rolling_scores import SETTLING_SECONDS, RollingScoreLedger
+from scene import Layout
 from sim import Fire
+from test_object_catalog import (CatalogRootTest, builtin_definition, generated_definition,
+                                 tiny_glb)
 
 
 VERSIONS = {
@@ -27,7 +39,7 @@ class RollingScoreLedgerTest(unittest.TestCase):
         first = RollingScoreLedger(60.0)
         first.add(0, 0.0, False)
         first.resolve(0, "accept")
-        self.assertEqual(self.scores(first, 0.6)["eligible_objects"], 1)
+        self.assertEqual(self.scores(first, SETTLING_SECONDS)["eligible_objects"], 1)
 
         ledger = RollingScoreLedger(60.0)
         ledger.add(1, 0.0, False)
@@ -38,7 +50,7 @@ class RollingScoreLedgerTest(unittest.TestCase):
         ledger.resolve(2, "reject")
         ledger.resolve(3, "accept")
 
-        scores = self.scores(ledger, 60.7)
+        scores = self.scores(ledger, 60.1 + SETTLING_SECONDS)
 
         self.assertAlmostEqual(scores["window_start_exclusive_s"], 0.1)
         self.assertAlmostEqual(scores["window_end_inclusive_s"], 60.1)
@@ -48,6 +60,25 @@ class RollingScoreLedgerTest(unittest.TestCase):
             "numerator": 1, "denominator": 1, "value": 1.0,
         })
         self.assertEqual(len(ledger), 2)
+
+    def test_pending_object_and_late_outcome_share_settling_deadline(self):
+        ledger = RollingScoreLedger(60.0)
+        ledger.add(1, 1.0, True)
+
+        pending = self.scores(ledger, 1.7)
+        self.assertEqual(pending["eligible_objects"], 0)
+        self.assertEqual(pending["settling_objects"], 1)
+
+        ledger.resolve(1, "reject")
+        at_outcome = self.scores(ledger, 1.85)
+        self.assertEqual(at_outcome["eligible_objects"], 0)
+        self.assertEqual(at_outcome["settling_objects"], 1)
+
+        after_deadline = self.scores(ledger, 1.0 + SETTLING_SECONDS + 0.01)
+        self.assertEqual(after_deadline["eligible_objects"], 1)
+        self.assertEqual(after_deadline["reject_capture"], {
+            "numerator": 1, "denominator": 1, "value": 1.0,
+        })
 
     def test_counts_spills_unresolved_and_empty_denominators(self):
         ledger = RollingScoreLedger(60.0)
@@ -59,7 +90,7 @@ class RollingScoreLedgerTest(unittest.TestCase):
         ledger.resolve(3, "reject")
         ledger.resolve(4, "accept")
 
-        scores = self.scores(ledger, 2.0)
+        scores = self.scores(ledger, 1.3 + SETTLING_SECONDS)
 
         self.assertEqual(scores["sorting_accuracy"]["numerator"], 1)
         self.assertEqual(scores["sorting_accuracy"]["denominator"], 4)
@@ -91,11 +122,15 @@ class RollingScoreLedgerTest(unittest.TestCase):
         ledger = RollingScoreLedger(2.0)
         ledger.add(1, 0.0, True)
 
-        self.assertEqual(self.scores(ledger, 1.0)["unresolved"]["numerator"], 1)
+        self.assertEqual(
+            self.scores(ledger, SETTLING_SECONDS + 0.1)["unresolved"]["numerator"], 1
+        )
         ledger.resolve(1, "reject")
-        self.assertEqual(self.scores(ledger, 1.1)["defect_capture"]["numerator"], 1)
+        self.assertEqual(
+            self.scores(ledger, SETTLING_SECONDS + 0.1)["defect_capture"]["numerator"], 1
+        )
 
-        expired = self.scores(ledger, 2.6)
+        expired = self.scores(ledger, 2.0 + SETTLING_SECONDS)
         self.assertEqual(expired["eligible_objects"], 0)
         self.assertEqual(len(ledger), 0)
         ledger.resolve(1, "accept")
@@ -105,7 +140,9 @@ class RollingScoreLedgerTest(unittest.TestCase):
         ledger = RollingScoreLedger(60.0, start_sim_time_s=120.0)
 
         self.assertEqual(self.scores(ledger, 120.5)["available_seconds"], 0.0)
-        self.assertAlmostEqual(self.scores(ledger, 121.1)["available_seconds"], 0.5)
+        self.assertAlmostEqual(
+            self.scores(ledger, 120.0 + SETTLING_SECONDS + 0.5)["available_seconds"], 0.5
+        )
 
     def test_policy_scores_and_legacy_defect_scores_keep_distinct_truth(self):
         ledger = RollingScoreLedger(60.0)
@@ -114,7 +151,7 @@ class RollingScoreLedgerTest(unittest.TestCase):
         ledger.resolve(1, "reject")
         ledger.resolve(2, "accept")
 
-        scores = self.scores(ledger, 2.0)
+        scores = self.scores(ledger, 1.1 + SETTLING_SECONDS + 0.01)
 
         self.assertEqual(scores["reject_capture"], {
             "numerator": 1, "denominator": 1, "value": 1.0,
@@ -155,15 +192,23 @@ class ContinuousRetentionTest(unittest.TestCase):
             1: {"injected": False},
             2: {"injected": True},
         }
+        engine._visual_asset_ids = {}
+        engine.model = SimpleNamespace(
+            classes=list(engine.profile.names),
+            set_anomaly_reference=lambda labels: list(labels),
+        )
+        engine.anomaly_reference_labels = []
+        # The controller reports how many undecided tracks it reset.
         engine.controller = SimpleNamespace(set_reject_classes=lambda values: setattr(
             engine.controller, "applied", tuple(values)
-        ))
+        ) or 0)
         engine._event = lambda *args, **kwargs: None
         return engine
 
     def test_class_catalog_previews_use_profile_midpoints_and_shape_axes(self):
         engine = Engine.__new__(Engine)
         engine.profile = PROFILES["green_arabica"]
+        engine._class_assets = {}
 
         catalog = {item["name"]: item for item in engine.class_catalog()}
 
@@ -278,7 +323,7 @@ class ContinuousRetentionTest(unittest.TestCase):
         engine.policy_version = "policy"
         engine.score_epoch_id = "session"
         engine.source_revision = "source"
-        engine.sim = SimpleNamespace(data=SimpleNamespace(time=0.6))
+        engine.sim = SimpleNamespace(data=SimpleNamespace(time=SETTLING_SECONDS))
         engine._score_ledger = RollingScoreLedger(60.0)
         engine._score_ledger.add(1, 0.0, False)
 
@@ -289,6 +334,54 @@ class ContinuousRetentionTest(unittest.TestCase):
         engine.continuous = False
         with self.assertRaisesRegex(RuntimeError, "continuous mode"):
             engine.rolling_scores()
+
+    def test_report_waits_for_shared_settling_deadline_before_cohorting(self):
+        bean = SimpleNamespace(uid=1, spawn_t=0.8, outcome=None)
+        engine = Engine.__new__(Engine)
+        engine.continuous = False
+        engine.sim = SimpleNamespace(
+            data=SimpleNamespace(time=0.8 + 0.7), beans=[bean], n_spawned=1,
+            starved=False, dt=0.001,
+        )
+        engine._object_evidence = lambda current, cohort: {
+            "in_cohort": cohort,
+            "required_reject": True,
+            "physical_defect": True,
+            "outcome": current.outcome,
+            "missed_category": None,
+            "captured_without_own_pulse_hit": False,
+        }
+        engine._wall_elapsed = lambda: 0.0
+        engine.session_id = "session"
+        engine.preset = {"requested_rate": 1.0, "camera_every_steps": 1}
+        engine.model_version = "model"
+        engine.policy_version = "policy"
+        engine.source_revision = "source"
+        engine.source_hashes = {}
+        engine.preset_version = "preset"
+        engine.packages = {}
+        engine.startup_seconds = 0.0
+        engine._peak_active = 1
+        engine._timings = {name: [] for name in (
+            "physics_ms", "render_ms", "evaluation_ms", "snapshot_ms",
+            "control_path_ms", "camera_frame_ms",
+        )}
+        engine.controller = SimpleNamespace(
+            detection_ms=[], inference_ms=[], control_ms=[],
+        )
+        engine._decision_evidence = []
+        engine._event_id = 0
+        engine._events = []
+        engine._event_counts = {}
+
+        pending = engine.report()
+        self.assertEqual(pending["quality"]["eligible_objects"], 0)
+
+        bean.outcome = "reject"
+        engine.sim.data.time = 0.8 + SETTLING_SECONDS + 0.01
+        settled = engine.report()
+        self.assertEqual(settled["quality"]["eligible_objects"], 1)
+        self.assertEqual(settled["quality"]["captured_required_reject_objects"], 1)
 
     def test_manual_injections_do_not_enter_feed_ledger(self):
         engine = Engine.__new__(Engine)
@@ -305,8 +398,12 @@ class ContinuousRetentionTest(unittest.TestCase):
         engine.sim = SimpleNamespace(
             body_geom={1: 0},
             model=SimpleNamespace(geom_rgba=np.ones((1, 4))),
+            data=SimpleNamespace(time=SETTLING_SECONDS - 0.01),
+            fire_hits=set(),
+            fired_targets=set(),
         )
         engine._object_records = {}
+        engine._visual_asset_ids = {}
         engine._injected_ids = set()
         engine._active_injections = set()
         engine._score_ledger = RollingScoreLedger(60.0)
@@ -320,6 +417,10 @@ class ContinuousRetentionTest(unittest.TestCase):
 
         self.assertEqual(len(engine._score_ledger), 0)
         self.assertEqual(engine._active_injections, {1})
+        engine._decision_by_uid = {}
+        self.assertFalse(engine._snapshot_object(1, active=True)["overdue"])
+        engine.sim.data.time = SETTLING_SECONDS + 0.01
+        self.assertTrue(engine._snapshot_object(1, active=True)["overdue"])
 
     def test_manual_injection_expectation_survives_later_policy_changes(self):
         def register(reject_classes, policy_version, uid):
@@ -339,6 +440,7 @@ class ContinuousRetentionTest(unittest.TestCase):
                 data=SimpleNamespace(time=1.0),
             )
             engine._object_records = {}
+            engine._visual_asset_ids = {}
             engine._injected_ids = set()
             engine._active_injections = set()
             engine._score_ledger = RollingScoreLedger(60.0)
@@ -395,7 +497,7 @@ class ContinuousRetentionTest(unittest.TestCase):
         engine._seen_fire_hits = {(track_id, 1) for track_id in range(10_000)}
         engine._seen_outcomes = {2, 3, 4}
         engine.sim = SimpleNamespace(
-            data=SimpleNamespace(time=61.0),
+            data=SimpleNamespace(time=60.0 + SETTLING_SECONDS),
             bean_of={100: SimpleNamespace(uid=1)},
             fires=[SimpleNamespace(uid=10)],
         )
@@ -438,6 +540,277 @@ class ContinuousRetentionTest(unittest.TestCase):
         self.assertEqual(len(engine._completed_injections), MAX_COMPLETED_INJECTIONS)
         self.assertEqual(engine._injection_history_evicted, 3)
         self.assertEqual(engine._completed_injections[0], 3)
+
+
+class ModelPathRootTest(unittest.TestCase):
+    """A bundle preset binds its model to its own directory and keeps it there."""
+
+    def stub(self, preset, preset_path):
+        engine = Engine.__new__(Engine)
+        engine.preset = preset
+        engine.preset_path = Path(preset_path)
+        engine.closed = []
+        engine.inspector = SimpleNamespace(close=lambda: engine.closed.append(True))
+        return engine
+
+    def test_a_relative_model_path_resolves_beside_the_preset(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        directory = Path(folder.name).resolve()
+        (directory / "candidate.joblib").write_bytes(b"model")
+        engine = self.stub({"model_path": "candidate.joblib", "model_path_root": "preset"},
+                           directory / "candidate.preset.json")
+
+        engine._resolve_model_path()
+
+        self.assertEqual(directory / "candidate.joblib", engine.model_path)
+        self.assertEqual([], engine.closed)
+
+    def test_a_model_path_cannot_leave_the_preset_directory(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        path = Path(folder.name).resolve() / "nested" / "candidate.preset.json"
+        path.parent.mkdir()
+        cases = {"parent traversal": "../x.joblib",
+                 "absolute path": str(Path(folder.name) / "x.joblib"),
+                 "unknown root": "candidate.joblib"}
+        for name, model_path in cases.items():
+            with self.subTest(case=name):
+                preset = {"model_path": model_path,
+                          "model_path_root": "source" if name == "unknown root" else "preset"}
+                engine = self.stub(preset, path)
+                with self.assertRaises(ValueError):
+                    engine._resolve_model_path()
+                self.assertEqual([True], engine.closed)
+
+    def test_without_the_field_the_model_path_stays_source_relative(self):
+        engine = self.stub({"model_path": "models/absent.joblib"}, Path("/tmp/p.json"))
+
+        with self.assertRaisesRegex(FileNotFoundError, "trusted model is missing"):
+            engine._resolve_model_path()
+
+        self.assertEqual(HERE / "models/absent.joblib", engine.model_path)
+
+
+class InitialRejectClassesTest(unittest.TestCase):
+    """A bundle preset starts the engine with its policy inside the one session epoch.
+
+    The real constructor runs. Only the simulator, the camera, the model, and the
+    controller are fakes, so no physics and no trained artifact is needed.
+    """
+
+    def build(self, initial=None):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        directory = Path(folder.name).resolve()
+        (directory / "candidate.joblib").write_bytes(b"model")
+        preset = json.loads((HERE / "configs/continuous_demo.json").read_text())
+        preset.update(model_path="candidate.joblib", model_path_root="preset")
+        if initial is not None:
+            preset["policy"]["initial_reject_classes"] = initial
+        (directory / "preset.json").write_text(json.dumps(preset))
+        self.controller = SimpleNamespace(applied=[])
+        self.controller.set_reject_classes = (
+            lambda values: self.controller.applied.append(tuple(values)) or 0)
+        model = SimpleNamespace(classes=list(PROFILES["green_arabica"].names),
+                                set_anomaly_reference=lambda labels: list(labels))
+        with patch("engine.SorterSim") as self.sim, patch("engine.Inspector"), \
+                patch("engine.Model.load", return_value=model), \
+                patch("engine.Controller", return_value=self.controller), \
+                patch("engine.subprocess.check_output", return_value="source\n"):
+            return Engine(directory / "preset.json")
+
+    def test_the_engine_starts_with_exactly_that_set_in_its_one_epoch(self):
+        engine = self.build(["stone", "black"])
+
+        self.assertEqual(engine.reject_classes, ("black", "stone"))
+        self.assertEqual(self.controller.applied, [("black", "stone")])
+        self.assertEqual(engine.anomaly_reference_labels,
+                         [name for name in engine.profile.names if name not in ("black", "stone")])
+        # One epoch: the session epoch at time zero, and no policy change event.
+        self.assertEqual(engine.score_epoch_id, engine.session_id)
+        self.assertEqual(engine.score_epoch_started_sim_time_s, 0.0)
+        self.assertEqual(engine.policy_applied_sim_time_s, 0.0)
+        self.assertEqual(list(engine._events), [])
+        self.assertEqual(engine.policy_version, engine._policy_version())
+        self.assertNotEqual(engine.policy_version, self.build().policy_version)
+
+    def test_an_empty_list_keeps_every_class(self):
+        engine = self.build([])
+
+        self.assertEqual(engine.reject_classes, ())
+        self.assertEqual(self.controller.applied, [()])
+        self.assertEqual(engine.score_epoch_id, engine.session_id)
+
+    def test_an_absent_field_keeps_the_severity_default_and_the_controller_untouched(self):
+        engine = self.build()
+
+        self.assertEqual(engine.reject_classes, tuple(
+            item.name for item in engine.profile.classes
+            if item.defect and item.severity in engine.policy.reject_severities))
+        self.assertEqual(self.controller.applied, [])
+        self.assertEqual(engine.score_epoch_id, engine.session_id)
+
+    def test_an_invalid_field_is_a_clear_error_before_the_simulator_exists(self):
+        cases = {"unknown label": (["stone", "star_token"],
+                                   "unsupported reject classes: star_token"),
+                 "duplicate": (["stone", "stone"], "must not contain duplicates"),
+                 "not a list": ("stone", "must be a list")}
+        for name, (initial, message) in cases.items():
+            with self.subTest(case=name):
+                with self.assertRaisesRegex(
+                        ValueError, rf"policy\.initial_reject_classes: .*{message}"):
+                    self.build(initial)
+                self.sim.assert_not_called()
+
+
+def browser_refusal(asset, revision):
+    """The rules of `assetRefusal` in live_web/generated_assets.mjs, in the same order."""
+    def numbers(value, count, positive=False):
+        return isinstance(value, list) and len(value) == count and all(
+            type(item) in (int, float) and math.isfinite(item) and (not positive or item > 0)
+            for item in value)
+
+    digest = asset.get("glb_sha256")
+    if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+        return "invalid_hash"
+    if asset.get("visual_asset_id") != f"sha256:{digest}":
+        return "asset_id_mismatch"
+    if asset.get("url") != f"/catalog-assets/{revision}/{digest}.glb":
+        return "url_mismatch"
+    if any(type(asset.get(name)) is not int or asset[name] < 1
+           for name in ("byte_length", "primitive_count", "triangle_count")):
+        return "invalid_declaration"
+    if asset.get("mesh_count") != 1:
+        return "unsupported_mesh_count"
+    if (asset.get("units"), asset.get("source_up_axis"), asset.get("engine_up_axis")) != (
+            "m", "+Y", "+Z"):
+        return "unsupported_convention"
+    quaternion = asset.get("sim_from_asset_quaternion_wxyz")
+    if not numbers(quaternion, 4) or any(
+            abs(value - approved) > 1e-6
+            for value, approved in zip(quaternion, (0.70710678, 0.70710678, 0, 0))):
+        return "unsupported_correction"
+    if not numbers(asset.get("bounds_dimensions_m"), 3, positive=True):
+        return "invalid_bounds"
+    if not numbers(asset.get("reference_axes_m"), 3, positive=True):
+        return "invalid_declaration"
+    return None
+
+
+class VisualAssetIdTest(CatalogRootTest):
+    """Each object carries the `visual_asset_id` of its actual catalog definition.
+
+    The real constructor runs against a temporary catalog root. Only the simulator, the
+    camera, the model, and the controller are fakes.
+    """
+
+    def build(self, definitions, profile=None, assets=None, **changes):
+        """A bundle shaped root: `catalog/`, and with `assets` the real registry beside it."""
+        bundle = self.make_root()
+        root = self.catalog_root = bundle / "catalog"
+        self.write_catalog(root, definitions, **changes)
+        if assets is not None:
+            for name, data in visual_bundle_files(load_catalog(root), assets).items():
+                (bundle / name).parent.mkdir(parents=True, exist_ok=True)
+                (bundle / name).write_bytes(data)
+        profile = profile or profile_from_catalog(load_catalog(root))
+        directory = self.make_root().resolve()
+        (directory / "candidate.joblib").write_bytes(b"model")
+        preset = self.preset = json.loads((HERE / "configs/continuous_demo.json").read_text())
+        preset.update(model_path="candidate.joblib", model_path_root="preset",
+                      profile=profile.name)
+        (directory / "preset.json").write_text(json.dumps(preset))
+        model = SimpleNamespace(classes=list(profile.names),
+                                set_anomaly_reference=lambda labels: list(labels))
+        with patch.dict(os.environ, {CATALOG_ROOT_ENV: str(root)}), \
+                patch.dict("engine.PROFILES", {profile.name: profile}), \
+                patch("engine.SorterSim"), patch("engine.Inspector"), \
+                patch("engine.Model.load", return_value=model), patch("engine.Controller"), \
+                patch("engine.subprocess.check_output", return_value="source\n"):
+            return Engine(directory / "preset.json")
+
+    def test_a_generated_object_names_its_asset_and_a_builtin_names_none(self):
+        star = generated_definition()
+        # A built-in stays null even when its definition carries an asset block.
+        good = builtin_definition("good")
+        good["visual"]["asset"] = star["visual"]["asset"]
+        engine = self.build([star, good])
+        engine.sim = SimpleNamespace(body_geom={1: 0, 2: 0}, data=SimpleNamespace(time=1.0),
+                                     model=SimpleNamespace(geom_rgba=np.ones((1, 4))))
+        for uid, label in ((1, "star_token"), (2, "good")):
+            engine._register_bean(SimpleNamespace(
+                uid=uid, cls=label, body=uid, spawn_t=0.5, axes=np.ones(3), outcome=None,
+                resolved_t=None, jet_hits=0), injected=uid == 2)
+
+        self.assertEqual(engine._snapshot_object(1, active=True)["visual_asset_id"],
+                         star["visual"]["asset"]["visual_asset_id"])
+        self.assertIsNone(engine._snapshot_object(2, active=True)["visual_asset_id"])
+
+    def test_a_bound_catalog_that_is_not_this_profile_names_no_asset(self):
+        # The same profile name and the same labels, but other definitions.
+        engine = self.build([generated_definition(), builtin_definition("good")],
+                            profile=profile_from_catalog(load_catalog(self.make_other())),
+                            profile_name="other")
+        self.assertEqual(engine._visual_asset_ids, {})
+        self.assertIsNone(self.state(engine)["catalog_revision"])
+
+    def state(self, engine):
+        """One real snapshot, as the browser receives it after the JSON transport."""
+        engine.sim = SimpleNamespace(bean_of={}, data=SimpleNamespace(time=1.0), n_spawned=0,
+                                     fires=[], L=Layout(**self.preset["layout"]))
+        return json.loads(json.dumps(engine.snapshot()))
+
+    def test_a_server_built_state_row_passes_the_browser_predicate(self):
+        glb = tiny_glb(index_count=6)
+        sha = hashlib.sha256(glb).hexdigest()
+        star = generated_definition()
+        star["visual"]["asset"].update(visual_asset_id=f"sha256:{sha}", glb_sha256=sha)
+        source = self.make_root() / "object.glb"
+        source.write_bytes(glb)
+        evidence = {"media_type": "model/gltf-binary", "runtime_lod_reviewed": False,
+                    "bounds_dimensions_m": [0.017, 0.016, 0.002]}
+        # The moon type has no draft evidence, so the real builder writes no row for it.
+        engine = self.build(
+            [star, generated_definition("moon_token"), builtin_definition("good")],
+            assets={star["object_type_id"]: {"glb": source, "evidence": evidence}})
+
+        state = self.state(engine)
+        revision = state["catalog_revision"]
+        rows = {row["name"]: row for row in state["class_catalog"]}
+        asset = rows["star_token"]["render_asset"]
+
+        self.assertEqual(revision, load_catalog(self.catalog_root)["catalog_revision"])
+        self.assertEqual(rows["star_token"]["object_type_id"], star["object_type_id"])
+        # Exactly the contract members, plus the `glb_sha256` that the predicate reads.
+        self.assertEqual(set(asset), {
+            "visual_asset_id", "glb_sha256", "url", "media_type", "byte_length", "mesh_count",
+            "primitive_count", "triangle_count", "units", "source_up_axis", "engine_up_axis",
+            "bounds_dimensions_m", "reference_axes_m", "sim_from_asset_quaternion_wxyz",
+            "runtime_lod_reviewed"})
+        self.assertIsNone(browser_refusal(asset, revision))
+        self.assertEqual(asset["url"], f"/catalog-assets/{revision}/{sha}.glb")
+        self.assertEqual(asset["reference_axes_m"], rows["star_token"]["preview"]["axes_m"])
+        # The mirror is not vacuous: a stale revision and a foreign path are both refused.
+        self.assertEqual(browser_refusal(asset, "0" * 64), "url_mismatch")
+        self.assertEqual(browser_refusal({**asset, "mesh_count": 2}, revision),
+                         "unsupported_mesh_count")
+        # A generated type without a row says so. A built-in row is unchanged.
+        self.assertEqual(rows["moon_token"]["object_type_id"], "generated.moon_token")
+        self.assertIsNone(rows["moon_token"]["render_asset"])
+        self.assertEqual(set(rows["good"]), {"name", "defect", "severity", "preview"})
+
+    def test_a_bundle_without_a_registry_reads_as_empty(self):
+        engine = self.build([generated_definition(), builtin_definition("good")])
+        rows = {row["name"]: row for row in self.state(engine)["class_catalog"]}
+        self.assertIsNone(rows["star_token"]["render_asset"])
+
+    def make_other(self):
+        root = self.make_root()
+        star = generated_definition()
+        star["visual"]["rgb"] = [0.1, 0.2, 0.3]
+        self.write_catalog(root, [star, builtin_definition("good")], profile_name="other")
+        return root
 
 
 if __name__ == "__main__":

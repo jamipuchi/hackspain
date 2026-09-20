@@ -18,6 +18,7 @@ import cv2
 import assets
 from profiles import PROFILES
 from scene import Layout
+from rolling_scores import SETTLING_SECONDS
 from sim import SorterSim, JET_FORCE
 from vision import Inspector, draw_blobs
 from classifier import Model, collect, train, label_blobs, MODELS
@@ -85,7 +86,7 @@ def metrics(sim, ctrl, warmup, t_end):
     bean_by_uid = getattr(sim, "bean_by_uid", {b.uid: b for b in sim.beans})
     fired_targets = getattr(sim, "fired_targets", set())
     fire_hits = getattr(sim, "fire_hits", set())
-    cohort_end = t_end - 0.6
+    cohort_end = t_end - SETTLING_SECONDS
     beans = [b for b in sim.beans if warmup <= b.spawn_t <= cohort_end]
     resolved = [b for b in beans if b.outcome is not None]
     per = {}

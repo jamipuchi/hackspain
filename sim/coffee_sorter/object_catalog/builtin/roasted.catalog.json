@@ -1,0 +1,28 @@
+{
+  "active_bundle_sha256": null,
+  "active_type_ids": [
+    "builtin.roasted.good",
+    "builtin.roasted.quaker",
+    "builtin.roasted.burnt",
+    "builtin.roasted.broken",
+    "builtin.roasted.stone",
+    "builtin.roasted.stick"
+  ],
+  "belt_rgb": [
+    0.1,
+    0.22,
+    0.62
+  ],
+  "catalog_revision": "cb26506db21f6ab935db392bca1da9b586ba2cf50402da2d3ebb2fa69ffc7c4f",
+  "definition_sha256": {
+    "builtin.roasted.broken": "269891d85b4fd1f303149af2e4243cf0334e72dd7e5397eb6f33b78cdc606a18",
+    "builtin.roasted.burnt": "fe33ea90b00340994bfa3bc8fbbbf83fa1b155d309a725ce2724b10d5bad83f0",
+    "builtin.roasted.good": "42b807bd6e5d78d56b62e581fe53d662492826f8fda3cb19226907b24cc4d452",
+    "builtin.roasted.quaker": "46561edf8d8a7f99b78948d0f4f077e678e37919b3850787bc1e3ebc9040cb45",
+    "builtin.roasted.stick": "4a81c05c139bc756b02d88872c35c9a8c1ed61569fb87e4fdc3b0d5127f5a0a5",
+    "builtin.roasted.stone": "e5dc6dd416d2f539781bb7882059646ba1ae7200172b493ef31b485c95b7d7f2"
+  },
+  "max_active_types": 6,
+  "profile_name": "roasted",
+  "schema_version": 1
+}
