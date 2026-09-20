@@ -653,7 +653,19 @@ class ItemJobRunner:
                 # A stale status from a hard-killed attempt must never label this one.
                 with contextlib.suppress(OSError):
                     (job_dir / "provider_status.json").unlink()
-            argv = self.commands[stage](pending, job_dir)
+            try:
+                argv = self.commands[stage](pending, job_dir)
+            except Exception as error:
+                if stage != "training":
+                    raise
+                # No child exists. Count this training attempt, then use the same bounded
+                # retry and terminal-failure transition as a failed trainer process.
+                self._fault(f"training_command_failed_{type(error).__name__}")
+                failed = self.store.record(request_id, attempts=attempts)
+                self._stage_failure(failed, stage, table["failure_error"], None,
+                                    reason="training_command_failed",
+                                    progress=_short_reason(error))
+                return
             token = str(uuid.uuid4())
             # Persist the attempt and the consumed grant before the process can exist.
             self.store.transition(request_id, table["running_state"], error=None, **fields)
@@ -931,16 +943,16 @@ class ItemJobRunner:
             return None
         if job["state"] not in ("selecting_training_baseline", "waiting_for_replacement"):
             return dict(job)
-        policy = self.policy_provider()
-        if policy is None:
-            # No authoritative engine policy yet. Waiting is the only honest option: an
-            # absent policy must never bind Keep all, and no attempt is consumed.
-            self._release_training_lease(request_id)
-            if job.get("reason") != "waiting_for_engine_policy":
-                self.store.record(request_id, reason="waiting_for_engine_policy",
-                                  progress="waiting for the live policy")
-            return None
         try:
+            policy = self.policy_provider()
+            if policy is None:
+                # No authoritative engine policy yet. Waiting is the only honest option: an
+                # absent policy must never bind Keep all, and no attempt is consumed.
+                self._release_training_lease(request_id)
+                if job.get("reason") != "waiting_for_engine_policy":
+                    self.store.record(request_id, reason="waiting_for_engine_policy",
+                                      progress="waiting for the live policy")
+                return None
             # One policy read per turn, so the baseline binds exactly what was checked.
             baseline = self._select_baseline(job, job_dir, policy)
         except Exception as error:
@@ -949,9 +961,9 @@ class ItemJobRunner:
             # Consume the attempt here, or a permanent binding error would loop.
             attempts = {**job["attempts"], "training": job["attempts"].get("training", 0) + 1}
             self.store.record(request_id, attempts=attempts)
-            self._stage_failure(self.store.get(request_id), "training", "training_failed",
-                                None, reason="training_baseline_failed",
-                                progress=_short_reason(error))
+            self._stage_failure(self.store.get(request_id), "training", "training_failed", None,
+                                retry_state="selecting_training_baseline",
+                                reason="training_baseline_failed", progress=_short_reason(error))
             return None
         if baseline is None:
             # No Keep type is free. Release the turn so the next job continues.
@@ -1013,10 +1025,16 @@ class ItemJobRunner:
             return
         self.store.transition(request_id, "validating_candidate", token=token, error=None,
                               worker=None)
-        # `_settle` runs only after `_finish` confirmed the group left, so a fault in
-        # validation can never strand the turn on a live trainer.
-        with self._release_turn_on_fault(request_id, "training"):
+        # `_settle` runs only after `_finish` confirmed the group left. A validation fault
+        # therefore follows the normal bounded training retry path and releases the turn.
+        try:
             self._validate_candidate(self.store.get(request_id), job_dir, token)
+        except Exception as error:
+            self._fault(f"candidate_validation_failed_{type(error).__name__}")
+            self._stage_failure(self.store.get(request_id), "training", "training_failed",
+                                token, reason="candidate_validation_error",
+                                progress=_short_reason(error))
+            return
         self._release_training_lease(request_id)
 
     def _validate_candidate(self, job: Mapping[str, Any], job_dir: Path,
@@ -1139,12 +1157,7 @@ class ItemJobRunner:
 
     @contextlib.contextmanager
     def _release_turn_on_fault(self, request_id: str, stage: str):
-        """Give the training turn back when a fault leaves NO owned process group.
-
-        Both callers hold the turn with nothing running: a launch that has not spawned
-        its child yet, and a settlement whose group already confirmed its exit. An
-        unconfirmed group never enters this guard, so a live trainer keeps its turn.
-        """
+        """Release a pre-child training turn after an unexpected launch fault."""
         try:
             yield
         except BaseException:
@@ -1168,10 +1181,11 @@ class ItemJobRunner:
         return evidence.get("recipe_sha256") in (None, recipe)
 
     def _stage_failure(self, job: Mapping[str, Any], stage: str, error: str,
-                       token: str | None, **fields: Any) -> None:
+                       token: str | None, retry_state: str | None = None,
+                       **fields: Any) -> None:
         """The single automatic retry, then a retained terminal failure."""
         retry = job["attempts"].get(stage, 0) < MAX_ATTEMPTS
-        state = STAGES[stage]["retry_state"] if retry else "failed"
+        state = (retry_state or STAGES[stage]["retry_state"]) if retry else "failed"
         if stage == "training":
             # The turn goes back whether this ends in a retry or a failure.
             self._release_training_lease(job["request_id"])

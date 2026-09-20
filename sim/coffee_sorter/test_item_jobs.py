@@ -1620,52 +1620,75 @@ class PhysicsAndTrainingFlowTest(QueueTest):
         second = self.submit(description='Another token')
         self.drive(runner, lambda: self.state(second['request_id']) == 'validating_candidate')
 
-    def step_until_fault(self, runner, timeout=20.0):
-        """Step until the injected fault surfaces, then return its text."""
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
-            try:
-                runner.step()
-            except RuntimeError as error:
-                return str(error)
-            time.sleep(0.01)
-        self.fail('the injected fault never surfaced')
-
-    def takes_the_turn_at_once(self, runner):
-        """A later job reaches validation well inside the lease deadline."""
-        runner.commands['training'] = fake_commands(stages=('training',))['training']
-        later = self.submit(description='Another token')
-        self.drive(runner, lambda: self.state(later['request_id']) == 'validating_candidate')
-
     def test_a_training_builder_fault_gives_the_training_turn_back(self):
-        """P1: a fault before any child exists must never strand the turn."""
+        """P1: a persistent pre-child fault is bounded and cannot starve a later job."""
+        first = self.submit()
+        later = self.submit(description='Another token')
+        training = fake_commands(stages=('training',))['training']
+
         def broken(job, job_dir):
-            raise RuntimeError('injected training command-builder fault')
+            if job['request_id'] == first['request_id']:
+                raise RuntimeError('persistent training command-builder fault')
+            return training(job, job_dir)
 
         commands = {**fake_commands(stages=self.STAGES), 'training': broken}
         runner = self.open_runner(commands=commands, catalog_provider=self.catalog,
                                   policy_provider=self.policy())
-        first = self.submit()
 
-        self.assertIn('command-builder fault', self.step_until_fault(runner))
+        self.drive(runner, lambda: self.state(first['request_id']) == 'failed'
+                   and self.state(later['request_id']) == 'validating_candidate')
 
-        self.assertEqual('queued_for_training', self.state(first['request_id']))
+        stored = self.store.get(first['request_id'])
+        self.assertEqual(MAX_ATTEMPTS, stored['attempts']['training'])
+        self.assertEqual('training_failed', stored['error'])
+        self.assertEqual('training_command_failed', stored['reason'])
         self.assertFalse((self.root / item_jobs.TRAINING_LEASE).exists())
-        self.takes_the_turn_at_once(runner)
 
     def test_a_validation_fault_gives_the_training_turn_back(self):
-        """P1: the trainer group already confirmed its exit, so the turn is free."""
+        """P1: a persistent post-exit fault is bounded and cannot strand validation."""
         runner = self.runner()
         first = self.submit()
+        later = self.submit(description='Another token')
+        validate = runner._validate_candidate
 
-        with unittest.mock.patch.object(runner, '_validate_candidate',
-                                        side_effect=RuntimeError('injected validation fault')):
-            self.assertIn('validation fault', self.step_until_fault(runner))
+        def broken(job, job_dir, token):
+            if job['request_id'] == first['request_id']:
+                raise RuntimeError('persistent validation fault')
+            return validate(job, job_dir, token)
 
-        self.assertEqual('validating_candidate', self.state(first['request_id']))
-        self.assertIsNone(self.store.get(first['request_id'])['worker'])
+        runner._validate_candidate = broken
+        self.drive(runner, lambda: self.state(first['request_id']) == 'failed'
+                   and self.state(later['request_id']) == 'validating_candidate')
+
+        stored = self.store.get(first['request_id'])
+        self.assertEqual(MAX_ATTEMPTS, stored['attempts']['training'])
+        self.assertEqual('training_failed', stored['error'])
+        self.assertEqual('candidate_validation_error', stored['reason'])
+        self.assertIsNone(stored['worker'])
         self.assertFalse((self.root / item_jobs.TRAINING_LEASE).exists())
-        self.takes_the_turn_at_once(runner)
+
+    def test_a_policy_provider_fault_is_bounded_and_releases_the_turn(self):
+        """P1: a persistent policy read fault cannot retain the lease or starve later work."""
+        first = self.submit()
+        later = self.submit(description='Another token')
+        healthy = self.policy()
+
+        def broken_until_first_fails():
+            if self.state(first['request_id']) != 'failed':
+                raise RuntimeError('persistent policy provider fault')
+            return healthy()
+
+        runner = self.open_runner(stages=self.STAGES, catalog_provider=self.catalog,
+                                  policy_provider=broken_until_first_fails)
+
+        self.drive(runner, lambda: self.state(first['request_id']) == 'failed'
+                   and self.state(later['request_id']) == 'validating_candidate')
+
+        stored = self.store.get(first['request_id'])
+        self.assertEqual(MAX_ATTEMPTS, stored['attempts']['training'])
+        self.assertEqual('training_failed', stored['error'])
+        self.assertEqual('training_baseline_failed', stored['reason'])
+        self.assertFalse((self.root / item_jobs.TRAINING_LEASE).exists())
 
     def test_the_lock_backoff_counts_per_stage(self):
         """F7: a render lock-busy must not lengthen the first physics backoff."""
