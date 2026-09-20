@@ -471,6 +471,82 @@ class PaidModeTest(QueueTest):
         self.assertFalse(Path(credential).exists())
 
 
+class ReceivedResponseTest(QueueTest):
+    """After a received physics response, nothing may buy that answer a second time."""
+
+    provider_mode = 'paid'
+
+    def proposing(self, submission, attempt=1):
+        job = self.submit(description=f'Token {uuid.uuid4()}')
+        job = self.store.transition(job['request_id'], 'proposing_physics',
+                                    attempts={**job['attempts'], 'physics_proposal': attempt},
+                                    provider_submission=submission)
+        return job, self.store.job_dir(job['request_id'])
+
+    def miss(self, runner, job, job_dir):
+        (job_dir / 'provider_status.json').write_text(json.dumps(
+            {'provider_submission': 'not_submitted', 'reason': 'physics request is not cached'}))
+        runner._settle_physics_proposal(job, job_dir, None, item_jobs.EXIT_NOT_SUBMITTED)
+        return self.store.get(job['request_id'])
+
+    def test_a_miss_after_a_received_response_is_a_consumed_failure_with_no_new_grant(self):
+        runner = self.open_runner()
+        job, job_dir = self.proposing('in_flight')
+        request_id = job['request_id']
+        runner._settle_physics_proposal(job, job_dir, None, item_jobs.EXIT_RESPONSE_RECEIVED)
+        retry = self.store.record(request_id, attempts={
+            **job['attempts'], 'physics_proposal': MAX_ATTEMPTS})
+
+        stored = self.miss(runner, retry, job_dir)
+
+        self.assertEqual(('failed', 'physics_proposal_failed', 'completed'),
+                         (stored['state'], stored['error'], stored['provider_submission']))
+        # Consumed, not returned: no operator prompt, no blocked stage, the attempt stays.
+        self.assertEqual(MAX_ATTEMPTS, stored['attempts']['physics_proposal'])
+        self.assertIsNone(stored['blocked_stage'])
+        self.assertIsNone(self.store.summary(stored)['primary_action'])
+        for action in ('new_request', 'use_cache'):
+            with self.assertRaises(ItemJobError) as refused:
+                runner.resolve_provider(request_id, action)
+            self.assertEqual('not_available', refused.exception.code)
+        # Even a grant forced into the record cannot produce --live for this stage again.
+        forced = self.store.record(request_id, provider_permission='new_request',
+                                   provider_permission_stage='physics_proposal')
+        self.assertFalse(item_jobs.live_permitted(forced, 'paid', 'physics_proposal'))
+        self.assertNotIn('--live', item_jobs.physics_proposal_command(
+            forced, job_dir, mode='paid', provider_cache=self.root / 'provider-cache'))
+
+    def test_an_operator_can_never_grant_a_second_paid_call_for_that_stage(self):
+        runner = self.open_runner()
+        job, job_dir = self.proposing('in_flight')
+        runner._settle_physics_proposal(job, job_dir, None, item_jobs.EXIT_RESPONSE_RECEIVED)
+        # Whatever led here, a blocked job that carries the marker takes no new grant.
+        self.store.transition(job['request_id'], 'operator_required',
+                              error='provider_cache_miss', blocked_stage='physics_proposal')
+
+        with self.assertRaises(ItemJobError) as refused:
+            runner.resolve_provider(job['request_id'], 'new_request')
+
+        self.assertEqual('not_available', refused.exception.code)
+        self.assertIsNone(self.store.get(job['request_id'])['provider_permission'])
+
+    def test_a_completed_generation_call_never_blocks_the_first_physics_grant(self):
+        runner = self.open_runner()
+        # The recipe came from a paid call. The physics stage has asked nobody yet.
+        job, job_dir = self.proposing('completed')
+        request_id = job['request_id']
+
+        stored = self.miss(runner, job, job_dir)
+
+        self.assertEqual(('operator_required', 'provider_cache_miss', 'physics_proposal'),
+                         (stored['state'], stored['error'], stored['blocked_stage']))
+        self.assertEqual('resolve_provider', self.store.summary(stored)['primary_action'])
+        granted = runner.resolve_provider(request_id, 'new_request')
+        self.assertTrue(item_jobs.live_permitted(granted, 'paid', 'physics_proposal'))
+        self.assertIn('--live', item_jobs.physics_proposal_command(
+            granted, job_dir, mode='paid', provider_cache=self.root / 'provider-cache'))
+
+
 class FakeModeTest(QueueTest):
     def test_fake_jobs_are_marked_and_can_never_reach_activation(self):
         self.scenarios({})
@@ -2054,6 +2130,27 @@ class PhysicsAndTrainingFlowTest(QueueTest):
         self.assertNotIn('--live', argv)
         # No operator prompt either: nothing here can lead to a new paid request.
         self.assertIsNone(self.store.summary(retried)['primary_action'])
+
+    def test_a_cache_miss_after_an_unsaved_answer_never_asks_the_operator(self):
+        """The real runner path: exit 7, then the cache-only retry misses."""
+        self.scenarios({'physics_proposal': {'1': 'answer_unsaved_without_status',
+                                             '2': 'fail_safe'}})
+        runner = self.runner()
+        request_id = self.submit()['request_id']
+        states = []
+
+        def failed():
+            states.append(self.state(request_id))
+            return states[-1] == 'failed'
+
+        self.drive(runner, failed)
+
+        stored = self.store.get(request_id)
+        self.assertNotIn('operator_required', states)
+        self.assertEqual(('physics_proposal_failed', 'completed', None),
+                         (stored['error'], stored['provider_submission'], stored['blocked_stage']))
+        self.assertEqual(MAX_ATTEMPTS, stored['attempts']['physics_proposal'])
+        self.assertEqual(2, len(self.starts('physics_proposal')))
 
     def test_the_retry_after_an_unsaved_answer_keeps_completed(self):
         self.scenarios({'physics_proposal': {'1': 'answer_unsaved_without_status', '2': 'ok'}})

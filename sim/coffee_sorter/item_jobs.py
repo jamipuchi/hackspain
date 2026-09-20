@@ -327,6 +327,9 @@ def live_permitted(job: Mapping[str, Any], provider_mode: str, stage: str) -> bo
     """
     if provider_mode != "paid" or job.get("provider_permission") != "new_request":
         return False
+    if job.get("response_received_stage") == stage:
+        # The provider already answered this stage of this job, and that call was billed.
+        return False
     return job.get("provider_permission_stage") == stage
 
 
@@ -987,11 +990,23 @@ class ItemJobRunner:
             # may be the very write that failed, so that code never depends on the file.
             progress = _status_progress(status) or {
                 "progress": "the provider answered, and saving the answer failed"}
+            # The marker is scoped to THIS stage. A completed generation call never sets
+            # it, so it never blocks the first authorized physics call.
             self._stage_failure(
                 job, "physics_proposal", "physics_proposal_failed", token,
                 reason="physics_proposal_failed", provider_submission="completed",
+                response_received_stage="physics_proposal",
                 artifacts={**job["artifacts"], "physics": _read_json(job_dir / "physics.json")},
                 **progress)
+            return
+        if code == EXIT_NOT_SUBMITTED and job.get("response_received_stage") == "physics_proposal":
+            # The answer was received and billed, but it was never saved, so the cache-only
+            # retry misses. An ordinary miss would ask the operator and could buy the same
+            # answer twice. This stays a consumed, failed attempt instead.
+            self._stage_failure(
+                job, "physics_proposal", "physics_proposal_failed", token,
+                reason="physics_proposal_failed",
+                progress="the provider already answered, and that answer was not saved")
             return
         if code == EXIT_NOT_SUBMITTED:
             self._unconsumed(job, "physics_proposal", token, "operator_required",
@@ -1596,6 +1611,8 @@ class ItemJobRunner:
             if stage not in STAGES:
                 raise ItemJobError("not_available", f"unknown blocked stage: {stage}")
             grant = action == "new_request"
+            if grant and job.get("response_received_stage") == stage:
+                raise ItemJobError("not_available")
             return self.store.transition(
                 request_id, STAGES[stage]["waiting_state"], error=None, progress=None,
                 reason=None, provider_permission="new_request" if grant else None,
