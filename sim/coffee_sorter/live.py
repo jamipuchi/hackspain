@@ -1491,11 +1491,22 @@ class LiveService:
         return 'activation_failed'
 
     def _candidate_bundle_files(self, candidate, reject_classes):
+        """The candidate bundle and the visual assets that it serves.
+
+        `candidate['assets']` names the GLB and the draft evidence of the new type, in the
+        `seed_bundle_files` form. A surviving generated type keeps the row and the GLB of
+        the active bundle. A type with neither gets no row, and the UI shows its proxy.
+        """
+        carried = (object_catalog.read_visual_registry(self.active_bundle)
+                   if self.active_bundle else [])
+        assets = {row['object_type_id']: {'glb': self.active_bundle / row['path'],
+                                          'evidence': row} for row in carried}
+        assets.update(candidate.get('assets') or {})
         return object_catalog.seed_bundle_files(
             Path(candidate['catalog_root']), Path(candidate['model']),
             Path(candidate['model_manifest']),
             json.loads(Path(candidate['preset']).read_text()),
-            {'reject_classes': list(reject_classes)}, _bundle_sources())
+            {'reject_classes': list(reject_classes)}, _bundle_sources(), assets=assets)
 
     async def _activate(self, job_id, candidate):
         """One activation at a time. A second call never starts a second drain."""

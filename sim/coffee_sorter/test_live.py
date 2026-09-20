@@ -1808,7 +1808,7 @@ class ActivatorTest(unittest.IsolatedAsyncioTestCase):
                            item_jobs_root=self.root, item_jobs_provider='fake',
                            active_bundle=bundle, record=self.jobs)
 
-    def candidate(self, victim_id=None, **changes):
+    def candidate(self, victim_id=None, definition=None, **changes):
         """The artifacts a finished training leaves: a candidate catalog, model, and preset."""
         from test_object_catalog import generated_definition
         from test_validate_bundle import CONTINUOUS_PRESET, continuous_model
@@ -1816,7 +1816,7 @@ class ActivatorTest(unittest.IsolatedAsyncioTestCase):
         active = object_catalog.read_active(self.root / 'active')
         victim_id = victim_id or active['active_type_ids'][-1]
         catalog = object_catalog.candidate_catalog(
-            active, generated_definition('star_token'), victim_id)
+            active, definition or generated_definition('star_token'), victim_id)
         directory = self.work / f'candidate-{uuid.uuid4().hex[:8]}'
         directory.mkdir()
         object_catalog.write_catalog(directory / 'catalog', catalog)
@@ -1907,6 +1907,41 @@ class ActivatorTest(unittest.IsolatedAsyncioTestCase):
             with self.subTest(value=value):
                 self.assertEqual(value, live._without_host_paths(value))
         self.assertNotIn(str(self.work), history)
+
+    async def test_the_activated_bundle_serves_the_registry_row_and_the_glb(self):
+        from test_object_catalog import generated_definition, tiny_glb
+
+        glb = tiny_glb(index_count=6)
+        sha = hashlib.sha256(glb).hexdigest()
+        star = generated_definition('star_token')
+        star['visual']['asset'].update(visual_asset_id=f'sha256:{sha}', glb_sha256=sha)
+        (self.work / 'object.glb').write_bytes(glb)
+        evidence = {'media_type': 'model/gltf-binary', 'runtime_lod_reviewed': False,
+                    'bounds_dimensions_m': [0.017, 0.016, 0.002]}
+        assets = {star['object_type_id']: {'glb': self.work / 'object.glb',
+                                           'evidence': evidence}}
+
+        def served():
+            bundle = self.root / 'active' / 'bundles' / self.pointer()
+            rows = object_catalog.read_visual_registry(bundle)
+            self.assertEqual([(star['object_type_id'], sha, 2)], [
+                (row['object_type_id'], row['glb_sha256'], row['triangle_count'])
+                for row in rows])
+            self.assertIn(rows[0]['path'], object_catalog.verify_bundle(bundle)['files'])
+            self.assertEqual(glb, (bundle / rows[0]['path']).read_bytes())
+
+        with self.fake_swap():
+            self.assertEqual('active', await self.service._activate(
+                'job-1', self.candidate(definition=star, assets=assets)))
+            served()
+            # A real swap starts a fresh worker, so the loopback forgets the first job.
+            self.service.commands.activation = None
+            # A later activation names no asset. The surviving type keeps its row and GLB.
+            victim_id = object_catalog.select_victim(
+                object_catalog.read_active(self.root / 'active'), self.engine.reject_classes)
+            self.assertEqual('active', await self.service._activate('job-2', self.candidate(
+                victim_id, definition=generated_definition('moon_token'))))
+            served()
 
     async def test_the_final_policy_drops_the_victim_and_is_written_once(self):
         victim_id = self.packaged['active_type_ids'][-1]
