@@ -2004,6 +2004,66 @@ class PhysicsAndTrainingFlowTest(QueueTest):
         self.assertEqual(['not_submitted', 'in_flight', 'completed'],
                          stored['provider_submission_history'])
 
+    def test_an_unsaved_live_answer_is_a_consumed_failure_that_stays_completed(self):
+        """Exit 7: the answer is confirmed, so no path may read it as uncertain or unused."""
+        for scenario, reason in (
+                ('answer_unsaved', 'fake answer confirmed'),
+                ('answer_unsaved_without_status', 'the provider answered')):
+            with self.subTest(scenario=scenario):
+                self.scenarios({'physics_proposal': {'1': scenario, '2': scenario}})
+                runner = self.runner()
+                job = self.submit(description=f'Token {scenario}')
+                request_id = job['request_id']
+
+                self.drive(runner, lambda: self.state(request_id) == 'failed')
+
+                stored = self.store.get(request_id)
+                self.assertEqual('physics_proposal_failed', stored['error'])
+                self.assertEqual('completed', stored['provider_submission'])
+                self.assertEqual('completed', stored['provider_submission_history'][-1])
+                self.assertNotIn('uncertain', stored['provider_submission_history'])
+                # Both attempts count as used, and no grant comes back.
+                self.assertEqual(MAX_ATTEMPTS, stored['attempts']['physics_proposal'])
+                self.assertEqual(2, len(self.starts('physics_proposal')))
+                self.assertIsNone(stored['provider_permission'])
+                self.assertIsNone(stored['blocked_stage'])
+                self.assertTrue(stored['progress'].startswith(reason))
+                runner.shutdown()
+                (self.root / 'worker_runs.jsonl').unlink()
+
+    def test_no_paid_retry_and_no_grant_follow_a_received_response(self):
+        """Exit 7 after a granted paid call: the retry may replay the cache, never pay again."""
+        runner = self.open_runner()
+        job, job_dir = self.proposing('in_flight')
+        self.assertIsNone(job['provider_permission'])  # the launch consumed the grant
+
+        runner._settle_physics_proposal(job, job_dir, None, item_jobs.EXIT_RESPONSE_RECEIVED)
+
+        retried = self.store.get(job['request_id'])
+        self.assertEqual(('proposing_physics', 'completed'),
+                         (retried['state'], retried['provider_submission']))
+        self.assertEqual(job['attempts'], retried['attempts'])
+        self.assertIsNone(retried['provider_permission'])
+        self.assertIsNone(retried['provider_permission_stage'])
+        self.assertFalse(item_jobs.live_permitted(retried, 'paid', 'physics_proposal'))
+        argv = item_jobs.physics_proposal_command(
+            retried, job_dir, mode='paid', provider_cache=self.root / 'provider-cache')
+        self.assertNotIn('--live', argv)
+        # No operator prompt either: nothing here can lead to a new paid request.
+        self.assertIsNone(self.store.summary(retried)['primary_action'])
+
+    def test_the_retry_after_an_unsaved_answer_keeps_completed(self):
+        self.scenarios({'physics_proposal': {'1': 'answer_unsaved_without_status', '2': 'ok'}})
+        runner = self.runner()
+        job = self.submit()
+
+        self.drive(runner, lambda: self.state(job['request_id']) == 'validating_candidate')
+
+        stored = self.store.get(job['request_id'])
+        self.assertEqual(2, stored['attempts']['physics_proposal'])
+        self.assertEqual('completed', stored['provider_submission'])
+        self.assertNotIn('uncertain', stored['provider_submission_history'])
+
     def test_a_known_provider_failure_shows_its_short_path_free_reason(self):
         runner = self.open_runner()
         job, job_dir = self.proposing('not_submitted')
@@ -2033,7 +2093,8 @@ class PhysicsAndTrainingFlowTest(QueueTest):
         return ordered
 
 
-CONTRACT = Path('/private/tmp/cinta-spike/increment-c-summary-contract.md')
+# The tracked, byte-identical copy of the frozen server to UI contract.
+CONTRACT = HERE / 'ITEM_SUMMARY_CONTRACT.md'
 EXISTING_SUMMARY_KEYS = [
     'request_id', 'display_name', 'description', 'requester_name', 'state', 'error',
     'updated_at', 'created_at', 'preview', 'attempts', 'progress', 'reason', 'blocked_stage',
@@ -2079,7 +2140,6 @@ class SummaryContractTest(QueueTest):
         self.assertEqual({('evidence', 'provider_submission')}, unknown)
         self.assertEqual('not_submitted', summary['evidence']['provider_submission'])
 
-    @unittest.skipUnless(CONTRACT.is_file(), 'the frozen contract is a local coordination file')
     def test_the_block_and_member_names_equal_the_contract_tables(self):
         """The file and the code cannot drift silently: the tables are parsed, not copied."""
         text = CONTRACT.read_text()

@@ -86,6 +86,8 @@ EXIT_NOT_SUBMITTED = 3
 EXIT_UNCERTAIN = 4
 EXIT_CREDENTIALS = 5
 EXIT_CACHE_ENTRY_INVALID = 6
+# A live provider response is CONFIRMED, and saving it (the cache or the evidence) failed.
+EXIT_RESPONSE_RECEIVED = 7
 EXIT_RENDER_LOCK = 75
 
 STATES = frozenset({
@@ -970,15 +972,18 @@ class ItemJobRunner:
                                                job["provider_submission"]),
                 provider_cache_hit=bool(status.get("cache_hit")))
             return
-        if status.get("provider_submission") == "completed":
+        if code == EXIT_RESPONSE_RECEIVED or status.get("provider_submission") == "completed":
             # The provider answered and a later step failed. That is known evidence, so
             # it is never uncertain, never unconsumed, and never "no submission". The
-            # request identity stays with it.
+            # request identity stays with it. Exit 7 says so by itself: the status write
+            # may be the very write that failed, so that code never depends on the file.
+            progress = _status_progress(status) or {
+                "progress": "the provider answered, and saving the answer failed"}
             self._stage_failure(
                 job, "physics_proposal", "physics_proposal_failed", token,
                 reason="physics_proposal_failed", provider_submission="completed",
                 artifacts={**job["artifacts"], "physics": _read_json(job_dir / "physics.json")},
-                **_status_progress(status))
+                **progress)
             return
         if code == EXIT_NOT_SUBMITTED:
             self._unconsumed(job, "physics_proposal", token, "operator_required",

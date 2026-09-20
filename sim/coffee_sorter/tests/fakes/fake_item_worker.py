@@ -18,11 +18,11 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from item_jobs import (EXIT_CACHE_ENTRY_INVALID, EXIT_FAILED, EXIT_NOT_SUBMITTED, EXIT_OK,
-                       EXIT_RENDER_LOCK, EXIT_UNCERTAIN)
+from item_jobs import (EXIT_CACHE_ENTRY_INVALID, EXIT_RESPONSE_RECEIVED, EXIT_FAILED,
+                       EXIT_NOT_SUBMITTED, EXIT_OK, EXIT_RENDER_LOCK, EXIT_UNCERTAIN)
 
 SCENARIOS = ("ok", "fail_safe", "fail_hard", "uncertain", "lock_busy", "hang",
-             "cache_entry_invalid")
+             "cache_entry_invalid", "answer_unsaved", "answer_unsaved_without_status")
 PREVIEW_IMAGES = ("perspective.png", "top.png", "object.glb")
 HANG_SECONDS = 60
 # The recorded star render bounds, so the fake render reports measured-looking numbers.
@@ -131,6 +131,12 @@ def _physics_proposal(args, scenario: str) -> int:
     if scenario == "cache_entry_invalid":
         _status(args, "not_submitted", "fake physics cache verification failure")
         return EXIT_CACHE_ENTRY_INVALID
+    if scenario == "answer_unsaved":
+        _status(args, "completed", "fake answer confirmed, the cache write failed")
+        return EXIT_RESPONSE_RECEIVED
+    if scenario == "answer_unsaved_without_status":
+        # The status write itself is what failed, so the exit code is the only evidence.
+        return EXIT_RESPONSE_RECEIVED
     # Build the draft the real adapter builds, from THIS job's own artifacts, so the uri
     # stays relative to the job asset root and every hash binds to the rendered GLB.
     from object_definitions import build_object_definition
