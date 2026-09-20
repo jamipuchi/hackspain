@@ -29,7 +29,10 @@ BACKUPS = "reset-backups"
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 BACKUP_NAME = re.compile(r"^\d{8}T\d{6}Z-[0-9a-f]{8}$")
 ALLOWED_ROOT_NAMES = {
-    "active", "jobs", "history", "provider-cache", "writer.lock", BACKUPS,
+    "active", "history", "provider-cache", BACKUPS,
+}
+ALLOWED_HISTORY_NAMES = {
+    "activations.jsonl", "jobs", "training.lease", "wall-of-fame", "writer.lock",
 }
 
 
@@ -74,15 +77,28 @@ def _validate_layout(root: Path) -> dict:
         raise ResetError(f"item-control root has unknown entries: {', '.join(unknown)}")
 
     active_root = root / "active"
-    jobs = root / "jobs"
     history = root / "history"
+    jobs = history / "jobs"
     provider_cache = root / "provider-cache"
-    writer_lock = root / "writer.lock"
+    writer_lock = history / "writer.lock"
     for path, name in ((active_root, "active root"), (jobs, "jobs root"),
                        (history, "history root"),
                        (provider_cache, "provider-cache root")):
         _directory(path, name)
     _regular_file(writer_lock, "writer lock")
+    unknown_history = sorted(path.name for path in history.iterdir()
+                             if path.name not in ALLOWED_HISTORY_NAMES)
+    if unknown_history:
+        raise ResetError(f"history root has unknown entries: {', '.join(unknown_history)}")
+    lease = history / "training.lease"
+    if lease.exists():
+        _regular_file(lease, "training lease")
+    activations = history / "activations.jsonl"
+    if activations.exists():
+        _regular_file(activations, "activation history")
+    wall = history / "wall-of-fame"
+    if wall.exists():
+        _directory(wall, "Wall of Fame root")
 
     expected_active = {"active", "bundles", SEED_MARKER}
     actual_active = {path.name for path in active_root.iterdir()}
@@ -127,6 +143,7 @@ def _validate_layout(root: Path) -> dict:
         "history": history,
         "provider_cache": provider_cache,
         "writer_lock": writer_lock,
+        "training_lease": lease,
         "baseline_sha": baseline_sha,
         "current_sha": current_sha,
         "pointer": active_root / "active" / "catalog.json",
@@ -177,7 +194,8 @@ def _generated_archive_plan(layout: dict) -> list[dict]:
 
 def _validate_archive_plan(layout: dict, plans: list[dict], retired_at: str) -> None:
     wall = layout["history"] / "wall-of-fame"
-    _directory(wall, "Wall of Fame root")
+    if wall.exists():
+        _directory(wall, "Wall of Fame root")
     with tempfile.TemporaryDirectory() as temporary:
         scratch = Path(temporary)
         for plan in plans:
@@ -209,6 +227,7 @@ def _publish_archives(layout: dict, staged: Path) -> None:
     if not staged_wall.is_dir():
         return
     wall = layout["history"] / "wall-of-fame"
+    wall.mkdir(exist_ok=True)
     for source in sorted(staged_wall.iterdir()):
         target = wall / source.name
         if target.exists():
@@ -249,7 +268,6 @@ def _apply(layout: dict, plans: list[dict], retired_at: str) -> Path:
     old_jobs = backup / "jobs"
     jobs = layout["jobs"]
     jobs_stat = jobs.stat()
-    pointer_changed = False
     jobs_moved = False
     try:
         _copy_file(layout["pointer"], backup / "active.catalog.json")
@@ -265,25 +283,39 @@ def _apply(layout: dict, plans: list[dict], retired_at: str) -> Path:
                 plan["definition"]["object_type_id"] for plan in plans],
         })
         staged_archives = _stage_archives(backup, plans, retired_at)
+        if layout["training_lease"].exists():
+            _copy_file(layout["training_lease"], backup / "training.lease")
         os.replace(jobs, old_jobs)
         jobs_moved = True
         jobs.mkdir(mode=stat.S_IMODE(jobs_stat.st_mode))
         os.chown(jobs, jobs_stat.st_uid, jobs_stat.st_gid)
+        layout["training_lease"].unlink(missing_ok=True)
         object_catalog.write_active_pointer(layout["active_root"], layout["baseline_sha"])
-        pointer_changed = True
         _publish_archives(layout, staged_archives)
         return backup
     except BaseException as error:
         rollback = []
-        if pointer_changed:
-            try:
-                object_catalog.write_active_pointer(layout["active_root"], layout["current_sha"])
-            except BaseException as rollback_error:
-                rollback.append(f"pointer rollback failed: {rollback_error}")
+        try:
+            current = object_catalog.read_active(layout["active_root"])
+            pointer_sha = current.get("active_bundle_sha256")
+        except BaseException as inspect_error:
+            rollback.append(f"pointer inspection failed: {inspect_error}")
+        else:
+            if pointer_sha != layout["current_sha"]:
+                try:
+                    object_catalog.write_active_pointer(
+                        layout["active_root"], layout["current_sha"])
+                    restored = object_catalog.read_active(layout["active_root"])
+                    if restored.get("active_bundle_sha256") != layout["current_sha"]:
+                        raise ResetError("pointer restoration did not select the prior bundle")
+                except BaseException as rollback_error:
+                    rollback.append(f"pointer rollback failed: {rollback_error}")
         if jobs_moved:
             try:
                 jobs.rmdir()
                 os.replace(old_jobs, jobs)
+                if (backup / "training.lease").is_file():
+                    os.replace(backup / "training.lease", layout["training_lease"])
             except BaseException as rollback_error:
                 rollback.append(f"jobs rollback failed: {rollback_error}")
         if rollback:
@@ -298,14 +330,11 @@ def reset_state(root: Path, *, apply: bool) -> dict:
     def result(layout, plans, lock_available):
         value = {
             "mode": "apply" if apply else "dry-run",
-            "item_control_root": str(layout["root"]),
             "previous_bundle_sha256": layout["current_sha"],
             "baseline_bundle_sha256": layout["baseline_sha"],
             "retained_job_count": sum(path.is_dir() for path in layout["jobs"].iterdir()),
             "active_generated_type_ids": [
                 plan["definition"]["object_type_id"] for plan in plans],
-            "history_root": str(layout["history"]),
-            "provider_cache_root": str(layout["provider_cache"]),
             "writer_lock_available": lock_available,
             "backup": None,
         }
@@ -325,8 +354,9 @@ def reset_state(root: Path, *, apply: bool) -> dict:
         return result(layout, plans, available)
 
     _directory(root, "item-control root")
-    _regular_file(root / "writer.lock", "writer lock")
-    with (root / "writer.lock").open("r+") as lock:
+    writer_lock = root / "history" / "writer.lock"
+    _regular_file(writer_lock, "writer lock")
+    with writer_lock.open("r+") as lock:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError as error:
@@ -336,7 +366,7 @@ def reset_state(root: Path, *, apply: bool) -> dict:
         plans = _generated_archive_plan(layout)
         _validate_archive_plan(layout, plans, retired_at)
         value = result(layout, plans, True)
-        value["backup"] = str(_apply(layout, plans, retired_at))
+        value["backup"] = _apply(layout, plans, retired_at).name
         return value
 
 

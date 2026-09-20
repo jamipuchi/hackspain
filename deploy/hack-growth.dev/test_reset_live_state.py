@@ -41,13 +41,14 @@ class ResetLiveStateTest(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name) / "item-control"
         self.active = self.root / "active"
-        self.jobs = self.root / "jobs"
         self.history = self.root / "history"
+        self.jobs = self.history / "jobs"
         self.cache = self.root / "provider-cache"
         for path in (self.jobs, self.history / "wall-of-fame" / "retired-token",
                      self.cache / "cache"):
             path.mkdir(parents=True)
-        (self.root / "writer.lock").write_text("")
+        (self.history / "writer.lock").write_text("")
+        (self.history / "training.lease").write_text('{"owner":"retained"}\n')
 
         baseline_files = bundle_files()
         candidate_files = bundle_files(labels=("new_token", "stone"),
@@ -100,20 +101,26 @@ class ResetLiveStateTest(unittest.TestCase):
         self.assertEqual(before, snapshot(self.root))
 
     def test_apply_archives_jobs_and_repoints_to_the_builtin_bundle(self):
-        history_before = snapshot(self.history)
+        history_before = {
+            name: digest for name, digest in snapshot(self.history).items()
+            if not name.startswith("jobs/") and name != "training.lease"
+        }
         bundles_before = snapshot(self.active / "bundles")
         cache_before = snapshot(self.cache)
         jobs_before = snapshot(self.jobs)
 
         result = reset_live_state.reset_state(self.root, apply=True)
 
-        backup = Path(result["backup"])
+        backup = self.root / reset_live_state.BACKUPS / result["backup"]
         self.assertEqual(self.baseline,
                          object_catalog.read_active(self.active)["active_bundle_sha256"])
         self.assertEqual([], list(self.jobs.iterdir()))
         self.assertEqual(jobs_before, snapshot(backup / "jobs"))
         self.assertTrue((backup / "active.catalog.json").is_file())
         self.assertTrue((backup / reset_live_state.SEED_MARKER).is_file())
+        self.assertEqual('{"owner":"retained"}\n',
+                         (backup / "training.lease").read_text())
+        self.assertFalse((self.history / "training.lease").exists())
         assert_preserved(self, history_before, self.history)
         self.assertEqual(bundles_before, snapshot(self.active / "bundles"))
         self.assertEqual(cache_before, snapshot(self.cache))
@@ -131,7 +138,7 @@ class ResetLiveStateTest(unittest.TestCase):
             reset_live_state.reset_state(self.root, apply=False)
 
     def test_a_running_writer_is_refused(self):
-        with (self.root / "writer.lock").open("r+") as lock:
+        with (self.history / "writer.lock").open("r+") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             preview = reset_live_state.reset_state(self.root, apply=False)
             self.assertFalse(preview["writer_lock_available"])
@@ -162,6 +169,29 @@ class ResetLiveStateTest(unittest.TestCase):
             self.candidate,
             object_catalog.read_active(self.active)["active_bundle_sha256"])
         self.assertEqual([], list((self.root / reset_live_state.BACKUPS).iterdir()))
+
+    def test_post_replace_pointer_failure_restores_the_authoritative_pointer(self):
+        before = snapshot(self.root)
+        original = object_catalog.write_active_pointer
+        calls = 0
+
+        def fail_after_replace(active_root, bundle_sha256):
+            nonlocal calls
+            calls += 1
+            result = original(active_root, bundle_sha256)
+            if calls == 1:
+                raise OSError("directory fsync failed")
+            return result
+
+        with mock.patch.object(object_catalog, "write_active_pointer",
+                               side_effect=fail_after_replace):
+            with self.assertRaisesRegex(OSError, "directory fsync failed"):
+                reset_live_state.reset_state(self.root, apply=True)
+
+        self.assertEqual(before, snapshot(self.root))
+        self.assertEqual(
+            self.candidate,
+            object_catalog.read_active(self.active)["active_bundle_sha256"])
 
     def test_laptop_wrapper_defaults_to_dry_run_and_scopes_apply_to_coffee(self):
         capture = Path(self.temporary.name) / "capture"
