@@ -4,6 +4,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import shutil
 import sys
 import tempfile
 import unittest
@@ -628,6 +629,168 @@ class WallOfFameTest(CatalogRootTest):
 
         self.assertEqual((1, 3), (page["total"], page["unreadable"]))
         self.assertEqual(["builtin.test.husk"], [entry["object_type_id"] for entry in page["entries"]])
+
+
+class ArchiveCompletenessTest(CatalogRootTest):
+    """Gate A: a generated victim is archived only with its complete evidence."""
+
+    def evidence(self, root, definition, **changes):
+        glb = root / "object.glb"
+        glb.write_bytes(b"glTF" + b"\x02\x00\x00\x00" + b"generated asset bytes")
+        digest = hashlib.sha256(glb.read_bytes()).hexdigest()
+        definition["visual"]["asset"]["glb_sha256"] = digest
+        definition["visual"]["asset"]["visual_asset_id"] = f"sha256:{digest}"
+        files = {"object.glb": glb}
+        for name, data in (("perspective.png", b"\x89PNG perspective"),
+                           ("top.png", b"\x89PNG top")):
+            (root / name).write_bytes(data)
+            files[name] = root / name
+        manifest = root / "model.manifest.json"
+        manifest.write_text(json.dumps({"artifact_sha256": "b" * 64, "version": 3}))
+        files["model.manifest.json"] = manifest
+        files.update(changes)
+        return files
+
+    def test_a_generated_archive_without_evidence_is_refused(self):
+        root = self.make_root()
+        with self.assertRaises(CatalogError) as raised:
+            archive_type(root, generated_definition(), "2026-09-20T01:00:00Z")
+
+        message = str(raised.exception)
+        for name in ("object.glb", "perspective.png", "top.png", "model.manifest.json"):
+            self.assertIn(name, message)
+        # Nothing may be written when the archive is refused.
+        self.assertFalse((root / "wall-of-fame").exists())
+        self.assertEqual([], sorted(root.iterdir()))
+
+    def test_each_missing_evidence_file_is_named(self):
+        for missing in ("object.glb", "perspective.png", "top.png", "model.manifest.json"):
+            root = self.make_root()
+            definition = generated_definition()
+            files = self.evidence(root, definition)
+            files.pop(missing)
+            with self.assertRaises(CatalogError) as raised:
+                archive_type(root, definition, "2026-09-20T01:00:00Z", evidence=files)
+            self.assertIn(missing, str(raised.exception))
+            self.assertFalse((root / "wall-of-fame").exists())
+
+    def test_a_wrong_asset_or_model_manifest_is_refused(self):
+        root = self.make_root()
+        definition = generated_definition()
+        files = self.evidence(root, definition)
+
+        (root / "object.glb").write_bytes(b"glTF" + b"different asset bytes")
+        with self.assertRaisesRegex(CatalogError, "does not match the definition hash"):
+            archive_type(root, definition, "2026-09-20T01:00:00Z", evidence=files)
+
+        (root / "object.glb").write_bytes(b"NOTGLTF" + b"x" * 8)
+        definition["visual"]["asset"]["glb_sha256"] = hashlib.sha256(
+            (root / "object.glb").read_bytes()).hexdigest()
+        definition["visual"]["asset"]["visual_asset_id"] = (
+            f"sha256:{definition['visual']['asset']['glb_sha256']}")
+        with self.assertRaisesRegex(CatalogError, "not a GLB file"):
+            archive_type(root, definition, "2026-09-20T01:00:00Z", evidence=files)
+
+        definition = generated_definition()
+        files = self.evidence(root, definition)
+        (root / "model.manifest.json").write_text(json.dumps({"artifact_sha256": "short"}))
+        with self.assertRaisesRegex(CatalogError, "artifact_sha256"):
+            archive_type(root, definition, "2026-09-20T01:00:00Z", evidence=files)
+        (root / "model.manifest.json").write_text("not json")
+        with self.assertRaisesRegex(CatalogError, "is not JSON"):
+            archive_type(root, definition, "2026-09-20T01:00:00Z", evidence=files)
+        self.assertFalse((root / "wall-of-fame").exists())
+
+    def test_a_complete_generated_archive_records_the_model_artifact(self):
+        root = self.make_root()
+        definition = generated_definition()
+        directory = archive_type(root, definition, "2026-09-20T01:00:00Z",
+                                 evidence=self.evidence(root, definition))
+
+        record = json.loads((directory / "archive.json").read_text())
+        self.assertEqual(record["model_artifact_sha256"], "b" * 64)
+        self.assertEqual(sorted(record["evidence"]),
+                         ["model.manifest.json", "object.glb", "perspective.png", "top.png"])
+
+    def test_a_builtin_victim_keeps_optional_evidence(self):
+        root = self.make_root()
+        directory = archive_type(root, builtin_definition("stone"), "2026-09-20T01:00:00Z")
+        record = json.loads((directory / "archive.json").read_text())
+        self.assertIsNone(record["model_artifact_sha256"])
+
+        manifest = root / "model.manifest.json"
+        manifest.write_text(json.dumps({"artifact_sha256": "c" * 64}))
+        other = archive_type(root, builtin_definition("stick"), "2026-09-20T01:00:00Z",
+                             evidence={"model.manifest.json": manifest})
+        self.assertEqual(json.loads((other / "archive.json").read_text())["model_artifact_sha256"],
+                         "c" * 64)
+
+    def test_a_page_entry_describes_a_thumbnail(self):
+        root = self.make_root()
+        definition = generated_definition()
+        archive_type(root, definition, "2026-09-20T01:00:00Z",
+                     evidence=self.evidence(root, definition))
+        archive_type(root, builtin_definition("stone"), "2026-09-20T00:00:00Z")
+
+        entries = wall_of_fame_page(root)["entries"]
+
+        generated = next(entry for entry in entries if entry["object_type_id"].startswith("gen"))
+        # size_mm [[8, 8], [6, 6], [1, 1]] gives the mean of each range in metres.
+        self.assertEqual(generated["preview"],
+                         {"shape": "box", "axes_m": [0.008, 0.006, 0.001],
+                          "rgb": [0.82, 0.68, 0.21]})
+        builtin = next(entry for entry in entries if entry["object_type_id"].startswith("builtin"))
+        self.assertEqual(builtin["preview"]["shape"], "ellipsoid")
+        self.assertEqual(len(builtin["preview"]["axes_m"]), 3)
+
+
+    def test_an_archive_without_a_readable_definition_counts_as_unreadable(self):
+        """An archived type without its definition is incomplete, not a nameless entry.
+
+        Showing a name with no geometry would be a half-truth, and the page already
+        reports damaged entries with a count that never hides the healthy ones.
+        """
+        root = self.make_root()
+        archive_type(root, builtin_definition("stone"), "2026-09-20T00:00:00Z")
+        definition = generated_definition()
+        archive_type(root, definition, "2026-09-20T01:00:00Z",
+                     evidence=self.evidence(root, definition))
+        damaged = root / "wall-of-fame" / definition["object_type_id"] / "definition.json"
+
+        damaged.unlink()
+        page = wall_of_fame_page(root)
+        self.assertEqual(page["total"], 1)
+        self.assertEqual(page["unreadable"], 1)
+        self.assertEqual([entry["object_type_id"] for entry in page["entries"]],
+                         ["builtin.test.stone"])
+
+        damaged.write_text("{not json}")
+        self.assertEqual(wall_of_fame_page(root)["unreadable"], 1)
+        damaged.write_text(json.dumps({"visual": {"shape": "box"}}))
+        self.assertEqual(wall_of_fame_page(root)["unreadable"], 1)
+        # The healthy entry still carries its thumbnail description.
+        self.assertIsNotNone(wall_of_fame_page(root)["entries"][0]["preview"])
+
+
+class BundlePointerReproductionTest(CatalogRootTest):
+    """Gate B reproduction from the work order, against the packaged catalog."""
+
+    def test_a_packaged_catalog_with_an_unknown_bundle_pointer_is_refused(self):
+        root = self.make_root() / "catalog"
+        shutil.copytree(object_catalog.CATALOG_ROOT, root)
+        manifest = root / "active" / "catalog.json"
+        value = json.loads(manifest.read_text())
+        self.assertIsNone(value["active_bundle_sha256"])
+        # The packaged default still loads with a null pointer.
+        self.assertEqual(len(load_catalog(root)["definitions"]), value["max_active_types"])
+
+        value["active_bundle_sha256"] = "f" * 64
+        manifest.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
+
+        with self.assertRaisesRegex(CatalogError, "requires a bundles root"):
+            load_catalog(root)
+        with self.assertRaisesRegex(CatalogError, "bundle directory is missing"):
+            load_catalog(root, bundles_root=root.parent / "bundles")
 
 
 class ReviewRegressionTest(CatalogRootTest):

@@ -15,6 +15,7 @@ import math
 import os
 import re
 import shutil
+import socket
 import tempfile
 from pathlib import Path
 from typing import Any, Mapping
@@ -45,6 +46,21 @@ _CATALOG_FIELDS = {
     "schema_version", "profile_name", "belt_rgb", "catalog_revision", "max_active_types",
     "active_type_ids", "definition_sha256", "active_bundle_sha256",
 }
+BUNDLE_SCHEMA_VERSION = 1
+BUNDLE_MANIFEST = "bundle.json"
+BUNDLE_CATALOG = "catalog/active/catalog.json"
+BUNDLE_PRESET = "preset.json"
+GLB_MAGIC = b"glTF"
+# A generated victim carries its rendered asset and the model that recognised it.
+GENERATED_EVIDENCE = ("object.glb", "perspective.png", "top.png", "model.manifest.json")
+_CHUNK_BYTES = 1 << 20
+# User and provider text. A date or a slash inside these is valid content, not metadata.
+_USER_TEXT_FIELDS = frozenset({"display_name", "description", "design_notes",
+                               "material_assumption", "limitations"})
+_COMMON_HOST_NAMES = frozenset({"localhost"})
+_DRIVE_RE = re.compile(r"^[A-Za-z]:[\\/]")
+# A seeded bundle carries no date, so an activation can never be dated by its bytes.
+_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 
 class CatalogError(ValueError):
@@ -151,8 +167,14 @@ def load_definition(path: Path, expected_sha256: str | None = None) -> dict[str,
     return definition
 
 
-def load_catalog(root: Path = CATALOG_ROOT, manifest: str = "active/catalog.json") -> dict[str, Any]:
-    """Load one validated manifest and only the definitions that it selects."""
+def load_catalog(root: Path = CATALOG_ROOT, manifest: str = "active/catalog.json",
+                 bundles_root: Path | None = None) -> dict[str, Any]:
+    """Load one validated manifest and only the definitions that it selects.
+
+    A non-null active_bundle_sha256 is a promise about bytes, not a syntax field. It
+    requires a bundles root, a verifying bundle, and an inner catalog that agrees with
+    this pointer. The definitions then come from that bundle, never from the root.
+    """
     root = Path(root)
     # Safe relative segments only. An absolute or parent path would leave the catalog root.
     if not isinstance(manifest, str) or not _MANIFEST_RE.fullmatch(manifest):
@@ -181,13 +203,17 @@ def load_catalog(root: Path = CATALOG_ROOT, manifest: str = "active/catalog.json
         raise CatalogError("active type identifiers must be unique and hashed exactly once")
     if catalog["catalog_revision"] != catalog_revision(ids, hashes):
         raise CatalogError("catalog_revision does not match the ordered active set")
+    definitions_root = root
     if catalog["active_bundle_sha256"] is not None:
         _sha256(catalog["active_bundle_sha256"], "active_bundle_sha256")
+        definitions_root = _bound_bundle_catalog(catalog, bundles_root)
 
     definitions = []
     for type_id in ids:
         _sha256(hashes[type_id], f"definition_sha256[{type_id}]")
-        definition = load_definition(_inside(root, root / "definitions" / f"{type_id}.json"), hashes[type_id])
+        definition = load_definition(
+            _inside(definitions_root, definitions_root / "definitions" / f"{type_id}.json"),
+            hashes[type_id])
         if definition["object_type_id"] != type_id:
             raise CatalogError(f"definition identifier does not match its file name: {type_id}")
         if definition["lifecycle_state"] != ACTIVE_LIFECYCLE:
@@ -198,6 +224,26 @@ def load_catalog(root: Path = CATALOG_ROOT, manifest: str = "active/catalog.json
         raise CatalogError("classifier labels must be unique in one catalog")
     catalog["definitions"] = definitions
     return catalog
+
+
+def _bound_bundle_catalog(catalog: Mapping[str, Any], bundles_root: Path | None) -> Path:
+    """Verify the pointed bundle and require it to agree with the pointer."""
+    if bundles_root is None:
+        raise CatalogError("an active bundle pointer requires a bundles root")
+    bundle = Path(bundles_root) / catalog["active_bundle_sha256"]
+    verify_bundle(bundle)
+    try:
+        inner = json.loads((bundle / BUNDLE_CATALOG).read_text())
+    except (OSError, json.JSONDecodeError) as error:
+        raise CatalogError(f"the active bundle has no catalog manifest: {bundle.name}") from error
+    inner = _mapping(inner, "bundle catalog")
+    if inner.get("active_bundle_sha256") is not None:
+        raise CatalogError("a bundle catalog must carry a null active_bundle_sha256")
+    for field in ("catalog_revision", "active_type_ids", "definition_sha256",
+                  "max_active_types", "profile_name"):
+        if inner.get(field) != catalog[field]:
+            raise CatalogError(f"the active pointer and its bundle disagree on {field}")
+    return bundle / "catalog"
 
 
 def catalog_labels(catalog: Mapping[str, Any]) -> list[str]:
@@ -362,13 +408,27 @@ def _publish_staged(target: Path, files: Mapping[str, bytes]) -> Path:
             (staging / name).parent.mkdir(parents=True, exist_ok=True)
             (staging / name).write_bytes(data)
         # A rename onto an existing directory fails, so a second writer cannot replace the first.
-        os.replace(staging, target)
-    except BaseException as error:
+        if not _replace_directory(staging, target):
+            raise CatalogError(f"directory already exists: {target.name}")
+    except BaseException:
         shutil.rmtree(staging, ignore_errors=True)
-        if isinstance(error, OSError) and target.exists():
-            raise CatalogError(f"directory already exists: {target.name}") from error
         raise
     return target
+
+
+def _replace_directory(staging: Path, target: Path) -> bool:
+    """One rename that never overwrites a published directory.
+
+    Returns False when another writer published that name first, so a raw OSError never
+    reaches a caller. The caller decides whether that is an error or a no-op.
+    """
+    try:
+        os.replace(staging, target)
+        return True
+    except OSError as error:
+        if target.exists():
+            return False
+        raise CatalogError(f"directory cannot be published: {target.name}") from error
 
 
 def archive_type(root: Path, definition: Mapping[str, Any], retired_at: str,
@@ -385,6 +445,7 @@ def archive_type(root: Path, definition: Mapping[str, Any], retired_at: str,
             files[name] = Path(source).read_bytes()
         except OSError as error:
             raise CatalogError(f"evidence file cannot be read: {name}") from error
+    model_artifact = _archive_model_artifact(archived, files)
     files["definition.json"] = _pretty(archived)
     files["archive.json"] = _pretty({
         "object_type_id": archived["object_type_id"],
@@ -394,6 +455,7 @@ def archive_type(root: Path, definition: Mapping[str, Any], retired_at: str,
         "definition_sha256": definition_sha256(archived),
         "provenance": archived["provenance"],
         "evidence": {name: hashlib.sha256(files[name]).hexdigest() for name in sorted(evidence or {})},
+        "model_artifact_sha256": model_artifact,
     })
 
     wall = Path(root) / "wall-of-fame"
@@ -405,6 +467,28 @@ def archive_type(root: Path, definition: Mapping[str, Any], retired_at: str,
             raise CatalogError(f"an archived type is immutable: {archived['object_type_id']}")
         return directory
     return _publish_staged(directory, files)
+
+
+def _archive_model_artifact(archived: Mapping[str, Any],
+                            files: Mapping[str, bytes]) -> str | None:
+    """A generated victim needs its rendered asset and its model evidence.
+
+    Every check runs before any write, so a refused archive leaves nothing behind. A
+    built-in victim has no GLB, so its evidence stays optional.
+    """
+    if archived["provenance"]["kind"] == "generated":
+        missing = [name for name in GENERATED_EVIDENCE if name not in files]
+        if missing:
+            raise CatalogError(
+                f"a generated archive requires evidence: {', '.join(missing)}")
+        glb = files["object.glb"]
+        if not glb.startswith(GLB_MAGIC):
+            raise CatalogError("archived object.glb is not a GLB file")
+        if hashlib.sha256(glb).hexdigest() != archived["visual"]["asset"]["glb_sha256"]:
+            raise CatalogError("archived object.glb does not match the definition hash")
+    if "model.manifest.json" not in files:
+        return None
+    return _model_artifact_sha256(files["model.manifest.json"])
 
 
 def wall_of_fame_page(root: Path = CATALOG_ROOT, offset: int = 0, limit: int = MAX_WALL_PAGE) -> dict[str, Any]:
@@ -428,10 +512,368 @@ def wall_of_fame_page(root: Path = CATALOG_ROOT, offset: int = 0, limit: int = M
         except (OSError, ValueError, KeyError, TypeError):
             unreadable += 1
             continue
-        entries.append(entry)
+        # An archived type without a readable definition is incomplete. The page counts
+        # it with the other damaged entries instead of showing a name with no geometry.
+        preview = _archive_preview(directory / "definition.json")
+        if preview is None:
+            unreadable += 1
+            continue
+        entries.append({**entry, "preview": preview})
     entries.sort(key=lambda entry: (entry["retired_at"], entry["object_type_id"]), reverse=True)
     return {"total": len(entries), "unreadable": unreadable, "offset": offset, "limit": limit,
             "entries": entries[offset:offset + limit]}
+
+
+def write_bundle_manifest(staging_dir: Path) -> str:
+    """Describe every file under one staging directory and return the bundle identity.
+
+    The manifest lists relative posix paths only, so the same content in two different
+    parent directories produces the same identity. Nothing inside a bundle names it.
+    """
+    staging = Path(staging_dir)
+    files: dict[str, dict[str, Any]] = {}
+    for path in sorted(staging.rglob("*")):
+        if path.is_symlink():
+            raise CatalogError("a bundle cannot contain a symlink")
+        if path.is_dir():
+            continue
+        name = path.relative_to(staging).as_posix()
+        if name == BUNDLE_MANIFEST:
+            continue
+        _bundle_relative(name)
+        digest, size = _file_sha256(path)
+        files[name] = {"sha256": digest, "bytes": size}
+    data = canonical_json({"schema_version": BUNDLE_SCHEMA_VERSION, "files": files})
+    (staging / BUNDLE_MANIFEST).write_bytes(data)
+    return hashlib.sha256(data).hexdigest()
+
+
+def publish_bundle(bundles_root: Path, files: Mapping[str, Any]) -> str:
+    """Stage one bundle, name it from its own content, and publish it with one rename.
+
+    Each value is either the file bytes or a source path to copy. An identical bundle is
+    a no-op. A directory of that name that does not verify is an error.
+    """
+    bundles_root = Path(bundles_root)
+    bundles_root.mkdir(parents=True, exist_ok=True)
+    # The dot prefix keeps an interrupted write outside every identifier pattern.
+    staging = Path(tempfile.mkdtemp(prefix=".staging-", dir=bundles_root))
+    try:
+        for name, source in files.items():
+            _bundle_relative(name)
+            target = staging / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if isinstance(source, (bytes, bytearray)):
+                target.write_bytes(bytes(source))
+            else:
+                _copy_file(Path(source), target)
+        digest = write_bundle_manifest(staging)
+        # Never publish a bundle that verify_bundle would refuse. The name check needs the
+        # final directory, so only the content rules can run here.
+        listed = json.loads((staging / BUNDLE_MANIFEST).read_text())["files"]
+        _verify_bundle_content(staging, listed)
+        directory = bundles_root / digest
+        # The check and the rename cannot be atomic, so a second writer can win between
+        # them. Either answer ends here: the name is the content hash, so a directory of
+        # that name that verifies holds exactly this content.
+        if directory.exists() or not _replace_directory(staging, directory):
+            verify_bundle(directory)
+    except BaseException:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    # A successful rename already moved the staging directory away.
+    shutil.rmtree(staging, ignore_errors=True)
+    return digest
+
+
+def verify_bundle(bundle_dir: Path) -> dict[str, Any]:
+    """Recompute one bundle from its own bytes. Any violation refuses the whole bundle.
+
+    No message names a host path: a bundle is identified by its sha and by the relative
+    paths it lists.
+    """
+    directory = Path(bundle_dir)
+    name = directory.name
+    if directory.is_symlink() or not directory.is_dir():
+        raise CatalogError(f"bundle directory is missing: {name}")
+    if not _SHA256_RE.fullmatch(name):
+        raise CatalogError(f"bundle directory name is not a sha256: {name}")
+    try:
+        data = (directory / BUNDLE_MANIFEST).read_bytes()
+    except OSError as error:
+        raise CatalogError(f"bundle manifest cannot be read: {name}") from error
+    if hashlib.sha256(data).hexdigest() != name:
+        raise CatalogError(f"bundle manifest hash does not match its directory: {name}")
+    try:
+        manifest = json.loads(data)
+    except json.JSONDecodeError as error:
+        raise CatalogError(f"bundle manifest is not JSON: {name}") from error
+    manifest = dict(_mapping(manifest, "bundle"))
+    _exact(manifest, {"schema_version", "files"}, "bundle")
+    if manifest["schema_version"] != BUNDLE_SCHEMA_VERSION:
+        raise CatalogError(f"bundle schema version is unsupported: {name}")
+    listed = _mapping(manifest["files"], "bundle.files")
+
+    present = set()
+    for path in directory.rglob("*"):
+        if path.is_symlink():
+            raise CatalogError(f"bundle contains a symlink: {name}")
+        if path.is_dir():
+            continue
+        relative = path.relative_to(directory).as_posix()
+        if relative != BUNDLE_MANIFEST:
+            present.add(relative)
+    if present != set(listed):
+        raise CatalogError(f"bundle files do not match its manifest: {name}")
+
+    for relative in sorted(listed):
+        _bundle_relative(relative)
+        record = _mapping(listed[relative], f"bundle.files[{relative}]")
+        _exact(record, {"sha256", "bytes"}, f"bundle.files[{relative}]")
+        _sha256(record["sha256"], f"bundle.files[{relative}].sha256")
+        size = record["bytes"]
+        if isinstance(size, bool) or not isinstance(size, int) or size < 0:
+            raise CatalogError(f"bundle file size is invalid: {relative}")
+        path = _inside(directory, directory / relative)
+        if not path.is_file():
+            raise CatalogError(f"bundle file is missing: {relative}")
+        digest, actual = _file_sha256(path)
+        if digest != record["sha256"] or actual != size:
+            raise CatalogError(f"bundle file does not match its manifest: {relative}")
+
+    _verify_bundle_content(directory, listed)
+    return {"bundle_sha256": name, "files": {key: dict(listed[key]) for key in sorted(listed)}}
+
+
+def write_active_pointer(active_root: Path, bundle_sha256: str) -> Path:
+    """Point one persistent root at a verified bundle with one atomic replace."""
+    bundle = _verified_bundle(active_root, bundle_sha256)
+    try:
+        inner = json.loads((bundle / BUNDLE_CATALOG).read_text())
+    except (OSError, json.JSONDecodeError) as error:
+        raise CatalogError(f"the bundle has no catalog manifest: {bundle.name}") from error
+    pointer = {**dict(_mapping(inner, "bundle catalog")), "active_bundle_sha256": bundle.name}
+    _exact(pointer, _CATALOG_FIELDS, "catalog")
+    target = Path(active_root) / "active" / "catalog.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    _replace_atomically(target, _pretty(pointer))
+    return target
+
+
+def read_active(active_root: Path) -> dict[str, Any]:
+    """Load the catalog the pointer selects, always through its verified bundle."""
+    active_root = Path(active_root)
+    return load_catalog(active_root, bundles_root=active_root / "bundles")
+
+
+def rollback_active(active_root: Path, bundle_sha256: str) -> Path:
+    """Repoint to a previously published bundle after verifying it.
+
+    Rollback is one pointer move. It never touches a history directory and never deletes
+    a bundle, so job records written after a snapshot survive.
+    """
+    return write_active_pointer(active_root, bundle_sha256)
+
+
+def seed_bundle_files(catalog_root: Path, model_path: Path, model_manifest_path: Path,
+                      preset: Mapping[str, Any], policy: Mapping[str, Any],
+                      sources: Mapping[str, Any]) -> dict[str, bytes]:
+    """Build bundle zero from the packaged assets. The packaged tree is never modified."""
+    catalog_root, model_path = Path(catalog_root), Path(model_path)
+    catalog = load_catalog(catalog_root)
+    manifest = {key: value for key, value in catalog.items() if key != "definitions"}
+    manifest["active_bundle_sha256"] = None
+    files: dict[str, bytes] = {BUNDLE_CATALOG: _pretty(manifest)}
+    for definition in catalog["definitions"]:
+        files[f"catalog/definitions/{definition['object_type_id']}.json"] = _pretty(definition)
+    files[f"model/{model_path.name}"] = model_path.read_bytes()
+    files[f"model/{Path(model_manifest_path).name}"] = Path(model_manifest_path).read_bytes()
+
+    reject_classes = list(_mapping(policy, "policy").get("reject_classes", []))
+    seeded = dict(_mapping(preset, "preset"))
+    seeded["model_path"] = f"model/{model_path.name}"
+    seeded["model_path_root"] = "preset"
+    seeded["policy"] = {"initial_reject_classes": reject_classes}
+    files[BUNDLE_PRESET] = _pretty(seeded)
+    files["policy.json"] = _pretty(dict(_mapping(policy, "policy")))
+    files["sources.json"] = _pretty(dict(_mapping(sources, "sources")))
+    return files
+
+
+def _verified_bundle(active_root: Path, bundle_sha256: Any) -> Path:
+    if not isinstance(bundle_sha256, str) or not _SHA256_RE.fullmatch(bundle_sha256):
+        raise CatalogError("a bundle identity must be a lowercase sha256")
+    bundle = Path(active_root) / "bundles" / bundle_sha256
+    verify_bundle(bundle)
+    return bundle
+
+
+def _verify_bundle_content(directory: Path, listed: Mapping[str, Any]) -> None:
+    """Content rules for every JSON file a bundle carries.
+
+    Every producer runs these: publish_bundle on the staged tree and verify_bundle on a
+    published one. A fixed file list would let a later producer past them, and the
+    per-definition files would then have no cover at all.
+    """
+    for relative in sorted(listed):
+        if not relative.endswith(".json"):
+            continue
+        try:
+            value = json.loads((directory / relative).read_text())
+        except (OSError, json.JSONDecodeError) as error:
+            raise CatalogError(f"bundle file is not JSON: {relative}") from error
+        # The bundle identity needs no rule here: embedding a digest changes the digest,
+        # so no bundle can name itself. test_no_file_inside_a_bundle_names_the_bundle
+        # asserts that property directly.
+        for text in _structural_strings(value):
+            reason = _volatile_reason(text)
+            if reason is not None:
+                raise CatalogError(f"bundle file carries {reason}: {relative}")
+        if relative == BUNDLE_CATALOG and _mapping(
+                value, "bundle catalog").get("active_bundle_sha256") is not None:
+            raise CatalogError("a bundle catalog must carry a null active_bundle_sha256")
+        if relative == BUNDLE_PRESET:
+            _verify_bundle_preset(directory, value)
+
+
+def _verify_bundle_preset(directory: Path, preset: Any) -> None:
+    """The model travels with the bundle, so its path stays relative and inside."""
+    preset = _mapping(preset, "preset")
+    if preset.get("model_path_root") != "preset":
+        raise CatalogError("a bundle preset must declare model_path_root preset")
+    model_path = preset.get("model_path")
+    if not isinstance(model_path, str) or not model_path:
+        raise CatalogError("a bundle preset must declare a relative model_path")
+    _bundle_relative(model_path)
+    if not _inside(directory, directory / model_path).is_file():
+        raise CatalogError("the bundle preset model path is missing")
+
+
+def _bundle_relative(name: Any) -> str:
+    """A bundle key is one safe relative posix path."""
+    if not isinstance(name, str) or not name or "\\" in name or "\x00" in name:
+        raise CatalogError(f"bundle path is invalid: {name if isinstance(name, str) else type(name).__name__}")
+    if name.startswith("/") or _DRIVE_RE.match(name):
+        raise CatalogError(f"bundle path must be relative: {name}")
+    segments = name.split("/")
+    if any(segment in ("", ".", "..") for segment in segments):
+        raise CatalogError(f"bundle path has an unsafe segment: {name}")
+    return name
+
+
+def _file_sha256(path: Path) -> tuple[str, int]:
+    """Hash one file in chunks, so a large model never loads into memory."""
+    digest, size = hashlib.sha256(), 0
+    with open(path, "rb") as handle:
+        while True:
+            chunk = handle.read(_CHUNK_BYTES)
+            if not chunk:
+                break
+            digest.update(chunk)
+            size += len(chunk)
+    return digest.hexdigest(), size
+
+
+def _copy_file(source: Path, target: Path) -> None:
+    with open(source, "rb") as reader, open(target, "wb") as writer:
+        shutil.copyfileobj(reader, writer, _CHUNK_BYTES)
+
+
+def _string_values(value: Any):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, Mapping):
+        for item in value.values():
+            yield from _string_values(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _string_values(item)
+
+
+def _structural_strings(value: Any, key: str | None = None):
+    """Yield only the strings this code writes.
+
+    User and provider text may legitimately hold a date, a dotted word, or a slash, so a
+    display name or a description is never a path or a timestamp for these rules.
+    """
+    if key in _USER_TEXT_FIELDS:
+        return
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, Mapping):
+        for name, item in value.items():
+            yield from _structural_strings(item, name if isinstance(name, str) else None)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _structural_strings(item, key)
+
+
+def _volatile_reason(text: str) -> str | None:
+    """Why one structural value may not travel inside a bundle.
+
+    Only the approved exclusions: a host path and runtime metadata. A version string, a
+    hex digest, an object type id, and a plain relative file name are ordinary content.
+    """
+    if text.startswith("/") or _DRIVE_RE.match(text):
+        return "an absolute path"
+    if text == ".." or text.startswith("../") or "/../" in text:
+        return "a path that leaves the bundle"
+    if _DATE_RE.search(text):
+        return "a timestamp"
+    host = _host_name()
+    if host is not None and host in text:
+        return "a host name"
+    return None
+
+
+def _host_name() -> str | None:
+    """Only this machine's exact name, and only when it carries signal.
+
+    A broader guess would reject valid content, which is worse than missing a name.
+    """
+    try:
+        name = socket.gethostname()
+    except OSError:
+        return None
+    return None if len(name) < 4 or name.lower() in _COMMON_HOST_NAMES else name
+
+
+def _replace_atomically(path: Path, data: bytes) -> None:
+    """One temp file in the same directory, flushed to disk, then one rename."""
+    handle = tempfile.NamedTemporaryFile("wb", dir=path.parent, prefix=".tmp-", delete=False)
+    try:
+        handle.write(data)
+        handle.flush()
+        os.fsync(handle.fileno())
+        handle.close()
+        os.replace(handle.name, path)
+    except BaseException:
+        handle.close()
+        try:
+            os.unlink(handle.name)
+        except OSError:
+            pass
+        raise
+
+
+def _model_artifact_sha256(data: bytes) -> str:
+    try:
+        manifest = json.loads(data)
+    except json.JSONDecodeError as error:
+        raise CatalogError("archived model.manifest.json is not JSON") from error
+    value = _mapping(manifest, "model manifest").get("artifact_sha256")
+    _sha256(value, "model manifest artifact_sha256")
+    return value
+
+
+def _archive_preview(path: Path) -> dict[str, Any] | None:
+    """Describe one archived type so the UI can draw it with its one existing renderer."""
+    try:
+        visual = json.loads(Path(path).read_text())["visual"]
+        axes = [round((low + high) / 2000.0, 9) for low, high in visual["size_mm"]]
+        return {"shape": visual["shape"], "axes_m": axes, "rgb": list(visual["rgb"])}
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
 
 
 def _inside(root: Path, path: Path) -> Path:
