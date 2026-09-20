@@ -6,6 +6,7 @@ import asyncio
 import contextlib
 from collections import deque
 import hashlib
+import importlib.util
 import ipaddress
 import json
 import logging
@@ -225,6 +226,17 @@ def _public_job(job):
                  if key not in _PRIVATE_ARTIFACTS}
     public = {**job, 'worker': _public_worker(job.get('worker')), 'artifacts': artifacts}
     return _public_record(public)
+
+
+def _reset_state_function():
+    """Load the reset helper from its repository path without adding deploy to sys.path."""
+    path = HERE.parents[1] / 'deploy' / 'hack-growth.dev' / 'reset_live_state.py'
+    spec = importlib.util.spec_from_file_location('_cinta_reset_live_state', path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError('The reset helper is unavailable.')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.reset_state
 
 
 def _validate_item_job_arguments(parser, args, item_jobs_root):
@@ -818,6 +830,8 @@ class LiveService:
         self.item_jobs_state = None
         self.item_jobs_revision = None
         self.item_jobs_unhealthy = False
+        self.resetting = False
+        self.last_reset_result = None
         self.catalog_revision = None
         self.active_type_ids = []
         self._create_worker(self.session_out)
@@ -967,6 +981,8 @@ class LiveService:
         refused = self._require_origin(request)
         if refused is not None:
             return refused
+        if self.resetting:
+            return web.json_response({'ok': False, 'error_code': 'reset_in_progress'}, status=409)
         try:
             job = await asyncio.to_thread(action, request.match_info['request_id'], *arguments)
         except item_jobs.ItemJobError as error:
@@ -977,6 +993,8 @@ class LiveService:
         body = await self._item_body(request)
         if isinstance(body, web.Response):
             return body
+        if self.resetting:
+            return web.json_response({'ok': False, 'error_code': 'reset_in_progress'}, status=409)
         try:
             job, created = await asyncio.to_thread(
                 self.item_jobs.submit, body, self.catalog_revision)
@@ -1018,6 +1036,76 @@ class LiveService:
             # No message repeats a host path.
             return _item_job_response(error.code)
         return web.Response(body=data, content_type=content_type)
+
+    async def reset_defaults(self, request):
+        """Return to the verified seed bundle after every queue and worker owner stops."""
+        body = await self._item_body(request)
+        if isinstance(body, web.Response):
+            return body
+        if body:
+            return _item_job_response('invalid_request')
+        if self.resetting:
+            return web.json_response({'ok': False, 'error_code': 'reset_in_progress'}, status=409)
+        marker = self.item_jobs_root / 'active' / object_catalog.SEED_MARKER
+        try:
+            seed = json.loads(marker.read_text())['bundle_sha256']
+            if (self.last_reset_result is not None
+                    and _pointer_bundle(self.item_jobs_root / 'active') == seed):
+                return web.json_response({'ok': True, 'result': self.last_reset_result})
+        except (OSError, ValueError, KeyError, TypeError):
+            pass
+
+        self.resetting = True
+        previous_session_id = self.state.get('session_id')
+        stopped = False
+        try:
+            await asyncio.to_thread(self._close_item_jobs)
+            if self.item_jobs is not None or self.item_runner is not None:
+                raise RuntimeError('The item queue did not release its writer lock.')
+            self.item_jobs_state = None
+            await self._cancel_pump()
+            await self._stop_worker(resolve_acks=True)
+            await self._resolve_pending('The session reset before this injection completed.')
+            self._write_service_profile()
+            self._close_queues()
+            stopped = True
+
+            reset_state = _reset_state_function()
+            result = await asyncio.to_thread(reset_state, self.item_jobs_root, apply=True)
+            bundle = object_catalog.resolve_active_bundle(self.item_jobs_root / 'active')
+            self.preset, self.active_bundle = bundle / object_catalog.BUNDLE_PRESET, bundle
+            os.environ[object_catalog.CATALOG_ROOT_ENV] = str(bundle / 'catalog')
+            self._refresh_active_identity()
+            self.requests = {}
+            self.restart_count += 1
+            self.session_out = self.out.parent / \
+                f'{self.out.name}-reset-{self.restart_count:03d}-{uuid.uuid4().hex[:8]}'
+            self._reset_profile()
+            self.state = {'status': 'starting', 'previous_session_id': previous_session_id}
+            self.state_ready = asyncio.Event()
+            self._create_worker(self.session_out)
+            await asyncio.to_thread(self._open_item_jobs)
+            self.process.start()
+            self.task = asyncio.create_task(self.pump())
+            await asyncio.wait_for(self.state_ready.wait(), timeout=30)
+            if self.state.get('status') == 'failed':
+                raise RuntimeError(self.state.get('error') or 'The seed worker failed to start.')
+            self.last_reset_result = result
+            return web.json_response({'ok': True, 'result': result})
+        except Exception:
+            if stopped and self.process is None:
+                with contextlib.suppress(Exception):
+                    bundle = object_catalog.resolve_active_bundle(self.item_jobs_root / 'active')
+                    self.preset, self.active_bundle = bundle / object_catalog.BUNDLE_PRESET, bundle
+                    os.environ[object_catalog.CATALOG_ROOT_ENV] = str(bundle / 'catalog')
+                    self._refresh_active_identity()
+                    self._create_worker(self.session_out)
+                    await asyncio.to_thread(self._open_item_jobs)
+                    self.process.start()
+                    self.task = asyncio.create_task(self.pump())
+            return web.json_response({'ok': False, 'error_code': 'reset_failed'}, status=500)
+        finally:
+            self.resetting = False
 
     def _read_catalog_asset(self, revision, digest):
         """The GLB the ACTIVE bundle lists for this pair, or None. The caller names no path."""
@@ -2156,6 +2244,7 @@ def main():
                     web.post('/item-jobs/{request_id}/resolve-provider', service.resolve_item_provider),
                     web.post('/item-jobs/{request_id}/resolve-replacement', service.resolve_item_replacement),
                     web.post('/item-jobs/{request_id}/confirm-cleanup', service.confirm_item_cleanup),
+                    web.post('/reset-defaults', service.reset_defaults),
                     web.get('/item-jobs/{request_id}/previews/{name}', service.item_job_preview),
                     web.get('/catalog-assets/{catalog_revision}/{glb_sha256}.glb',
                             service.catalog_asset),
