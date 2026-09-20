@@ -20,7 +20,8 @@ ENV PYTHONUNBUFFERED=1 \
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       ca-certificates curl libgl1 libglfw3 libosmesa6 libxrender1 xz-utils \
+       ca-certificates curl libgl1 libglfw3 libice6 libosmesa6 libsm6 libxi6 \
+       libxkbcommon0 libxrender1 xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
 RUN test "$TARGETARCH" = amd64 \
