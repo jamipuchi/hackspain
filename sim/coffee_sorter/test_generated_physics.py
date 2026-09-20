@@ -514,23 +514,35 @@ class CandidateMetricsTest(unittest.TestCase):
 
 
 class FakeEngine:
-    """Engine-like double. It resolves one object of one label per step."""
+    """Engine-like double. It resolves one retained object of one label per step.
 
-    def __init__(self, outcomes, label="star_token", dt=0.001, commanded=0):
+    `_object_records` is the retained store `keep_outcome` reads. `collected` mimics a
+    collector that removes the resolved body from `sim.bean_of` inside the same step,
+    the way the real sim's collectors can, while the retained record stays.
+    """
+
+    def __init__(self, outcomes, label="star_token", dt=0.001, jet_hits=0, collected=False):
         self.sim = SimpleNamespace(dt=dt, bean_of={})
+        self._object_records = {}
         self.outcomes = list(outcomes)
         self.label = label
-        self.commanded = commanded
+        self.jet_hits = jet_hits
+        self.collected = collected
         self.steps = 0
 
     def step(self):
         self.steps += 1
         if not self.outcomes:
             return
-        uid = len(self.sim.bean_of)
-        self.sim.bean_of[uid] = SimpleNamespace(
-            uid=uid, cls=self.label, outcome=self.outcomes.pop(0),
-            targeted=uid < self.commanded, fired_target=uid < self.commanded, jet_hits=uid < self.commanded)
+        uid = len(self._object_records)
+        outcome = self.outcomes.pop(0)
+        self.sim.bean_of[uid] = SimpleNamespace(uid=uid, cls=self.label, outcome=outcome)
+        self._object_records[uid] = {
+            "object_id": uid, "truth_class": self.label, "outcome": outcome,
+            "resolved_time_s": self.steps * self.sim.dt, "jet_hits": int(uid < self.jet_hits),
+        }
+        if self.collected:
+            del self.sim.bean_of[uid]
 
 
 class KeepOutcomeTest(unittest.TestCase):
@@ -557,13 +569,14 @@ class KeepOutcomeTest(unittest.TestCase):
         self.assertAlmostEqual(0.02, run["sim_seconds"])
 
     def test_outcomes_and_pulses_stay_separate(self):
-        engine = FakeEngine(["accept"] * 28 + ["reject", "spilled"], commanded=3)
+        engine = FakeEngine(["accept"] * 28 + ["reject", "spilled"], jet_hits=3)
 
         run = keep_outcome(engine, "star_token", seed=8, max_sim_seconds=0.1)
 
         self.assertEqual({"resolved": 30, "accepted": 28, "rejected": 1, "spilled": 1,
                           "accept_fraction": 28 / 30}, run["outcomes"])
-        self.assertEqual({"commanded": 3, "activated": 3, "jet_hits": 3}, run["pulses"])
+        # The retained record carries no commanded or activated pulse count.
+        self.assertEqual({"commanded": None, "activated": None, "jet_hits": 3}, run["pulses"])
 
     def test_objects_of_another_label_are_ignored(self):
         engine = FakeEngine(["accept"] * 4, label="good")
@@ -572,6 +585,27 @@ class KeepOutcomeTest(unittest.TestCase):
 
         self.assertEqual(0, run["outcomes"]["resolved"])
         self.assertEqual(0.0, run["outcomes"]["accept_fraction"])
+
+    def test_a_body_removed_from_bean_of_before_the_scan_is_still_counted(self):
+        """Regression: a collector can pop a resolved body out of bean_of inside one step."""
+        engine = FakeEngine(["accept"], collected=True)
+
+        run = keep_outcome(engine, "star_token", seed=8, max_sim_seconds=0.01)
+
+        self.assertEqual({}, engine.sim.bean_of)
+        self.assertEqual(1, len(engine._object_records))
+        self.assertEqual(1, run["outcomes"]["resolved"])
+        self.assertEqual(1, run["outcomes"]["accepted"])
+
+    def test_the_same_retained_object_counts_once_across_many_steps(self):
+        """The record is never removed from `_object_records`, so a rescan must dedupe it."""
+        engine = FakeEngine(["accept"])
+
+        run = keep_outcome(engine, "star_token", seed=8, min_resolved=5, max_sim_seconds=0.02)
+
+        self.assertEqual(20, engine.steps)
+        self.assertEqual(1, run["outcomes"]["resolved"])
+        self.assertEqual(1, run["outcomes"]["accepted"])
 
 
 class TrainerRuntimeLockTest(unittest.TestCase):

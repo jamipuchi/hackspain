@@ -131,24 +131,30 @@ def keep_outcome(engine, label: str, *, seed: int, min_resolved: int = MIN_KEEP_
                  max_sim_seconds: float = KEEP_OUTCOME_SIM_SECONDS) -> dict[str, Any]:
     """Physical outcomes of one seeded closed-loop run, with the controller and the jets on.
 
-    `engine` is injected. It needs `step()`, `sim.dt`, and `sim.bean_of` values that
-    carry `uid`, `cls`, `outcome`, `targeted`, `fired_target`, and `jet_hits`. The
-    returned outcomes and pulses stay in separate blocks: a commanded pulse is never
-    an outcome, and this run never touches a classifier number.
+    `engine` is injected. It needs `step()`, `sim.dt`, and the retained `_object_records`
+    (each carrying `object_id`, `truth_class`, `outcome`, `resolved_time_s`, `jet_hits`).
+    A collector can remove a resolved body from `sim.bean_of` before a scan of the live
+    bean map would see it, so outcomes are read from the retained records instead, never
+    from `sim.bean_of` and never by draining a sim event or outcome queue a second time.
+    The retained record carries no commanded or activated pulse count, only the bean does,
+    and a removed body no longer has one, so both report `None` here with no invented
+    value; `jet_hits` still comes from the record. The returned outcomes and pulses stay
+    in separate blocks: a commanded pulse is never an outcome, and this run never touches
+    a classifier number.
     """
-    outcomes, pulses, seen = Counter(), Counter(), set()
+    outcomes, seen, jet_hits = Counter(), set(), 0
     steps, ran = int(max_sim_seconds / engine.sim.dt), 0
     for _ in range(steps):
         engine.step()
         ran += 1
-        for bean in list(engine.sim.bean_of.values()):
-            if bean.cls != label or bean.outcome is None or bean.uid in seen:
+        for record in list(engine._object_records.values()):
+            object_id = record["object_id"]
+            if (record["truth_class"] != label or record["outcome"] is None
+                    or object_id in seen):
                 continue
-            seen.add(bean.uid)
-            outcomes[bean.outcome] += 1
-            pulses["commanded"] += int(bool(bean.targeted))
-            pulses["activated"] += int(bool(bean.fired_target))
-            pulses["jet_hits"] += int(bean.jet_hits)
+            seen.add(object_id)
+            outcomes[record["outcome"]] += 1
+            jet_hits += int(record["jet_hits"])
         if len(seen) >= min_resolved:
             break
     resolved = len(seen)
@@ -163,8 +169,7 @@ def keep_outcome(engine, label: str, *, seed: int, min_resolved: int = MIN_KEEP_
             "spilled": outcomes["spilled"],
             "accept_fraction": outcomes["accept"] / resolved if resolved else 0.0,
         },
-        "pulses": dict(commanded=pulses["commanded"], activated=pulses["activated"],
-                       jet_hits=pulses["jet_hits"]),
+        "pulses": dict(commanded=None, activated=None, jet_hits=jet_hits),
     }
 
 
