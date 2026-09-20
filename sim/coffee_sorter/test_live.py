@@ -1270,6 +1270,164 @@ class ItemJobRouteTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn('item_jobs', service()._state_packet())
 
 
+class ActivationEngine:
+    """A fake engine for the activation commands: a feed rate, a belt count, and a policy."""
+
+    def __init__(self, preset=None, active=2, reject=('stone',)):
+        self.continuous = True
+        self.preset = {'limits': {'max_sim_seconds': None, 'max_wall_seconds': None}}
+        self.session_id = 'session'
+        self.source_revision, self.source_hashes = 'test', {}
+        self.active = active
+        self.sim = types.SimpleNamespace(rate=30.0, n_active=lambda: self.active,
+                                         data=types.SimpleNamespace(time=1.0))
+        self.score_epoch_id = 'epoch-1'
+        self.set_reject_classes(list(reject))
+        self.on_step = lambda: None
+
+    @property
+    def policy_version(self):
+        return 'policy:' + ','.join(self.reject_classes)
+
+    def reject_policy(self):
+        return {'reject_classes': list(self.reject_classes),
+                'policy_version': self.policy_version, 'score_epoch_id': self.score_epoch_id}
+
+    def set_reject_classes(self, reject_classes):
+        self.reject_classes = list(reject_classes)
+        return {**self.reject_policy(), 'changed': True}
+
+    def snapshot(self):
+        return {'session_id': self.session_id, 'sim_time_s': self.sim.data.time}
+
+    def rolling_scores(self):
+        return {'score_epoch_id': self.score_epoch_id}
+
+    def step(self):
+        self.active = max(0, self.active - 1)
+        self.on_step()
+
+    def report(self):
+        return {}
+
+    def close(self):
+        pass
+
+
+def activation_command(kind, job_id='job-1', **fields):
+    return {'type': kind, 'command_id': str(uuid.uuid4()), 'session_id': 'session',
+            'command_epoch': 'epoch', 'job_id': job_id, **fields}
+
+
+class ActivationWorkerTest(unittest.TestCase):
+    """prepare, drain, commit with the policy fence, and cancel, inside the worker loop."""
+
+    def setUp(self):
+        self.revision = object_catalog.load_catalog(
+            object_catalog.PACKAGED_CATALOG_ROOT)['catalog_revision']
+
+    def prepare(self, victim='stick', revision=None, job_id='job-1'):
+        return activation_command('prepare_activation', job_id, victim_label=victim,
+                                  expected_catalog_revision=revision or self.revision)
+
+    def apply(self, engine, command, activation):
+        ack = {}
+        return live._apply_activation_command(engine, command, activation, ack), ack
+
+    def test_a_stale_catalog_or_a_rejected_victim_pauses_nothing(self):
+        engine = ActivationEngine()
+        cases = {'activation_conflict': self.prepare(revision='f' * 64),
+                 'replacement_conflict': self.prepare(victim='stone')}
+        for code, command in cases.items():
+            with self.subTest(code=code):
+                activation, ack = self.apply(engine, command, None)
+
+                self.assertIsNone(activation)
+                self.assertEqual((ack['ok'], ack['error_code']), (False, code))
+                self.assertEqual(engine.sim.rate, 30.0)
+
+    def test_a_commit_is_refused_while_an_object_is_on_the_belt(self):
+        engine = ActivationEngine(active=1)
+        activation, ack = self.apply(engine, self.prepare(), None)
+        self.assertEqual((ack['ok'], ack['phase'], ack['active_objects']), (True, 'draining', 1))
+        self.assertEqual(engine.sim.rate, 0.0)
+
+        activation, ack = self.apply(engine, activation_command('commit_activation'), activation)
+
+        self.assertEqual((ack['ok'], ack['error_code']), (False, 'activation_not_drained'))
+        self.assertEqual(activation['phase'], 'draining')
+        # Another job cannot take the drain over, and an unknown job commits nothing.
+        _, other = self.apply(engine, self.prepare(job_id='job-2'), activation)
+        self.assertEqual(other['error_code'], 'activation_in_progress')
+        _, unknown = self.apply(engine, activation_command('commit_activation', 'job-2'), activation)
+        self.assertEqual(unknown['error_code'], 'activation_not_prepared')
+
+    def test_a_victim_rejected_during_the_drain_resumes_the_old_rate(self):
+        engine = ActivationEngine(active=0)
+        activation, _ = self.apply(engine, self.prepare(), None)
+        engine.set_reject_classes(['stone', 'stick'])
+
+        activation, ack = self.apply(engine, activation_command('commit_activation'), activation)
+
+        self.assertIsNone(activation)
+        self.assertEqual((ack['ok'], ack['error_code']), (False, 'replacement_conflict'))
+        self.assertEqual(engine.sim.rate, 30.0)
+        _, idle = self.apply(engine, activation_command('cancel_activation'), None)
+        self.assertEqual((idle['ok'], idle['cancelled']), (True, False))
+
+    def test_the_worker_loop_drains_fences_and_cancels(self):
+        stop = FakeStop()
+        created = []
+
+        def policy(reject_classes, expected):
+            return {'type': 'set_reject_policy', 'command_id': str(uuid.uuid4()),
+                    'session_id': 'session', 'command_epoch': 'epoch',
+                    'expected_policy_version': expected, 'reject_classes': reject_classes}
+
+        script = [self.prepare(), policy(['stone', 'black'], 'policy:stone'),
+                  activation_command('commit_activation'),
+                  policy(['stone'], 'policy:stone,black'),
+                  activation_command('commit_activation'),
+                  activation_command('cancel_activation'),
+                  policy(['stone'], 'policy:stone,black')]
+
+        class ScriptedQueue(WorkerQueue):
+            def get_nowait(self):
+                if not script:
+                    raise __import__('queue').Empty
+                return script.pop(0)
+
+        def build(preset):
+            engine = ActivationEngine(preset)
+            engine.on_step = lambda: script or stop.set()
+            created.append(engine)
+            return engine
+
+        states, acks = WorkerQueue(), WorkerQueue()
+        with tempfile.TemporaryDirectory() as directory, \
+                patch.dict(sys.modules, {'engine': types.SimpleNamespace(Engine=build)}), \
+                patch('live.signal.signal'):
+            worker('unused.json', states, acks, ScriptedQueue(), stop, directory)
+
+        prepared, drained, committed, fenced, retried, cancelled, reopened = acks.items
+        self.assertEqual((prepared['ok'], prepared['active_objects']), (True, 2))
+        # A survivor toggle during the drain applies, and the commit captures the LATEST policy.
+        self.assertTrue(drained['ok'])
+        self.assertEqual(committed['reject_classes'], ['stone', 'black'])
+        self.assertEqual(committed['policy_version'], 'policy:stone,black')
+        self.assertEqual((fenced['ok'], fenced['error_code']), (False, 'activation_in_progress'))
+        self.assertEqual(retried['reject_classes'], committed['reject_classes'])
+        self.assertEqual((cancelled['ok'], cancelled['cancelled']), (True, True))
+        self.assertTrue(reopened['ok'])
+        self.assertEqual(created[0].reject_classes, ['stone'])
+        self.assertEqual(created[0].sim.rate, 30.0)
+        phases = [state['activation']['phase'] for state in states.items if 'activation' in state]
+        self.assertEqual(sorted(set(phases)), ['activating', 'draining'])
+        self.assertEqual(states.items[1]['activation'],
+                         {'job_id': 'job-1', 'phase': 'draining', 'active_objects': 2})
+        self.assertNotIn('activation', states.items[-1])
+
+
 class ActiveBundleStartupTest(unittest.TestCase):
     """Startup with --item-jobs-root: one verified active bundle, bound before profiles loads.
 

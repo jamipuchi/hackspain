@@ -42,6 +42,9 @@ DNS_LABEL_PATTERN = re.compile(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?')
 ORPHAN_EXIT_SECONDS = 10.0
 ORPHAN_EXIT_CODE = 3
 VALIDATE_BUNDLE_TIMEOUT_S = 120.0
+# Only the service sends these. The WebSocket admits inject and set_reject_policy alone.
+ACTIVATION_COMMANDS = ('prepare_activation', 'commit_activation', 'cancel_activation')
+DRAIN_TIMEOUT_S = 20.0
 # The sources that bundle zero records. engine.SOURCE_FILES cannot be imported for this:
 # engine imports profiles, and profiles must not load before the active catalog is exported.
 BUNDLE_SOURCE_FILES = ('engine.py', 'controller.py', 'sim.py', 'rolling_scores.py', 'vision.py',
@@ -429,6 +432,65 @@ class CommandLog:
         self.close()
 
 
+def _apply_activation_command(engine, command, activation, ack):
+    """Handle one activation command inside the worker loop. Returns the activation state.
+
+    The loop serializes these with set_reject_policy, so each one reads the LATEST policy.
+    A drain only pauses NEW spawning: no live object is deleted or retyped. After a commit
+    the worker holds the policy fence until it stops or a cancel arrives.
+    """
+    kind, job_id = command['type'], command['job_id']
+    policy = engine.reject_policy()
+    if kind == 'prepare_activation':
+        if activation is not None and activation['job_id'] != job_id:
+            ack.update(ok=False, error_code='activation_in_progress',
+                       error='Another activation is in progress.')
+        elif activation is None and command['expected_catalog_revision'] != \
+                object_catalog.load_catalog()['catalog_revision']:
+            ack.update(ok=False, error_code='activation_conflict',
+                       error='The active catalog changed after this candidate was trained.')
+        elif activation is None and command['victim_label'] in policy['reject_classes']:
+            ack.update(ok=False, error_code='replacement_conflict', reject_policy=policy,
+                       error='The replacement victim is rejected now.')
+        else:
+            if activation is None:
+                activation = {'job_id': job_id, 'phase': 'draining',
+                              'victim_label': command['victim_label'], 'rate': engine.sim.rate}
+                engine.sim.rate = 0.0
+            ack.update(ok=True, phase=activation['phase'],
+                       active_objects=engine.sim.n_active())
+        return activation
+    if activation is None or activation['job_id'] != job_id:
+        if kind == 'cancel_activation':
+            ack.update(ok=True, cancelled=False)
+        else:
+            ack.update(ok=False, error_code='activation_not_prepared',
+                       error='No activation is prepared for this job.')
+        return activation
+    if kind == 'cancel_activation':
+        engine.sim.rate = activation['rate']
+        ack.update(ok=True, cancelled=True)
+        return None
+    if activation['phase'] == 'activating':
+        # An exact retry returns the same capture. The fence is already held.
+        ack.update(ok=True, **activation['captured'])
+    elif engine.sim.n_active() != 0:
+        ack.update(ok=False, error_code='activation_not_drained',
+                   error='Objects are still on the belt.', active_objects=engine.sim.n_active())
+    elif activation['victim_label'] in policy['reject_classes']:
+        engine.sim.rate = activation['rate']
+        ack.update(ok=False, error_code='replacement_conflict', reject_policy=policy,
+                   error='The replacement victim is rejected now.')
+        return None
+    else:
+        captured = {'reject_classes': list(policy['reject_classes']),
+                    'policy_version': policy['policy_version'],
+                    'score_epoch_id': policy['score_epoch_id']}
+        activation.update(phase='activating', captured=captured)
+        ack.update(ok=True, **captured)
+    return activation
+
+
 def worker(preset, states, acknowledgments, commands, stop, out):
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     # A hard parent exit leaves this process reparented to PID 1. Python gives a spawned
@@ -455,12 +517,17 @@ def worker(preset, states, acknowledgments, commands, stop, out):
     rolling_scores = None
     last_score_publish = 0.0
     sim_limit, wall_limit = 0.0, 0.0
+    # One activation at a time: None, or the draining or fenced state of one job.
+    activation = None
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
 
     def publish(status, error=None):
         nonlocal rolling_scores, last_score_publish
         state = engine.snapshot() if engine else {}
+        if activation is not None:
+            state['activation'] = {'job_id': activation['job_id'], 'phase': activation['phase'],
+                                   'active_objects': engine.sim.n_active()}
         now = time.monotonic()
         if continuous and (rolling_scores is None or now - last_score_publish >= 1.0):
             rolling_scores = engine.rolling_scores()
@@ -531,8 +598,15 @@ def worker(preset, states, acknowledgments, commands, stop, out):
                                        sim_time_s=float(engine.sim.data.time))
                             if not running:
                                 running, started = True, time.monotonic()
+                        elif command_type in ACTIVATION_COMMANDS:
+                            activation = _apply_activation_command(engine, command, activation, ack)
                         elif command_type == 'set_reject_policy':
-                            if command['expected_policy_version'] != engine.policy_version:
+                            if activation is not None and activation['phase'] == 'activating':
+                                # The fence: the captured policy is already in the new bundle.
+                                ack.update(ok=False, error_code='activation_in_progress',
+                                           error='An activation is in progress. Retry shortly.',
+                                           reject_policy=engine.reject_policy())
+                            elif command['expected_policy_version'] != engine.policy_version:
                                 ack.update(ok=False, error='The reject policy changed. Use the latest state.',
                                            error_code='policy_version_conflict',
                                            reject_policy=engine.reject_policy())
@@ -1193,6 +1267,31 @@ class LiveService:
         with contextlib.suppress(Exception):
             await self.broadcast({'type': 'state', **self.state})
 
+    async def _swap_worker(self, previous_session_id):
+        """Stop the engine worker and start one new session. One engine exists at a time.
+
+        The old worker is confirmed stopped before the new one is created, and the new one
+        inherits the environment of this moment, so an exported catalog root reaches it
+        before any profile import in that child.
+        """
+        await self._cancel_pump()
+        await self._stop_worker(resolve_acks=True)
+        await self._resolve_pending('The session restarted before this injection completed.')
+        self._write_service_profile()
+        self._close_queues()
+        self.requests = {}
+        self.restart_count += 1
+        suffix = f'restart-{self.restart_count:03d}-{uuid.uuid4().hex[:8]}'
+        self.session_out = self.out.parent / f'{self.out.name}-{suffix}'
+        self._reset_profile()
+        self.state = {'status': 'starting', 'previous_session_id': previous_session_id}
+        self.state_ready = asyncio.Event()
+        self._create_worker(self.session_out)
+        await self.broadcast({'type': 'state', **self.state})
+        self.process.start()
+        self.task = asyncio.create_task(self.pump())
+        await asyncio.wait_for(self.state_ready.wait(), timeout=30)
+
     async def restart(self, request):
         if self.continuous:
             return web.json_response({
@@ -1219,23 +1318,7 @@ class LiveService:
         try:
             self.state = {**self.state, 'status': 'restarting', 'error': None}
             await self.broadcast({'type': 'state', **self.state})
-            await self._cancel_pump()
-            await self._stop_worker(resolve_acks=True)
-            await self._resolve_pending('The session restarted before this injection completed.')
-            self._write_service_profile()
-            self._close_queues()
-            self.requests = {}
-            self.restart_count += 1
-            suffix = f'restart-{self.restart_count:03d}-{uuid.uuid4().hex[:8]}'
-            self.session_out = self.out.parent / f'{self.out.name}-{suffix}'
-            self._reset_profile()
-            self.state = {'status': 'starting', 'previous_session_id': session_id}
-            self.state_ready = asyncio.Event()
-            self._create_worker(self.session_out)
-            await self.broadcast({'type': 'state', **self.state})
-            self.process.start()
-            self.task = asyncio.create_task(self.pump())
-            await asyncio.wait_for(self.state_ready.wait(), timeout=30)
+            await self._swap_worker(session_id)
             if self.state['status'] == 'failed':
                 await self._cleanup_restart_failure(self.state.get('error') or 'The engine failed to start.')
                 return web.json_response(self.state, status=500)
