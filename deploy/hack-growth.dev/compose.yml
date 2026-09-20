@@ -69,11 +69,6 @@ services:
       retries: 3
       start_period: 90s
 
-  caddy:
-    environment:
-      CINTA_OPERATOR_USER: ${CINTA_OPERATOR_USER:?Set the operator user}
-      CINTA_OPERATOR_PASSWORD_HASH: ${CINTA_OPERATOR_PASSWORD_HASH:?Set the operator password hash}
-
 networks:
   coffee_shared:
     external: true
