@@ -2,8 +2,9 @@
 
 ## Scope
 
-This document proposes a bounded configuration screen after the Stone physics repair.
-It does not select or apply a new setting.
+This document records a bounded configuration screen after the Stone physics repair.
+The tuning stage selected no new setting.
+No production configuration changed.
 
 The screen changes only `jet_force_n`.
 It keeps pulse duration, controller timing, nozzle selection, splitter geometry, model, and policy behavior fixed.
@@ -114,6 +115,86 @@ These gates detect regressions.
 They do not establish production accuracy.
 The simulator remains synthetic, and the sample remains small.
 
+## Tuning result
+
+All cases used the accepted physics and trusted model.
+Each mixed-feed case ran four simulated seconds at 500 requested objects per second.
+Each force used four tuning seeds.
+The combined mixed-feed cohort contains 5,200 objects per force.
+
+| Force | Isolated Stone Reject | Mixed Stone Reject | Reject capture | Keep loss | Spill |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 0.060 N | 2/8 | 6/21 | 678/760, 89.21% | 185/4,440, 4.17% | 7/5,200, 0.135% |
+| 0.075 N | 2/8 | 10/22 | 677/762, 88.85% | 202/4,438, 4.55% | 18/5,200, 0.346% |
+| 0.090 N | 4/8 | 13/22 | 665/762, 87.27% | 220/4,438, 4.96% | 42/5,200, 0.808% |
+
+All isolated decisions were on time and received their own pulse contact.
+The impulse means were 360, 450, and 540 microN s.
+Each force admitted exactly 500 objects per simulated second.
+No case starved the pool.
+No cohort object remained unresolved.
+
+The 0.075 N setting improved mixed-feed Stone routing.
+It did not improve isolated Stone routing.
+It also reduced aggregate reject capture and increased Keep loss and spill.
+
+The 0.090 N setting improved both Stone checks.
+It reduced aggregate reject capture by 1.94 percentage points.
+It increased Keep loss by 0.79 percentage points.
+It increased spill by 0.67 percentage points.
+The spill increase exceeds the 0.5 percentage-point rejection limit.
+
+The tuning stage therefore selected no candidate.
+The held-out seeds 43, 59, 71, and 83 were not run or inspected.
+This negative result preserves the 0.060 N production setting.
+
+Measured mean engine rates were 0.194x, 0.203x, and 0.222x.
+Peak resident memory stayed between 298.7 and 300.2 MB across force groups.
+Concurrent host load can affect wall speed.
+The force change does not add a new runtime code path.
+
+The compact tuning result is in `evidence/cinta-rejection-calibration/tuning-summary.json`.
+That file records every raw artifact path, byte size, and SHA-256 hash.
+
+## Repeatable commands
+
+Use the prepared interpreter from the repository root.
+Run one case per process so the shared lock is released between cases.
+
+```bash
+PYTHON=/Users/taras/Documents/code/hackspain/.venv-coffee/bin/python
+SCRIPT=thoughts/taras/qa/evidence/cinta_rejection_calibration.py
+OUT=/private/tmp/cinta-rejection-calibration/tuning
+
+for force in 0.06 0.075 0.09
+do
+  for seed in 11 17 23 31
+  do
+    "$PYTHON" "$SCRIPT" isolated --force "$force" --seed "$seed" \
+      --output "$OUT/isolated-force-$force-seed-$seed.json"
+    "$PYTHON" "$SCRIPT" feed --force "$force" --seed "$seed" --seconds 4 \
+      --output "$OUT/feed-force-$force-seed-$seed.json"
+  done
+done
+```
+
+Do not run held-out seeds when tuning selects no candidate.
+
+## Validation
+
+The diagnostic wrapper compiled with the prepared Python 3.13 environment.
+All 24 tuning cases completed and produced valid JSON.
+The focused physics suite passed 12 tests.
+
+```bash
+/Users/taras/Documents/code/hackspain/.venv-coffee/bin/python \
+  -m py_compile thoughts/taras/qa/evidence/cinta_rejection_calibration.py
+
+cd sim/coffee_sorter
+/Users/taras/Documents/code/hackspain/.venv-coffee/bin/python \
+  -m unittest test_sim_physics.py
+```
+
 ## Rejected first moves
 
 Do not increase pulse duration first.
@@ -136,6 +217,7 @@ The current failure occurs after correct classification, scheduling, activation,
 | `/private/tmp/cinta-physics/performance.json` | `6e0762613c09baed9f0368617943dc3265e0cdd95beccb28e6f11d68d0394101` |
 | `runs/tuning-sweep/force-0.06/metrics.json` | `69049726a42dcbe59dc177cea152a8200da613087d8df09f1fda71c0e79c9cd4` |
 | `runs/tuning-sweep/force-0.12/metrics.json` | `49b13f08c3b0ac82d99cc19fe878cb17004066cb2c45ad788c5aa9a1c626c331` |
+| `evidence/cinta-rejection-calibration/tuning-summary.json` | `3a2f75955c3f4a9943bb6d69bdfa21bc9984610407cf207c6a53e37112476e0b` |
 
 The full corrected audit supersedes the earlier reduced-pool 3 of 8 result.
 Run the screen only from the accepted two-commit physics chain.
