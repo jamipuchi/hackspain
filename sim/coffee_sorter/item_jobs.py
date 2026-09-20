@@ -633,43 +633,49 @@ class ItemJobRunner:
             job = getattr(self, prepare)(job, job_dir)
             if job is None:
                 return
-        attempts = {**job["attempts"], stage: job["attempts"].get(stage, 0) + 1}
-        # The builder reads the record as it stands before this launch, so it can see an
-        # unconsumed operator grant. Nothing else can produce `--live`.
-        pending = {**job, "attempts": attempts}
-        fields: dict[str, Any] = {"attempts": attempts, "progress": None, "reason": None}
-        if table["provider_backed"]:
-            # Only the stage the grant names consumes it. Another stage leaves it alone.
-            if live_permitted(pending, self.provider_mode, stage):
-                fields["provider_submission"] = "in_flight"
-                fields["provider_permission"] = None
-                fields["provider_permission_stage"] = None
-            elif job.get("provider_permission_stage") in (None, stage):
-                fields["provider_permission"] = None
-                fields["provider_permission_stage"] = None
-            # A stale status from a hard-killed attempt must never label this one.
-            with contextlib.suppress(OSError):
-                (job_dir / "provider_status.json").unlink()
-        argv = self.commands[stage](pending, job_dir)
-        token = str(uuid.uuid4())
-        # Persist the attempt and the consumed grant before the process can exist.
-        self.store.transition(request_id, table["running_state"], error=None, **fields)
-        log_path = job_dir / f"{stage}.log"
-        # An intent record before the spawn lets recover() find an untracked child.
-        intent = {"stage": stage, "pid": None, "pgid": None, "token": token,
-                  "lease_deadline": _lease_deadline(self.lease_s), "started": self.store.clock(),
-                  "pid_start": None, "log": str(log_path)}
-        self.store.record(request_id, worker=intent)
-        log = log_path.open("a")
-        try:
-            child = subprocess.Popen(argv, start_new_session=True, stdout=log,
-                                     stderr=subprocess.STDOUT, cwd=str(job_dir),
-                                     env=_child_environment(job_dir))
-        except OSError:
-            log.close()
-            self._fault(f"{stage}_launch_failed")
-            self._stage_failure(self.store.get(request_id), stage, table["failure_error"], token)
-            return
+        # No child exists until Popen returns, so a fault in here holds the turn with
+        # nothing running. The guard gives it back.
+        with self._release_turn_on_fault(request_id, stage):
+            attempts = {**job["attempts"], stage: job["attempts"].get(stage, 0) + 1}
+            # The builder reads the record as it stands before this launch, so it can see
+            # an unconsumed operator grant. Nothing else can produce `--live`.
+            pending = {**job, "attempts": attempts}
+            fields: dict[str, Any] = {"attempts": attempts, "progress": None, "reason": None}
+            if table["provider_backed"]:
+                # Only the stage the grant names consumes it. Another stage leaves it alone.
+                if live_permitted(pending, self.provider_mode, stage):
+                    fields["provider_submission"] = "in_flight"
+                    fields["provider_permission"] = None
+                    fields["provider_permission_stage"] = None
+                elif job.get("provider_permission_stage") in (None, stage):
+                    fields["provider_permission"] = None
+                    fields["provider_permission_stage"] = None
+                # A stale status from a hard-killed attempt must never label this one.
+                with contextlib.suppress(OSError):
+                    (job_dir / "provider_status.json").unlink()
+            argv = self.commands[stage](pending, job_dir)
+            token = str(uuid.uuid4())
+            # Persist the attempt and the consumed grant before the process can exist.
+            self.store.transition(request_id, table["running_state"], error=None, **fields)
+            log_path = job_dir / f"{stage}.log"
+            # An intent record before the spawn lets recover() find an untracked child.
+            intent = {"stage": stage, "pid": None, "pgid": None, "token": token,
+                      "lease_deadline": _lease_deadline(self.lease_s),
+                      "started": self.store.clock(),
+                      "pid_start": None, "log": str(log_path)}
+            self.store.record(request_id, worker=intent)
+            log = log_path.open("a")
+            try:
+                child = subprocess.Popen(argv, start_new_session=True, stdout=log,
+                                         stderr=subprocess.STDOUT, cwd=str(job_dir),
+                                         env=_child_environment(job_dir))
+            except OSError:
+                log.close()
+                self._fault(f"{stage}_launch_failed")
+                self._stage_failure(self.store.get(request_id), stage,
+                                    table["failure_error"], token)
+                return
+        # The child exists from here on, so its group may live and the turn must stay.
         pgid = os.getpgid(child.pid)
         # Track the child in memory first. A later write failure can never orphan it.
         with self._guard:
@@ -990,8 +996,8 @@ class ItemJobRunner:
         return {"catalog_revision": catalog["catalog_revision"],
                 "active_type_ids": list(catalog["active_type_ids"]),
                 "policy_version": policy.get("policy_version"),
-                # The exact policy, not only its name: a changed reject set with an
-                # unchanged victim still invalidates what the candidate trained for.
+                # The exact policy the candidate trained for, kept as evidence beside the
+                # policy that validation later observed. Neither one gates activation.
                 "reject_classes": sorted(reject_classes),
                 "victim_id": victim_id}
 
@@ -1007,12 +1013,19 @@ class ItemJobRunner:
             return
         self.store.transition(request_id, "validating_candidate", token=token, error=None,
                               worker=None)
-        self._validate_candidate(self.store.get(request_id), job_dir, token)
+        # `_settle` runs only after `_finish` confirmed the group left, so a fault in
+        # validation can never strand the turn on a live trainer.
+        with self._release_turn_on_fault(request_id, "training"):
+            self._validate_candidate(self.store.get(request_id), job_dir, token)
         self._release_training_lease(request_id)
 
     def _validate_candidate(self, job: Mapping[str, Any], job_dir: Path,
                             token: str | None) -> None:
-        """Read the trainer verdict, then re-check the baseline that it was trained for."""
+        """Read the trainer verdict, then re-check the catalog and the victim.
+
+        The live reject policy is recorded, never compared. Only a moved catalog or a
+        victim that is no longer eligible blocks activation.
+        """
         request_id = job["request_id"]
         validation = _read_json(_training_paths(job_dir)["validation"])
         if not isinstance(validation, Mapping):
@@ -1047,16 +1060,13 @@ class ItemJobRunner:
                                   progress="the live policy is unavailable")
             return
         reject_classes = [str(name) for name in (policy.get("reject_classes") or [])]
+        # Evidence only. A survivor toggle stays usable during training and during the
+        # drain, so validation never requires this policy to equal the training baseline.
+        # Activation captures the latest survivor policy under its own fence.
+        artifacts = {**artifacts, "validation_policy": {
+            "policy_version": policy.get("policy_version"),
+            "reject_classes": sorted(reject_classes)}}
         victim_id = object_catalog.select_victim(catalog, reject_classes)
-        # The policy the candidate trained for must still be the live one, by identity AND
-        # by content. An unchanged victim does not prove an unchanged policy.
-        if (policy.get("policy_version") != baseline.get("policy_version")
-                or sorted(reject_classes) != list(baseline.get("reject_classes") or [])):
-            self.store.transition(request_id, "activation_conflict", token=token,
-                                  error="replacement_conflict", worker=None,
-                                  artifacts=artifacts, reason="policy_changed",
-                                  progress="the reject policy changed since training")
-            return
         # The plan names both: a moved catalog is an activation conflict, a moved victim
         # is a replacement conflict.
         if catalog["catalog_revision"] != baseline.get("catalog_revision"):
@@ -1126,6 +1136,21 @@ class ItemJobRunner:
             if isinstance(current, Mapping) and current.get("owner") == request_id:
                 with contextlib.suppress(OSError):
                     self._lease_path().unlink()
+
+    @contextlib.contextmanager
+    def _release_turn_on_fault(self, request_id: str, stage: str):
+        """Give the training turn back when a fault leaves NO owned process group.
+
+        Both callers hold the turn with nothing running: a launch that has not spawned
+        its child yet, and a settlement whose group already confirmed its exit. An
+        unconfirmed group never enters this guard, so a live trainer keeps its turn.
+        """
+        try:
+            yield
+        except BaseException:
+            if stage == "training":
+                self._release_training_lease(request_id)
+            raise
 
     def _previews_valid(self, job: Mapping[str, Any], job_dir: Path) -> bool:
         previews = job_dir / "previews"

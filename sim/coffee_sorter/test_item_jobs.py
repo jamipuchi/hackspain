@@ -1552,25 +1552,52 @@ class PhysicsAndTrainingFlowTest(QueueTest):
         self.assertEqual([], self.starts('training'))
         self.assertFalse((self.root / item_jobs.TRAINING_LEASE).exists())
 
-    def test_a_changed_reject_policy_blocks_activation_with_the_same_victim(self):
-        """S3: policy identity is rechecked, not only the catalog and the victim."""
+    def moving_policy(self, first, later):
+        """One policy for the baseline read, another for the validation read."""
         seen = {'count': 0}
 
-        def moving_policy():
+        def provider():
             seen['count'] += 1
-            reject = list(self.labels()[2:])
-            # The victim stays the same. Only the policy identity and content move.
-            return {'reject_classes': reject if seen['count'] == 1 else reject[:-1],
-                    'policy_version': 'policy-1' if seen['count'] == 1 else 'policy-2'}
+            reject, version = (first, 'policy-1') if seen['count'] == 1 else (later, 'policy-2')
+            return {'reject_classes': list(reject), 'policy_version': version}
 
-        runner = self.open_runner(stages=self.STAGES, catalog_provider=self.catalog,
-                                  policy_provider=moving_policy)
+        return provider
+
+    def test_a_survivor_toggle_during_training_never_blocks_activation(self):
+        """A reject toggle stays usable while a candidate trains and while it drains."""
+        labels = self.labels()
+        # `faded` is a survivor that is not the victim, so the victim cannot move.
+        runner = self.open_runner(
+            stages=self.STAGES, catalog_provider=self.catalog,
+            policy_provider=self.moving_policy(labels[4:], [labels[1], *labels[4:]]))
+        job = self.submit()
+
+        self.drive(runner, lambda: 'validation_policy'
+                   in self.store.get(job['request_id'])['artifacts'])
+        stored = self.store.get(job['request_id'])
+
+        self.assertEqual('validating_candidate', stored['state'])
+        self.assertIsNone(stored['error'])
+        self.assertTrue(stored['artifacts']['candidate_validation']['passed'])
+        # Both policies are recorded as evidence, and they are allowed to differ.
+        self.assertEqual('policy-1', stored['training_baseline']['policy_version'])
+        self.assertEqual(sorted(labels[4:]), stored['training_baseline']['reject_classes'])
+        self.assertEqual('policy-2', stored['artifacts']['validation_policy']['policy_version'])
+        self.assertEqual(sorted([labels[1], *labels[4:]]),
+                         stored['artifacts']['validation_policy']['reject_classes'])
+
+    def test_a_now_rejected_victim_still_blocks_activation(self):
+        """The victim must still be a Keep type that the replacement can take over."""
+        labels = self.labels()
+        runner = self.open_runner(
+            stages=self.STAGES, catalog_provider=self.catalog,
+            policy_provider=self.moving_policy(labels[4:], labels[3:]))
         job = self.submit()
 
         self.drive(runner, lambda: self.state(job['request_id']) == 'activation_conflict')
         stored = self.store.get(job['request_id'])
 
-        self.assertEqual('policy_changed', stored['reason'])
+        self.assertEqual('victim_no_longer_eligible', stored['reason'])
         self.assertEqual('replacement_conflict', stored['error'])
         self.assertTrue(stored['artifacts']['candidate_validation']['passed'])
 
@@ -1592,6 +1619,53 @@ class PhysicsAndTrainingFlowTest(QueueTest):
         runner.commands['training'] = fake_commands(stages=('training',))['training']
         second = self.submit(description='Another token')
         self.drive(runner, lambda: self.state(second['request_id']) == 'validating_candidate')
+
+    def step_until_fault(self, runner, timeout=20.0):
+        """Step until the injected fault surfaces, then return its text."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            try:
+                runner.step()
+            except RuntimeError as error:
+                return str(error)
+            time.sleep(0.01)
+        self.fail('the injected fault never surfaced')
+
+    def takes_the_turn_at_once(self, runner):
+        """A later job reaches validation well inside the lease deadline."""
+        runner.commands['training'] = fake_commands(stages=('training',))['training']
+        later = self.submit(description='Another token')
+        self.drive(runner, lambda: self.state(later['request_id']) == 'validating_candidate')
+
+    def test_a_training_builder_fault_gives_the_training_turn_back(self):
+        """P1: a fault before any child exists must never strand the turn."""
+        def broken(job, job_dir):
+            raise RuntimeError('injected training command-builder fault')
+
+        commands = {**fake_commands(stages=self.STAGES), 'training': broken}
+        runner = self.open_runner(commands=commands, catalog_provider=self.catalog,
+                                  policy_provider=self.policy())
+        first = self.submit()
+
+        self.assertIn('command-builder fault', self.step_until_fault(runner))
+
+        self.assertEqual('queued_for_training', self.state(first['request_id']))
+        self.assertFalse((self.root / item_jobs.TRAINING_LEASE).exists())
+        self.takes_the_turn_at_once(runner)
+
+    def test_a_validation_fault_gives_the_training_turn_back(self):
+        """P1: the trainer group already confirmed its exit, so the turn is free."""
+        runner = self.runner()
+        first = self.submit()
+
+        with unittest.mock.patch.object(runner, '_validate_candidate',
+                                        side_effect=RuntimeError('injected validation fault')):
+            self.assertIn('validation fault', self.step_until_fault(runner))
+
+        self.assertEqual('validating_candidate', self.state(first['request_id']))
+        self.assertIsNone(self.store.get(first['request_id'])['worker'])
+        self.assertFalse((self.root / item_jobs.TRAINING_LEASE).exists())
+        self.takes_the_turn_at_once(runner)
 
     def test_the_lock_backoff_counts_per_stage(self):
         """F7: a render lock-busy must not lengthen the first physics backoff."""
