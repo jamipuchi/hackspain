@@ -181,14 +181,25 @@ Confirm the environment contains the exact release SHA and immutable image ID.
 
 ## Compose preflight
 
-Capture the existing service state before any change:
+Create one private backup directory. Capture the existing service state before
+any change. The rendered Compose files can contain secrets.
 
 ```bash
+set -eu
+umask 077
+BACKUP_DIR="/srv/hackspain-coffee/backups/$(date -u +%Y%m%dT%H%M%SZ)"
+sudo install -d -o root -g root -m 0700 "$BACKUP_DIR"
 cd /srv/compose
-docker compose ps --format json > /tmp/cinta-services-before.json
-docker inspect compose-caddy-1 > /tmp/cinta-caddy-before.json
-docker cp compose-caddy-1:/etc/caddy/Caddyfile /tmp/cinta-Caddyfile-before
-cp docker-compose.yml /tmp/cinta-compose-before.yml
+sudo docker compose --env-file .env -f docker-compose.yml \
+  ps --format json > "$BACKUP_DIR/services-before.json"
+sudo docker inspect compose-caddy-1 > "$BACKUP_DIR/caddy-before.json"
+sudo docker cp compose-caddy-1:/etc/caddy/Caddyfile \
+  "$BACKUP_DIR/Caddyfile.before"
+sudo cp docker-compose.yml "$BACKUP_DIR/docker-compose.before.yml"
+sudo cp .env "$BACKUP_DIR/compose.env.before"
+sudo docker compose --env-file .env -f docker-compose.yml \
+  config --format json > "$BACKUP_DIR/compose.before.json"
+sudo chmod 0600 "$BACKUP_DIR"/*
 ```
 
 Render the candidate without changing services:
@@ -196,10 +207,33 @@ Render the candidate without changing services:
 ```bash
 cd /srv/compose
 docker compose \
+  --env-file /srv/compose/.env \
   --env-file /srv/hackspain-coffee/deploy/release.env \
   -f docker-compose.yml \
   -f /srv/hackspain-coffee/deploy/compose.yml \
-  config > /tmp/cinta-compose-rendered.yml
+  config --format json > "$BACKUP_DIR/compose.candidate.json"
+chmod 0600 "$BACKUP_DIR/compose.candidate.json"
+```
+
+Compare the existing services after removing only the intended coffee, Caddy
+config, and shared-network additions:
+
+```bash
+python3 - "$BACKUP_DIR" <<'PY'
+import json
+import pathlib
+import sys
+
+root = pathlib.Path(sys.argv[1])
+before = json.loads((root / "compose.before.json").read_text())
+candidate = json.loads((root / "compose.candidate.json").read_text())
+candidate.get("services", {}).pop("coffee", None)
+candidate.get("configs", {}).pop("caddyfile", None)
+candidate.get("networks", {}).pop("coffee_shared", None)
+before.get("configs", {}).pop("caddyfile", None)
+if before != candidate:
+    raise SystemExit("Unrelated rendered Compose configuration changed.")
+PY
 ```
 
 The rendered service must meet these rules:
@@ -217,6 +251,7 @@ Start only the coffee service:
 
 ```bash
 docker compose \
+  --env-file /srv/compose/.env \
   --env-file /srv/hackspain-coffee/deploy/release.env \
   -f docker-compose.yml \
   -f /srv/hackspain-coffee/deploy/compose.yml \
@@ -249,10 +284,12 @@ Validate the candidate before reload:
 ```bash
 cd /srv/compose
 docker compose \
+  --env-file /srv/compose/.env \
   --env-file /srv/hackspain-coffee/deploy/release.env \
   -f docker-compose.yml \
   -f /srv/hackspain-coffee/deploy/compose.yml \
-  config > /tmp/cinta-compose-rendered.yml
+  config --format json > "$BACKUP_DIR/compose.caddy-candidate.json"
+chmod 0600 "$BACKUP_DIR/compose.caddy-candidate.json"
 docker cp Caddyfile compose-caddy-1:/etc/caddy/Caddyfile.candidate
 docker exec compose-caddy-1 caddy validate \
   --config /etc/caddy/Caddyfile.candidate \
@@ -269,8 +306,9 @@ docker exec compose-caddy-1 caddy reload \
   --adapter caddyfile
 ```
 
-Restore `/tmp/cinta-Caddyfile-before` and reload it if the new route fails.
-Restore `/tmp/cinta-compose-before.yml` if the durable source change fails.
+Restore `$BACKUP_DIR/Caddyfile.before` and reload it if the new route fails.
+Restore `$BACKUP_DIR/docker-compose.before.yml` if the durable source change
+fails.
 
 ## DNS
 
@@ -339,15 +377,17 @@ Confirm all items:
 6. One same-set policy update is a no-op.
 7. The policy and command bounds remain visible.
 
-Capture service state after verification:
+Capture service state after verification in the private backup directory:
 
 ```bash
 cd /srv/compose
-docker compose ps --format json > /tmp/cinta-services-after.json
-diff -u /tmp/cinta-services-before.json /tmp/cinta-services-after.json || true
+docker compose --env-file /srv/compose/.env -f docker-compose.yml \
+  ps --format json > "$BACKUP_DIR/services-after.json"
+chmod 0600 "$BACKUP_DIR/services-after.json"
 ```
 
-Only `coffee` and the intended Caddy configuration may differ.
+Compare service names, images, and state. Only `coffee` and the intended Caddy
+configuration may differ.
 
 ## Controlled stop evidence
 
@@ -382,6 +422,7 @@ Restore the prior release environment and Compose source. Replace only coffee:
 
 ```bash
 docker compose \
+  --env-file /srv/compose/.env \
   --env-file /srv/hackspain-coffee/deploy/release.env \
   -f /srv/compose/docker-compose.yml \
   -f /srv/hackspain-coffee/deploy/compose.yml \
@@ -391,6 +432,26 @@ docker compose \
 Restore and reload the prior Caddyfile if routing caused the failure. Preserve
 all run directories. Repeat private health, source, model, HTTPS, WSS, and
 two-client checks after rollback.
+
+The first deployment has no prior coffee image. Its rollback removes only the
+new coffee service:
+
+```bash
+docker compose \
+  --env-file /srv/compose/.env \
+  --env-file /srv/hackspain-coffee/deploy/release.env \
+  -f /srv/compose/docker-compose.yml \
+  -f /srv/hackspain-coffee/deploy/compose.yml \
+  rm -sf coffee
+```
+
+Then restore the saved Compose file and Caddyfile from `$BACKUP_DIR`. Reload
+the restored Caddyfile. Preserve every coffee run directory.
+
+Before DNS mutation, record the authoritative apex response. The initial apex
+uses Vercel's default ALIAS to `cname.vercel-dns-017.com.`. Initial rollback
+removes only the explicit apex A record. It then verifies that the default apex
+ALIAS returns. The wildcard and unrelated records remain unchanged.
 
 ## Provider credentials for future work
 
