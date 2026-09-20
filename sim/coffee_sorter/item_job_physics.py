@@ -31,7 +31,8 @@ typed probe outcomes decide that code, so a recorded provider failure stays a kn
 failure and never reads as an uncertain call.
 
 The status records what THIS invocation did: `live_requested`, and `completed` only when
-a real call returned the proposal. An exact cache hit stays `not_submitted`.
+a real call returned the proposal. An exact cache hit stays `not_submitted`, and only
+that hit records `physics_source: cached_llm_replay`. A real call records `paid_llm_call`.
 """
 from __future__ import annotations
 
@@ -283,7 +284,9 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_FAILED
     _write_json(job_dir / "definition.json", definition)
     _write_json(job_dir / "physics.json", {
-        "physics_source": "cached_llm_replay",
+        # A real call is never labeled as a replay. The same cache hit that keeps the
+        # submission `not_submitted` is what makes this a replay.
+        "physics_source": "cached_llm_replay" if cache_hit else "paid_llm_call",
         "physics_description": description,
         "physics_description_source": source,
         "physics_replay_metadata_sha256": metadata["metadata_sha256"] if metadata else None,

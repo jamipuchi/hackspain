@@ -240,6 +240,19 @@ class SubmissionEvidenceTest(WrapperTest):
         self.assertEqual('completed', status['provider_submission'])
         self.assertFalse(status['cache_hit'])
 
+    def test_a_paid_live_success_is_never_labeled_a_replay(self):
+        entry = self.cache_root / 'cache' / f'{self.digest()}.json'
+
+        def answered(**kwargs):
+            entry.write_text('{}')
+            return self.PROPOSAL
+
+        self.run_with_fake_provider('--live', mode='paid', side_effect=answered)
+        physics = json.loads((self.job / 'physics.json').read_text())
+
+        self.assertEqual('paid_llm_call', physics['physics_source'])
+        self.assertEqual('unmeasured_proxy_estimate', physics['physics_measurement_status'])
+
     def test_an_exact_cache_hit_never_claims_a_submission(self):
         (self.cache_root / 'cache' / f'{self.digest()}.json').write_text('{}')
 
@@ -250,6 +263,15 @@ class SubmissionEvidenceTest(WrapperTest):
         self.assertFalse(status['live_requested'])
         self.assertEqual('not_submitted', status['provider_submission'])
         self.assertTrue(status['cache_hit'])
+
+    def test_an_exact_cache_hit_is_labeled_a_replay(self):
+        (self.cache_root / 'cache' / f'{self.digest()}.json').write_text('{}')
+
+        self.run_with_fake_provider()
+        physics = json.loads((self.job / 'physics.json').read_text())
+
+        self.assertEqual('cached_llm_replay', physics['physics_source'])
+        self.assertEqual('unmeasured_proxy_estimate', physics['physics_measurement_status'])
 
 
 if __name__ == '__main__':
