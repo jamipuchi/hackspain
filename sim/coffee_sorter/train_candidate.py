@@ -132,17 +132,18 @@ def keep_outcome(engine, label: str, *, seed: int, min_resolved: int = MIN_KEEP_
     """Physical outcomes of one seeded closed-loop run, with the controller and the jets on.
 
     `engine` is injected. It needs `step()`, `sim.dt`, and the retained `_object_records`
-    (each carrying `object_id`, `truth_class`, `outcome`, `resolved_time_s`, `jet_hits`).
-    A collector can remove a resolved body from `sim.bean_of` before a scan of the live
-    bean map would see it, so outcomes are read from the retained records instead, never
-    from `sim.bean_of` and never by draining a sim event or outcome queue a second time.
-    The retained record carries no commanded or activated pulse count, only the bean does,
-    and a removed body no longer has one, so both report `None` here with no invented
-    value; `jet_hits` still comes from the record. The returned outcomes and pulses stay
-    in separate blocks: a commanded pulse is never an outcome, and this run never touches
-    a classifier number.
+    (each carrying `object_id`, `truth_class`, `outcome`, `resolved_time_s`, `decisions`,
+    `activated_rejection_tracks`, and `jet_hits`). A collector can remove a resolved body
+    from `sim.bean_of` before a scan of the live bean map would see it, so outcomes are
+    read from the retained records instead, never from `sim.bean_of` and never by draining
+    a sim event or outcome queue a second time. A pulse was commanded when any retained
+    decision for that object is both a reject and scheduled, and activated when its
+    retained activated-tracks set is non-empty; neither is derived from a prediction or a
+    physical outcome. The returned outcomes and pulses stay in separate blocks: a commanded
+    pulse is never an outcome, and this run never touches a classifier number.
     """
-    outcomes, seen, jet_hits = Counter(), set(), 0
+    outcomes, seen = Counter(), set()
+    commanded = activated = jet_hits = 0
     steps, ran = int(max_sim_seconds / engine.sim.dt), 0
     for _ in range(steps):
         engine.step()
@@ -154,6 +155,9 @@ def keep_outcome(engine, label: str, *, seed: int, min_resolved: int = MIN_KEEP_
                 continue
             seen.add(object_id)
             outcomes[record["outcome"]] += 1
+            commanded += int(any(decision["reject"] and decision["scheduled"]
+                                 for decision in record["decisions"]))
+            activated += int(bool(record["activated_rejection_tracks"]))
             jet_hits += int(record["jet_hits"])
         if len(seen) >= min_resolved:
             break
@@ -169,7 +173,7 @@ def keep_outcome(engine, label: str, *, seed: int, min_resolved: int = MIN_KEEP_
             "spilled": outcomes["spilled"],
             "accept_fraction": outcomes["accept"] / resolved if resolved else 0.0,
         },
-        "pulses": dict(commanded=None, activated=None, jet_hits=jet_hits),
+        "pulses": dict(commanded=commanded, activated=activated, jet_hits=jet_hits),
     }
 
 

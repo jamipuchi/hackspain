@@ -167,21 +167,14 @@ def run_trials(spec, layout, *, seed: int, trials: int, background_rate: float) 
                 break
             sim.step()
         if bean is None:
-            records.append({"outcome": "not_spawned", "mass_kg": None, "margin_mm": None,
-                            "sim_time_s": None})
+            records.append({"outcome": "not_spawned", "mass_kg": None, "sim_time_s": None})
             continue
-        started, splitter_z = sim.data.time, None
+        started = sim.data.time
         while bean.outcome is None and sim.data.time - started < TRIAL_TIMEOUT_S:
-            qa = sim.body_qpos[bean.body]
-            # The splitter reads x and z at this same step. Keep the z at the first
-            # crossing only: a later step (a spill, a collector) is not the splitter.
-            if splitter_z is None and float(sim.data.qpos[qa]) >= layout.split_x:
-                splitter_z = float(sim.data.qpos[qa + 2])
             sim.step()
         records.append({
             "outcome": bean.outcome or "unresolved",
             "mass_kg": float(bean.mass),
-            "margin_mm": None if splitter_z is None else (splitter_z - layout.split_z) * 1e3,
             "sim_time_s": None if bean.resolved_t is None else bean.resolved_t - bean.spawn_t,
         })
     return records

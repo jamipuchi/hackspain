@@ -56,7 +56,7 @@ PRESET = HERE / "configs" / "continuous_demo.json"
 
 
 def accepted_trials(count=5):
-    return [{"outcome": "accept", "mass_kg": 0.0004608, "margin_mm": 64.0, "sim_time_s": 0.45}
+    return [{"outcome": "accept", "mass_kg": 0.0004608, "sim_time_s": 0.45}
             for _ in range(count)]
 
 
@@ -119,9 +119,8 @@ class BoxRouteTest(RouteCliTest):
         self.assertEqual(8, result["seed"])
         self.assertEqual(5, len(result["trials"]))
         for trial in result["trials"]:
-            with self.subTest(margin_mm=trial["margin_mm"]):
+            with self.subTest(outcome=trial["outcome"]):
                 self.assertEqual("accept", trial["outcome"])
-                self.assertGreater(trial["margin_mm"], 0.0)
                 self.assertAlmostEqual(0.0004608, trial["mass_kg"])
         self.assertEqual("unmeasured_proxy_estimate", result["estimate_basis"])
         self.assertEqual(hashlib.sha256(PRESET.read_bytes()).hexdigest(), result["preset_sha256"])
@@ -174,14 +173,12 @@ class RouteVerdictTest(unittest.TestCase):
 
     def test_one_injected_non_accept_trial_blocks_the_route(self):
         trials = accepted_trials(4)
-        trials.append({"outcome": "reject", "mass_kg": 0.0004608, "margin_mm": -3.0,
-                       "sim_time_s": 0.44})
+        trials.append({"outcome": "reject", "mass_kg": 0.0004608, "sim_time_s": 0.44})
 
         self.assertEqual(("physics_unsupported", "route_not_accepted"), route_verdict(trials))
 
     def test_an_unresolved_trial_and_an_empty_run_block_the_route(self):
-        unresolved = [{"outcome": "unresolved", "mass_kg": 0.1, "margin_mm": None,
-                       "sim_time_s": None}]
+        unresolved = [{"outcome": "unresolved", "mass_kg": 0.1, "sim_time_s": None}]
 
         self.assertEqual(("physics_unsupported", "route_not_accepted"), route_verdict(unresolved))
         self.assertEqual(("physics_unsupported", "route_not_accepted"), route_verdict([]))
@@ -202,8 +199,7 @@ class RepresentativeLoadTest(RouteCliTest):
         self.assertEqual(evidence, result["load"])
 
     def test_no_load_runs_without_load_seconds_or_after_a_blocked_route(self):
-        blocked = accepted_trials(4) + [{"outcome": "reject", "mass_kg": 0.1, "margin_mm": -2.0,
-                                         "sim_time_s": 0.4}]
+        blocked = accepted_trials(4) + [{"outcome": "reject", "mass_kg": 0.1, "sim_time_s": 0.4}]
         with patch.object(validate_object_route, "run_trials", return_value=blocked), \
                 patch.object(validate_object_route, "representative_load",
                              side_effect=AssertionError("a blocked route must not load")):
@@ -516,18 +512,18 @@ class CandidateMetricsTest(unittest.TestCase):
 class FakeEngine:
     """Engine-like double. It resolves one retained object of one label per step.
 
-    `_object_records` is the retained store `keep_outcome` reads. `collected` mimics a
-    collector that removes the resolved body from `sim.bean_of` inside the same step,
-    the way the real sim's collectors can, while the retained record stays.
+    `_object_records` is the retained store `keep_outcome` reads. The accepted collector
+    scorer parks a resolved body immediately, so `step()` removes it from `sim.bean_of`
+    right away too, the way the real sim's collectors do, while the retained record stays.
+    An outcome of `None` publishes an unresolved record and leaves the body in `bean_of`.
     """
 
-    def __init__(self, outcomes, label="star_token", dt=0.001, jet_hits=0, collected=False):
+    def __init__(self, outcomes, label="star_token", dt=0.001, jet_hits=0):
         self.sim = SimpleNamespace(dt=dt, bean_of={})
         self._object_records = {}
         self.outcomes = list(outcomes)
         self.label = label
         self.jet_hits = jet_hits
-        self.collected = collected
         self.steps = 0
 
     def step(self):
@@ -539,9 +535,11 @@ class FakeEngine:
         self.sim.bean_of[uid] = SimpleNamespace(uid=uid, cls=self.label, outcome=outcome)
         self._object_records[uid] = {
             "object_id": uid, "truth_class": self.label, "outcome": outcome,
-            "resolved_time_s": self.steps * self.sim.dt, "jet_hits": int(uid < self.jet_hits),
+            "resolved_time_s": self.steps * self.sim.dt if outcome is not None else None,
+            "decisions": [], "activated_rejection_tracks": set(),
+            "jet_hits": int(uid < self.jet_hits),
         }
-        if self.collected:
+        if outcome is not None:
             del self.sim.bean_of[uid]
 
 
@@ -575,8 +573,8 @@ class KeepOutcomeTest(unittest.TestCase):
 
         self.assertEqual({"resolved": 30, "accepted": 28, "rejected": 1, "spilled": 1,
                           "accept_fraction": 28 / 30}, run["outcomes"])
-        # The retained record carries no commanded or activated pulse count.
-        self.assertEqual({"commanded": None, "activated": None, "jet_hits": 3}, run["pulses"])
+        # No retained decision or activated track was published, so neither pulse fires.
+        self.assertEqual({"commanded": 0, "activated": 0, "jet_hits": 3}, run["pulses"])
 
     def test_objects_of_another_label_are_ignored(self):
         engine = FakeEngine(["accept"] * 4, label="good")
@@ -586,9 +584,17 @@ class KeepOutcomeTest(unittest.TestCase):
         self.assertEqual(0, run["outcomes"]["resolved"])
         self.assertEqual(0.0, run["outcomes"]["accept_fraction"])
 
+    def test_an_unresolved_record_does_not_count(self):
+        engine = FakeEngine([None, "accept"])
+
+        run = keep_outcome(engine, "star_token", seed=8, min_resolved=1, max_sim_seconds=0.01)
+
+        self.assertEqual(1, run["outcomes"]["resolved"])
+        self.assertEqual(1, run["outcomes"]["accepted"])
+
     def test_a_body_removed_from_bean_of_before_the_scan_is_still_counted(self):
-        """Regression: a collector can pop a resolved body out of bean_of inside one step."""
-        engine = FakeEngine(["accept"], collected=True)
+        """Regression: the collector scorer parks a resolved body out of bean_of at once."""
+        engine = FakeEngine(["accept"])
 
         run = keep_outcome(engine, "star_token", seed=8, max_sim_seconds=0.01)
 
@@ -606,6 +612,29 @@ class KeepOutcomeTest(unittest.TestCase):
         self.assertEqual(20, engine.steps)
         self.assertEqual(1, run["outcomes"]["resolved"])
         self.assertEqual(1, run["outcomes"]["accepted"])
+
+    def test_pulse_evidence_comes_from_the_retained_decisions_and_tracks(self):
+        """A scheduled reject decision commands a pulse; an activated track fires it.
+
+        Neither is derived from the outcome or from a prediction: one object carries
+        both kinds of evidence, one carries neither, and the counts stay separate.
+        """
+        records = {
+            0: {"object_id": 0, "truth_class": "star_token", "outcome": "reject",
+                "decisions": [{"reject": False, "scheduled": True},
+                              {"reject": True, "scheduled": True}],
+                "activated_rejection_tracks": {7}, "jet_hits": 2},
+            1: {"object_id": 1, "truth_class": "star_token", "outcome": "accept",
+                "decisions": [{"reject": True, "scheduled": False}],
+                "activated_rejection_tracks": set(), "jet_hits": 0},
+        }
+        engine = SimpleNamespace(sim=SimpleNamespace(dt=0.001), _object_records=records,
+                                 step=lambda: None)
+
+        run = keep_outcome(engine, "star_token", seed=8, min_resolved=2, max_sim_seconds=0.01)
+
+        self.assertEqual(2, run["outcomes"]["resolved"])
+        self.assertEqual({"commanded": 1, "activated": 1, "jet_hits": 2}, run["pulses"])
 
 
 class TrainerRuntimeLockTest(unittest.TestCase):
