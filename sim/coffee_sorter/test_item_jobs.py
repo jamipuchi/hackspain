@@ -13,6 +13,7 @@ import shutil
 import os
 import re
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -66,6 +67,13 @@ class QueueTest(unittest.TestCase):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         self.root = Path(directory.name)
+        # The configured temporary directory: tempfile.gettempdir() honors this value. Each
+        # test gets its own, so an ephemeral child root never outlives the test directory.
+        self.configured = self.root / 'configured-tmp'
+        self.configured.mkdir()
+        patcher = unittest.mock.patch.object(tempfile, 'tempdir', str(self.configured))
+        patcher.start()
+        self.addCleanup(patcher.stop)
         self.clock = Clock()
         self.store = self.open_store()
 
@@ -161,6 +169,24 @@ class QueueTest(unittest.TestCase):
                 return
             time.sleep(0.01)
         self.fail('the owned process group did not leave in time')
+
+    def expire_lease(self, runner, request_id):
+        """Wait for the hung renderer, expire its lease now, and return its group.
+
+        A tiny lease on the runner is a wall-clock budget for EVERY child. Under load a
+        healthy child outlasts it too, the runner consumes the second attempt, and the job
+        ends failed. So the test waits for the hung child and expires only that one.
+        """
+        def render_group():
+            worker = self.store.get(request_id).get('worker') or {}
+            return worker.get('pgid') if worker.get('stage') == 'render' else None
+
+        # The start record is the child's own word that this run counts as the hung one.
+        self.drive(runner, lambda: render_group() and self.starts('render'))
+        pgid = render_group()
+        with runner._guard:
+            runner.children[request_id]['deadline'] = time.monotonic()
+        return pgid
 
     def state(self, request_id):
         return self.store.get(request_id)['state']
@@ -548,24 +574,6 @@ class RenderRetryTest(QueueTest):
 
 
 class WorkerOwnershipTest(QueueTest):
-    def expire_lease(self, runner, request_id):
-        """Wait for the hung renderer, expire its lease now, and return its group.
-
-        A tiny lease on the runner is a wall-clock budget for EVERY child. Under load a
-        healthy child outlasts it too, the runner consumes the second attempt, and the job
-        ends failed. So the test waits for the hung child and expires only that one.
-        """
-        def render_group():
-            worker = self.store.get(request_id).get('worker') or {}
-            return worker.get('pgid') if worker.get('stage') == 'render' else None
-
-        # The start record is the child's own word that this run counts as the hung one.
-        self.drive(runner, lambda: render_group() and self.starts('render'))
-        pgid = render_group()
-        with runner._guard:
-            runner.children[request_id]['deadline'] = time.monotonic()
-        return pgid
-
     def test_expired_lease_terminates_the_whole_group_before_a_replacement(self):
         self.scenarios({'render': {'1': 'hang', '2': 'ok'}})
         job = self.submit()
@@ -691,6 +699,154 @@ class WorkerOwnershipTest(QueueTest):
                 os.killpg(pgid, number)
             except (ProcessLookupError, PermissionError):
                 return
+
+
+class ChildTempRootTest(QueueTest):
+    """Child HOME, XDG, and TMPDIR state is ephemeral. Path relations only, never a value."""
+
+    VARIABLES = ('HOME', 'XDG_CACHE_HOME', 'XDG_CONFIG_HOME', 'XDG_STATE_HOME', 'TMPDIR')
+
+    def temp_root(self, request_id):
+        return item_jobs._child_temp_root(request_id)
+
+    def kill_group(self, pgid):
+        with contextlib.suppress(ProcessLookupError, PermissionError):
+            os.killpg(pgid, signal.SIGKILL)
+
+    def hung_render(self, runner):
+        self.scenarios({'render': {'1': 'hang', '2': 'ok'}})
+        job = self.submit()
+        return job['request_id'], self.expire_lease(runner, job['request_id'])
+
+    def test_the_five_variables_resolve_below_one_owner_only_root(self):
+        job_dir = self.store.job_dir(self.submit()['request_id'])
+        environment = item_jobs._child_environment(job_dir)
+        root = self.temp_root(job_dir.name).resolve()
+
+        locations = [Path(environment[name]).resolve() for name in self.VARIABLES]
+        self.assertEqual(len(set(locations)), len(self.VARIABLES))
+        for name, location in zip(self.VARIABLES, locations):
+            with self.subTest(variable=name):
+                self.assertTrue(location.is_dir())
+                self.assertTrue(location.is_relative_to(root))
+                self.assertFalse(location.is_relative_to(job_dir.resolve()))
+        self.assertEqual(root.parent, self.configured.resolve())
+        self.assertFalse(root.is_relative_to(self.root.resolve() / 'jobs'))
+        self.assertEqual(stat.S_IMODE(os.lstat(root).st_mode), 0o700)
+        self.assertEqual(sorted(path.name for path in job_dir.iterdir() if path.name == 'home'), [])
+
+    def test_two_jobs_never_share_a_root(self):
+        first, second = (self.store.job_dir(self.submit(description=text)['request_id'])
+                         for text in ('First token', 'Second token'))
+
+        roots = {Path(item_jobs._child_environment(job_dir)['HOME']).resolve().parent
+                 for job_dir in (first, second)}
+
+        self.assertEqual(len(roots), 2)
+
+    def test_a_foreign_entry_at_the_root_name_is_refused_and_never_followed(self):
+        request_id = self.submit()['request_id']
+        outside = self.root / 'outside'
+        outside.mkdir()
+        (outside / 'keep.txt').write_text('keep')
+        self.temp_root(request_id).symlink_to(outside, target_is_directory=True)
+
+        with self.assertRaises(OSError):
+            item_jobs._child_environment(self.store.job_dir(request_id))
+        item_jobs._remove_child_temp(request_id)
+
+        self.assertEqual(sorted(path.name for path in outside.iterdir()), ['keep.txt'])
+        self.assertTrue(self.temp_root(request_id).is_symlink())
+
+    def test_a_confirmed_exit_cleans_the_root_on_success_and_on_failure(self):
+        for scenario, final in (('ok', 'preview_ready'), ('fail_hard', 'failed')):
+            with self.subTest(render=scenario):
+                self.scenarios({'render': [scenario, scenario]})
+                existed, remove = [], item_jobs._remove_child_temp
+
+                def recording(request_id):
+                    existed.append(self.temp_root(request_id).is_dir())
+                    remove(request_id)
+
+                runner = self.open_runner()
+                job = self.submit(description=f'Token {scenario}')
+                with unittest.mock.patch.object(item_jobs, '_remove_child_temp', recording):
+                    self.drive(runner, lambda: self.state(job['request_id']) == final)
+
+                # Every child had the root, and every confirmed exit removed it again.
+                self.assertGreaterEqual(len(existed), 2)
+                self.assertTrue(all(existed))
+                self.assertFalse(self.temp_root(job['request_id']).exists())
+                # No job record names the ephemeral root.
+                self.assertNotIn('cinta-item-job-', json.dumps(self.store.get(job['request_id'])))
+
+    def test_a_timeout_cleans_the_root_after_the_group_is_confirmed_gone(self):
+        runner = self.open_runner()
+        runner.term_wait_s = runner.kill_wait_s = 1.0
+        request_id, pgid = self.hung_render(runner)
+        self.assertTrue(self.temp_root(request_id).is_dir())
+
+        self.drive(runner, lambda: self.state(request_id) == 'preview_ready', timeout=40.0)
+
+        self.wait_gone(pgid)
+        self.assertFalse(self.temp_root(request_id).exists())
+
+    def test_the_root_stays_while_the_group_may_live_and_goes_after_the_cleanup(self):
+        runner = self.open_runner()
+        request_id, hung = self.hung_render(runner)
+        confirm = runner._group_gone
+        runner._group_gone = (lambda pgid, pid=None:
+                              False if pgid == hung else confirm(pgid, pid))
+
+        self.drive(runner, lambda: self.state(request_id) == 'worker_unavailable')
+        self.assertTrue(self.temp_root(request_id).is_dir())
+
+        del runner._group_gone
+        runner.confirm_cleanup(request_id)
+        self.assertFalse(self.temp_root(request_id).exists())
+
+    def test_a_shutdown_cleans_the_root_of_a_terminated_child(self):
+        runner = self.open_runner()
+        runner.term_wait_s = runner.kill_wait_s = 1.0
+        self.scenarios({'render': {'1': 'hang'}})
+        request_id = self.submit()['request_id']
+        self.drive(runner, lambda: (self.store.get(request_id).get('worker') or {}).get('stage')
+                   == 'render' and self.starts('render'))
+        self.assertTrue(self.temp_root(request_id).is_dir())
+
+        runner.shutdown()
+
+        self.assertFalse(self.temp_root(request_id).exists())
+
+    def test_recovery_cleans_a_gone_group_and_keeps_the_root_of_a_live_one(self):
+        marker = self.root / 'orphan.pid'
+        leaders = {'gone': subprocess.Popen([sys.executable, '-c', 'pass'],
+                                            start_new_session=True),
+                   'alive': subprocess.Popen([sys.executable, '-c', ORPHAN_SOURCE, str(marker)],
+                                             start_new_session=True)}
+        jobs = {}
+        for name, leader in leaders.items():
+            leader.wait()
+            request_id = self.submit(description=f'Token {name}')['request_id']
+            item_jobs._child_environment(self.store.job_dir(request_id))
+            self.store.record(request_id, worker={
+                'stage': 'render', 'pid': leader.pid, 'pgid': leader.pid, 'token': name,
+                'lease_deadline': '2026-09-20T09:00:00Z', 'started': '2026-09-20T09:00:00Z',
+                'pid_start': 'Mon Jan  1 00:00:00 2024', 'log': ''})
+            self.store.transition(request_id, 'rendering_previews', token=name)
+            jobs[name] = request_id
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline and not marker.is_file():
+            time.sleep(0.01)
+        self.addCleanup(self.kill_group, leaders['alive'].pid)
+        self.assertTrue(marker.is_file())
+
+        self.open_runner().recover()
+
+        self.assertEqual(self.state(jobs['alive']), 'worker_unavailable')
+        self.assertTrue(self.temp_root(jobs['alive']).is_dir())
+        self.assertNotEqual(self.state(jobs['gone']), 'worker_unavailable')
+        self.assertFalse(self.temp_root(jobs['gone']).exists())
 
 
 class RetentionBoundTest(QueueTest):
@@ -1189,11 +1345,9 @@ class ReleaseGateTest(QueueTest):
         self.assertEqual(_tree_snapshot(item_jobs.HERE / 'generator'), before_generator)
         self.assertEqual(_tree_snapshot(fixtures), before_fixtures)
         job_dir = self.store.job_dir(job['request_id'])
-        environment = item_jobs._child_environment(job_dir)
-        self.assertEqual(environment['HOME'], str(job_dir / 'home'))
-        self.assertEqual(environment['XDG_CACHE_HOME'], str(job_dir / 'home' / 'cache'))
-        self.assertEqual(environment['TMPDIR'], tempfile.gettempdir())
-        # Names only. A failing assertion must never print a credential value.
+        # The child homes are ephemeral now: see ChildTempRootTest. Nothing of them may
+        # stay in the persistent job directory. Names only, never an environment value.
+        self.assertFalse((job_dir / 'home').exists())
         self.assertNotIn('XDG_CACHE_HOME', sorted(os.environ))
 
     def test_an_unknown_job_record_schema_is_refused(self):

@@ -683,6 +683,7 @@ class ItemJobRunner:
                                          env=_child_environment(job_dir))
             except OSError:
                 log.close()
+                _remove_child_temp(request_id)
                 self._fault(f"{stage}_launch_failed")
                 self._stage_failure(self.store.get(request_id), stage,
                                     table["failure_error"], token)
@@ -729,6 +730,7 @@ class ItemJobRunner:
             self._block_stage(request_id, entry,
                               "the owned process group did not confirm its exit")
             return
+        _remove_child_temp(request_id)
         if terminated:
             # A descendant outlived the wrapper, so the artifacts may be incomplete.
             stage = entry["stage"]
@@ -1258,6 +1260,7 @@ class ItemJobRunner:
             self._block_stage(request_id, entry,
                               "the owned process group did not confirm its exit")
             return
+        _remove_child_temp(request_id)
         self._timed_out(job, entry["stage"], entry["token"])
 
     def _timed_out(self, job: Mapping[str, Any], stage: str, token: str | None) -> None:
@@ -1284,6 +1287,7 @@ class ItemJobRunner:
                                       error="worker_unavailable",
                                       progress="a restart could not confirm the owned group exit")
                 continue
+            _remove_child_temp(request_id)
             if STAGES[stage]["provider_backed"] and job.get("provider_submission") == "in_flight":
                 self._unconsumed(job, stage, token, "interrupted_uncertain",
                                  "provider_interrupted", provider_submission="uncertain")
@@ -1312,7 +1316,8 @@ class ItemJobRunner:
             pending = list(self.children.items()) + list(self.blocked_children.items())
             self.blocked_children.clear()
         for request_id, entry in pending:
-            self._terminate(entry["pgid"], entry["child"])
+            if self._terminate(entry["pgid"], entry["child"]):
+                _remove_child_temp(request_id)
             self._release(request_id, entry, free_slot=True)
 
     # Operator actions ---------------------------------------------------
@@ -1373,6 +1378,7 @@ class ItemJobRunner:
                 entry = self.blocked_children.pop(request_id, None)
             if entry is not None:
                 self._release(request_id, entry, free_slot=False)
+            _remove_child_temp(request_id)
             self._timed_out(job, stage, token)
             return self.store.get(request_id)
 
@@ -1588,18 +1594,49 @@ def _normalize_payload(payload: Any) -> dict[str, Any]:
             "expected_catalog_revision": revision}
 
 
-def _child_environment(job_dir: Path) -> dict[str, str]:
-    """Point every child home and cache path below the job directory.
+def _child_temp_root(request_id: str) -> Path:
+    """The one ephemeral root of a job's children, below the configured temporary directory.
 
-    The service never mutates its own os.environ. The engine worker inherits that
-    environment, so a provider value or a redirected cache must never land in it.
+    The name derives from the request id alone, so no job record ever stores this path
+    and a restart can still find and clean it.
     """
-    home = job_dir / "home"
-    for name in ("cache", "config", "state"):
-        (home / name).mkdir(parents=True, exist_ok=True)
-    return {**os.environ, "HOME": str(home), "XDG_CACHE_HOME": str(home / "cache"),
-            "XDG_CONFIG_HOME": str(home / "config"), "XDG_STATE_HOME": str(home / "state"),
-            "TMPDIR": tempfile.gettempdir()}
+    return Path(tempfile.gettempdir()) / f"cinta-item-job-{request_id}"
+
+
+def _child_environment(job_dir: Path) -> dict[str, str]:
+    """Point every child home, cache, and temporary path below its ephemeral root.
+
+    The job directory is persistent and holds only artifacts. Blender home, XDG, and
+    temporary state is disposable, so it lives under the configured temporary directory
+    with owner-only permissions. The service never mutates its own os.environ. The engine
+    worker inherits that environment, so a provider value or a redirected cache must
+    never land in it.
+    """
+    root = _child_temp_root(Path(job_dir).name)
+    try:
+        os.mkdir(root, 0o700)
+    except FileExistsError:
+        # A leftover of this job is reused. Anything else at that name is refused, and a
+        # symlink is never followed.
+        found = os.lstat(root)
+        if not stat.S_ISDIR(found.st_mode) or found.st_uid != os.getuid():
+            raise OSError("the child temporary root is not an owned directory") from None
+        os.chmod(root, 0o700)
+    names = {"HOME": "home", "XDG_CACHE_HOME": "cache", "XDG_CONFIG_HOME": "config",
+             "XDG_STATE_HOME": "state", "TMPDIR": "tmp"}
+    for name in names.values():
+        (root / name).mkdir(mode=0o700, exist_ok=True)
+    return {**os.environ, **{variable: str(root / name) for variable, name in names.items()}}
+
+
+def _remove_child_temp(request_id: str) -> None:
+    """Drop the ephemeral root. Call this only after the owned group is confirmed gone."""
+    root = _child_temp_root(request_id)
+    with contextlib.suppress(OSError):
+        found = os.lstat(root)
+        # Only an owned real directory. A symlink or a foreign entry is never followed.
+        if stat.S_ISDIR(found.st_mode) and found.st_uid == os.getuid():
+            shutil.rmtree(root, ignore_errors=True)
 
 
 def _preview_evidence(job_dir: Path) -> dict[str, dict[str, Any]]:
