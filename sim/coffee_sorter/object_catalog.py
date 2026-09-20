@@ -84,6 +84,12 @@ _COMMON_HOST_NAMES = frozenset({"localhost"})
 _DRIVE_RE = re.compile(r"^[A-Za-z]:[\\/]")
 # A seeded bundle carries no date, so an activation can never be dated by its bytes.
 _DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
+_ABSOLUTE_PATH_RE = re.compile(r"(?:[A-Za-z]:[\\/]|/)[^\s\"']*")
+
+
+def _redact_host_paths(text: str) -> str:
+    """No host path reaches a public entry. The operator text stays, its paths do not."""
+    return _ABSOLUTE_PATH_RE.sub("[path]", text)
 
 
 class CatalogError(ValueError):
@@ -532,6 +538,103 @@ def _archive_model_artifact(archived: Mapping[str, Any],
     return _model_artifact_sha256(files["model.manifest.json"])
 
 
+NEEDS_REVIEW_KIND = "needs_review"
+ARCHIVED_TYPE_KIND = "archived_type"
+NEEDS_REVIEW_PREFIX = "needs-review."
+# Only a rendered preview may be copied. Nothing else about a failed job is evidence.
+NEEDS_REVIEW_PREVIEWS = ("perspective.png", "top.png")
+_NEEDS_REVIEW_FIELDS = ("entry_kind", "entry_id", "request_id", "display_name", "status",
+                        "failure_reason", "created_at", "preview_url")
+
+
+def archive_needs_review(history_root: Path, job: Mapping[str, Any], job_dir: Path) -> Path:
+    """Keep one honest trace of a job that never became an active type.
+
+    A reset mechanism calls this so the Wall of Fame never hides a failure. NOTHING is
+    invented: the entry carries no model, definition, GLB, classifier, provenance, or
+    object type id, because none of those exist for a job that did not activate. A
+    conflicting entry raises BEFORE any write, so the caller can stop its own reset. An
+    identical entry is a no-op.
+
+    `job_dir` is the caller's descriptor-confined job directory. It is never persisted.
+
+    Decisions taken here, stated so they are easy to correct: `entry_id` is
+    `"needs-review." + request_id`; the entry lives at
+    `history_root/wall-of-fame/<entry_id>/entry.json`; `preview_url` is
+    `/wall-of-fame/<entry_id>/<name>`; `failure_reason` is the job's `error` then its
+    `reason`, path-free and bounded; `created_at` is `timestamps.created`;
+    `display_name` is the job's `display_name` or its truncated `description`.
+    """
+    request_id = job["request_id"]
+    if not isinstance(request_id, str) or not _FILE_RE.fullmatch(request_id):
+        raise CatalogError("a needs review entry requires one safe request id")
+    entry_id = f"{NEEDS_REVIEW_PREFIX}{request_id}"
+    directory = Path(history_root) / "wall-of-fame" / entry_id
+    name, data = _needs_review_preview(job, Path(job_dir))
+    record = {
+        "entry_kind": NEEDS_REVIEW_KIND,
+        "entry_id": entry_id,
+        "request_id": request_id,
+        "display_name": _needs_review_name(job),
+        "status": NEEDS_REVIEW_KIND,
+        "failure_reason": _needs_review_reason(job),
+        "created_at": (job.get("timestamps") or {}).get("created"),
+        "preview_url": None if name is None else f"/wall-of-fame/{entry_id}/{name}",
+    }
+    files = {"entry.json": _pretty(record)}
+    if name is not None:
+        files[name] = data
+    if directory.exists():
+        # An identity conflict is refused before anything is written or replaced.
+        current = {item.name: item.read_bytes()
+                   for item in directory.iterdir() if item.is_file()}
+        if current != files:
+            raise CatalogError(f"a needs review entry is immutable: {entry_id}")
+        return directory
+    return _publish_staged(directory, files)
+
+
+def _needs_review_name(job: Mapping[str, Any]) -> str:
+    for value in (job.get("display_name"), job.get("description")):
+        if isinstance(value, str) and value.strip():
+            return _redact_host_paths(value.strip()[:120])
+    return "Untitled item"
+
+
+def _needs_review_reason(job: Mapping[str, Any]) -> str | None:
+    for value in (job.get("error"), job.get("reason")):
+        if isinstance(value, str) and value.strip():
+            return _redact_host_paths(value.strip()[:200])
+    return None
+
+
+def _needs_review_preview(job: Mapping[str, Any], job_dir: Path):
+    """Copy ONE preview whose declared hash matches its bytes, or nothing at all.
+
+    A null preview is valid. No declared hash, a mismatch, a symlink, a missing file, or
+    an unreadable one all give the same honest answer.
+    """
+    declared = ((job.get("artifacts") or {}).get("previews") or {})
+    if not isinstance(declared, Mapping):
+        return None, None
+    for name in NEEDS_REVIEW_PREVIEWS:
+        evidence = declared.get(name)
+        digest = evidence.get("sha256") if isinstance(evidence, Mapping) else None
+        if not isinstance(digest, str) or not _SHA256_RE.fullmatch(digest):
+            continue
+        path = job_dir / "previews" / name
+        try:
+            if path.is_symlink() or not path.is_file():
+                continue
+            _inside(job_dir, path)
+            data = path.read_bytes()
+        except (OSError, CatalogError):
+            continue
+        if hashlib.sha256(data).hexdigest() == digest:
+            return name, data
+    return None, None
+
+
 def wall_of_fame_page(root: Path | None = None, offset: int = 0,
                       limit: int = MAX_WALL_PAGE) -> dict[str, Any]:
     """Return one bounded, newest-first page of inactive archived definitions."""
@@ -542,8 +645,25 @@ def wall_of_fame_page(root: Path | None = None, offset: int = 0,
     wall = Path(default_catalog_root() if root is None else root) / "wall-of-fame"
     entries, unreadable = [], 0
     for directory in sorted(wall.iterdir()) if wall.is_dir() else []:
+        if not (directory.is_dir() and _ID_RE.fullmatch(directory.name)):
+            continue
+        review = directory / "entry.json"
+        if review.is_file():
+            # A job that never activated. It carries no definition, so it never goes
+            # through the archived-type rules below.
+            try:
+                entry = json.loads(review.read_text())
+                if [entry[name] for name in _NEEDS_REVIEW_FIELDS][1] != directory.name:
+                    raise CatalogError("entry identifier does not match its directory")
+                _rfc3339_utc(entry["created_at"], "created_at")
+            except (OSError, ValueError, KeyError, TypeError):
+                unreadable += 1
+                continue
+            entries.append({**entry, "retired_at": entry["created_at"],
+                            "object_type_id": entry["entry_id"], "preview": None})
+            continue
         record = directory / "archive.json"
-        if not (directory.is_dir() and _ID_RE.fullmatch(directory.name) and record.is_file()):
+        if not record.is_file():
             continue
         # One damaged entry must not hide the other archived types. The page reports the count.
         try:
@@ -560,7 +680,8 @@ def wall_of_fame_page(root: Path | None = None, offset: int = 0,
         if preview is None:
             unreadable += 1
             continue
-        entries.append({**entry, "preview": preview})
+        # An existing archive is never rewritten, so its kind is stated for the reader.
+        entries.append({"entry_kind": ARCHIVED_TYPE_KIND, **entry, "preview": preview})
     entries.sort(key=lambda entry: (entry["retired_at"], entry["object_type_id"]), reverse=True)
     return {"total": len(entries), "unreadable": unreadable, "offset": offset, "limit": limit,
             "entries": entries[offset:offset + limit]}

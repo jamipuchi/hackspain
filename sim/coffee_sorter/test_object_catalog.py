@@ -1172,6 +1172,146 @@ class WriteCatalogGuardTest(CatalogRootTest):
         self.assertEqual([target.name], [item.name for item in target.parent.iterdir()])
 
 
+class NeedsReviewTest(unittest.TestCase):
+    """A job that never became an active type still leaves one honest trace."""
+
+    REQUEST_ID = "2b2d5a4e-1f2e-4d3c-8a9b-0c1d2e3f4a5b"
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+        self.history = self.root / "history"
+        self.job_dir = self.root / "jobs" / self.REQUEST_ID
+        (self.job_dir / "previews").mkdir(parents=True)
+
+    def preview(self, name="perspective.png", data=b"png-bytes", digest=None):
+        (self.job_dir / "previews" / name).write_bytes(data)
+        return {name: {"sha256": digest or hashlib.sha256(data).hexdigest(),
+                       "bytes": len(data)}}
+
+    def job(self, **changes):
+        value = {"request_id": self.REQUEST_ID, "display_name": "Brass star token",
+                 "description": "A small brass star token", "error": "training_failed",
+                 "reason": "candidate_gate_failed", "artifacts": {},
+                 "timestamps": {"created": "2026-09-20T09:00:00Z"}}
+        value.update(changes)
+        return value
+
+    def entry(self, **changes):
+        directory = object_catalog.archive_needs_review(
+            self.history, self.job(**changes), self.job_dir)
+        return directory, json.loads((directory / "entry.json").read_text())
+
+    def test_the_entry_holds_exactly_the_agreed_keys_and_no_invented_evidence(self):
+        directory, record = self.entry(artifacts={"previews": self.preview()})
+
+        self.assertEqual(sorted(object_catalog._NEEDS_REVIEW_FIELDS), sorted(record))
+        self.assertEqual(("needs_review", f"needs-review.{self.REQUEST_ID}", "needs_review"),
+                         (record["entry_kind"], record["entry_id"], record["status"]))
+        self.assertEqual(("Brass star token", "training_failed", "2026-09-20T09:00:00Z"),
+                         (record["display_name"], record["failure_reason"],
+                          record["created_at"]))
+        # Nothing is fabricated: no model, definition, GLB, classifier, or type id.
+        for absent in ("object_type_id", "definition", "provenance", "classifier_label",
+                       "model_artifact_sha256", "visual"):
+            self.assertNotIn(absent, record)
+        self.assertEqual(["entry.json", "perspective.png"],
+                         sorted(path.name for path in directory.iterdir()))
+
+    def test_a_verified_preview_is_copied_and_addressed_by_its_entry(self):
+        directory, record = self.entry(artifacts={"previews": self.preview()})
+
+        self.assertEqual(f"/wall-of-fame/needs-review.{self.REQUEST_ID}/perspective.png",
+                         record["preview_url"])
+        self.assertEqual(b"png-bytes", (directory / "perspective.png").read_bytes())
+
+    def test_every_unverified_preview_gives_a_valid_null_preview(self):
+        cases = {
+            "no declared hash": {},
+            "declared without a hash": {"perspective.png": {"bytes": 3}},
+            "hash mismatch": self.preview(digest="c" * 64),
+            "missing file": {"top.png": {"sha256": "d" * 64, "bytes": 3}},
+        }
+        for name, previews in cases.items():
+            with self.subTest(case=name):
+                shutil.rmtree(self.history, ignore_errors=True)
+                directory, record = self.entry(artifacts={"previews": previews})
+
+                self.assertIsNone(record["preview_url"])
+                self.assertEqual(["entry.json"],
+                                 [path.name for path in directory.iterdir()])
+
+    def test_a_preview_symlink_is_never_copied(self):
+        declared = self.preview()
+        target = self.job_dir / "previews" / "perspective.png"
+        outside = self.root / "outside.png"
+        outside.write_bytes(b"png-bytes")
+        target.unlink()
+        target.symlink_to(outside)
+
+        _, record = self.entry(artifacts={"previews": declared})
+
+        self.assertIsNone(record["preview_url"])
+
+    def test_a_conflicting_entry_raises_before_any_write(self):
+        directory, _ = self.entry(artifacts={"previews": self.preview()})
+        before = {path.name: path.read_bytes() for path in directory.iterdir()}
+
+        with self.assertRaisesRegex(CatalogError, "immutable"):
+            self.entry(display_name="Another name",
+                       artifacts={"previews": self.preview()})
+
+        self.assertEqual(before, {path.name: path.read_bytes()
+                                  for path in directory.iterdir()})
+
+    def test_an_identical_repeat_writes_nothing_twice(self):
+        first, record = self.entry(artifacts={"previews": self.preview()})
+        stamps = {path.name: path.stat().st_mtime_ns for path in first.iterdir()}
+
+        second, again = self.entry(artifacts={"previews": self.preview()})
+
+        self.assertEqual((first, record), (second, again))
+        self.assertEqual(stamps, {path.name: path.stat().st_mtime_ns
+                                  for path in second.iterdir()})
+
+    def test_two_roots_produce_byte_identical_entries(self):
+        """The caller writes a scratch copy first and compares it with the staged one."""
+        job = self.job(state="physics_blocked", artifacts={"previews": self.preview()})
+        scratch = object_catalog.archive_needs_review(
+            self.root / "scratch", job, self.job_dir)
+        staged = object_catalog.archive_needs_review(self.history, job, self.job_dir)
+
+        self.assertEqual(scratch.name, staged.name)
+        self.assertEqual(f"needs-review.{self.REQUEST_ID}", staged.name)
+        self.assertEqual({path.name: path.read_bytes() for path in scratch.iterdir()},
+                         {path.name: path.read_bytes() for path in staged.iterdir()})
+
+    def test_no_host_path_reaches_the_entry(self):
+        _, record = self.entry(error=f"the trainer failed at {self.job_dir}/training/out",
+                               display_name=None, description=f"see {self.root}/notes")
+
+        for value in (record["failure_reason"], record["display_name"]):
+            self.assertNotIn(str(self.root), value)
+            self.assertIn("[path]", value)
+
+    def test_the_page_lists_both_kinds_and_keeps_archived_types_intact(self):
+        self.entry(artifacts={"previews": self.preview()})
+        definition = builtin_definition("stone")
+        archive_type(self.history, definition, "2026-09-20T10:00:00Z")
+
+        page = wall_of_fame_page(self.history)
+        kinds = {entry["entry_kind"]: entry for entry in page["entries"]}
+
+        self.assertEqual(0, page["unreadable"])
+        self.assertEqual({"needs_review", "archived_type"}, set(kinds))
+        self.assertEqual(definition["object_type_id"],
+                         kinds["archived_type"]["object_type_id"])
+        self.assertIsNotNone(kinds["archived_type"]["preview"])
+        self.assertEqual(f"needs-review.{self.REQUEST_ID}",
+                         kinds["needs_review"]["entry_id"])
+
+
 class AtomicReplaceTest(unittest.TestCase):
     """The seed marker and the active pointer both commit through this one helper."""
 
