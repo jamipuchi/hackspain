@@ -1525,7 +1525,11 @@ def _apply_submission(job: dict[str, Any]) -> None:
     """Keep provider submission memory sticky. Nothing may erase a possible submission."""
     history = list(job.get("provider_submission_history") or [])
     requested = job.get("provider_submission") or "not_submitted"
-    if requested == "not_submitted" and any(item in SUBMITTED_EVER for item in history):
+    if requested == "not_submitted" and history and history[-1] == "completed":
+        # A completed call is a known, billed fact about the JOB. A later attempt that only
+        # replayed the cache reports `not_submitted` about itself, and cannot change that.
+        requested = "completed"
+    elif requested == "not_submitted" and any(item in SUBMITTED_EVER for item in history):
         requested = "uncertain"
     if not history or history[-1] != requested:
         history.append(requested)

@@ -1935,6 +1935,30 @@ class PhysicsAndTrainingFlowTest(QueueTest):
                 self.assertEqual('d' * 64, stored['artifacts']['physics']['physics_request_sha256'])
                 self.assertTrue(stored['progress'].startswith('the draft definition is invalid'))
 
+    def test_a_cache_replay_after_a_completed_call_keeps_completed(self):
+        """The retry reports not_submitted about ITSELF. The job keeps its billed fact."""
+        runner = self.open_runner()
+        job, job_dir = self.proposing('in_flight')
+        (job_dir / 'physics.json').write_text(json.dumps({'physics_source': 'paid_llm_call'}))
+        (job_dir / 'provider_status.json').write_text(json.dumps(
+            {'provider_submission': 'completed', 'reason': 'the draft definition is invalid'}))
+        runner._settle_physics_proposal(job, job_dir, None, item_jobs.EXIT_FAILED)
+        retried = self.store.get(job['request_id'])
+        self.assertEqual(('proposing_physics', 'completed'),
+                         (retried['state'], retried['provider_submission']))
+
+        # The one automatic retry finds the saved answer in the cache and succeeds.
+        (job_dir / 'definition.json').write_text('{}')
+        (job_dir / 'provider_status.json').write_text(json.dumps(
+            {'provider_submission': 'not_submitted', 'cache_hit': True}))
+        runner._settle_physics_proposal(retried, job_dir, None, item_jobs.EXIT_OK)
+
+        stored = self.store.get(job['request_id'])
+        self.assertEqual('validating_physics', stored['state'])
+        self.assertEqual('completed', stored['provider_submission'])
+        self.assertEqual(['not_submitted', 'in_flight', 'completed'],
+                         stored['provider_submission_history'])
+
     def test_a_known_provider_failure_shows_its_short_path_free_reason(self):
         runner = self.open_runner()
         job, job_dir = self.proposing('not_submitted')
