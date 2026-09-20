@@ -119,6 +119,17 @@ Compose release value.
 
 ## Host paths
 
+Run every host command from this section through Rollback inside one root
+shell. This boundary makes the private redirects and backup reads consistent.
+
+```bash
+ssh hackspain
+sudo -i
+set -eu
+test "$(id -u)" -eq 0
+umask 077
+```
+
 Use these persistent paths:
 
 ```text
@@ -181,8 +192,8 @@ Confirm the environment contains the exact release SHA and immutable image ID.
 
 ## Compose preflight
 
-Create one private backup directory. Capture the existing service state before
-any change. The rendered Compose files can contain secrets.
+Create one private backup directory from the root shell. Capture the existing
+service state before any change. The rendered Compose files can contain secrets.
 
 ```bash
 set -eu
