@@ -111,11 +111,12 @@ RUN python -m py_compile \
 COPY deploy/hack-growth.dev/start.sh /app/deploy/start.sh
 COPY deploy/hack-growth.dev/check_live.py /app/deploy/check_live.py
 COPY deploy/hack-growth.dev/blender_smoke.py /app/deploy/blender_smoke.py
-COPY deploy/hack-growth.dev/reset_live_state.py /app/deploy/reset_live_state.py
+COPY deploy/hack-growth.dev/reset_live_state.py /app/deploy/hack-growth.dev/reset_live_state.py
 RUN printf '%s' "$SOURCE_REVISION" | grep -Eq '^[0-9a-f]{40}$' \
     && printf '%s\n' "$SOURCE_REVISION" > /app/source-revision.txt \
-    && python -m py_compile /app/deploy/reset_live_state.py \
-    && chmod 0555 /app/deploy/start.sh /app/deploy/check_live.py /app/deploy/reset_live_state.py \
+    && python -m py_compile /app/deploy/hack-growth.dev/reset_live_state.py \
+    && chmod 0555 /app/deploy/start.sh /app/deploy/check_live.py \
+       /app/deploy/hack-growth.dev/reset_live_state.py \
     && chmod 0444 /app/deploy/blender_smoke.py \
     && groupadd --gid 10001 cinta \
     && useradd --uid 10001 --gid 10001 --no-create-home --home-dir /nonexistent cinta
