@@ -193,6 +193,30 @@ def _validate_item_job_arguments(parser, args, item_jobs_root):
         parser.error('--item-jobs-provider-env must stay outside --item-jobs-root.')
 
 
+def resolve_model_path(preset, preset_path, source_dir):
+    """Resolve `model_path`. `model_path_root: preset` binds it to the preset directory.
+
+    A bundle carries its model beside its preset, so a relative path must resolve there
+    and must stay there. Without the field the behavior is unchanged: relative to the
+    source directory. `engine.Engine.__init__` holds the matching resolution for the
+    engine child, which must not import this service module.
+    """
+    raw = preset.get('model_path', '')
+    model_path = Path(raw)
+    root = preset.get('model_path_root')
+    if root is None:
+        return model_path if model_path.is_absolute() else Path(source_dir) / model_path
+    if root != 'preset':
+        raise ValueError('model_path_root must be "preset" when it is present.')
+    if model_path.is_absolute():
+        raise ValueError('model_path_root "preset" requires a relative model_path.')
+    directory = Path(preset_path).resolve().parent
+    resolved = (directory / model_path).resolve()
+    if not resolved.is_relative_to(directory):
+        raise ValueError('model_path must stay inside the preset directory.')
+    return resolved
+
+
 def load_preset(preset_path):
     """Load a preset and validate continuous model compatibility without training."""
     preset_path = Path(preset_path).resolve()
@@ -206,8 +230,7 @@ def load_preset(preset_path):
     if preset.get('score_window_seconds') != 60.0:
         raise ValueError('Continuous presets must use a 60 simulation-second score window.')
 
-    model_path = Path(preset.get('model_path', ''))
-    model_path = model_path if model_path.is_absolute() else HERE / model_path
+    model_path = resolve_model_path(preset, preset_path, HERE)
     manifest_path = model_path.with_suffix('.manifest.json')
     if not model_path.is_file() or not manifest_path.is_file():
         raise FileNotFoundError('The selected model and its adjacent manifest are required.')

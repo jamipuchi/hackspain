@@ -33,7 +33,6 @@ import fcntl
 import json
 import math
 import sys
-import tempfile
 import time
 from collections import Counter
 from dataclasses import asdict
@@ -176,6 +175,9 @@ def gate_failures(validation: Mapping[str, Any]) -> list[str]:
     failures = []
     if not validation["label_order_ok"]:
         failures.append("label_order")
+    # The bundled preset must load through the service loader, or nothing can activate it.
+    if not (validation.get("preset_compatibility") or {}).get("loaded", True):
+        failures.append("preset_incompatible")
     classifier = validation["classifier"]
     unique = classifier["holdout_unique_objects"]
     if any(unique.get(label, 0) < MIN_HOLDOUT_UNIQUE for label in validation["labels"]):
@@ -250,19 +252,33 @@ def acquire_lock(path: Path):
     return handle
 
 
-def build_engine(preset: Mapping[str, Any], model_path: Path, directory: Path):
-    """Build the real Engine from a temporary preset that carries an absolute model path.
+def preset_compatibility(preset_path: Path) -> dict[str, Any]:
+    """Prove the bundled preset loads through the service loader itself.
 
-    `engine.py` resolves a relative `model_path` against the source directory and this
-    module never edits it. The temporary preset is never hashed and never bundled.
-    The integration owner replaces this mechanism when relative model paths land, so that
-    final validation loads the actual immutable `candidate.preset.json`.
+    `live.load_preset` is the code the service runs, so it is the only honest proof. It is
+    imported here, at this one call site, because importing it pulls aiohttp into this
+    child. A refusal is recorded as evidence, never raised as a crash.
+    """
+    from live import load_preset
+
+    try:
+        load_preset(preset_path)
+    except Exception as error:
+        return {"loaded": False, "reason": f"{type(error).__name__}: {error}",
+                "loader": "live.load_preset"}
+    return {"loaded": True, "reason": None, "loader": "live.load_preset"}
+
+
+def build_engine(preset_path: Path):
+    """Build the real Engine from the immutable candidate preset itself.
+
+    The candidate preset carries `"model_path": "candidate.joblib"` with
+    `"model_path_root": "preset"`, so the engine loads the model beside it. No temporary
+    preset and no absolute path exist any more, and the hashed bytes never change.
     """
     from engine import Engine
 
-    temporary = directory / "keep-outcome.preset.json"
-    temporary.write_text(json.dumps({**dict(preset), "model_path": str(model_path)}))
-    return Engine(temporary)
+    return Engine(Path(preset_path))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -461,7 +477,8 @@ def train(args, preset, preset_path: Path, layout: Layout, rate: float, capture_
     }
     # Every candidate activates as Keep, so every candidate runs the closed-loop gate.
     validation["policy"]["engine_policy_version"] = record_keep_outcome(
-        validation, preset, artifact, profile, new_label, applied_reject_classes)
+        validation, preset, preset_out, profile, new_label, applied_reject_classes)
+    validation["preset_compatibility"] = preset_compatibility(preset_out)
     validation["failures"] = gate_failures(validation)
     validation["passed"] = not validation["failures"]
     write_atomic_json(out / "validation.json", validation)
@@ -487,34 +504,36 @@ def train(args, preset, preset_path: Path, layout: Layout, rate: float, capture_
     return 0
 
 
-def record_keep_outcome(validation: dict[str, Any], preset, artifact: Path, profile,
+def record_keep_outcome(validation: dict[str, Any], preset, preset_path: Path, profile,
                         new_label: str, reject_classes: list[str]) -> str | None:
     """Run one seeded closed-loop run under the intended live policy.
 
-    The run applies the survivor reject classes before its first step, and the new label
-    is never in that set, because activation always adds it as Keep. Returns the engine
-    policy version. Outcomes and pulses stay in separate blocks.
+    The run loads the immutable candidate preset, applies the survivor reject classes
+    before its first step, and never rejects the new label, because activation always adds
+    it as Keep. Returns the engine policy version. Outcomes and pulses stay separate.
     """
     import profiles
 
-    # The Engine resolves its profile by name from PROFILES. The candidate binds a
-    # distinct key, so a built-in entry is never overwritten, and the key goes away
-    # again when the run ends. Only the temporary preset names that key.
-    key = f"__candidate__{profile.name}"
+    # The Engine resolves its profile by name from PROFILES, and the candidate preset must
+    # keep its own bundled `profile` value. This one-shot child therefore rebinds that name
+    # for the run and restores the previous entry when the run ends.
+    key = profile.name
+    previous = profiles.PROFILES.get(key)
     profiles.PROFILES[key] = profile
     seed = int(preset["seed"])
     try:
-        with tempfile.TemporaryDirectory() as directory:
-            engine = build_engine({**dict(preset), "profile": key}, artifact.resolve(),
-                                  Path(directory))
-            try:
-                # The intended live policy applies before the first step, never after it.
-                ack = engine.set_reject_classes(list(reject_classes))
-                run = keep_outcome(engine, new_label, seed=seed)
-            finally:
-                engine.close()
+        engine = build_engine(preset_path)
+        try:
+            # The intended live policy applies before the first step, never after it.
+            ack = engine.set_reject_classes(list(reject_classes))
+            run = keep_outcome(engine, new_label, seed=seed)
+        finally:
+            engine.close()
     finally:
-        profiles.PROFILES.pop(key, None)
+        if previous is None:
+            profiles.PROFILES.pop(key, None)
+        else:
+            profiles.PROFILES[key] = previous
     validation["keep_outcome"] = {
         "required": True,
         "runs": [{"seed": run["seed"], "sim_seconds": run["sim_seconds"], **run["outcomes"]}],

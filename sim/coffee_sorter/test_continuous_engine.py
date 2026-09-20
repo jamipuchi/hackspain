@@ -1,11 +1,13 @@
+import tempfile
 import unittest
 from collections import deque
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
 
 from controller import Policy
-from engine import Engine, MAX_COMPLETED_INJECTIONS
+from engine import HERE, Engine, MAX_COMPLETED_INJECTIONS
 from profiles import PROFILES
 from rolling_scores import RollingScoreLedger
 from sim import Fire
@@ -444,6 +446,56 @@ class ContinuousRetentionTest(unittest.TestCase):
         self.assertEqual(len(engine._completed_injections), MAX_COMPLETED_INJECTIONS)
         self.assertEqual(engine._injection_history_evicted, 3)
         self.assertEqual(engine._completed_injections[0], 3)
+
+
+class ModelPathRootTest(unittest.TestCase):
+    """A bundle preset binds its model to its own directory and keeps it there."""
+
+    def stub(self, preset, preset_path):
+        engine = Engine.__new__(Engine)
+        engine.preset = preset
+        engine.preset_path = Path(preset_path)
+        engine.closed = []
+        engine.inspector = SimpleNamespace(close=lambda: engine.closed.append(True))
+        return engine
+
+    def test_a_relative_model_path_resolves_beside_the_preset(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        directory = Path(folder.name).resolve()
+        (directory / "candidate.joblib").write_bytes(b"model")
+        engine = self.stub({"model_path": "candidate.joblib", "model_path_root": "preset"},
+                           directory / "candidate.preset.json")
+
+        engine._resolve_model_path()
+
+        self.assertEqual(directory / "candidate.joblib", engine.model_path)
+        self.assertEqual([], engine.closed)
+
+    def test_a_model_path_cannot_leave_the_preset_directory(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        path = Path(folder.name).resolve() / "nested" / "candidate.preset.json"
+        path.parent.mkdir()
+        cases = {"parent traversal": "../x.joblib",
+                 "absolute path": str(Path(folder.name) / "x.joblib"),
+                 "unknown root": "candidate.joblib"}
+        for name, model_path in cases.items():
+            with self.subTest(case=name):
+                preset = {"model_path": model_path,
+                          "model_path_root": "source" if name == "unknown root" else "preset"}
+                engine = self.stub(preset, path)
+                with self.assertRaises(ValueError):
+                    engine._resolve_model_path()
+                self.assertEqual([True], engine.closed)
+
+    def test_without_the_field_the_model_path_stays_source_relative(self):
+        engine = self.stub({"model_path": "models/absent.joblib"}, Path("/tmp/p.json"))
+
+        with self.assertRaisesRegex(FileNotFoundError, "trusted model is missing"):
+            engine._resolve_model_path()
+
+        self.assertEqual(HERE / "models/absent.joblib", engine.model_path)
 
 
 if __name__ == "__main__":

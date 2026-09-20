@@ -134,11 +134,7 @@ class Engine:
         self.sim.continuous = self.continuous
         self.inspector = Inspector(self.sim)
 
-        model_path = Path(self.preset["model_path"])
-        self.model_path = model_path if model_path.is_absolute() else HERE / model_path
-        if not self.model_path.is_file():
-            self.inspector.close()
-            raise FileNotFoundError(f"trusted model is missing: {self.model_path}")
+        self._resolve_model_path()
         self.model = Model.load(self.model_path)
         policy_config = self.preset["policy"]
         self.policy = Policy(
@@ -187,6 +183,34 @@ class Engine:
                 self.packages[name] = None
         self.source_hashes = {name: _file_hash(HERE / name) for name in SOURCE_FILES}
         self.startup_seconds = time.perf_counter() - startup_started
+
+    def _resolve_model_path(self):
+        """Bind `model_path`. `model_path_root: preset` ties it to the preset directory.
+
+        A bundle carries its model beside its preset, so a relative path must resolve
+        there and must stay there. Without the field the behavior is unchanged: relative
+        to the source directory. `live.resolve_model_path` holds the matching rule for the
+        service, which this child must not import.
+        """
+        model_path = Path(self.preset["model_path"])
+        root = self.preset.get("model_path_root")
+        try:
+            if root is None:
+                self.model_path = model_path if model_path.is_absolute() else HERE / model_path
+            elif root != "preset":
+                raise ValueError('model_path_root must be "preset" when it is present.')
+            elif model_path.is_absolute():
+                raise ValueError('model_path_root "preset" requires a relative model_path.')
+            else:
+                directory = self.preset_path.parent
+                self.model_path = (directory / model_path).resolve()
+                if not self.model_path.is_relative_to(directory):
+                    raise ValueError("model_path must stay inside the preset directory.")
+            if not self.model_path.is_file():
+                raise FileNotFoundError(f"trusted model is missing: {self.model_path}")
+        except (ValueError, FileNotFoundError):
+            self.inspector.close()
+            raise
 
     def _policy_version(self):
         return _json_hash({"base": asdict(self.policy), "reject_classes": self.reject_classes})

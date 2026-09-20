@@ -671,7 +671,8 @@ class CandidatePolicyTest(unittest.TestCase):
                             "accept_fraction": 0.0},
                "pulses": {"commanded": 30, "activated": 30, "jet_hits": 30}}
 
-        def build_engine(preset, model_path, directory):
+        def build_engine(preset_path):
+            calls.append(("preset", Path(preset_path).name))
             engine = SimpleNamespace(sim=SimpleNamespace(dt=0.001, bean_of={}),
                                      close=lambda: None, steps=0)
             engine.set_reject_classes = lambda values: (
@@ -683,12 +684,14 @@ class CandidatePolicyTest(unittest.TestCase):
         with patch.object(train_candidate, "build_engine", side_effect=build_engine), \
                 patch.object(train_candidate, "keep_outcome", return_value=run):
             version = train_candidate.record_keep_outcome(
-                validation, {"seed": 8, "profile": "green_arabica"}, Path("candidate.joblib"),
-                profile, "star_token", ["black", "stone"])
+                validation, {"seed": 8, "profile": "green_arabica"},
+                Path("candidate.preset.json"), profile, "star_token", ["black", "stone"])
 
         self.assertEqual("engine-policy-9", version)
-        self.assertEqual(("policy", ("black", "stone"), 0), calls[0])
-        self.assertNotIn("star_token", calls[0][1])
+        # The engine loads the immutable candidate preset, not a temporary one.
+        self.assertEqual(("preset", "candidate.preset.json"), calls[0])
+        self.assertEqual(("policy", ("black", "stone"), 0), calls[1])
+        self.assertNotIn("star_token", calls[1][1])
         self.assertEqual(0.0, validation["keep_outcome"]["runs"][0]["accept_fraction"])
         self.assertEqual(30, validation["pulses"]["runs"][0]["commanded"])
 
@@ -708,7 +711,7 @@ class CandidatePolicyTest(unittest.TestCase):
 
 
 class CandidateProfileBindingTest(unittest.TestCase):
-    """The closed-loop run binds the candidate under a distinct key and always removes it."""
+    """The closed-loop run rebinds the profile name for the run and always restores it."""
 
     def setUp(self):
         self.before = dict(profiles.PROFILES)
@@ -723,7 +726,7 @@ class CandidateProfileBindingTest(unittest.TestCase):
                 patch.object(train_candidate, "keep_outcome", return_value=run):
             train_candidate.record_keep_outcome(
                 validation, {"seed": 8, "profile": "green_arabica"},
-                Path("candidate.joblib"), profile, "star_token", ["stone"])
+                Path("candidate.preset.json"), profile, "star_token", ["stone"])
         return validation, profile
 
     def assert_profiles_restored(self):
@@ -732,25 +735,25 @@ class CandidateProfileBindingTest(unittest.TestCase):
             with self.subTest(profile=name):
                 self.assertIs(value, profiles.PROFILES[name])
 
-    def test_the_candidate_binds_a_distinct_key_that_is_removed_afterwards(self):
+    def test_the_candidate_profile_is_bound_for_the_run_and_then_restored(self):
         seen = {}
 
-        def build_engine(preset, model_path, directory):
-            seen.update(profile=preset["profile"], bound=dict(profiles.PROFILES))
+        def build_engine(preset_path):
+            seen.update(preset=Path(preset_path).name, bound=dict(profiles.PROFILES))
             return SimpleNamespace(sim=SimpleNamespace(dt=0.001, bean_of={}), close=lambda: None,
                                    set_reject_classes=lambda values: {"policy_version": "p"})
 
         validation, profile = self.record(build_engine)
 
-        self.assertEqual("__candidate__green_arabica", seen["profile"])
-        self.assertIs(profile, seen["bound"]["__candidate__green_arabica"])
-        self.assertIs(self.before["green_arabica"], seen["bound"]["green_arabica"])
+        self.assertEqual("candidate.preset.json", seen["preset"])
+        self.assertIs(profile, seen["bound"]["green_arabica"])
+        self.assertIsNot(self.before["green_arabica"], seen["bound"]["green_arabica"])
         self.assertEqual(30, validation["keep_outcome"]["runs"][0]["resolved"])
         self.assertEqual(0, validation["pulses"]["runs"][0]["commanded"])
         self.assert_profiles_restored()
 
     def test_a_failing_engine_still_restores_profiles(self):
-        def build_engine(preset, model_path, directory):
+        def build_engine(preset_path):
             raise RuntimeError("engine start failed")
 
         with self.assertRaisesRegex(RuntimeError, "engine start failed"):
