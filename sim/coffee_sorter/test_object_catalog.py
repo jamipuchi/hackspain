@@ -1054,7 +1054,7 @@ class GeneratedTypeTest(CatalogRootTest):
 
 
 class ReplacementTest(CatalogRootTest):
-    """The victim is the last current Keep type, and the candidate leads the new order."""
+    """The victim prefers Keep, falls back to Reject, and never removes Good."""
 
     def catalog(self, labels=("good", "faded", "stone", "stick")):
         root = self.make_root()
@@ -1072,14 +1072,20 @@ class ReplacementTest(CatalogRootTest):
         catalog = self.catalog(("good", "stone"))
 
         self.assertEqual("good", ANOMALY_REFERENCE_LABEL)
-        self.assertIsNone(select_victim(catalog, ["stone"]))
+        self.assertEqual("builtin.test.stone", select_victim(catalog, ["stone"]))
         self.assertIsNone(select_victim(self.catalog(("good",)), []))
 
-    def test_a_rejected_label_is_never_a_victim(self):
+    def test_keep_preference_precedes_the_reject_fallback(self):
         catalog = self.catalog(("good", "faded", "stone"))
 
         self.assertEqual("builtin.test.faded", select_victim(catalog, ["stone"]))
-        self.assertIsNone(select_victim(catalog, ["faded", "stone"]))
+        self.assertEqual("builtin.test.stone", select_victim(catalog, ["faded", "stone"]))
+
+    def test_default_policy_replaces_the_last_non_protected_type(self):
+        catalog = self.catalog()
+
+        self.assertEqual("builtin.test.stick",
+                         select_victim(catalog, ["faded", "stone", "stick"]))
 
     def test_the_candidate_leads_and_survivors_keep_their_order(self):
         catalog = self.catalog()

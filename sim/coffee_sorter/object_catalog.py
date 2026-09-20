@@ -393,13 +393,15 @@ def type_definition_from_draft(draft: Mapping[str, Any], *, rgb, prior: float,
 
 
 def select_victim(catalog: Mapping[str, Any], reject_labels) -> str | None:
-    """The last active type the policy keeps. None means the job waits for a replacement."""
+    """Prefer the last Keep type, then the last non-protected Reject type."""
     rejected = set(reject_labels)
-    for definition in reversed(catalog["definitions"]):
+    candidates = [definition for definition in reversed(catalog["definitions"])
+                  if definition["classifier_label"] != ANOMALY_REFERENCE_LABEL]
+    for definition in candidates:
         label = definition["classifier_label"]
-        if label not in rejected and label != ANOMALY_REFERENCE_LABEL:
+        if label not in rejected:
             return definition["object_type_id"]
-    return None
+    return candidates[0]["object_type_id"] if candidates else None
 
 
 def candidate_catalog(catalog: Mapping[str, Any], new_definition: Mapping[str, Any],
