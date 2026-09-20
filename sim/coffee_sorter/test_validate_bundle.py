@@ -389,6 +389,35 @@ class BundleBindingTest(BundleFixture, unittest.TestCase):
             read_active(self.root)
         self.assertIn("disagree on profile_name", str(raised.exception))
 
+    def test_a_pointer_may_differ_from_its_bundle_in_the_sha_alone(self):
+        """Only active_bundle_sha256 may differ, so a pointer cannot override a value."""
+        digest, directory = self.pointer_root()
+        pointer = self.root / "active" / "catalog.json"
+        original = json.loads(pointer.read_text())
+
+        # The reported case: an immutable belt colour changed in the pointer only.
+        pointer.write_bytes(pretty({**original, "belt_rgb": [0.99, 0.01, 0.01]}))
+        with self.assertRaises(CatalogError) as raised:
+            read_active(self.root)
+        self.assertIn("disagree on belt_rgb", str(raised.exception))
+
+        altered = {
+            "schema_version": 2, "profile_name": "another profile",
+            "belt_rgb": [0.5, 0.5, 0.5], "catalog_revision": "e" * 64,
+            "max_active_types": 1, "active_type_ids": ["builtin.test.good"],
+            "definition_sha256": {"builtin.test.good": "f" * 64},
+        }
+        for field, value in altered.items():
+            pointer.write_bytes(pretty({**original, field: value}))
+            with self.assertRaises(CatalogError, msg=field):
+                read_active(self.root)
+        # Every field of the manifest except the pointer sha is covered above.
+        self.assertEqual(sorted({*altered, "active_bundle_sha256"}),
+                         sorted(object_catalog._CATALOG_FIELDS))
+
+        pointer.write_bytes(pretty(original))
+        self.assertEqual(read_active(self.root)["active_bundle_sha256"], digest)
+
     def test_files_from_two_bundles_can_never_load_together(self):
         first, _ = self.pointer_root()
         second = publish_bundle(self.bundles, bundle_files(labels=("good", "stick")))
@@ -468,9 +497,14 @@ class ActivePointerTest(BundleFixture, unittest.TestCase):
 
 class SeedBundleTest(BundleFixture, unittest.TestCase):
     def seed(self):
-        model = HERE / "models" / "live_green_arabica.joblib"
-        if not model.is_file():
-            self.skipTest("the packaged model artifact is not present in this checkout")
+        """A tiny temporary model, so no test depends on the gitignored packaged one."""
+        revision = load_catalog(object_catalog.CATALOG_ROOT)["catalog_revision"]
+        model = self.root / "live_green_arabica.joblib"
+        joblib.dump(types.SimpleNamespace(classes=["good"], meta={
+            "provenance": {"config": {"catalog_revision": revision}}}), model)
+        model.with_suffix(".manifest.json").write_bytes(pretty({
+            "artifact_sha256": "a" * 64,
+            "provenance": {"config": {"catalog_revision": revision}}}))
         return seed_bundle_files(
             object_catalog.CATALOG_ROOT, model, model.with_suffix(".manifest.json"),
             preset={"name": "continuous-live-v2", "model_path": "models/live.joblib"},
@@ -579,6 +613,26 @@ class ValidateBundleCommandTest(BundleFixture, unittest.TestCase):
             self.assertTrue(any(failure.startswith(code) for failure in payload["failures"]),
                             f"{kwargs}: {payload['failures']}")
             self.assertNotIn(str(self.root), output)
+
+    def test_malformed_model_bytes_stay_inside_the_json_contract(self):
+        """An empty and a truncated artifact each return one sanitized model failure."""
+        for label, payload in (("empty", b""), ("truncated", b"\x80")):
+            root = Path(tempfile.mkdtemp(dir=self.root))
+            files = bundle_files()
+            files["model/candidate.joblib"] = payload
+            _, directory = self.publish(files, bundles=root)
+
+            exit_code, payload_json, output = self.run_cli(directory)
+
+            self.assertEqual(exit_code, 1, label)
+            self.assertIsNotNone(payload_json, f"{label}: no JSON result")
+            self.assertFalse(payload_json["ok"])
+            failures = [failure for failure in payload_json["failures"]
+                        if failure.startswith("model:")]
+            self.assertEqual(len(failures), 1, f"{label}: {payload_json['failures']}")
+            self.assertNotIn("Traceback", output, label)
+            self.assertNotIn(str(self.root), output, label)
+            self.assertNotIn(str(HERE), output, label)
 
     def test_a_usage_error_exits_two(self):
         result = subprocess.run([sys.executable, str(HERE / "validate_bundle.py")],

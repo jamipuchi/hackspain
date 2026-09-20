@@ -46,7 +46,9 @@ def validate(bundle_dir: Path) -> dict:
         result["failures"].extend(
             _revision_failures(bundle, model, preset["model_path"],
                                catalog["catalog_revision"]))
-    except (OSError, ValueError, KeyError, TypeError) as error:
+    except Exception as error:
+        # A child-process boundary: malformed model bytes raise anything joblib and
+        # pickle raise, and one sanitized JSON result must still reach the caller.
         result["failures"].append(f"model: {_sanitized(error, bundle)}")
 
     try:

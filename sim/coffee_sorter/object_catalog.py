@@ -239,8 +239,9 @@ def _bound_bundle_catalog(catalog: Mapping[str, Any], bundles_root: Path | None)
     inner = _mapping(inner, "bundle catalog")
     if inner.get("active_bundle_sha256") is not None:
         raise CatalogError("a bundle catalog must carry a null active_bundle_sha256")
-    for field in ("catalog_revision", "active_type_ids", "definition_sha256",
-                  "max_active_types", "profile_name"):
+    # Only the bundle sha may differ. Iterating the field set covers a future field too,
+    # so a pointer can never override an immutable value such as belt_rgb.
+    for field in sorted(_CATALOG_FIELDS - {"active_bundle_sha256"}):
         if inner.get(field) != catalog[field]:
             raise CatalogError(f"the active pointer and its bundle disagree on {field}")
     return bundle / "catalog"
