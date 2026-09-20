@@ -790,14 +790,25 @@ function updateItemQueue() {
   const signature = jobQueueSignature(itemJobsPacket()?.summaries);
   if (signature === itemQueueSignature) return;
   itemQueueSignature = signature;
+  const queue = $('item-queue');
+  const openDetails = new Set([...queue.querySelectorAll('.job-row')]
+    .filter(row => row.querySelector('.job-details')?.open)
+    .map(row => row.dataset.requestId));
+  const scrollHost = queue.closest('.items-scroll');
+  const scrollTop = scrollHost?.scrollTop || 0;
   const jobs = (itemJobsPacket()?.summaries || []).map(normalizedJobSummary).filter(Boolean);
   if (!jobs.length) {
     const empty = document.createElement('p');
     empty.textContent = 'No generated items are queued.';
-    $('item-queue').replaceChildren(empty);
+    queue.replaceChildren(empty);
+    if (scrollHost) scrollHost.scrollTop = scrollTop;
     return;
   }
-  $('item-queue').replaceChildren(...jobs.map(jobRow));
+  queue.replaceChildren(...jobs.map(jobRow));
+  for (const row of queue.querySelectorAll('.job-row')) {
+    if (openDetails.has(row.dataset.requestId)) row.querySelector('.job-details').open = true;
+  }
+  if (scrollHost) scrollHost.scrollTop = scrollTop;
 }
 
 async function postItemJob(path, body) {
