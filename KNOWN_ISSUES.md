@@ -49,7 +49,7 @@ The crossing score measured `95.72%` accuracy, `89.34%` capture, and `2.95%` Kee
 
 The native bin score measured `74.77%` accuracy, `46.84%` capture, and `12.89%` Keep loss.
 
-Native scoring also measured `12.36%` spills and `6.45%` unresolved objects. Another `248` objects remained active after five seconds.
+Native scoring also measured `12.36%` spills and `6.45%` unresolved objects. Of the final active objects, `248` were older than five seconds.
 
 These paired numbers compare two scoring rules on current trajectories. They are not a historical public-physics comparison.
 

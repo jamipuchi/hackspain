@@ -47,7 +47,7 @@ The coral trainer fix passes focused real Engine and loader tests. The full corr
 
 This is a simulator demo with estimated generated-object physics. The engine runs slower than real time.
 
-The active catalog keeps a fixed object count. A generated item replaces one eligible kept item.
+The active catalog keeps a fixed object count. Replacement prefers an eligible kept item, then a non-protected Reject item.
 
 Current native-bin scoring measures `74.77%` accuracy and `12.89%` Keep loss on one paired sample.
 
