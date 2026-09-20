@@ -11,12 +11,15 @@ import unittest
 from unittest.mock import patch
 import uuid
 
+from aiohttp import web
+
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 from live import (COMMAND_EPOCH_SECONDS, MAX_COMMANDS, MAX_COMMANDS_PER_EPOCH,
                   MAX_PENDING_COMMANDS, PUMP_STALE_SECONDS, LiveService,
-                  load_preset, worker)
+                  _configured_source_revision, access_middleware, access_rules,
+                  configured_access_rules, load_preset, worker)
 
 
 class RecordingQueue:
@@ -82,6 +85,101 @@ class FakeStop:
 
     def set(self):
         self.stopped = True
+
+
+class AccessRulesTest(unittest.IsolatedAsyncioTestCase):
+    def test_loopback_defaults_remain_available(self):
+        hosts, origins = access_rules(8890)
+        self.assertEqual(hosts, frozenset({'127.0.0.1:8890', 'localhost:8890'}))
+        self.assertEqual(origins, frozenset({
+            'http://127.0.0.1:8890', 'http://localhost:8890',
+        }))
+
+    def test_public_host_and_origin_are_explicit_and_same_host(self):
+        hosts, origins = access_rules(
+            8890, ['hack-growth.dev'], ['https://hack-growth.dev'])
+        self.assertIn('hack-growth.dev', hosts)
+        self.assertIn('https://hack-growth.dev', origins)
+        with self.assertRaisesRegex(ValueError, 'Every allowed origin'):
+            access_rules(8890, ['hack-growth.dev'], ['https://other.example'])
+
+    def test_public_bind_requires_host_and_origin(self):
+        for hosts, origins in (([], []), (['hack-growth.dev'], []),
+                               ([], ['https://hack-growth.dev'])):
+            with self.subTest(hosts=hosts, origins=origins), self.assertRaisesRegex(
+                    ValueError, 'requires at least one allowed host and origin'):
+                configured_access_rules('0.0.0.0', 8890, hosts, origins)
+
+    def test_wildcards_paths_and_credentials_are_rejected(self):
+        for host in ('*', 'hack-growth.dev/path', 'user@hack-growth.dev'):
+            with self.subTest(host=host), self.assertRaises(ValueError):
+                access_rules(8890, [host], [])
+        for origin in ('*', 'https://hack-growth.dev/path', 'https://user@hack-growth.dev'):
+            with self.subTest(origin=origin), self.assertRaises(ValueError):
+                access_rules(8890, ['hack-growth.dev'], [origin])
+
+    def test_malformed_hosts_and_ports_are_rejected(self):
+        invalid_hosts = (
+            'hack-growth.dev:', 'hack_growth.dev', '-hack-growth.dev',
+            'hack-growth-.dev', '999.1.1.1', 'hack-growth.dev:port',
+            'hack-growth.dev:0', 'hack-growth.dev:65536', '[::1]',
+        )
+        for host in invalid_hosts:
+            with self.subTest(host=host), self.assertRaises(ValueError):
+                access_rules(8890, [host], [])
+        hosts, _ = access_rules(8890, ['hack-growth.dev:443', '142.132.165.127'], [])
+        self.assertIn('hack-growth.dev:443', hosts)
+        self.assertIn('142.132.165.127', hosts)
+
+    def test_release_revision_requires_full_sha(self):
+        with patch.dict('os.environ', {'CINTA_SOURCE_REVISION': 'a' * 40}):
+            self.assertEqual(_configured_source_revision(), 'a' * 40)
+        with patch.dict('os.environ', {'CINTA_SOURCE_REVISION': 'A' * 40}):
+            self.assertEqual(_configured_source_revision(), 'a' * 40)
+        for value in ('short', 'g' * 40):
+            with self.subTest(value=value), patch.dict(
+                    'os.environ', {'CINTA_SOURCE_REVISION': value}):
+                with self.assertRaisesRegex(ValueError, 'full Git SHA'):
+                    _configured_source_revision()
+
+    async def test_public_request_accepts_exact_origin_and_sets_no_store(self):
+        hosts, origins = access_rules(
+            8890, ['hack-growth.dev'], ['https://hack-growth.dev'])
+        middleware = access_middleware(hosts, origins)
+        request = types.SimpleNamespace(
+            host='hack-growth.dev', path='/ws', method='GET',
+            headers={'Origin': 'https://hack-growth.dev'})
+
+        async def handler(_request):
+            return web.Response(text='ok')
+
+        response = await middleware(request, handler)
+        self.assertEqual(response.headers['Cache-Control'], 'no-store')
+
+    async def test_mutating_routes_require_an_allowed_origin(self):
+        hosts, origins = access_rules(
+            8890, ['hack-growth.dev'], ['https://hack-growth.dev'])
+        middleware = access_middleware(hosts, origins)
+
+        async def handler(_request):
+            return web.Response(text='ok')
+
+        cases = [
+            types.SimpleNamespace(host='hack-growth.dev', path='/ws', method='GET', headers={}),
+            types.SimpleNamespace(
+                host='hack-growth.dev', path='/restart', method='POST',
+                headers={'Origin': 'https://attacker.example'}),
+            types.SimpleNamespace(
+                host='attacker.example', path='/state', method='GET', headers={}),
+        ]
+        for request in cases:
+            with self.subTest(request=request), self.assertRaises(web.HTTPForbidden):
+                await middleware(request, handler)
+
+        state_request = types.SimpleNamespace(
+            host='hack-growth.dev', path='/state', method='GET', headers={})
+        response = await middleware(state_request, handler)
+        self.assertEqual(response.status, 200)
 
 
 def service(continuous=True):
@@ -208,11 +306,14 @@ class ContinuousWorkerTest(unittest.TestCase):
         module = types.SimpleNamespace(Engine=FakeEngine)
         with tempfile.TemporaryDirectory() as directory:
             with patch.dict(sys.modules, {'engine': module}), \
+                    patch.dict('os.environ', {'CINTA_SOURCE_REVISION': 'a' * 40}), \
                     patch('live.signal.signal'), patch('live.time.monotonic', side_effect=monotonic):
                 worker('unused.json', states, acks, commands, stop, directory)
 
         running = states.items[0]
         self.assertEqual(running['status'], 'running')
+        self.assertEqual(running['source_revision'], 'a' * 40)
+        self.assertEqual(FakeEngine.instance.source_revision, 'a' * 40)
         self.assertIsNone(running['limits']['sim_seconds'])
         self.assertIn('rolling_scores', running)
         self.assertGreater(FakeEngine.instance.sim.data.time, 0)

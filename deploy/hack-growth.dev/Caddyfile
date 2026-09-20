@@ -1,0 +1,15 @@
+{$SWARM_API_DOMAIN} {
+	reverse_proxy api:3013
+}
+
+hack-fs.agent-swarm.dev {
+	reverse_proxy agent-fs:7433
+}
+
+hack-s3.agent-swarm.dev {
+	reverse_proxy minio:9000
+}
+
+hack-growth.dev {
+	reverse_proxy coffee:8890
+}
