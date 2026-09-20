@@ -580,7 +580,9 @@ def record_keep_outcome(validation: dict[str, Any], preset, preset_path: Path,
     }
     validation["pulses"] = {
         "runs": [{"seed": run["seed"], **run["pulses"]}],
-        "scope": "commanded valve pulses only; they never enter the gate and are never an outcome",
+        "scope": ("object-level counts from retained engine records: objects with a scheduled "
+                  "reject decision, objects with an activated rejection track, and jet hits; "
+                  "they never enter the gate and are never an outcome"),
     }
     return ack.get("policy_version") if isinstance(ack, Mapping) else None
 
