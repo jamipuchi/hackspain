@@ -1264,6 +1264,17 @@ const presets = {
 const INK = '#25342d', EDGE = '#34463d', EDGE_SOFT = '#829188', PAPER = '#eef0ea';
 const REJECT_COLOR = new THREE.Color('#d26045'), SPILL_COLOR = new THREE.Color('#d49a27'), SELECT_COLOR = new THREE.Color('#d8781c');
 
+function showWebglError(message) {
+  let element = $('webgl-error');
+  if (!element) {
+    element = document.createElement('div');
+    element.id = 'webgl-error';
+    element.setAttribute('role', 'alert');
+    stage.append(element);
+  }
+  element.textContent = message;
+}
+
 function initThree() {
   try {
     const renderer = new THREE.WebGLRenderer({antialias: true, alpha: false, powerPreference: 'high-performance'});
@@ -1276,6 +1287,23 @@ function initThree() {
     renderer.toneMappingExposure = 1.08;
     renderer.domElement.className = 'webgl';
     renderer.domElement.setAttribute('aria-label', 'Live CINTA conveyor; drag to orbit, scroll to zoom, click the machine to drop a test stone');
+    renderer.domElement.addEventListener('webglcontextlost', event => {
+      event.preventDefault();
+      three.restoreView = currentView;
+      three.ready = false;
+      measurements.webgl = 'context lost';
+      clearGeneratedAssets();
+      setView('2d');
+      showWebglError('3D graphics paused. Showing the live 2D view while graphics recover.');
+    });
+    renderer.domElement.addEventListener('webglcontextrestored', () => {
+      three.ready = true;
+      measurements.webgl = gpuName;
+      $('webgl-error')?.remove();
+      reconcileGeneratedAssets();
+      if (three.restoreView === '3d') setView('3d');
+      three.restoreView = null;
+    });
     stage.prepend(renderer.domElement);
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(PAPER);
@@ -1320,9 +1348,9 @@ function initThree() {
     three.ready = true;
     measurements.webgl = gpuName;
   } catch (error) {
-    const el = document.createElement('div'); el.id = 'webgl-error'; el.setAttribute('role', 'alert');
-    el.textContent = `The 3D view could not start: ${error.message}. The 2D view still follows the engine.`;
-    stage.append(el); console.error(error);
+    showWebglError(`The 3D view could not start: ${error.message}. The 2D view still follows the engine.`);
+    setView('2d');
+    console.error(error);
     measurements.webgl = 'unavailable';
   }
 }
@@ -1342,6 +1370,7 @@ function updateMachineVisibility() {
 
 function setView(name) {
   if (!['3d', '2d'].includes(name)) return;
+  if (name === '3d' && !three.ready) name = '2d';
   currentView = name;
   document.body.dataset.view = name;
   document.querySelectorAll('button[data-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.view === name)));
