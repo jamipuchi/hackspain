@@ -1336,6 +1336,9 @@ class ItemJobRunner:
                      "victim_id": baseline["victim_id"],
                      "expected_catalog_revision": baseline["catalog_revision"],
                      "evidence": self._victim_evidence(baseline["victim_id"])}
+        asset = job_dir / "previews" / "object.glb"
+        if asset.is_file():
+            candidate["assets"] = {baseline["new_type_id"]: asset}
         recorded = (job.get("activation") or {}).get("bundle_sha256")
         if recorded:
             # An exact retry: the activator answers `active` without a second restart.
