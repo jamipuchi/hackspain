@@ -25,6 +25,8 @@ SCENARIOS = ("ok", "fail_safe", "fail_hard", "uncertain", "lock_busy", "hang",
              "cache_entry_invalid")
 PREVIEW_IMAGES = ("perspective.png", "top.png", "object.glb")
 HANG_SECONDS = 60
+# The recorded star render bounds, so the fake render reports measured-looking numbers.
+STAR_BOUNDS_MM = (16.94960594177246, 16.120851516723635, 2.0)
 
 
 def main() -> int:
@@ -43,8 +45,10 @@ def main() -> int:
         return _hang()
     if scenario == "lock_busy":
         return _record(root, args, "end", scenario, EXIT_RENDER_LOCK)
-    handler = _generation if args.stage == "generation" else _render
-    return _record(root, args, "end", scenario, handler(args, scenario))
+    handlers = {"generation": _generation, "render": _render,
+                "physics_proposal": _physics_proposal, "physics": _physics,
+                "training": _training}
+    return _record(root, args, "end", scenario, handlers[args.stage](args, scenario))
 
 
 def _next_run(job_dir: Path, stage: str) -> int:
@@ -102,9 +106,95 @@ def _render(args, scenario: str) -> int:
     for name in PREVIEW_IMAGES:
         (previews / name).write_bytes((args.fixtures / "previews" / name).read_bytes())
     record = json.loads((args.fixtures / "previews" / "render.json").read_text())
-    record["recipe_sha256"] = hashlib.sha256(
-        (args.job_dir / "recipe.json").read_bytes()).hexdigest()
+    # A real render describes the recipe it rendered and reports the measured bounds, so
+    # this fake completes the same record. The bounds are the recorded star values.
+    recipe_bytes = (args.job_dir / "recipe.json").read_bytes()
+    record["recipe_sha256"] = hashlib.sha256(recipe_bytes).hexdigest()
+    record["recipe_name"] = json.loads(recipe_bytes).get("name")
+    record.setdefault("bounding_dimensions_mm", list(STAR_BOUNDS_MM))
+    record.setdefault("mesh_counts", {"objects": 1, "vertices": 140, "polygons": 132})
     (previews / "render.json").write_text(json.dumps(record, indent=2) + "\n")
+    return EXIT_OK
+
+
+def _physics_proposal(args, scenario: str) -> int:
+    """The provider rules of generation, applied to the physics description."""
+    if scenario == "fail_safe":
+        _status(args, "not_submitted", "fake physics cache miss")
+        return EXIT_NOT_SUBMITTED
+    if scenario == "fail_hard":
+        _status(args, "not_submitted", "fake physics failure before submission")
+        return EXIT_FAILED
+    if scenario == "uncertain":
+        _status(args, "uncertain", "fake uncertain provider result")
+        return EXIT_UNCERTAIN
+    if scenario == "cache_entry_invalid":
+        _status(args, "not_submitted", "fake physics cache verification failure")
+        return EXIT_CACHE_ENTRY_INVALID
+    # Build the draft the real adapter builds, from THIS job's own artifacts, so the uri
+    # stays relative to the job asset root and every hash binds to the rendered GLB.
+    from object_definitions import build_object_definition
+
+    definition = build_object_definition(
+        description="A small five-point star token.",
+        recipe_path=args.job_dir / "recipe.json",
+        render_metadata_path=args.job_dir / "previews" / "render.json",
+        glb_path=args.job_dir / "previews" / "object.glb",
+        visual_uri="previews/object.glb",
+        object_key="star_token",
+        physics_proposal={
+            "shape": "box",
+            "dimensions_m": [0.016, 0.012, 0.002],
+            "density_kg_m3": 1200.0,
+            "material_assumption": "Assumed density of a light decorative token.",
+            "limitations": "Density and contact geometry are unmeasured proxy estimates.",
+        },
+        sorting_proposal={"class_name": "star_token", "defect": False, "severity": "none",
+                          "proposed_action": "keep"},
+    )
+    (args.job_dir / "definition.json").write_text(json.dumps(definition, indent=2) + "\n")
+    (args.job_dir / "physics.json").write_text(json.dumps({
+        "physics_source": "fake", "physics_measurement_status": "unmeasured_proxy_estimate",
+    }, indent=2, sort_keys=True) + "\n")
+    _status(args, "not_submitted", None, cache_hit=True)
+    return EXIT_OK
+
+
+def _physics(args, scenario: str) -> int:
+    """Write the route verdict the real validator would write."""
+    verdict = "physics_unsupported" if scenario in ("fail_safe", "fail_hard") else "accept"
+    reason = "route_not_accepted" if verdict != "accept" else None
+    if scenario == "uncertain":
+        return EXIT_FAILED
+    out = args.job_dir / "physics"
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "result.json").write_text(json.dumps({
+        "verdict": verdict, "reason": reason, "detail": None, "seed": 8,
+        "trials": [], "load": None, "estimate_basis": "unmeasured_proxy_estimate",
+        "glb_checked": True,
+    }, indent=2, sort_keys=True) + "\n")
+    return EXIT_OK
+
+
+def _training(args, scenario: str) -> int:
+    """Write the trainer verdict. `fail_safe` passes the gate, `fail_hard` fails it."""
+    if scenario == "uncertain":
+        return EXIT_FAILED
+    out = args.job_dir / "training" / "out"
+    out.mkdir(parents=True, exist_ok=True)
+    passed = scenario != "fail_safe"
+    (out / "validation.json").write_text(json.dumps({
+        "passed": passed,
+        "failures": [] if passed else ["anomaly_fraction"],
+        "labels": ["star_token", "good"],
+        "new_label": "star_token",
+        "classifier": {"holdout_accuracy": 0.97, "new_label_recall": 1.0},
+        "anomaly": {"fraction_above_threshold": 0.0 if passed else 1.0, "threshold": 14.339},
+        "pulses": {"runs": []},
+        "keep_outcome": {"runs": [{"seed": 8, "resolved": 34, "accepted": 34,
+                                   "accept_fraction": 1.0}]},
+        "preset_compatibility": {"loaded": True, "reason": None},
+    }, indent=2, sort_keys=True) + "\n")
     return EXIT_OK
 
 

@@ -241,6 +241,8 @@ def item_service(test, provider_mode='cached'):
     # A path that never exists. Opening it would raise, so any read is visible.
     value.provider_env = value.item_jobs_root.parent / 'absent-secret.env'
     value.generator_root = item_jobs.GENERATOR_ROOT
+    # The physics and training children receive the reviewed preset the service runs.
+    value.preset = HERE / 'configs/continuous_demo.json'
     value.item_jobs = item_jobs.ItemJobStore(value.item_jobs_root, provider_mode=provider_mode)
     test.addCleanup(value.item_jobs.close)
     value.runtime_lock = value.item_jobs_root / 'render.lock'

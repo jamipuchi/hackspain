@@ -27,10 +27,12 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import item_jobs
+import object_catalog
 from item_jobs import (MAX_ATTEMPTS, MAX_QUEUED_JOBS, MAX_SUMMARIES, ItemJobError,
                        ItemJobRunner, ItemJobStore, fake_commands)
 
 REVISION = 'a' * 64
+PRESET = HERE / 'configs/continuous_demo.json'
 OTHER_REVISION = 'b' * 64
 RFC3339 = re.compile(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$')
 TINY_WAIT_S = 0.2
@@ -72,9 +74,17 @@ class QueueTest(unittest.TestCase):
         self.addCleanup(store.close)
         return store
 
-    def open_runner(self, store=None, lease_s=30.0, commands=None):
-        runner = ItemJobRunner(store or self.store, commands or fake_commands(),
-                               runtime_lock_path=self.root / 'render.lock', lease_s=lease_s)
+    # The stages this harness runs. A Phase 3 test asks for the later stages explicitly,
+    # so a Phase 2 assertion about preview_ready is never overtaken by the physics stage.
+    STAGES = ('generation', 'render')
+
+    def open_runner(self, store=None, lease_s=30.0, commands=None, stages=None,
+                    catalog_provider=None, policy_provider=None):
+        runner = ItemJobRunner(store or self.store,
+                               commands or fake_commands(stages=stages or self.STAGES),
+                               runtime_lock_path=self.root / 'render.lock', lease_s=lease_s,
+                               catalog_provider=catalog_provider,
+                               policy_provider=policy_provider)
         runner.term_wait_s = TINY_WAIT_S
         runner.kill_wait_s = TINY_WAIT_S
         runner.lock_backoff_s = (0.05, 0.1)
@@ -86,7 +96,7 @@ class QueueTest(unittest.TestCase):
         fake = fake_commands()
         real = item_jobs.real_commands(
             mode=mode or self.provider_mode, provider_cache=self.root / 'provider-cache',
-            runtime_lock=self.root / 'render.lock',
+            runtime_lock=self.root / 'render.lock', preset=PRESET,
             generator_root=self.root / 'generator', env_file=self.root.parent / 'secret.env')
 
         def generation(job, job_dir):
@@ -509,7 +519,7 @@ class RenderRetryTest(QueueTest):
         self.assertEqual(stored['state'], 'waiting_for_render')
         self.assertEqual(stored['attempts']['render'], 0)
         self.assertEqual(stored['lock_busy_count'], 1)
-        self.assertIn('render lock busy', stored['progress'])
+        self.assertIn('runtime lock busy', stored['progress'])
         self.assertIn('retrying in', stored['progress'])
         self.assertIsNone(stored['error'])
         # The backoff replaces a relaunch spin: this pass must start nothing.
@@ -1133,7 +1143,8 @@ class ReleaseGateTest(QueueTest):
         before_generator = _tree_snapshot(item_jobs.HERE / 'generator')
         before_fixtures = _tree_snapshot(fixtures)
 
-        runner = self.open_runner(commands=item_jobs.fake_commands(fixtures=fixtures))
+        runner = self.open_runner(commands=item_jobs.fake_commands(fixtures=fixtures,
+                                                                   stages=self.STAGES))
         job = self.submit()
         self.drive(runner, lambda: self.state(job['request_id']) == 'preview_ready')
 
@@ -1286,6 +1297,203 @@ class GeneratorInterfaceTest(unittest.TestCase):
                         'in result.stderr', 'stderr.find'):
             self.assertNotIn(pattern, source)
         self.assertIn('REQUIRED_OUTCOMES', source)
+
+
+class PhysicsAndTrainingFlowTest(QueueTest):
+    """Phase 3 stages on the existing table: physics proposal, route, baseline, training.
+
+    The children are fakes, but the provider mode is `cached`: a fake-provider job can
+    never reach activation, so it could never exercise this flow.
+    """
+
+    provider_mode = 'cached'
+    STAGES = tuple(item_jobs.STAGES)
+
+    def catalog(self):
+        return object_catalog.load_catalog()
+
+    def labels(self):
+        return [item['classifier_label'] for item in self.catalog()['definitions']]
+
+    def policy(self, reject_classes=None):
+        # Everything but `good` and one Keep survivor is rejected, so a victim exists.
+        rejected = self.labels()[2:] if reject_classes is None else reject_classes
+        return lambda: {'reject_classes': list(rejected), 'policy_version': 'policy-1'}
+
+    def runner(self, reject_classes=None, catalog_provider=None):
+        return self.open_runner(catalog_provider=catalog_provider or self.catalog,
+                                policy_provider=self.policy(reject_classes))
+
+    def test_a_clean_job_walks_the_whole_phase_three_flow(self):
+        runner = self.runner()
+        job = self.submit()
+
+        self.drive(runner, lambda: self.state(job['request_id']) == 'validating_candidate')
+        stored = self.store.get(job['request_id'])
+
+        self.assertEqual(['generation', 'render', 'physics_proposal', 'physics', 'training'],
+                         [row['stage'] for row in self.starts_in_order()])
+        self.assertTrue(stored['artifacts']['candidate_validation']['passed'])
+        self.assertEqual('accept', stored['artifacts']['physics_route']['verdict'])
+        baseline = stored['training_baseline']
+        self.assertEqual(self.catalog()['catalog_revision'], baseline['catalog_revision'])
+        self.assertEqual('policy-1', baseline['policy_version'])
+        self.assertEqual(baseline['victim_id'], stored['victim'])
+
+    def test_the_validator_child_gets_the_job_asset_root_and_the_runtime_lock(self):
+        job_dir = self.root / 'jobs' / 'x'
+        argv = item_jobs.physics_command({'request_id': 'x'}, job_dir,
+                                         preset=PRESET, runtime_lock=self.root / 'r.lock')
+
+        self.assertIn('--asset-root', argv)
+        self.assertEqual(str(job_dir), argv[argv.index('--asset-root') + 1])
+        self.assertNotEqual(str(HERE), argv[argv.index('--asset-root') + 1])
+        self.assertEqual(str(self.root / 'r.lock'), argv[argv.index('--runtime-lock') + 1])
+        for flag in ('--no-air', '--seed', '--background-rate', '--json-out'):
+            self.assertIn(flag, argv)
+
+    def test_the_trainer_child_gets_the_catalog_the_preset_and_the_policy_file(self):
+        job_dir = self.root / 'jobs' / 'x'
+        argv = item_jobs.training_command({'request_id': 'x'}, job_dir,
+                                          preset=PRESET, runtime_lock=self.root / 'r.lock')
+
+        self.assertEqual(str(job_dir / 'training' / 'catalog'),
+                         argv[argv.index('--catalog-root') + 1])
+        self.assertEqual(str(job_dir / 'training' / 'policy.json'),
+                         argv[argv.index('--policy') + 1])
+        self.assertEqual(str(job_dir / 'training' / 'out'), argv[argv.index('--out') + 1])
+        self.assertEqual(str(self.root / 'r.lock'), argv[argv.index('--runtime-lock') + 1])
+
+    def test_the_queue_writes_the_policy_file_without_the_new_label(self):
+        runner = self.runner()
+        job = self.submit()
+        self.drive(runner, lambda: self.state(job['request_id']) == 'validating_candidate')
+        written = json.loads(
+            (self.store.job_dir(job['request_id']) / 'training/policy.json').read_text())
+
+        self.assertEqual('policy-1', written['policy_version'])
+        self.assertEqual(sorted(self.labels()[2:]), written['reject_classes'])
+        self.assertNotIn('star_token', written['reject_classes'])
+
+    def test_a_blocked_route_never_reaches_training(self):
+        self.scenarios({'physics': ['fail_safe']})
+        runner = self.runner()
+        job = self.submit()
+
+        self.drive(runner, lambda: self.state(job['request_id']) == 'physics_blocked')
+        stored = self.store.get(job['request_id'])
+
+        self.assertEqual('physics_unsupported', stored['error'])
+        self.assertEqual('route_not_accepted', stored['progress'])
+        self.assertEqual([], self.starts('training'))
+
+    def test_a_physics_cache_miss_stops_at_operator_required_without_an_attempt(self):
+        self.scenarios({'physics_proposal': ['fail_safe']})
+        runner = self.runner()
+        job = self.submit()
+
+        self.drive(runner, lambda: self.state(job['request_id']) == 'operator_required')
+        stored = self.store.get(job['request_id'])
+
+        self.assertEqual('provider_cache_miss', stored['error'])
+        self.assertEqual(0, stored['attempts']['physics_proposal'])
+
+    def test_no_keep_victim_waits_for_a_replacement_and_releases_the_turn(self):
+        # Every label except the anomaly reference is rejected, so no victim is eligible.
+        runner = self.runner(reject_classes=self.labels()[1:])
+        first, second = self.submit(), self.submit(description='Another token')
+
+        self.drive(runner, lambda: self.state(first['request_id']) == 'waiting_for_replacement')
+        self.drive(runner, lambda: self.state(second['request_id']) == 'waiting_for_replacement')
+
+        self.assertEqual([], self.starts('training'))
+        self.assertFalse((self.root / item_jobs.TRAINING_LEASE).exists())
+
+    def test_a_queued_job_binds_the_catalog_that_exists_when_its_turn_begins(self):
+        later = {**self.catalog(), 'catalog_revision': 'b' * 64}
+        state = {'value': self.catalog()}
+        runner = self.runner(catalog_provider=lambda: state['value'])
+        job = self.submit()
+        self.drive(runner, lambda: self.state(job['request_id']) == 'preview_ready'
+                   or self.state(job['request_id']) == 'proposing_physics')
+        state['value'] = later  # the catalog moves while the job is still upstream
+
+        self.drive(runner, lambda: self.state(job['request_id']) == 'validating_candidate')
+
+        self.assertEqual('b' * 64,
+                         self.store.get(job['request_id'])['training_baseline']['catalog_revision'])
+
+    def test_a_stale_baseline_blocks_activation(self):
+        """The baseline read and the activation re-check see different catalogs."""
+        reads = {'count': 0}
+
+        def moving_catalog():
+            # The first read binds the baseline. Every later read reports a moved catalog.
+            reads['count'] += 1
+            base = self.catalog()
+            return base if reads['count'] == 1 else {**base, 'catalog_revision': 'c' * 64}
+
+        runner = self.runner(catalog_provider=moving_catalog)
+        job = self.submit()
+
+        self.drive(runner, lambda: self.state(job['request_id']) == 'activation_conflict')
+        stored = self.store.get(job['request_id'])
+
+        self.assertEqual('replacement_conflict', stored['error'])
+        self.assertTrue(stored['artifacts']['candidate_validation']['passed'])
+        self.assertIn('changed since training', stored['progress'])
+
+    def test_a_failed_candidate_validation_fails_the_job_with_its_evidence(self):
+        self.scenarios({'training': ['fail_safe']})
+        runner = self.runner()
+        job = self.submit()
+
+        self.drive(runner, lambda: self.state(job['request_id']) == 'failed')
+        stored = self.store.get(job['request_id'])
+
+        self.assertEqual('candidate_validation_failed', stored['error'])
+        self.assertIn('anomaly_fraction', stored['progress'])
+        self.assertFalse(stored['artifacts']['candidate_validation']['passed'])
+
+    def test_at_most_one_trainer_runs_across_jobs(self):
+        runner = self.runner()
+        first, second = self.submit(), self.submit(description='Another token')
+
+        self.drive(runner, lambda: self.state(first['request_id']) == 'validating_candidate'
+                   and self.state(second['request_id']) == 'validating_candidate', timeout=40.0)
+
+        rows = [json.loads(line) for line
+                in (self.root / 'worker_runs.jsonl').read_text().splitlines()
+                if json.loads(line)['stage'] == 'training']
+        running = 0
+        for row in rows:
+            running += 1 if row['event'] == 'start' else -1
+            self.assertLessEqual(running, 1, 'two trainers overlapped')
+        self.assertEqual(2, len({row['request_id'] for row in rows}))
+        # The lease is released, so no owner is left behind.
+        self.assertFalse((self.root / item_jobs.TRAINING_LEASE).exists())
+
+    def test_a_busy_runtime_lock_keeps_the_visible_waiting_state(self):
+        self.scenarios({'training': ['lock_busy']})
+        runner = self.runner()
+        job = self.submit()
+
+        self.drive(runner, lambda: self.state(job['request_id']) == 'queued_for_training'
+                   and self.settled(job['request_id']))
+        stored = self.store.get(job['request_id'])
+
+        self.assertIn('runtime lock busy', stored['progress'])
+        self.assertEqual(0, stored['attempts']['training'])
+
+    def starts_in_order(self):
+        path = self.root / 'worker_runs.jsonl'
+        rows = [json.loads(line) for line in path.read_text().splitlines()]
+        seen, ordered = set(), []
+        for row in rows:
+            if row['event'] == 'start' and row['stage'] not in seen:
+                seen.add(row['stage'])
+                ordered.append(row)
+        return ordered
 
 
 if __name__ == '__main__':

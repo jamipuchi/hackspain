@@ -22,6 +22,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import signal
 import stat
 import subprocess
@@ -32,6 +33,8 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any, Callable, Mapping
+
+import object_catalog
 
 HERE = Path(__file__).resolve().parent
 # The one generator the service runs. The research copies stay recorded evidence.
@@ -49,6 +52,8 @@ PREVIEW_CONTENT_TYPES = {"perspective.png": "image/png", "top.png": "image/png",
 
 PROVIDER_MODES = ("cached", "paid", "fake")
 MAX_QUEUED_JOBS = 4
+# The candidate joins the feed at this prior. The plan fixes the value.
+CANDIDATE_PRIOR = 0.03
 # Blocked jobs never become queued work, so a public deployment needs a second bound
 # over every retained open job. Without it anonymous requests grow disk without limit.
 MAX_RETAINED_OPEN_JOBS = 32
@@ -143,7 +148,43 @@ STAGES: dict[str, dict[str, Any]] = {
         "provider_backed": False,
         "lock_busy_exit": EXIT_RENDER_LOCK,
     },
+    "physics_proposal": {
+        "ready_states": ("preview_ready", "proposing_physics"),
+        "running_state": "proposing_physics",
+        "waiting_state": "preview_ready",
+        "retry_state": "proposing_physics",
+        "failure_error": "generation_failed",
+        "settle": "_settle_physics_proposal",
+        "provider_backed": True,
+        "lock_busy_exit": None,
+    },
+    "physics": {
+        "ready_states": ("validating_physics",),
+        "running_state": "validating_physics",
+        "waiting_state": "validating_physics",
+        "retry_state": "validating_physics",
+        "failure_error": "physics_unsupported",
+        "settle": "_settle_physics",
+        "provider_backed": False,
+        "lock_busy_exit": EXIT_RENDER_LOCK,
+    },
+    "training": {
+        # One job at a time takes the training turn, binds its baseline, then trains.
+        # `waiting_for_replacement` is re-evaluated on every pass, so a victim that
+        # becomes eligible again releases the job without an operator.
+        "ready_states": ("selecting_training_baseline", "waiting_for_replacement",
+                         "queued_for_training", "training"),
+        "running_state": "training",
+        "waiting_state": "queued_for_training",
+        "retry_state": "queued_for_training",
+        "failure_error": "training_failed",
+        "settle": "_settle_training",
+        "prepare": "_prepare_training",
+        "provider_backed": False,
+        "lock_busy_exit": EXIT_RENDER_LOCK,
+    },
 }
+TRAINING_LEASE = "training.lease"
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _PAYLOAD_FIELDS = {"request_id", "description", "requester_name", "expected_catalog_revision"}
@@ -326,7 +367,7 @@ class ItemJobStore:
                 "state": "queued",
                 "error": None,
                 "progress": None,
-                "attempts": {"generation": 0, "render": 0, "training": 0},
+                "attempts": {stage: 0 for stage in STAGES},
                 "provider_mode": self.provider_mode,
                 "provider_submission": "not_submitted",
                 "provider_submission_history": ["not_submitted"],
@@ -424,9 +465,16 @@ class ItemJobRunner:
     """One background scheduling thread. It owns at most one child per stage."""
 
     def __init__(self, store: ItemJobStore, commands: Mapping[str, Callable[..., list[str]]], *,
-                 runtime_lock_path: Path, lease_s: float = LEASE_S):
+                 runtime_lock_path: Path, lease_s: float = LEASE_S,
+                 catalog_provider: Callable[[], Mapping[str, Any]] | None = None,
+                 policy_provider: Callable[[], Mapping[str, Any]] | None = None):
         self.store = store
         self.commands = dict(commands)
+        # The latest catalog and the latest live policy, read when a training turn begins.
+        # live.py injects the engine's current reject classes; tests inject a fake.
+        self.catalog_provider = catalog_provider or object_catalog.load_catalog
+        self.policy_provider = policy_provider or (lambda: {"reject_classes": [],
+                                                            "policy_version": None})
         # The queue never takes this lock. render_suite.py does, and the queue reads exit 75.
         self.runtime_lock_path = Path(runtime_lock_path)
         self.lease_s = float(lease_s)
@@ -551,7 +599,7 @@ class ItemJobRunner:
             return None
         for stage, table in STAGES.items():
             if (stage in self.commands and job["state"] in table["ready_states"]
-                    and job["attempts"][stage] < MAX_ATTEMPTS):
+                    and job["attempts"].get(stage, 0) < MAX_ATTEMPTS):
                 return stage
         return None
 
@@ -559,7 +607,14 @@ class ItemJobRunner:
         table = STAGES[stage]
         request_id = job["request_id"]
         job_dir = self.store.job_dir(request_id)
-        attempts = {**job["attempts"], stage: job["attempts"][stage] + 1}
+        prepare = table.get("prepare")
+        if prepare is not None:
+            # A stage may need in-process work before its child exists. None means the
+            # job moved elsewhere, so no attempt is consumed and no child starts.
+            job = getattr(self, prepare)(job, job_dir)
+            if job is None:
+                return
+        attempts = {**job["attempts"], stage: job["attempts"].get(stage, 0) + 1}
         # The builder reads the record as it stands before this launch, so it can see an
         # unconsumed operator grant. Nothing else can produce `--live`.
         pending = {**job, "attempts": attempts}
@@ -713,20 +768,29 @@ class ItemJobRunner:
         self._unconsumed(job, "generation", token, "interrupted_uncertain",
                          "provider_interrupted", provider_submission="uncertain")
 
+    def _lock_busy(self, job: Mapping[str, Any], stage: str, token: str | None) -> None:
+        """Exit 75 from any stage: the visible waiting state, and no attempt consumed.
+
+        The queue never takes the runtime lock. The process that does the heavy work
+        takes it, and the queue only reacts to this exit code with a bounded backoff.
+        """
+        request_id = job["request_id"]
+        count = min(job.get("lock_busy_count", 0) + 1, len(self.lock_backoff_s))
+        wait = self.lock_backoff_s[count - 1]
+        with self._guard:
+            self.backoff[request_id] = time.monotonic() + wait
+        attempts = {**job["attempts"], stage: max(0, job["attempts"].get(stage, 0) - 1)}
+        artifacts = {**job["artifacts"], "runtime_lock": str(self.runtime_lock_path)}
+        self.store.transition(request_id, STAGES[stage]["waiting_state"], token=token,
+                              error=None, worker=None, attempts=attempts, artifacts=artifacts,
+                              lock_busy_count=count,
+                              progress=f"runtime lock busy, retrying in {wait:g} s")
+
     def _settle_render(self, job: Mapping[str, Any], job_dir: Path,
                        token: str | None, code: int) -> None:
         request_id = job["request_id"]
         if code == STAGES["render"]["lock_busy_exit"]:
-            count = min(job.get("lock_busy_count", 0) + 1, len(self.lock_backoff_s))
-            wait = self.lock_backoff_s[count - 1]
-            with self._guard:
-                self.backoff[request_id] = time.monotonic() + wait
-            attempts = {**job["attempts"], "render": max(0, job["attempts"]["render"] - 1)}
-            artifacts = {**job["artifacts"], "runtime_lock": str(self.runtime_lock_path)}
-            self.store.transition(request_id, "waiting_for_render", token=token, error=None,
-                                  worker=None, attempts=attempts, artifacts=artifacts,
-                                  lock_busy_count=count,
-                                  progress=f"render lock busy, retrying in {wait:g} s")
+            self._lock_busy(job, "render", token)
             return
         if code == EXIT_OK and self._previews_valid(job, job_dir):
             # Record the artifact identity now. The preview route serves only these bytes.
@@ -736,6 +800,204 @@ class ItemJobRunner:
                                   display_name=_recipe_name(job_dir) or job.get("display_name"))
             return
         self._stage_failure(job, "render", "render_failed", token)
+
+    def _settle_physics_proposal(self, job: Mapping[str, Any], job_dir: Path,
+                                 token: str | None, code: int) -> None:
+        """The provider rules of generation, applied to the physics description."""
+        request_id = job["request_id"]
+        status = _read_json(job_dir / "provider_status.json") or {}
+        if code == EXIT_OK:
+            if not (job_dir / "definition.json").is_file():
+                self._stage_failure(job, "physics_proposal", "generation_failed", token,
+                                    progress="the physics stage produced no definition")
+                return
+            self.store.transition(
+                request_id, "validating_physics", token=token, error=None, worker=None,
+                artifacts={**job["artifacts"], "physics": _read_json(job_dir / "physics.json")},
+                provider_cache_hit=bool(status.get("cache_hit")))
+            return
+        if code == EXIT_NOT_SUBMITTED:
+            self._unconsumed(job, "physics_proposal", token, "operator_required",
+                             "provider_cache_miss")
+            return
+        if code == EXIT_UNCERTAIN:
+            self._unconsumed(job, "physics_proposal", token, "interrupted_uncertain",
+                             "provider_interrupted", provider_submission="uncertain")
+            return
+        if code == EXIT_CREDENTIALS:
+            self.store.transition(request_id, "failed", token=token,
+                                  error="credentials_missing", worker=None)
+            return
+        if code == EXIT_CACHE_ENTRY_INVALID:
+            self._stage_failure(job, "physics_proposal", "generation_failed", token,
+                                progress="cache_entry_invalid")
+            return
+        if status.get("provider_submission") == "not_submitted":
+            self._stage_failure(job, "physics_proposal", "generation_failed", token)
+            return
+        self._unconsumed(job, "physics_proposal", token, "interrupted_uncertain",
+                         "provider_interrupted", provider_submission="uncertain")
+
+    def _settle_physics(self, job: Mapping[str, Any], job_dir: Path,
+                        token: str | None, code: int) -> None:
+        """One verdict decides: accept continues, anything else blocks with its evidence."""
+        request_id = job["request_id"]
+        if code == STAGES["physics"]["lock_busy_exit"]:
+            self._lock_busy(job, "physics", token)
+            return
+        result = _read_json(job_dir / "physics" / "result.json")
+        if code != EXIT_OK or not isinstance(result, Mapping):
+            # A crashed validator gets the one safe retry, then a retained failure.
+            self._stage_failure(job, "physics", "physics_unsupported", token,
+                                progress="validator_error")
+            return
+        artifacts = {**job["artifacts"], "physics_route": result}
+        if result.get("verdict") != "accept":
+            self.store.transition(request_id, "physics_blocked", token=token,
+                                  error="physics_unsupported", worker=None,
+                                  artifacts=artifacts,
+                                  progress=str(result.get("reason") or "physics_unsupported"))
+            return
+        if job.get("provider_mode") == "fake":
+            # A fake job never reaches activation, and the store refuses that state anyway.
+            self.store.transition(request_id, "failed", token=token, error="generation_failed",
+                                  worker=None, artifacts=artifacts,
+                                  progress="fake_provider_not_activatable")
+            return
+        self.store.transition(request_id, "selecting_training_baseline", token=token,
+                              error=None, worker=None, artifacts=artifacts)
+
+    def _prepare_training(self, job: Mapping[str, Any], job_dir: Path) -> dict[str, Any] | None:
+        """Take the training turn, then bind the baseline that exists at this moment.
+
+        A queued job never carries an admission-time catalog into training: it reads the
+        latest catalog and the latest policy here. Returning None releases the turn so a
+        later job can proceed.
+        """
+        request_id = job["request_id"]
+        if not self._take_training_lease(request_id):
+            return None
+        if job["state"] not in ("selecting_training_baseline", "waiting_for_replacement"):
+            return dict(job)
+        try:
+            baseline = self._select_baseline(job, job_dir)
+        except Exception as error:
+            self._release_training_lease(request_id)
+            self._fault(f"training_baseline_failed_{type(error).__name__}")
+            # Consume the attempt here, or a permanent binding error would loop.
+            attempts = {**job["attempts"], "training": job["attempts"].get("training", 0) + 1}
+            self.store.record(request_id, attempts=attempts)
+            self._stage_failure(self.store.get(request_id), "training", "training_failed",
+                                None, progress="the training baseline could not be bound")
+            return None
+        if baseline is None:
+            # No Keep type is free. Release the turn so the next job continues.
+            self._release_training_lease(request_id)
+            self.store.transition(request_id, "waiting_for_replacement", error=None,
+                                  worker=None,
+                                  progress="no Keep type is available to replace")
+            return None
+        return self.store.transition(request_id, "queued_for_training", error=None,
+                                     worker=None, training_baseline=baseline,
+                                     victim=baseline["victim_id"])
+
+    def _select_baseline(self, job: Mapping[str, Any], job_dir: Path) -> dict[str, Any] | None:
+        """Bind the latest catalog and the latest policy, and build the candidate catalog."""
+        catalog = self.catalog_provider()
+        policy = self.policy_provider()
+        reject_classes = [str(name) for name in (policy.get("reject_classes") or [])]
+        victim_id = object_catalog.select_victim(catalog, reject_classes)
+        if victim_id is None:
+            return None
+        draft = _read_json(job_dir / "definition.json")
+        if not isinstance(draft, Mapping):
+            raise ItemJobError("invalid_request", "the job has no validated definition")
+        recipe = _read_json(job_dir / "recipe.json") or {}
+        definition = object_catalog.type_definition_from_draft(
+            draft, rgb=object_catalog.recipe_rgb(recipe), prior=CANDIDATE_PRIOR,
+            source_sha256=hashlib.sha256((job_dir / "recipe.json").read_bytes()).hexdigest())
+        candidate = object_catalog.candidate_catalog(catalog, definition, victim_id)
+        root = job_dir / "training" / "catalog"
+        if root.exists():
+            shutil.rmtree(root)
+        object_catalog.write_catalog(root, candidate)
+        # The queue writes the policy the closed-loop run must apply: the survivors'
+        # reject classes, never the new label.
+        survivors = sorted(set(reject_classes) & set(object_catalog.catalog_labels(candidate)))
+        _write_json(job_dir / "training" / "policy.json",
+                    {"reject_classes": survivors,
+                     "policy_version": policy.get("policy_version")})
+        return {"catalog_revision": catalog["catalog_revision"],
+                "active_type_ids": list(catalog["active_type_ids"]),
+                "policy_version": policy.get("policy_version"),
+                "victim_id": victim_id}
+
+    def _settle_training(self, job: Mapping[str, Any], job_dir: Path,
+                         token: str | None, code: int) -> None:
+        request_id = job["request_id"]
+        if code == STAGES["training"]["lock_busy_exit"]:
+            self._lock_busy(job, "training", token)
+            return
+        if code != EXIT_OK:
+            self._release_training_lease(request_id)
+            self._stage_failure(job, "training", "training_failed", token)
+            return
+        self.store.transition(request_id, "validating_candidate", token=token, error=None,
+                              worker=None)
+        self._validate_candidate(self.store.get(request_id), job_dir, token)
+        self._release_training_lease(request_id)
+
+    def _validate_candidate(self, job: Mapping[str, Any], job_dir: Path,
+                            token: str | None) -> None:
+        """Read the trainer verdict, then re-check the baseline that it was trained for."""
+        request_id = job["request_id"]
+        validation = _read_json(job_dir / "training" / "out" / "validation.json")
+        if not isinstance(validation, Mapping):
+            self._stage_failure(job, "training", "training_failed", token,
+                                progress="the trainer wrote no validation")
+            return
+        artifacts = {**job["artifacts"], "candidate_validation": validation}
+        if not validation.get("passed"):
+            self.store.transition(request_id, "failed", token=token,
+                                  error="candidate_validation_failed", worker=None,
+                                  artifacts=artifacts,
+                                  progress=", ".join(validation.get("failures") or []) or None)
+            return
+        baseline = job.get("training_baseline") or {}
+        catalog = self.catalog_provider()
+        policy = self.policy_provider()
+        reject_classes = [str(name) for name in (policy.get("reject_classes") or [])]
+        victim_id = object_catalog.select_victim(catalog, reject_classes)
+        if (catalog["catalog_revision"] != baseline.get("catalog_revision")
+                or victim_id != baseline.get("victim_id")):
+            self.store.transition(request_id, "activation_conflict", token=token,
+                                  error="replacement_conflict", worker=None,
+                                  artifacts=artifacts,
+                                  progress="the catalog or the victim changed since training")
+            return
+        self.store.record(request_id, token=token, artifacts=artifacts)
+
+    # Training turn ------------------------------------------------------
+
+    def _lease_path(self) -> Path:
+        return self.store.root / TRAINING_LEASE
+
+    def _take_training_lease(self, request_id: str) -> bool:
+        """One trainer across every job and every process, beside the in-process slot."""
+        now = time.time()
+        current = _read_json(self._lease_path())
+        if isinstance(current, Mapping) and current.get("owner") not in (None, request_id):
+            if float(current.get("deadline") or 0) > now:
+                return False
+        _write_json(self._lease_path(),
+                    {"owner": request_id, "deadline": now + self.lease_s})
+        return True
+
+    def _release_training_lease(self, request_id: str) -> None:
+        current = _read_json(self._lease_path())
+        if isinstance(current, Mapping) and current.get("owner") == request_id:
+            with contextlib.suppress(OSError):
+                self._lease_path().unlink()
 
     def _previews_valid(self, job: Mapping[str, Any], job_dir: Path) -> bool:
         previews = job_dir / "previews"
@@ -961,7 +1223,34 @@ def render_command(job: Mapping[str, Any], job_dir: Path, *, runtime_lock: Path,
             "--blender", blender]
 
 
-def real_commands(*, mode: str, provider_cache: Path, runtime_lock: Path,
+def physics_command(job: Mapping[str, Any], job_dir: Path, *, preset: Path,
+                    runtime_lock: Path) -> list[str]:
+    """Validate the draft against the seeded no-air route in a child process.
+
+    The asset root is THIS job's directory, never the repository root: production job
+    assets live outside the read-only source tree.
+    """
+    return [sys.executable, str(HERE / "validate_object_route.py"),
+            "--definition", str(job_dir / "definition.json"),
+            "--asset-root", str(job_dir),
+            "--preset", str(preset),
+            "--seed", "8", "--no-air", "--background-rate", "0",
+            "--runtime-lock", str(runtime_lock),
+            "--json-out", str(job_dir / "physics" / "result.json")]
+
+
+def training_command(job: Mapping[str, Any], job_dir: Path, *, preset: Path,
+                     runtime_lock: Path) -> list[str]:
+    """Train one candidate against the catalog and the policy the queue just bound."""
+    return [sys.executable, str(HERE / "train_candidate.py"),
+            "--catalog-root", str(job_dir / "training" / "catalog"),
+            "--preset", str(preset),
+            "--out", str(job_dir / "training" / "out"),
+            "--policy", str(job_dir / "training" / "policy.json"),
+            "--runtime-lock", str(runtime_lock)]
+
+
+def real_commands(*, mode: str, provider_cache: Path, runtime_lock: Path, preset: Path,
                   generator_root: Path = GENERATOR_ROOT, env_file: Path | None = None,
                   blender: str = "blender",
                   source_revision: str | None = None) -> dict[str, Callable[..., list[str]]]:
@@ -973,20 +1262,28 @@ def real_commands(*, mode: str, provider_cache: Path, runtime_lock: Path,
         "render": lambda job, job_dir: render_command(
             job, job_dir, runtime_lock=runtime_lock, blender=blender,
             generator_root=generator_root),
+        "physics": lambda job, job_dir: physics_command(
+            job, job_dir, preset=preset, runtime_lock=runtime_lock),
+        "training": lambda job, job_dir: training_command(
+            job, job_dir, preset=preset, runtime_lock=runtime_lock),
     }
 
 
-def fake_commands(*, worker: Path = FAKE_WORKER,
-                  fixtures: Path = FIXTURE_ROOT) -> dict[str, Callable[..., list[str]]]:
-    """Scenario-driven adapters. They never call a provider and never start Blender."""
+def fake_commands(*, worker: Path = FAKE_WORKER, fixtures: Path = FIXTURE_ROOT,
+                  stages: tuple[str, ...] | None = None) -> dict[str, Callable[..., list[str]]]:
+    """Scenario-driven adapters. They never call a provider and never start Blender.
+
+    `stages` selects a subset. The scheduler only runs a stage it has a command for, so a
+    caller can exercise one part of the flow without the later stages starting.
+    """
     def build(stage):
         def command(job, job_dir):
             return [sys.executable, str(worker), "--stage", stage,
                     "--job-dir", str(job_dir), "--fixtures", str(fixtures),
-                    "--attempt", str(job["attempts"][stage])]
+                    "--attempt", str(job["attempts"].get(stage, 0))]
         return command
 
-    return {stage: build(stage) for stage in STAGES}
+    return {stage: build(stage) for stage in (stages or tuple(STAGES))}
 
 
 # Helpers -----------------------------------------------------------------

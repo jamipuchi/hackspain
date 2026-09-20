@@ -536,11 +536,25 @@ class LiveService:
         self.runtime_lock.parent.mkdir(parents=True, exist_ok=True)
         self.item_jobs = item_jobs.ItemJobStore(self.item_jobs_root,
                                                 provider_mode=self.item_jobs_provider)
-        self.item_runner = item_jobs.ItemJobRunner(self.item_jobs, self._item_commands(),
-                                                   runtime_lock_path=self.runtime_lock)
+        self.item_runner = item_jobs.ItemJobRunner(
+            self.item_jobs, self._item_commands(), runtime_lock_path=self.runtime_lock,
+            catalog_provider=lambda: object_catalog.load_catalog(self.catalog_root),
+            policy_provider=self._item_jobs_policy)
         self.item_runner.start()
         self.item_jobs_state = self._item_jobs_packet()
         self.item_jobs_revision = self.item_jobs.revision
+
+    def _item_jobs_policy(self):
+        """The policy the live engine applies right now, read from the latest state packet.
+
+        A training baseline must bind the policy in force when its turn begins, not the
+        one that held at admission. An unknown policy keeps the reject set empty, so no
+        job can silently train against a guessed policy.
+        """
+        state = self.state or {}
+        policy = state.get('reject_policy') or {}
+        return {'reject_classes': list(policy.get('reject_classes') or []),
+                'policy_version': policy.get('policy_version')}
 
     def _item_commands(self):
         """Fake mode runs fixtures. Cached and paid modes never pass an automatic --live."""
@@ -551,7 +565,7 @@ class LiveService:
         return item_jobs.real_commands(
             mode=self.item_jobs_provider, provider_cache=self.provider_cache,
             runtime_lock=self.runtime_lock, generator_root=self.generator_root,
-            env_file=self.provider_env,
+            preset=self.preset, env_file=self.provider_env,
             source_revision=os.environ.get('CINTA_SOURCE_REVISION'))
 
     def _close_item_jobs(self):
