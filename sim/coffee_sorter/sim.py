@@ -18,6 +18,7 @@ ROT_ARMATURE_FACTOR = 2  # added rotational inertia as a multiple of the body's 
 JET_FORCE = 0.09          # N per nozzle on a body inside the jet
 JET_HALF_X = 0.010        # m, jet footprint along travel
 JET_HALF_Y_FACTOR = 0.75  # jet half-width as a multiple of the nozzle pitch (jets overlap slightly)
+RESOLVED_RETIRE_GRACE = 0.5  # s: preserve chute motion, then recycle bodies settled in catch bins
 
 
 @dataclass
@@ -88,6 +89,7 @@ class SorterSim:
         self.geom_of = np.array([self.body_geom[b] for b in self.all_bodies])
         self.body_index = {b: i for i, b in enumerate(self.all_bodies)}
         self.active = np.zeros(len(self.all_bodies), bool)
+        self.retire_at = np.full(len(self.all_bodies), np.inf)
         self.continuous = False
         self.bean_of = {}                  # body -> Bean (active)
         self.beans: list[Bean] = []        # every bean ever spawned (ground truth log)
@@ -199,7 +201,9 @@ class SorterSim:
         else:
             self.beans.append(bean)
         self.bean_by_uid[bean.uid] = bean
-        self.active[self.body_index[b]] = True
+        body_index = self.body_index[b]
+        self.retire_at[body_index] = np.inf
+        self.active[body_index] = True
         return bean
 
     def _free_spot(self, half, margin, tries=12):
@@ -226,6 +230,7 @@ class SorterSim:
         m, d = self.model, self.data
         i = self.body_index[b]
         self.active[i] = False
+        self.retire_at[i] = np.inf
         m.body_gravcomp[b] = 1.0
         qa, va = self.body_qpos[b], self.body_qvel[b]
         d.qpos[qa:qa + 3] = [6.0, -2 + (i % 400) * 0.01, 1 + (i // 400) * 0.05]
@@ -308,10 +313,13 @@ class SorterSim:
                 if bean.outcome is None:
                     bean.outcome = "accept" if p[2] > L.split_z else "reject"
                     bean.resolved_t = t
+                    self.retire_at[self.body_index[b]] = t + RESOLVED_RETIRE_GRACE
                     if self.continuous:
                         self._outcome_events.append(bean)
+            resolved_expired = self.retire_at[act] <= t
             gone = (pos[:, 0] > L.split_x + 0.16) | (pos[:, 2] < L.belt_z - 0.44) | \
-                   ((pos[:, 0] < 0) & (np.abs(pos[:, 1]) > L.belt_w / 2 + 0.03)) | (pos[:, 2] < 0.05)
+                   ((pos[:, 0] < 0) & (np.abs(pos[:, 1]) > L.belt_w / 2 + 0.03)) | \
+                   (pos[:, 2] < 0.05) | resolved_expired
             for b, p in zip(bodies[gone], pos[gone]):
                 bean = self.bean_of[b]
                 bean.last_pos = tuple(np.round(p, 3))

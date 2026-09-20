@@ -83,7 +83,11 @@ class Controller:
         self.classes = model.classes
         self.jet_force = jet_force
         spec = {c.name: c for c in sim.P.classes}
-        self.reject_mask = np.array([spec[c].defect and spec[c].severity in policy.reject_severities for c in self.classes])
+        reject_classes = {
+            item.name for item in sim.P.classes
+            if item.defect and item.severity in policy.reject_severities
+        }
+        self.reject_mask = np.array([c in reject_classes for c in self.classes])
         from profiles import sample_instance
         rng = np.random.default_rng(0)
         self.class_mass = np.array([np.mean([sample_instance(spec[c], rng)[2] for _ in range(64)]) for c in self.classes])
@@ -97,6 +101,11 @@ class Controller:
         self.inference_ms = samples()
         self.control_ms = samples()
         self.frames = 0
+
+    def set_reject_classes(self, reject_classes):
+        """Apply a validated class policy to future controller decisions."""
+        selected = set(reject_classes)
+        self.reject_mask = np.array([name in selected for name in self.classes])
 
     # -------------------------------------------------------------- per frame
     def on_frame(self, frame, t):

@@ -194,18 +194,36 @@ def worker(preset, states, acknowledgments, commands, stop, out):
                 except Empty:
                     command = None
                 if command:
-                    ack = dict(type='ack', command_id=command['command_id'], session_id=engine.session_id)
+                    command_type = command['type']
+                    ack = dict(type='ack', command_id=command['command_id'],
+                               command_type=command_type, session_id=engine.session_id)
                     if continuous:
                         ack['command_epoch'] = command['command_epoch']
                     try:
                         if command['session_id'] != engine.session_id:
                             raise ValueError('The session changed. Reload the page.')
-                        if not continuous and running and engine.sim.data.time >= sim_limit - 0.6:
-                            raise ValueError('The session is ending. Restart the session before another injection.')
-                        object_id = engine.inject(command['class_name'])
-                        ack.update(ok=True, object_id=object_id, sim_time_s=float(engine.sim.data.time))
-                        if not running:
-                            running, started = True, time.monotonic()
+                        if command_type == 'inject':
+                            if not continuous and running and engine.sim.data.time >= sim_limit - 0.6:
+                                raise ValueError('The session is ending. Restart the session before another injection.')
+                            object_id = engine.inject(command['class_name'])
+                            ack.update(ok=True, object_id=object_id,
+                                       spawn_position=engine.injection_position(object_id),
+                                       **engine.injection_expectation(object_id),
+                                       sim_time_s=float(engine.sim.data.time))
+                            if not running:
+                                running, started = True, time.monotonic()
+                        elif command_type == 'set_reject_policy':
+                            if command['expected_policy_version'] != engine.policy_version:
+                                ack.update(ok=False, error='The reject policy changed. Use the latest state.',
+                                           error_code='policy_version_conflict',
+                                           reject_policy=engine.reject_policy())
+                            else:
+                                result = engine.set_reject_classes(command['reject_classes'])
+                                ack.update(ok=True, **result)
+                                if result['changed']:
+                                    rolling_scores = None
+                        else:
+                            raise ValueError('Unsupported command type.')
                     except ValueError as exc:
                         ack.update(ok=False, error=str(exc))
                     if continuous:
@@ -741,14 +759,24 @@ class LiveService:
                         'command_epoch': command_epoch,
                     })
                     return
-            if command.get('type') != 'inject':
-                raise ValueError('Only injection commands are supported.')
+            command_type = command.get('type')
+            if command_type not in ('inject', 'set_reject_policy'):
+                raise ValueError('Select a supported command type.')
+            if not self.continuous and command_type != 'inject':
+                raise ValueError('Reject policy changes require continuous mode.')
             if self.restarting:
                 raise ValueError('The session is restarting. Retry after it starts.')
             if command.get('session_id') != self.state.get('session_id'):
                 raise ValueError('The session changed. Reload the page.')
-            if not isinstance(command.get('class_name'), str) or len(command['class_name']) > 32:
-                raise ValueError('Select a supported class.')
+            if command_type == 'inject':
+                if not isinstance(command.get('class_name'), str) or len(command['class_name']) > 32:
+                    raise ValueError('Select a supported class.')
+            else:
+                reject_classes = command.get('reject_classes')
+                if not isinstance(reject_classes, list) or len(reject_classes) > 32:
+                    raise ValueError('Send a bounded reject class list.')
+                if not isinstance(command.get('expected_policy_version'), str):
+                    raise ValueError('Send the expected policy version.')
 
             if self.continuous:
                 self._advance_command_epoch()
@@ -773,12 +801,14 @@ class LiveService:
                         ws, command_id, 'This command epoch reached its admission limit.',
                         'command_epoch_full', command_epoch)
                     return
-                payload = {
-                    'command_id': command_id,
-                    'session_id': command['session_id'],
-                    'class_name': command['class_name'],
-                    'command_epoch': command_epoch,
-                }
+                payload = {'type': command_type, 'command_id': command_id,
+                           'session_id': command['session_id'],
+                           'command_epoch': command_epoch}
+                if command_type == 'inject':
+                    payload['class_name'] = command['class_name']
+                else:
+                    payload.update(reject_classes=reject_classes,
+                                   expected_policy_version=command['expected_policy_version'])
                 self.requests[command_id] = {'payload': original_payload}
                 try:
                     self.commands.put_nowait(payload)
@@ -791,7 +821,8 @@ class LiveService:
                 self.epoch_admissions[self.command_epoch] += 1
                 return
 
-            payload = {'command_id': command_id, 'session_id': command['session_id'],
+            payload = {'type': 'inject', 'command_id': command_id,
+                       'session_id': command['session_id'],
                        'class_name': command['class_name']}
             previous = self.requests.get(command_id)
             if previous:
@@ -872,10 +903,14 @@ def main():
     async def script(request):
         return web.FileResponse(HERE / 'live_web/live.js')
 
+    async def timeline(request):
+        return web.FileResponse(HERE / 'live_web/timeline.mjs')
+
     app = web.Application(middlewares=[local_access], client_max_size=2048)
     app.cleanup_ctx.append(service.lifecycle)
     app.on_shutdown.append(service.shutdown)
-    app.add_routes([web.get('/', page), web.get('/live.js', script), web.get('/health', service.health),
+    app.add_routes([web.get('/', page), web.get('/live.js', script),
+                    web.get('/timeline.mjs', timeline), web.get('/health', service.health),
                     web.get('/state', service.state_handler), web.get('/ws', service.websocket),
                     web.post('/restart', service.restart),
                     # The 3D view reuses the replay viewer's vendored three.js build (no network requests).

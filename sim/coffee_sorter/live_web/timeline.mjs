@@ -1,0 +1,114 @@
+function scoreEpoch(state) {
+  return state?.score_epoch_id || state?.reject_policy?.score_epoch_id || null;
+}
+
+export function samePresentationTimeline(left, right) {
+  return left?.session_id === right?.session_id && scoreEpoch(left) === scoreEpoch(right);
+}
+
+export function formatEngineRate(value) {
+  return typeof value === 'number' && Number.isFinite(value) ? `${value.toFixed(2)}×` : null;
+}
+
+export class PolicyIntentBuffer {
+  constructor() {
+    this.catalog = new Set();
+    this.intents = new Map();
+    this.expiredEpoch = null;
+  }
+
+  setCatalog(names) {
+    this.catalog = new Set(names);
+    for (const name of this.intents.keys()) {
+      if (!this.catalog.has(name)) this.intents.delete(name);
+    }
+  }
+
+  record(name, reject) {
+    if (!this.catalog.has(name)) return false;
+    this.intents.set(name, Boolean(reject));
+    return true;
+  }
+
+  clear() {
+    this.intents.clear();
+    this.expiredEpoch = null;
+  }
+
+  take() {
+    const taken = new Map(this.intents);
+    this.intents.clear();
+    return taken;
+  }
+
+  requeue(olderIntents) {
+    const newerIntents = this.intents;
+    this.intents = new Map();
+    for (const [name, reject] of olderIntents) this.record(name, reject);
+    for (const [name, reject] of newerIntents) this.record(name, reject);
+  }
+
+  apply(baseClasses, intents = this.intents) {
+    const target = new Set(baseClasses);
+    for (const [name, reject] of intents) {
+      if (reject) target.add(name);
+      else target.delete(name);
+    }
+    return target;
+  }
+
+  waitForFreshEpoch(expiredEpoch) {
+    this.expiredEpoch = expiredEpoch;
+  }
+
+  canDispatch(commandEpoch) {
+    return Boolean(commandEpoch) && commandEpoch !== this.expiredEpoch;
+  }
+
+  acceptEpoch(commandEpoch) {
+    if (this.canDispatch(commandEpoch)) this.expiredEpoch = null;
+  }
+
+  get size() {
+    return this.intents.size;
+  }
+}
+
+const PREVIEW_SHAPES = new Set(['ellipsoid', 'half', 'box', 'capsule']);
+
+export function normalizedClassPreview(item) {
+  const preview = item?.preview;
+  if (preview?.schema_version !== 1 || preview.source !== 'profile' || !PREVIEW_SHAPES.has(preview.shape)) return null;
+  const validVector = (value, positive = false) => Array.isArray(value) && value.length === 3
+    && value.every(component => Number.isFinite(component) && (!positive || component > 0));
+  if (!validVector(preview.axes_m, true) || !validVector(preview.rgb)
+      || preview.rgb.some(component => component < 0 || component > 1)) return null;
+  return {shape: preview.shape, axes: preview.axes_m.slice(), rgb: preview.rgb.slice()};
+}
+
+export function profilePreviewScale(preview) {
+  if (!preview) return null;
+  const [x, y, z] = preview.axes;
+  if (preview.shape === 'capsule') return [y, y, x + y];
+  // The half primitive has normalized bounds 2 x 2 x 1. Its profile z value
+  // is the full thickness after the parent ellipsoid is cut in half.
+  return [x, y, z];
+}
+
+export function emptyMetricState({metric, warmingUp, catalogSize, rejectSize}) {
+  const cohortCanReceiveSamples = metric === 'reject_capture' || metric === 'defect_capture'
+    ? rejectSize > 0
+    : metric === 'keep_loss' || metric === 'good_loss'
+      ? rejectSize < catalogSize
+      : catalogSize > 0;
+  return warmingUp && cohortCanReceiveSamples ? 'Computing' : 'No samples';
+}
+
+export function compareExpectedOutcome(expected, outcome) {
+  const expectedLabel = expected === 'reject' ? 'Reject' : expected === 'accept' ? 'Keep' : 'In progress';
+  const actualLabel = outcome === 'reject' ? 'Rejected' : outcome === 'accept' ? 'Passed' : outcome === 'spilled' ? 'Spilled' : 'In progress';
+  if (!['reject', 'accept'].includes(expected) || !['reject', 'accept', 'spilled'].includes(outcome)) {
+    return {expectedLabel, actualLabel, verdict: 'In progress'};
+  }
+  return {expectedLabel, actualLabel, verdict: expected === outcome ? 'As expected' : 'Unexpected'};
+}

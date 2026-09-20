@@ -1,0 +1,297 @@
+{
+  "configured_live_model": {
+    "adjacent_manifest_exists": false,
+    "exists_in_checkout": false,
+    "path": "sim/coffee_sorter/models/live_green_arabica.joblib"
+  },
+  "direct_recipe_physics_shape_overlap": [
+    "box",
+    "ellipsoid"
+  ],
+  "execution_revision": "45be46037d4c48d0e09fea14f0fa279a305e0f13",
+  "generated_fixtures": [
+    {
+      "bounding_dimensions_mm": [
+        14.0,
+        23.799999237060547,
+        6.0
+      ],
+      "case": "earring",
+      "extensions_required": [],
+      "generator": "Khronos glTF Blender I/O v5.2.40",
+      "glb_bytes": 275900,
+      "glb_sha256": "5b926d681542ce1d5116ba446d89e39da7ed8a0cda1b042c5a8914c8adc18171",
+      "image_count": 0,
+      "material_count": 8,
+      "mesh_count": 8,
+      "primitive_count": 8,
+      "recipe_part_kinds": [
+        "ring",
+        "cylinder",
+        "cylinder",
+        "ellipsoid",
+        "ring",
+        "cylinder",
+        "ellipsoid",
+        "ellipsoid"
+      ],
+      "recipe_sha256": "22fcd535f56a9eb27c660088164de40c68e9ac464917146130396108dfe2762c",
+      "single_mesh_node": null,
+      "texture_count": 0
+    },
+    {
+      "bounding_dimensions_mm": [
+        26.0,
+        26.0,
+        2.799999952316284
+      ],
+      "case": "logo",
+      "extensions_required": [],
+      "generator": "Khronos glTF Blender I/O v5.2.40",
+      "glb_bytes": 124780,
+      "glb_sha256": "3d0a134714a29367c9376135305bff8871f9fa97d9270dfa6a37c4643cfc5959",
+      "image_count": 0,
+      "material_count": 7,
+      "mesh_count": 7,
+      "primitive_count": 7,
+      "recipe_part_kinds": [
+        "cylinder",
+        "ring",
+        "box",
+        "box",
+        "box",
+        "polygon",
+        "text"
+      ],
+      "recipe_sha256": "7298d81eead9d3e207921fc48818fade54e320ba46f468d919f707e1bb6e6664",
+      "single_mesh_node": null,
+      "texture_count": 0
+    },
+    {
+      "bounding_dimensions_mm": [
+        16.94960594177246,
+        16.120851516723633,
+        2.0
+      ],
+      "case": "star",
+      "extensions_required": [],
+      "generator": "Khronos glTF Blender I/O v5.2.40",
+      "glb_bytes": 15804,
+      "glb_sha256": "7182c057c83b501438fd6f7a9b1d45700bb0e39579b0a73dce73065af62abbdc",
+      "image_count": 0,
+      "material_count": 1,
+      "mesh_count": 1,
+      "primitive_count": 1,
+      "recipe_part_kinds": [
+        "polygon"
+      ],
+      "recipe_sha256": "ab172827287041a6d98b836b37e7297ff9d5438e397ef7c213ed25f47293549b",
+      "single_mesh_node": {
+        "mesh": 0,
+        "name": "star_body",
+        "scale": [
+          0.0010000000474974513,
+          0.0010000000474974513,
+          0.0010000000474974513
+        ],
+        "translation": [
+          0,
+          0.0010000000474974513,
+          0
+        ]
+      },
+      "texture_count": 0
+    }
+  ],
+  "models": [
+    {
+      "classes": [
+        "good",
+        "faded",
+        "black",
+        "sour",
+        "insect",
+        "broken",
+        "shell",
+        "husk",
+        "stone",
+        "stick"
+      ],
+      "classes_match_profile": true,
+      "feature_count": 23,
+      "features_match_runtime": true,
+      "path": "sim/coffee_sorter/runs/generalization/green_arabica/model/green_arabica.joblib",
+      "profile_classes": [
+        "good",
+        "faded",
+        "black",
+        "sour",
+        "insect",
+        "broken",
+        "shell",
+        "husk",
+        "stone",
+        "stick"
+      ],
+      "sha256": "0b9e164cbf4df18f904f30fde38e0b7ed352877653849cc55da25e6f143051c8"
+    },
+    {
+      "classes": [
+        "good",
+        "quaker",
+        "burnt",
+        "broken",
+        "stone",
+        "stick"
+      ],
+      "classes_match_profile": true,
+      "feature_count": 23,
+      "features_match_runtime": true,
+      "path": "sim/coffee_sorter/runs/generalization/roasted/model/roasted.joblib",
+      "profile_classes": [
+        "good",
+        "quaker",
+        "burnt",
+        "broken",
+        "stone",
+        "stick"
+      ],
+      "sha256": "85cc2e0dcc93b7414ae4184bc7182374b2b1f03db9821b67d109552d28411fbe"
+    }
+  ],
+  "physics_pool_shapes": [
+    "ellipsoid",
+    "half",
+    "box",
+    "capsule"
+  ],
+  "profiles": {
+    "green_arabica": [
+      {
+        "class_name": "good",
+        "defect": false,
+        "severity": "none",
+        "shape": "ellipsoid"
+      },
+      {
+        "class_name": "faded",
+        "defect": true,
+        "severity": "minor",
+        "shape": "ellipsoid"
+      },
+      {
+        "class_name": "black",
+        "defect": true,
+        "severity": "major",
+        "shape": "ellipsoid"
+      },
+      {
+        "class_name": "sour",
+        "defect": true,
+        "severity": "major",
+        "shape": "ellipsoid"
+      },
+      {
+        "class_name": "insect",
+        "defect": true,
+        "severity": "major",
+        "shape": "ellipsoid"
+      },
+      {
+        "class_name": "broken",
+        "defect": true,
+        "severity": "major",
+        "shape": "half"
+      },
+      {
+        "class_name": "shell",
+        "defect": true,
+        "severity": "major",
+        "shape": "ellipsoid"
+      },
+      {
+        "class_name": "husk",
+        "defect": true,
+        "severity": "foreign",
+        "shape": "ellipsoid"
+      },
+      {
+        "class_name": "stone",
+        "defect": true,
+        "severity": "foreign",
+        "shape": "box"
+      },
+      {
+        "class_name": "stick",
+        "defect": true,
+        "severity": "foreign",
+        "shape": "capsule"
+      }
+    ],
+    "roasted": [
+      {
+        "class_name": "good",
+        "defect": false,
+        "severity": "none",
+        "shape": "ellipsoid"
+      },
+      {
+        "class_name": "quaker",
+        "defect": true,
+        "severity": "major",
+        "shape": "ellipsoid"
+      },
+      {
+        "class_name": "burnt",
+        "defect": true,
+        "severity": "major",
+        "shape": "ellipsoid"
+      },
+      {
+        "class_name": "broken",
+        "defect": true,
+        "severity": "major",
+        "shape": "half"
+      },
+      {
+        "class_name": "stone",
+        "defect": true,
+        "severity": "foreign",
+        "shape": "box"
+      },
+      {
+        "class_name": "stick",
+        "defect": true,
+        "severity": "foreign",
+        "shape": "capsule"
+      }
+    ]
+  },
+  "recipe_kinds": [
+    "ring",
+    "ellipsoid",
+    "box",
+    "cylinder",
+    "polygon",
+    "text"
+  ],
+  "source_checks": {
+    "browser_proof_requires_one_mesh_and_one_material": true,
+    "live_ui_hardcodes_stone": true
+  },
+  "source_revision": "c599bd9988b9fff95c78209040e31e28697a4041",
+  "source_sha256": {
+    "sim/coffee_sorter/classifier.py": "221a98bd276d5f1a2ff10a5a3bb0a7708ac237a93d2cb295e8e672f1c43d99c4",
+    "sim/coffee_sorter/controller.py": "25b027d2716abbcc16b820421ed7e300fce040cd39ea80d0cc33ca9679183a24",
+    "sim/coffee_sorter/engine.py": "242da9fbf0cea702d38e2965138ef72d49127ce7b5cca64b9bef8d716f8108e1",
+    "sim/coffee_sorter/live.py": "08d30e56d57762553b4970298657bd3e593678f3a49ec0d997849787cfa5356a",
+    "sim/coffee_sorter/live_web/live.js": "fea8f519961b5746df15880115782d0b2d33f90a57cde2b3fed8b64447451c18",
+    "sim/coffee_sorter/profiles.py": "e47a848e1331d902bb1bd1eb7d29306529339100edfb8175f9918e1ab09d6948",
+    "sim/coffee_sorter/rolling_scores.py": "38d7d15e434316d152ec6fe906b22959a2133f718d9d4ec74057821e4b3dd155",
+    "sim/coffee_sorter/scene.py": "5fff8ea2b049fcf58556599c05e5d4585dd445dc4aa6615d9e1021b813982a27",
+    "sim/coffee_sorter/sim.py": "e4935e5032358466d9a98074eafe000b4b127f223d2a1b0c87280e3cc12cafc8",
+    "sim/coffee_sorter/vision.py": "b539b9a9d2fe04c81058526b2990aee89b1f88629578d8bc50ee41d17059c1c4",
+    "thoughts/taras/research/coffee-quality/object-generation/probe.py": "4c9de2baeb932d85f300f35a8f4d6dbb25827859b4a1be7658fd7dea875409d3",
+    "thoughts/taras/research/coffee-quality/object-generation/render_recipe.py": "42924fc046d5fd500c55e4517089bc138ca9c880f12cb18d8389a4290320499b"
+  }
+}

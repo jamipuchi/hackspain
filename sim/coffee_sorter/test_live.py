@@ -119,6 +119,18 @@ def command(value, command_id=None, epoch=None, class_name='stone'):
     return result
 
 
+def policy_command(value, command_id=None, epoch=None, reject_classes=None,
+                   expected_policy_version='policy-1'):
+    return {
+        'type': 'set_reject_policy',
+        'command_id': command_id or str(uuid.uuid4()),
+        'session_id': value.state['session_id'],
+        'command_epoch': value.command_epoch if epoch is None else epoch,
+        'expected_policy_version': expected_policy_version,
+        'reject_classes': ['stone'] if reject_classes is None else reject_classes,
+    }
+
+
 class StartupValidationTest(unittest.TestCase):
     def test_continuous_preset_matches_selected_artifact_and_physics(self):
         preset = load_preset(HERE / 'configs/continuous_demo.json')
@@ -206,8 +218,196 @@ class ContinuousWorkerTest(unittest.TestCase):
         self.assertGreater(FakeEngine.instance.sim.data.time, 0)
         self.assertLess(FakeEngine.instance.rolling_calls, FakeEngine.instance.snapshot_calls)
 
+    def test_worker_applies_policy_and_rejects_stale_version(self):
+        stop = FakeStop()
+
+        class FakeEngine:
+            def __init__(self, preset):
+                self.continuous = True
+                self.preset = {'limits': {'max_sim_seconds': None, 'max_wall_seconds': None}}
+                self.session_id = 'session'
+                self.sim = types.SimpleNamespace(data=types.SimpleNamespace(time=2.0))
+                self.source_revision = 'test'
+                self.source_hashes = {}
+                self.policy_version = 'current-policy'
+                self.score_epoch_id = 'epoch-1'
+                self.steps = 0
+
+            def snapshot(self):
+                return {'session_id': self.session_id, 'sim_time_s': self.sim.data.time}
+
+            def rolling_scores(self):
+                return {'score_epoch_id': self.score_epoch_id}
+
+            def reject_policy(self):
+                return {'policy_version': self.policy_version, 'score_epoch_id': 'epoch-1'}
+
+            def set_reject_classes(self, reject_classes):
+                self.policy_version = 'next-policy'
+                self.score_epoch_id = 'epoch-2'
+                return {
+                    'changed': True, 'reject_classes': reject_classes,
+                    'policy_version': self.policy_version, 'score_epoch_id': 'epoch-2',
+                    'score_epoch_started_sim_time_s': 2.0, 'applied_sim_time_s': 2.0,
+                    'in_flight_excluded': 3,
+                }
+
+            def step(self):
+                self.steps += 1
+                if self.steps == 2:
+                    stop.set()
+
+            def report(self):
+                return {}
+
+            def close(self):
+                pass
+
+        class OneCommandQueue(WorkerQueue):
+            def __init__(self, items):
+                super().__init__()
+                self.pending = list(items)
+
+            def get_nowait(self):
+                if not self.pending:
+                    raise __import__('queue').Empty
+                return self.pending.pop(0)
+
+        payload = {
+            'type': 'set_reject_policy', 'command_id': str(uuid.uuid4()),
+            'session_id': 'session', 'command_epoch': 'epoch',
+            'expected_policy_version': 'stale-policy', 'reject_classes': ['stone'],
+        }
+        accepted = {**payload, 'command_id': str(uuid.uuid4()),
+                    'expected_policy_version': 'current-policy'}
+        states = WorkerQueue()
+        acknowledgments = WorkerQueue()
+        commands = OneCommandQueue([payload, accepted])
+        module = types.SimpleNamespace(Engine=FakeEngine)
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.dict(sys.modules, {'engine': module}), patch('live.signal.signal'):
+                worker('unused.json', states, acknowledgments, commands, stop, directory)
+
+        stale, applied = acknowledgments.items
+        self.assertFalse(stale['ok'])
+        self.assertEqual(stale['error_code'], 'policy_version_conflict')
+        self.assertEqual(stale['reject_policy']['policy_version'], 'current-policy')
+        self.assertTrue(applied['ok'])
+        self.assertEqual(applied['policy_version'], 'next-policy')
+        self.assertEqual(applied['score_epoch_id'], 'epoch-2')
+        applied_state = next(
+            item for item in reversed(states.items)
+            if item.get('rolling_scores', {}).get('score_epoch_id') == 'epoch-2'
+        )
+        self.assertEqual(applied_state['rolling_scores']['score_epoch_id'], 'epoch-2')
+
+    def test_injection_ack_includes_spawn_policy_expectation(self):
+        stop = FakeStop()
+
+        class FakeEngine:
+            def __init__(self, preset):
+                self.continuous = True
+                self.preset = {'limits': {'max_sim_seconds': None, 'max_wall_seconds': None}}
+                self.session_id = 'session'
+                self.sim = types.SimpleNamespace(data=types.SimpleNamespace(time=2.0))
+                self.source_revision = 'test'
+                self.source_hashes = {}
+                self.steps = 0
+
+            def snapshot(self):
+                return {'session_id': self.session_id, 'sim_time_s': self.sim.data.time}
+
+            def rolling_scores(self):
+                return {'score_epoch_id': 'epoch'}
+
+            def inject(self, class_name):
+                self.injected_class = class_name
+                return 41
+
+            def injection_position(self, object_id):
+                return [-1.0, 0.1, 0.6]
+
+            def injection_expectation(self, object_id):
+                return {
+                    'expected_outcome': 'reject',
+                    'expectation_policy_version': 'spawn-policy',
+                }
+
+            def step(self):
+                self.steps += 1
+                stop.set()
+
+            def report(self):
+                return {}
+
+            def close(self):
+                pass
+
+        class OneCommandQueue(WorkerQueue):
+            def __init__(self, item):
+                super().__init__()
+                self.item = item
+
+            def get_nowait(self):
+                if self.item is None:
+                    raise __import__('queue').Empty
+                item, self.item = self.item, None
+                return item
+
+        payload = {
+            'type': 'inject', 'command_id': str(uuid.uuid4()),
+            'session_id': 'session', 'command_epoch': 'epoch', 'class_name': 'stone',
+        }
+        states = WorkerQueue()
+        acknowledgments = WorkerQueue()
+        commands = OneCommandQueue(payload)
+        module = types.SimpleNamespace(Engine=FakeEngine)
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.dict(sys.modules, {'engine': module}), patch('live.signal.signal'):
+                worker('unused.json', states, acknowledgments, commands, stop, directory)
+
+        ack = acknowledgments.items[0]
+        self.assertEqual(ack['expected_outcome'], 'reject')
+        self.assertEqual(ack['expectation_policy_version'], 'spawn-policy')
+
 
 class ContinuousCommandTest(unittest.IsolatedAsyncioTestCase):
+    async def test_policy_apply_is_idempotent_and_exact_retry_returns_ack(self):
+        value = service()
+        ws = FakeWebSocket()
+        payload = policy_command(value)
+
+        await value._handle_command(payload, ws)
+        await value._handle_command(payload, ws)
+
+        self.assertEqual(len(value.commands.items), 1)
+        self.assertEqual(ws.packets[-1]['type'], 'pending')
+        ack = {
+            'type': 'ack', 'command_id': payload['command_id'],
+            'command_type': 'set_reject_policy', 'command_epoch': value.command_epoch,
+            'session_id': value.state['session_id'], 'ok': True,
+            'policy_version': 'policy-2', 'score_epoch_id': 'score-2',
+        }
+        value.requests[payload['command_id']]['ack'] = ack
+        await value._handle_command(payload, ws)
+        self.assertEqual(ws.packets[-1], ack)
+
+    async def test_policy_ack_broadcast_reaches_two_clients(self):
+        value = service()
+        first = FakeClient()
+        second = FakeClient()
+        value.clients.update((first, second))
+        ack = {
+            'type': 'ack', 'command_id': str(uuid.uuid4()),
+            'command_type': 'set_reject_policy', 'ok': True,
+            'policy_version': 'policy-2', 'score_epoch_id': 'score-2',
+        }
+
+        await value.broadcast(ack)
+
+        self.assertEqual(first.packets, [ack])
+        self.assertEqual(second.packets, [ack])
+
     async def test_exact_duplicate_recovers_then_expires_without_spawn(self):
         value = service()
         ws = FakeWebSocket()
@@ -220,7 +420,8 @@ class ContinuousCommandTest(unittest.IsolatedAsyncioTestCase):
         await value._handle_command(payload, ws)
         self.assertEqual(ws.packets[-1]['type'], 'pending')
         ack = {'type': 'ack', 'command_id': payload['command_id'], 'command_epoch': value.command_epoch,
-               'session_id': value.state['session_id'], 'ok': True, 'object_id': 42}
+               'session_id': value.state['session_id'], 'ok': True, 'object_id': 42,
+               'expected_outcome': 'reject', 'expectation_policy_version': 'spawn-policy'}
         value.requests[payload['command_id']]['ack'] = ack
         await value._handle_command(payload, ws)
         self.assertEqual(ws.packets[-1], ack)
