@@ -577,8 +577,15 @@ class ItemJobRunner:
     def __init__(self, store: ItemJobStore, commands: Mapping[str, Callable[..., list[str]]], *,
                  runtime_lock_path: Path, lease_s: float = LEASE_S,
                  catalog_provider: Callable[[], Mapping[str, Any]] | None = None,
-                 policy_provider: Callable[[], Mapping[str, Any]] | None = None):
+                 policy_provider: Callable[[], Mapping[str, Any]] | None = None,
+                 activator: Callable[[str, Mapping[str, Any]], str] | None = None,
+                 active_bundle_sha256: Callable[[], str | None] | None = None):
         self.store = store
+        # The service owns the engine, the bundle, and the pointer. The queue only calls
+        # `activator(job_id, candidate)` and reads the pointer sha through this callable.
+        # Without an activator a validated candidate waits, exactly as before.
+        self.activator = activator
+        self.active_bundle_sha256 = active_bundle_sha256 or (lambda: None)
         self.commands = dict(commands)
         # The latest catalog and the latest live policy, read when a training turn begins.
         # live.py injects the engine's current reject classes; tests inject a fake.
@@ -702,6 +709,7 @@ class ItemJobRunner:
                 free = stage is not None and self.slots.get(stage) is None
             if free:
                 self._launch(job, stage)
+        self._activate_next()
         self._note_clean_pass()
 
     def _ready_stage(self, job: Mapping[str, Any]) -> str | None:
@@ -1096,7 +1104,11 @@ class ItemJobRunner:
         """Bind the latest catalog and the given policy, and build the candidate catalog."""
         catalog = self.catalog_provider()
         reject_classes = [str(name) for name in (policy.get("reject_classes") or [])]
-        victim_id = object_catalog.select_victim(catalog, reject_classes)
+        # An operator-confirmed victim wins while it is still active. Otherwise the rule
+        # chooses, and None means the job waits for a replacement.
+        confirmed = job.get("replacement_victim") in catalog["active_type_ids"]
+        victim_id = (job["replacement_victim"] if confirmed
+                     else object_catalog.select_victim(catalog, reject_classes))
         if victim_id is None:
             return None
         draft = _read_json(job_dir / "definition.json")
@@ -1134,6 +1146,7 @@ class ItemJobRunner:
                 # The exact policy the candidate trained for, kept as evidence beside the
                 # policy that validation later observed. Neither one gates activation.
                 "reject_classes": sorted(reject_classes),
+                "victim_confirmed": confirmed,
                 "victim_id": victim_id}
 
     def _settle_training(self, job: Mapping[str, Any], job_dir: Path,
@@ -1216,13 +1229,135 @@ class ItemJobRunner:
                                   artifacts=artifacts, reason="stale_catalog_revision",
                                   progress="the active catalog changed since training")
             return
-        if victim_id != baseline.get("victim_id"):
+        # The rule cannot re-derive a victim that the operator confirmed. The unchanged
+        # catalog revision above already proves that victim is still active.
+        if not baseline.get("victim_confirmed") and victim_id != baseline.get("victim_id"):
             self.store.transition(request_id, "activation_conflict", token=token,
                                   error="replacement_conflict", worker=None,
                                   artifacts=artifacts, reason="victim_no_longer_eligible",
                                   progress="the replacement victim changed since training")
             return
         self.store.record(request_id, token=token, artifacts=artifacts, reason=None)
+
+    # Activation ---------------------------------------------------------
+
+    # The accepted mapping of the activator results: (state, error, reason). Any other
+    # answer, and an activator that raises, is a failed activation and never a stuck job.
+    ACTIVATION_OUTCOMES = {
+        "active": ("active", None, None),
+        "replacement_conflict": ("replacement_conflict", "replacement_conflict",
+                                 "victim_no_longer_eligible"),
+        "activation_conflict": ("activation_conflict", "catalog_revision_conflict",
+                                "activation_conflict"),
+    }
+
+    def _activate_next(self) -> None:
+        """Hand one validated candidate to the activator. One activation at a time."""
+        if self.activator is None:
+            return
+        for job in self.store.open_jobs():
+            artifacts = job.get("artifacts") or {}
+            # Only a passed validation records the policy it observed.
+            if (job["state"] == "validating_candidate" and not job.get("worker")
+                    and isinstance(artifacts.get("validation_policy"), Mapping)):
+                self._activate(job)
+                return
+
+    def _activate(self, job: Mapping[str, Any]) -> None:
+        """Hold the training turn, call the activator outside every lock, map its answer.
+
+        The activation replaces the catalog a trainer reads, so it takes the same turn as
+        a trainer. The turn goes back on every path, and the call blocks only this thread.
+        """
+        request_id = job["request_id"]
+        if not self._take_training_lease(request_id):
+            if job.get("reason") != "waiting_for_training_turn":
+                self.store.record(request_id, reason="waiting_for_training_turn",
+                                  progress="waiting for the training turn")
+            return
+        result, detail = "activation_failed", None
+        try:
+            job = self.store.transition(request_id, "draining_for_activation", error=None,
+                                        reason=None, progress=None)
+            result = self.activator(request_id, self._activation_candidate(job))
+        except Exception as error:
+            self._fault(f"activation_failed_{type(error).__name__}")
+            detail = _short_reason(error)
+        finally:
+            try:
+                self._settle_activation(request_id, result, detail)
+            finally:
+                self._release_training_lease(request_id)
+
+    def _activation_candidate(self, job: Mapping[str, Any]) -> dict[str, Any]:
+        """The candidate the activator stages: paths, the victim, and the bound revision."""
+        job_dir = self.store.job_dir(job["request_id"])
+        out = _training_paths(job_dir)
+        baseline = job["training_baseline"]
+        candidate = {"catalog_root": out["catalog"],
+                     "model": out["out"] / "candidate.joblib",
+                     "model_manifest": out["out"] / "candidate.manifest.json",
+                     "preset": out["out"] / "candidate.preset.json",
+                     "victim_id": baseline["victim_id"],
+                     "expected_catalog_revision": baseline["catalog_revision"],
+                     "evidence": self._victim_evidence(baseline["victim_id"])}
+        recorded = (job.get("activation") or {}).get("bundle_sha256")
+        if recorded:
+            # An exact retry: the activator answers `active` without a second restart.
+            candidate["bundle_sha256"] = recorded
+        return candidate
+
+    def _victim_evidence(self, victim_id: str) -> dict[str, Path]:
+        """The rendered files of a GENERATED victim, from the job that activated it."""
+        for other in self.store.jobs():
+            baseline = other.get("training_baseline") or {}
+            if other["state"] == "active" and baseline.get("new_type_id") == victim_id:
+                previews = self.store.job_dir(other["request_id"]) / "previews"
+                return {name: previews / name for name in PREVIEW_DOWNLOADS
+                        if (previews / name).is_file()}
+        return {}
+
+    def _settle_activation(self, request_id: str, result: Any, detail: str | None) -> None:
+        state, error, reason = self.ACTIVATION_OUTCOMES.get(
+            result if isinstance(result, str) else None,
+            ("failed", "activation_failed", "activation_failed"))
+        block = self.store.get(request_id).get("activation")
+        message = block.get("message") if isinstance(block, Mapping) else None
+        self.store.transition(request_id, state, error=error, worker=None, reason=reason,
+                              progress=detail or (_path_free_line(message)[:160]
+                                                  if isinstance(message, str) else None))
+
+    def record_activation(self, request_id: str, **fields: Any) -> dict[str, Any]:
+        """The activator's one reporting path: it persists the `activation` record block.
+
+        The block says when the drain is over, so `activating` comes from it and not from
+        a guess of this thread, which waits inside the activator call meanwhile.
+        """
+        block = fields.get("activation")
+        with self.store.lock:
+            if (isinstance(block, Mapping) and block.get("phase") == "activating"
+                    and self.store.get(request_id)["state"] == "draining_for_activation"):
+                return self.store.transition(request_id, "activating", error=None, **fields)
+            return self.store.record(request_id, **fields)
+
+    def _recover_activation(self, job: Mapping[str, Any]) -> None:
+        """A service that stopped mid-activation. Only the pointer can say how it ended."""
+        request_id = job["request_id"]
+        recorded = (job.get("activation") or {}).get("bundle_sha256")
+        try:
+            committed = bool(recorded) and self.active_bundle_sha256() == recorded
+        except Exception as error:
+            self._fault(f"active_pointer_unreadable_{type(error).__name__}")
+            committed = False
+        self._release_training_lease(request_id)
+        if committed:
+            # The pointer already names this bundle, so the engine runs it. No restart.
+            self.store.transition(request_id, "active", error=None, worker=None,
+                                  reason=None, progress=None)
+            return
+        self.store.transition(request_id, "failed", error="activation_failed", worker=None,
+                              reason="activation_interrupted",
+                              progress="the service stopped during the activation")
 
     # Training turn ------------------------------------------------------
 
@@ -1391,6 +1526,9 @@ class ItemJobRunner:
     def recover(self) -> None:
         """Reclaim persisted workers before the first scheduling pass."""
         for job in self.store.jobs():
+            if job["state"] in ("draining_for_activation", "activating"):
+                self._recover_activation(job)
+                continue
             worker = job.get("worker")
             if not worker:
                 continue
@@ -1463,9 +1601,30 @@ class ItemJobRunner:
                 reason=None, provider_permission="new_request" if grant else None,
                 provider_permission_stage=stage if grant else None)
 
-    def resolve_replacement(self, request_id: str, action: str | None = None) -> dict[str, Any]:
-        """Reserved for Phase 4. The job keeps its replacement conflict until then."""
-        raise ItemJobError("not_available")
+    def resolve_replacement(self, request_id: str,
+                            victim_id: str | None = None) -> dict[str, Any]:
+        """The operator confirms the type to replace, and the job retrains for it.
+
+        Any active type except the anomaly reference. The recipe, the previews, and the
+        physics evidence are reused: only the training turn runs again, so no provider
+        work repeats.
+        """
+        with self.store.lock:
+            job = self.store.get(request_id)
+            if job["state"] not in ("waiting_for_replacement", "replacement_conflict"):
+                raise ItemJobError("not_available")
+            active = {value["object_type_id"]: value["classifier_label"]
+                      for value in self.catalog_provider()["definitions"]}
+            if not isinstance(victim_id, str) or active.get(victim_id) in (
+                    None, object_catalog.ANOMALY_REFERENCE_LABEL):
+                raise ItemJobError("invalid_request", "the victim is not a replaceable type")
+            # The previous round's verdict must never stand in for the new one.
+            artifacts = {key: value for key, value in job["artifacts"].items()
+                         if key not in ("candidate_validation", "validation_policy")}
+            return self.store.transition(
+                request_id, "selecting_training_baseline", error=None, reason=None,
+                progress=None, replacement_victim=victim_id, artifacts=artifacts,
+                attempts={**job["attempts"], "training": 0})
 
     def select_training_baseline(self, request_id: str) -> dict[str, Any]:
         """Phase 3 owns the real path. A fake job can never reach activation."""

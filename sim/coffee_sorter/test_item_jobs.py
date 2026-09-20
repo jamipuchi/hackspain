@@ -89,12 +89,12 @@ class QueueTest(unittest.TestCase):
     STAGES = ('generation', 'render')
 
     def open_runner(self, store=None, lease_s=30.0, commands=None, stages=None,
-                    catalog_provider=None, policy_provider=None):
+                    catalog_provider=None, policy_provider=None, **injected):
         runner = ItemJobRunner(store or self.store,
                                commands or fake_commands(stages=stages or self.STAGES),
                                runtime_lock_path=self.root / 'render.lock', lease_s=lease_s,
                                catalog_provider=catalog_provider,
-                               policy_provider=policy_provider)
+                               policy_provider=policy_provider, **injected)
         runner.term_wait_s = TINY_WAIT_S
         runner.kill_wait_s = TINY_WAIT_S
         runner.lock_backoff_s = (0.05, 0.1)
@@ -681,11 +681,14 @@ class WorkerOwnershipTest(QueueTest):
         self.assertEqual(self.state(request_id), 'worker_unavailable')
         self.assertEqual(runner.slots['render'], request_id)
 
-    def test_reserved_replacement_action_is_not_available(self):
+    def test_a_replacement_is_not_available_outside_its_two_states(self):
         runner = self.open_runner()
         with self.assertRaises(ItemJobError) as raised:
-            runner.resolve_replacement(str(uuid.uuid4()))
+            runner.resolve_replacement(self.submit()['request_id'])
         self.assertEqual(raised.exception.code, 'not_available')
+        with self.assertRaises(ItemJobError) as raised:
+            runner.resolve_replacement(str(uuid.uuid4()), 'builtin.green_arabica.stick')
+        self.assertEqual(raised.exception.code, 'unknown_job')
 
     def _group_gone(self, pgid):
         try:
@@ -2091,6 +2094,262 @@ class PhysicsAndTrainingFlowTest(QueueTest):
                 seen.add(row['stage'])
                 ordered.append(row)
         return ordered
+
+
+class ActivationRunnerTest(QueueTest):
+    """The runner side of an activation, with a fake activator and a fake pointer reader."""
+
+    provider_mode = 'cached'
+    STAGES = tuple(item_jobs.STAGES)
+
+    def setUp(self):
+        super().setUp()
+        self.catalog = object_catalog.load_catalog()
+        self.calls = []
+        self.answer = 'active'
+        self.pointer = None
+
+    def activator(self, job_id, candidate):
+        """A fake service: it reports `activating` through the runner, then answers."""
+        self.calls.append((job_id, dict(candidate), self.state(job_id)))
+        if isinstance(self.answer, Exception):
+            raise self.answer
+        self.runner.record_activation(job_id, activation={
+            'phase': 'activating', 'active_objects': 0, 'message': 'restarting the engine'})
+        self.calls[-1] += (self.state(job_id),)
+        return self.answer
+
+    def open(self, **extra):
+        policy = {'reject_classes': [item['classifier_label']
+                                     for item in self.catalog['definitions']][2:],
+                  'policy_version': 'policy-1'}
+        self.runner = self.open_runner(
+            catalog_provider=lambda: self.catalog, policy_provider=lambda: policy,
+            activator=self.activator, active_bundle_sha256=lambda: self.pointer, **extra)
+        return self.runner
+
+    def validated(self, state='validating_candidate', **fields):
+        """One job whose candidate passed validation, written as the training turn leaves it."""
+        victim = self.catalog['active_type_ids'][1]
+        job = self.submit(description=f'Token {uuid.uuid4()}')
+        return self.store.transition(
+            job['request_id'], state,
+            training_baseline={'catalog_revision': self.catalog['catalog_revision'],
+                               'victim_id': victim, 'policy_version': 'policy-1'},
+            artifacts={'validation_policy': {'policy_version': 'policy-1'},
+                       'candidate_validation': {'passed': True}}, **fields)
+
+    def lease_owner(self):
+        lease = self.root / item_jobs.TRAINING_LEASE
+        return json.loads(lease.read_text())['owner'] if lease.is_file() else None
+
+    def test_a_clean_job_reaches_active_through_the_fake_activator(self):
+        runner = self.open()
+        job = self.submit()
+        request_id = job['request_id']
+
+        self.drive(runner, lambda: self.state(request_id) == 'active')
+
+        (job_id, candidate, during_call, after_report), = self.calls
+        stored = self.store.get(request_id)
+        job_dir = self.store.job_dir(request_id)
+        # The runner drains first, and `activating` comes from the activator's record block.
+        self.assertEqual(('draining_for_activation', 'activating'), (during_call, after_report))
+        self.assertEqual(request_id, job_id)
+        self.assertEqual({'catalog_root': job_dir / 'training' / 'catalog',
+                          'model': job_dir / 'training' / 'out' / 'candidate.joblib',
+                          'model_manifest': job_dir / 'training' / 'out' / 'candidate.manifest.json',
+                          'preset': job_dir / 'training' / 'out' / 'candidate.preset.json',
+                          'victim_id': stored['training_baseline']['victim_id'],
+                          'expected_catalog_revision': self.catalog['catalog_revision'],
+                          'evidence': {}}, candidate)
+        self.assertIsNone(stored['error'])
+        self.assertEqual('activating', self.store.summary(stored)['activation']['phase'])
+        self.assertIsNone(self.lease_owner())
+        # A terminal job is never handed over twice.
+        for _ in range(3):
+            runner.step()
+        self.assertEqual(1, len(self.calls))
+
+    def test_every_activator_answer_maps_to_its_state_and_releases_the_turn(self):
+        runner = self.open()
+        table = {
+            'active': ('active', None),
+            'replacement_conflict': ('replacement_conflict', 'replacement_conflict'),
+            'activation_conflict': ('activation_conflict', 'catalog_revision_conflict'),
+            'activation_failed': ('failed', 'activation_failed'),
+            'an unknown answer': ('failed', 'activation_failed'),
+            None: ('failed', 'activation_failed'),
+        }
+        for answer, expected in table.items():
+            with self.subTest(answer=answer):
+                self.answer = answer
+                request_id = self.validated()['request_id']
+
+                runner.step()
+
+                stored = self.store.get(request_id)
+                self.assertEqual(expected, (stored['state'], stored['error']))
+                self.assertEqual('restarting the engine', stored['progress'])
+                self.assertIsNone(self.lease_owner())
+        self.assertEqual('resolve_replacement', self.store.summary(self.store.get(
+            self.calls[1][0]))['primary_action'])
+
+    def test_an_activator_that_raises_is_a_failed_activation_and_never_a_stuck_job(self):
+        runner = self.open()
+        self.answer = RuntimeError(f'the engine did not start in {self.root}/run')
+        request_id = self.validated()['request_id']
+
+        runner.step()
+
+        stored = self.store.get(request_id)
+        self.assertEqual(('failed', 'activation_failed'), (stored['state'], stored['error']))
+        self.assertIn('RuntimeError', stored['progress'])
+        self.assertNotIn(str(self.root), stored['progress'])
+        self.assertIsNone(self.lease_owner())
+        self.assertEqual('activation_failed_RuntimeError', runner.health()['last_fault'])
+
+    def test_the_activator_runs_outside_the_store_lock_and_holds_the_training_turn(self):
+        runner = self.open()
+        seen = {}
+
+        def activator(job_id, candidate):
+            def probe():
+                seen['store_lock_free'] = self.store.lock.acquire(blocking=False)
+                if seen['store_lock_free']:
+                    self.store.lock.release()
+
+            thread = threading.Thread(target=probe)
+            thread.start()
+            thread.join(10)
+            seen['turn_owner'] = self.lease_owner()
+            return 'active'
+
+        runner.activator = activator
+        request_id = self.validated()['request_id']
+
+        runner.step()
+
+        self.assertEqual({'store_lock_free': True, 'turn_owner': request_id}, seen)
+        self.assertIsNone(self.lease_owner())
+
+    def test_one_activation_at_a_time_waits_for_the_training_turn(self):
+        runner = self.open()
+        request_id = self.validated()['request_id']
+        lease = self.root / item_jobs.TRAINING_LEASE
+        lease.write_text(json.dumps({'owner': 'another-job', 'pgid': None, 'pid': None,
+                                     'deadline': time.time() + 600}))
+
+        runner.step()
+        self.assertEqual([], self.calls)
+        waiting = self.store.get(request_id)
+        self.assertEqual(('validating_candidate', 'waiting_for_training_turn'),
+                         (waiting['state'], waiting['reason']))
+
+        lease.unlink()
+        runner.step()
+        self.assertEqual('active', self.state(request_id))
+
+    def test_without_an_activator_a_validated_candidate_waits(self):
+        runner = self.open()
+        runner.activator = None
+        request_id = self.validated()['request_id']
+
+        runner.step()
+
+        self.assertEqual('validating_candidate', self.state(request_id))
+
+    def test_a_job_found_mid_activation_follows_the_pointer_and_never_restarts(self):
+        committed = self.validated('activating', activation={'bundle_sha256': 'b' * 64})
+        interrupted = self.validated('activating', activation={'bundle_sha256': 'c' * 64})
+        draining = self.validated('draining_for_activation')
+        (self.root / item_jobs.TRAINING_LEASE).write_text(json.dumps(
+            {'owner': committed['request_id'], 'pgid': None, 'pid': None,
+             'deadline': time.time() + 600}))
+        self.pointer = 'b' * 64
+
+        self.open().recover()
+
+        self.assertEqual(('active', None), (self.state(committed['request_id']),
+                                            self.store.get(committed['request_id'])['error']))
+        for job in (interrupted, draining):
+            stored = self.store.get(job['request_id'])
+            self.assertEqual(('failed', 'activation_failed', 'activation_interrupted'),
+                             (stored['state'], stored['error'], stored['reason']))
+        self.assertEqual([], self.calls)
+        self.assertIsNone(self.lease_owner())
+
+    def test_an_unreadable_pointer_fails_the_interrupted_activation(self):
+        job = self.validated('activating', activation={'bundle_sha256': 'b' * 64})
+        runner = self.open()
+
+        def unreadable():
+            raise OSError('the pointer cannot be read')
+
+        runner.active_bundle_sha256 = unreadable
+        runner.recover()
+
+        self.assertEqual('failed', self.state(job['request_id']))
+        self.assertEqual('active_pointer_unreadable_OSError', runner.health()['last_fault'])
+
+    def test_an_exact_retry_passes_the_recorded_bundle(self):
+        runner = self.open()
+        self.validated(activation={'bundle_sha256': 'b' * 64})
+
+        runner.step()
+
+        self.assertEqual('b' * 64, self.calls[0][1]['bundle_sha256'])
+
+    def test_a_confirmed_replacement_retrains_without_any_provider_work(self):
+        runner = self.open()
+        job = self.submit()
+        request_id = job['request_id']
+        self.drive(runner, lambda: self.state(request_id) == 'active')
+        automatic = self.store.get(request_id)['training_baseline']['victim_id']
+        confirmed = next(item for item in reversed(self.catalog['active_type_ids'])
+                         if item != automatic)
+        good = next(item['object_type_id'] for item in self.catalog['definitions']
+                    if item['classifier_label'] == object_catalog.ANOMALY_REFERENCE_LABEL)
+        before = self.store.transition(request_id, 'replacement_conflict',
+                                       error='replacement_conflict')
+        starts = {stage: len(self.starts(stage)) for stage in self.STAGES}
+
+        for refused in (good, 'builtin.absent.type', None, ['not', 'text']):
+            with self.assertRaises(ItemJobError) as raised:
+                runner.resolve_replacement(request_id, refused)
+            self.assertEqual('invalid_request', raised.exception.code)
+        resolved = runner.resolve_replacement(request_id, confirmed)
+
+        self.assertEqual(('selecting_training_baseline', None, 0),
+                         (resolved['state'], resolved['error'], resolved['attempts']['training']))
+        self.assertNotIn('validation_policy', resolved['artifacts'])
+        self.assertEqual(before['artifacts']['previews'], resolved['artifacts']['previews'])
+        self.assertEqual(before['provider_evidence'], resolved['provider_evidence'])
+
+        self.drive(runner, lambda: self.state(request_id) == 'active')
+
+        stored = self.store.get(request_id)
+        self.assertEqual((confirmed, True), (stored['training_baseline']['victim_id'],
+                                             stored['training_baseline']['victim_confirmed']))
+        self.assertEqual(confirmed, self.calls[-1][1]['victim_id'])
+        # Only the training turn ran again. No generation, render, or physics work repeats.
+        again = {stage: len(self.starts(stage)) - starts[stage] for stage in self.STAGES}
+        self.assertEqual({'generation': 0, 'render': 0, 'physics_proposal': 0, 'physics': 0,
+                          'training': 1}, again)
+        self.assertEqual(before['attempts']['generation'], stored['attempts']['generation'])
+        # A generated victim hands its rendered files to the archive of a later activation.
+        evidence = runner._victim_evidence(stored['training_baseline']['new_type_id'])
+        self.assertEqual(sorted(item_jobs.PREVIEW_DOWNLOADS), sorted(evidence))
+
+    def test_a_replacement_also_leaves_waiting_for_replacement(self):
+        runner = self.open()
+        waiting = self.validated('waiting_for_replacement')
+        victim = self.catalog['active_type_ids'][-1]
+
+        resolved = runner.resolve_replacement(waiting['request_id'], victim)
+
+        self.assertEqual(('selecting_training_baseline', victim),
+                         (resolved['state'], resolved['replacement_victim']))
 
 
 # The tracked, byte-identical copy of the frozen server to UI contract.
