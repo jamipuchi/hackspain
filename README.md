@@ -103,3 +103,5 @@ Stop the service with `Ctrl+C`. Shutdown writes the retained report and final st
 - [Measured live checkpoint](thoughts/taras/research/coffee-core-live/REPORT.md)
 - [Public deployment and QA guide](thoughts/taras/deployment/hack-growth.dev/README.md)
 - [Generated-item controls plan](thoughts/taras/plans/2026-09-19-cinta-item-controls.md)
+- [Known issues](KNOWN_ISSUES.md)
+- [Demo and next steps](DEMO_NEXT_STEPS.md)
