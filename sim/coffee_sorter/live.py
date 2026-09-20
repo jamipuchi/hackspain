@@ -831,7 +831,6 @@ class LiveService:
         self.item_jobs_revision = None
         self.item_jobs_unhealthy = False
         self.resetting = False
-        self.last_reset_result = None
         self.catalog_revision = None
         self.active_type_ids = []
         self._create_worker(self.session_out)
@@ -1046,14 +1045,8 @@ class LiveService:
             return _item_job_response('invalid_request')
         if self.resetting:
             return web.json_response({'ok': False, 'error_code': 'reset_in_progress'}, status=409)
-        marker = self.item_jobs_root / 'active' / object_catalog.SEED_MARKER
-        try:
-            seed = json.loads(marker.read_text())['bundle_sha256']
-            if (self.last_reset_result is not None
-                    and _pointer_bundle(self.item_jobs_root / 'active') == seed):
-                return web.json_response({'ok': True, 'result': self.last_reset_result})
-        except (OSError, ValueError, KeyError, TypeError):
-            pass
+        if self.activating is not None:
+            return web.json_response({'ok': False, 'error_code': 'activation_conflict'}, status=409)
 
         self.resetting = True
         previous_session_id = self.state.get('session_id')
@@ -1090,7 +1083,6 @@ class LiveService:
             await asyncio.wait_for(self.state_ready.wait(), timeout=30)
             if self.state.get('status') == 'failed':
                 raise RuntimeError(self.state.get('error') or 'The seed worker failed to start.')
-            self.last_reset_result = result
             return web.json_response({'ok': True, 'result': result})
         except Exception:
             if stopped and self.process is None:
@@ -1626,10 +1618,11 @@ class LiveService:
 
     async def _activate(self, job_id, candidate):
         """One activation at a time. A second call never starts a second drain."""
-        if self.activating is not None:
+        if self.activating is not None or self.resetting:
             self.record(job_id, activation=activation_block(
                 phase='failed', result='activation_conflict',
-                message='Another activation is in progress.'))
+                message=('A reset is in progress.' if self.resetting
+                         else 'Another activation is in progress.')))
             return 'activation_conflict'
         self.activating = job_id
         try:
