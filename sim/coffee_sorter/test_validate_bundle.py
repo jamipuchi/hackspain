@@ -26,8 +26,9 @@ from object_catalog import (BUNDLE_CATALOG, BUNDLE_MANIFEST, BUNDLE_PRESET, CATA
                             catalog_revision, definition_sha256, ensure_active_bundle,
                             load_catalog, publish_bundle, read_active, rollback_active,
                             seed_bundle_files, verify_bundle, write_active_pointer,
-                            write_bundle_manifest)
-from test_object_catalog import builtin_definition
+                            write_bundle_manifest, VISUAL_REGISTRY)
+from test_object_catalog import (CatalogRootTest, builtin_definition, generated_definition,
+                                 tiny_glb)
 
 HERE = Path(__file__).resolve().parent
 REVISION = "c" * 40
@@ -604,6 +605,143 @@ class SeedBundleTest(BundleFixture, unittest.TestCase):
         catalog = read_active(self.root)
         self.assertEqual(catalog["active_bundle_sha256"], digest)
         self.assertEqual(len(catalog["definitions"]), catalog["max_active_types"])
+
+    def test_bundle_zero_carries_an_empty_visual_registry(self):
+        files = self.seed()
+        self.assertEqual(json.loads(files[VISUAL_REGISTRY]), {"schema_version": 1, "assets": []})
+        self.assertFalse([name for name in files if name.startswith("assets/")])
+
+
+class VisualRegistryTest(BundleFixture, CatalogRootTest):
+    """A bundle serves a generated GLB only through a row it can derive from its bytes."""
+
+    def setUp(self):
+        super().setUp()
+        self.glb = tiny_glb(index_count=6)
+        self.sha = hashlib.sha256(self.glb).hexdigest()
+        self.asset = f"assets/{self.sha}.glb"
+        self.definition = generated_definition()
+        self.definition["visual"]["asset"].update(
+            visual_asset_id=f"sha256:{self.sha}", glb_sha256=self.sha)
+        self.type_id = self.definition["object_type_id"]
+        self.write_catalog(self.root / "catalog", [self.definition, builtin_definition("good")])
+        self.glb_path = self.root / "object.glb"
+        self.glb_path.write_bytes(self.glb)
+        # The draft visual block as the generator writes it, its host uri included.
+        self.evidence = {"uri": str(self.glb_path), "media_type": "model/gltf-binary",
+                         "bounds_dimensions_m": [0.017, 0.016, 0.002], "mesh_count": 1,
+                         "runtime_lod_reviewed": False}
+
+    def seed(self, assets=None):
+        model = self.root / "candidate.joblib"
+        model.write_bytes(b"model")
+        model.with_suffix(".manifest.json").write_bytes(pretty({"artifact_sha256": "a" * 64}))
+        return seed_bundle_files(
+            self.root / "catalog", model, model.with_suffix(".manifest.json"),
+            preset={"name": "visual-test"}, policy={"reject_classes": []},
+            sources={"source_revision": REVISION, "files": {}}, assets=assets)
+
+    def assets(self, **changes):
+        return {self.type_id: {"glb": self.glb_path, "evidence": self.evidence, **changes}}
+
+    def forge(self, files):
+        """A directory that matches its own manifest, so only a content rule can refuse it."""
+        staging = Path(tempfile.mkdtemp(dir=self.root)) / "staging"
+        for name, data in files.items():
+            (staging / name).parent.mkdir(parents=True, exist_ok=True)
+            (staging / name).write_bytes(data)
+        directory = staging.with_name(write_bundle_manifest(staging))
+        staging.rename(directory)
+        return directory
+
+    def test_a_generated_type_gets_one_row_measured_from_its_glb(self):
+        files = self.seed(self.assets())
+        self.assertEqual(json.loads(files[VISUAL_REGISTRY]), {"schema_version": 1, "assets": [{
+            "object_type_id": self.type_id, "classifier_label": "star_token",
+            "path": self.asset, **self.definition["visual"]["asset"],
+            "media_type": "model/gltf-binary", "bounds_dimensions_m": [0.017, 0.016, 0.002],
+            "runtime_lod_reviewed": False,
+            "byte_length": len(self.glb), "mesh_count": 1, "primitive_count": 1,
+            "triangle_count": 2,
+            # The nominal proxy axes by the engine rule. They never follow the GLB bounds.
+            "reference_axes_m": [0.008, 0.006, 0.001]}]})
+        self.assertEqual(files[self.asset], self.glb)
+        _, directory = self.publish(files)
+        self.assertIn(self.asset, verify_bundle(directory)["files"])
+        # The draft uri is a host path. It never enters the bundle.
+        for path in directory.rglob("*.json"):
+            self.assertNotIn(str(self.root), path.read_text(), path.name)
+
+    def test_a_type_without_draft_evidence_gets_no_row(self):
+        partial = {name: value for name, value in self.evidence.items()
+                   if name != "bounds_dimensions_m"}
+        cases = {"no assets": None, "no entry": {},
+                 "no evidence": {self.type_id: {"glb": self.glb_path}},
+                 "partial evidence": self.assets(evidence=partial),
+                 "a built-in type": {"builtin.test.good": self.assets()[self.type_id]}}
+        for name, assets in cases.items():
+            with self.subTest(name):
+                files = self.seed(assets)
+                self.assertEqual(json.loads(files[VISUAL_REGISTRY])["assets"], [])
+                self.assertNotIn(self.asset, files)
+                verify_bundle(self.publish(files)[1])
+
+    def test_a_source_that_is_not_the_definition_glb_is_refused(self):
+        other = self.root / "other.glb"
+        other.write_bytes(tiny_glb(index_count=9))
+        link = self.root / "link.glb"
+        link.symlink_to(self.glb_path)
+        for name, source in {"other bytes": other, "a symlink": link,
+                             "a missing file": self.root / "absent.glb"}.items():
+            with self.subTest(name):
+                with self.assertRaises(CatalogError) as raised:
+                    self.seed(self.assets(glb=source))
+                self.assertNotIn(str(self.root), str(raised.exception))
+
+    def test_verify_refuses_every_row_it_cannot_derive_from_the_listed_glb(self):
+        good = self.seed(self.assets())
+        verify_bundle(self.forge(good))
+
+        def rows(change):
+            registry = json.loads(good[VISUAL_REGISTRY])
+            change(registry["assets"])
+            return {**good, VISUAL_REGISTRY: pretty(registry)}
+
+        def member(**changes):
+            return rows(lambda items: items[0].update(changes))
+
+        row = json.loads(good[VISUAL_REGISTRY])["assets"][0]
+        cases = {
+            **{f"a misreported {name}": member(**{name: row[name] + 1}) for name in (
+                "byte_length", "mesh_count", "primitive_count", "triangle_count")},
+            "a boolean count": member(mesh_count=True),
+            "a foreign path": member(path="policy.json"),
+            "an unlisted GLB": {name: data for name, data in good.items() if name != self.asset},
+            "substituted GLB bytes": {**good, self.asset: tiny_glb(index_count=9)},
+            "an asset id that is not the hash": member(visual_asset_id="sha256:" + "0" * 64),
+            "two rows for one GLB": rows(lambda items: items.append(
+                {**items[0], "object_type_id": "generated.other"})),
+            "an unknown member": member(url="catalog-assets"),
+            "a foreign media type": member(media_type="text/plain"),
+            "a review flag that is not a boolean": member(runtime_lod_reviewed="no"),
+            "bounds that are not positive": member(bounds_dimensions_m=[0.01, 0, 0.01]),
+            "two reference axes": member(reference_axes_m=[0.01, 0.01]),
+            "an unsupported schema version": {**good, VISUAL_REGISTRY: pretty(
+                {"schema_version": 2, "assets": []})},
+        }
+        for name, files in cases.items():
+            with self.subTest(name):
+                with self.assertRaises(CatalogError):
+                    verify_bundle(self.forge(files))
+                with self.assertRaises(CatalogError):
+                    publish_bundle(self.bundles, files)
+
+        # A published GLB that becomes a symlink refuses the bundle.
+        directory = self.forge(good)
+        (directory / self.asset).unlink()
+        (directory / self.asset).symlink_to(self.glb_path)
+        with self.assertRaises(CatalogError):
+            verify_bundle(directory)
 
 
 class CatalogRootEnvironmentTest(BundleFixture, unittest.TestCase):

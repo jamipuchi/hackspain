@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import stat
+import struct
 import sys
 import tempfile
 import unittest
@@ -26,6 +27,7 @@ from object_catalog import (
     definition_sha256,
     load_catalog,
     load_definition,
+    read_glb_evidence,
     recipe_rgb,
     require_label_order,
     select_victim,
@@ -167,6 +169,23 @@ def star_draft(**changes):
     }
     values.update(changes)
     return build_object_definition(**values)
+
+
+def tiny_glb(index_count=3, primitives=1, meshes=1, **primitive):
+    """A few bytes of valid glTF 2.0, built in code: one padded JSON chunk, no binary."""
+    part = {"attributes": {"POSITION": 1}, "indices": 0, **primitive}
+    return glb_container(json.dumps({
+        "asset": {"version": "2.0"},
+        "accessors": [{"componentType": 5123, "count": index_count, "type": "SCALAR"},
+                      {"componentType": 5126, "count": 3, "type": "VEC3"}],
+        "meshes": [{"primitives": [part] * primitives}] * meshes}).encode())
+
+
+def glb_container(chunk, version=2, chunk_type=0x4E4F534A, declared=None, total=None):
+    chunk += b" " * (-len(chunk) % 4)
+    return b"glTF" + struct.pack(
+        "<IIII", version, 20 + len(chunk) if total is None else total,
+        len(chunk) if declared is None else declared, chunk_type) + chunk
 
 
 def write_json(path, value):
@@ -1178,6 +1197,56 @@ class AtomicReplaceTest(unittest.TestCase):
             self.assertEqual(["file", "replace", "directory"], order)
             self.assertEqual(b'{"ok": true}', path.read_bytes())
             self.assertEqual(["pointer.json"], [item.name for item in Path(raw).iterdir()])
+
+
+class GlbReaderTest(unittest.TestCase):
+    """Every count comes from the GLB bytes. What cannot be counted is refused."""
+
+    def test_the_counts_come_from_the_json_chunk(self):
+        data = tiny_glb(index_count=6, primitives=2)
+        self.assertEqual(read_glb_evidence(data), {
+            "byte_length": len(data), "mesh_count": 1, "primitive_count": 2,
+            "triangle_count": 4})
+        self.assertEqual(read_glb_evidence(tiny_glb(meshes=2))["mesh_count"], 2)
+        # An explicit triangle mode reads the same as the default.
+        self.assertEqual(read_glb_evidence(tiny_glb(mode=4))["triangle_count"], 1)
+
+    def test_the_tracked_star_matches_the_contract_measurements(self):
+        data = (STAR / "render/object.glb").read_bytes()
+        self.assertEqual(read_glb_evidence(data), {
+            "byte_length": 15804, "mesh_count": 1, "primitive_count": 1,
+            "triangle_count": 276})
+
+    def test_anything_but_a_bounded_indexed_triangle_glb_is_refused(self):
+        valid = tiny_glb()
+        cases = {
+            "not bytes": "glTF",
+            "too short": b"glTF",
+            "a wrong magic": b"glTX" + valid[4:],
+            "version 1": glb_container(b"{}", version=1),
+            "a length that is not the byte count": valid + b"\x00",
+            "a first chunk that is not JSON": glb_container(b"{}", chunk_type=0x004E4942),
+            "a chunk past the end": glb_container(b"{}", declared=64),
+            "invalid JSON": glb_container(b"{"),
+            "nesting past the parser": glb_container(b"[" * 100000),
+            "a document that is not an object": glb_container(b"[]"),
+            "no mesh": glb_container(b'{"meshes": [], "accessors": []}'),
+            "a mesh without a primitive": glb_container(b'{"meshes": [{}], "accessors": []}'),
+            "line primitives": tiny_glb(mode=1),
+            "a primitive without indices": tiny_glb(indices=None),
+            "an indices accessor out of range": tiny_glb(indices=2),
+            "a boolean accessor index": tiny_glb(indices=True),
+            "a count that is not a triangle list": tiny_glb(index_count=4),
+            "a boolean count": tiny_glb(index_count=True),
+            "an empty index list": tiny_glb(index_count=0),
+        }
+        for name, data in cases.items():
+            with self.subTest(name), self.assertRaises(CatalogError):
+                read_glb_evidence(data)
+        for cap in ("MAX_GLB_BYTES", "MAX_GLB_JSON_BYTES"):
+            with self.subTest(cap), patch.object(object_catalog, cap, 16), \
+                    self.assertRaises(CatalogError):
+                read_glb_evidence(valid)
 
 
 class RepoWallOfFameTest(unittest.TestCase):

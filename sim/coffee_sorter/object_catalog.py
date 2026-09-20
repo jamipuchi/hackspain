@@ -16,6 +16,7 @@ import os
 import re
 import shutil
 import socket
+import struct
 import tempfile
 from pathlib import Path
 from typing import Any, Mapping
@@ -54,6 +55,24 @@ BUNDLE_PRESET = "preset.json"
 # The one seed transaction record. It names the expected bundle and nothing else.
 SEED_MARKER = "seed-transaction.json"
 GLB_MAGIC = b"glTF"
+# The one live visual registry. It is built at bundle build time, so the catalog asset
+# block never widens and no definition hash or catalog revision moves.
+VISUAL_REGISTRY = "visual_registry.json"
+VISUAL_REGISTRY_VERSION = 1
+VISUAL_ASSET_DIR = "assets"
+GLB_MEDIA_TYPE = "model/gltf-binary"
+# The preview route serves at most this many bytes, so a live GLB has the same bound.
+MAX_GLB_BYTES = 8 << 20
+MAX_GLB_JSON_BYTES = 1 << 20
+_GLB_JSON_CHUNK = 0x4E4F534A
+_GLB_TRIANGLES = 4
+# A registry row: its identity, then what the definition, the draft, and the bytes say.
+_ASSET_FIELDS = ("visual_asset_id", "glb_sha256", "units", "source_up_axis", "engine_up_axis",
+                 "sim_from_asset_quaternion_wxyz")
+_EVIDENCE_FIELDS = ("media_type", "bounds_dimensions_m", "runtime_lod_reviewed")
+_MEASURED_FIELDS = ("byte_length", "mesh_count", "primitive_count", "triangle_count")
+_VISUAL_ROW_FIELDS = {"object_type_id", "classifier_label", "path", "reference_axes_m",
+                      *_ASSET_FIELDS, *_EVIDENCE_FIELDS, *_MEASURED_FIELDS}
 # A generated victim carries its rendered asset and the model that recognised it.
 GENERATED_EVIDENCE = ("object.glb", "perspective.png", "top.png", "model.manifest.json")
 _CHUNK_BYTES = 1 << 20
@@ -697,10 +716,95 @@ def rollback_active(active_root: Path, bundle_sha256: str) -> Path:
     return write_active_pointer(active_root, bundle_sha256)
 
 
+def read_glb_evidence(data: bytes) -> dict[str, int]:
+    """Measure one GLB from its own bytes. Only the bounded JSON chunk is parsed.
+
+    The binary chunk is never read, so no geometry is loaded. Anything but indexed
+    triangle primitives is refused: a count that cannot be derived is never guessed.
+    """
+    if not isinstance(data, bytes) or not 20 <= len(data) <= MAX_GLB_BYTES:
+        raise CatalogError("a visual asset is not a bounded GLB")
+    magic, version, total, chunk_length, chunk_type = struct.unpack_from("<4sIIII", data)
+    if magic != GLB_MAGIC or version != 2 or total != len(data):
+        raise CatalogError("the GLB header does not describe these bytes")
+    if chunk_type != _GLB_JSON_CHUNK or chunk_length > min(MAX_GLB_JSON_BYTES, len(data) - 20):
+        raise CatalogError("the first GLB chunk is not bounded JSON")
+    try:
+        document = json.loads(data[20:20 + chunk_length])
+    except (ValueError, RecursionError) as error:
+        raise CatalogError("the GLB JSON chunk cannot be read") from error
+    document = _mapping(document, "glb")
+    meshes, accessors = document.get("meshes"), document.get("accessors")
+    if not isinstance(meshes, list) or not meshes or not isinstance(accessors, list):
+        raise CatalogError("the GLB declares no mesh")
+    primitives = triangles = 0
+    for mesh in meshes:
+        parts = _mapping(mesh, "glb.mesh").get("primitives")
+        if not isinstance(parts, list) or not parts:
+            raise CatalogError("a GLB mesh declares no primitive")
+        for part in parts:
+            part = _mapping(part, "glb.primitive")
+            index = part.get("indices")
+            if part.get("mode", _GLB_TRIANGLES) != _GLB_TRIANGLES or type(index) is not int \
+                    or not 0 <= index < len(accessors):
+                raise CatalogError("only indexed triangle primitives are supported")
+            count = _mapping(accessors[index], "glb.accessor").get("count")
+            if type(count) is not int or count <= 0 or count % 3:
+                raise CatalogError("a GLB indices accessor is not a triangle list")
+            primitives += 1
+            triangles += count // 3
+    return {"byte_length": len(data), "mesh_count": len(meshes),
+            "primitive_count": primitives, "triangle_count": triangles}
+
+
+def visual_bundle_files(catalog: Mapping[str, Any],
+                        assets: Mapping[str, Any] | None = None) -> dict[str, bytes]:
+    """The visual registry and every GLB it lists, keyed by bundle path.
+
+    `assets` maps an object type id to `{"glb": path, "evidence": draft visual block}`.
+    A generated type without that evidence gets NO row: the browser then shows its
+    authoritative proxy. Only three evidence members are copied, so a draft `uri` never
+    enters a bundle. `reference_axes_m` follows the engine rule for nominal proxy axes
+    (engine.py `class_catalog`), never the GLB bounds.
+    """
+    files, rows = {}, []
+    for definition in _mapping(catalog, "catalog")["definitions"]:
+        entry = (assets or {}).get(definition["object_type_id"])
+        if definition["provenance"]["kind"] != "generated" or entry is None:
+            continue
+        evidence = _mapping(entry, "asset").get("evidence") or {}
+        if any(name not in evidence for name in _EVIDENCE_FIELDS):
+            continue
+        asset = definition["visual"]["asset"]
+        data = _read_glb(Path(entry["glb"]))
+        if hashlib.sha256(data).hexdigest() != asset["glb_sha256"]:
+            raise CatalogError("the visual asset bytes do not match the definition: "
+                               f"{definition['object_type_id']}")
+        path = f"{VISUAL_ASSET_DIR}/{asset['glb_sha256']}.glb"
+        files[path] = data
+        rows.append({
+            "object_type_id": definition["object_type_id"],
+            "classifier_label": definition["classifier_label"],
+            "path": path,
+            **{name: asset[name] for name in _ASSET_FIELDS},
+            **{name: evidence[name] for name in _EVIDENCE_FIELDS},
+            **read_glb_evidence(data),
+            "reference_axes_m": [round((low + high) * 0.5e-3, 9)
+                                 for low, high in definition["visual"]["size_mm"]],
+        })
+    files[VISUAL_REGISTRY] = _pretty({"schema_version": VISUAL_REGISTRY_VERSION, "assets": rows})
+    return files
+
+
 def seed_bundle_files(catalog_root: Path, model_path: Path, model_manifest_path: Path,
                       preset: Mapping[str, Any], policy: Mapping[str, Any],
-                      sources: Mapping[str, Any]) -> dict[str, bytes]:
-    """Build bundle zero from the packaged assets. The packaged tree is never modified."""
+                      sources: Mapping[str, Any],
+                      assets: Mapping[str, Any] | None = None) -> dict[str, bytes]:
+    """Build one bundle from the given assets. No source tree is ever modified.
+
+    Without `assets` the visual registry is empty, which is exactly bundle zero: the
+    packaged catalog has no generated type.
+    """
     catalog_root, model_path = Path(catalog_root), Path(model_path)
     catalog = load_catalog(catalog_root)
     manifest = {key: value for key, value in catalog.items() if key != "definitions"}
@@ -721,6 +825,7 @@ def seed_bundle_files(catalog_root: Path, model_path: Path, model_manifest_path:
     files[BUNDLE_PRESET] = _pretty(seeded)
     files["policy.json"] = _pretty(dict(_mapping(policy, "policy")))
     files["sources.json"] = _pretty(dict(_mapping(sources, "sources")))
+    files.update(visual_bundle_files(catalog, assets))
     return files
 
 
@@ -832,6 +937,60 @@ def _verify_bundle_content(directory: Path, listed: Mapping[str, Any]) -> None:
             _verify_bundle_preset(directory, value)
         if relative == "policy.json":
             _mapping(value, "policy")
+        if relative == VISUAL_REGISTRY:
+            _verify_visual_registry(directory, listed, value)
+
+
+def _verify_visual_registry(directory: Path, listed: Mapping[str, Any], value: Any) -> None:
+    """Every row must describe one GLB that THIS bundle lists, measured from its bytes.
+
+    A bundle published before the registry existed carries no such file and stays valid:
+    it serves no generated asset.
+    """
+    registry = _mapping(value, "visual registry")
+    _exact(registry, {"schema_version", "assets"}, "visual registry")
+    if registry["schema_version"] != VISUAL_REGISTRY_VERSION \
+            or not isinstance(registry["assets"], list):
+        raise CatalogError("visual registry is unsupported")
+    seen = set()
+    for row in registry["assets"]:
+        row = _mapping(row, "visual registry row")
+        _exact(row, _VISUAL_ROW_FIELDS, "visual registry row")
+        _identifier(row["object_type_id"], "visual registry row object_type_id")
+        _validate_asset({name: row[name] for name in _ASSET_FIELDS}, "generated")
+        # One row per type, and one row per GLB, so a hash selects exactly one row.
+        for key in (("type", row["object_type_id"]), ("glb", row["glb_sha256"])):
+            if key in seen:
+                raise CatalogError("visual registry rows repeat one type or one GLB")
+            seen.add(key)
+        # The path is rebuilt from the hash, so a row can never name another file.
+        relative = f"{VISUAL_ASSET_DIR}/{row['glb_sha256']}.glb"
+        if row["path"] != relative or relative not in listed:
+            raise CatalogError("a visual registry row names a file the bundle does not list")
+        _inside(directory, directory / relative)
+        data = _read_glb(directory / relative)
+        if hashlib.sha256(data).hexdigest() != row["glb_sha256"]:
+            raise CatalogError(f"a visual registry asset does not match its hash: {relative}")
+        measured = read_glb_evidence(data)
+        for name in _MEASURED_FIELDS:
+            if type(row[name]) is not int or row[name] != measured[name]:
+                raise CatalogError(f"a visual registry row misreports {name}")
+        if row["media_type"] != GLB_MEDIA_TYPE or not isinstance(row["runtime_lod_reviewed"], bool):
+            raise CatalogError("a visual registry row carries invalid draft evidence")
+        for name in ("bounds_dimensions_m", "reference_axes_m"):
+            vector = row[name]
+            if not isinstance(vector, list) or len(vector) != 3 \
+                    or any(_number(item, name) <= 0 for item in vector):
+                raise CatalogError(f"{name} must be three positive numbers")
+
+
+def _read_glb(path: Path) -> bytes:
+    """Read at most one byte past the cap. The last path component is never followed."""
+    try:
+        with os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW), "rb") as handle:
+            return handle.read(MAX_GLB_BYTES + 1)
+    except OSError as error:
+        raise CatalogError(f"a visual asset cannot be read: {Path(path).name}") from error
 
 
 def _verify_bundle_preset(directory: Path, preset: Any) -> None:
@@ -1001,8 +1160,7 @@ def _validate_asset(asset: Any, kind: str) -> None:
             raise CatalogError("a generated definition requires a visual asset")
         return
     asset = _mapping(asset, "visual.asset")
-    _exact(asset, {"visual_asset_id", "glb_sha256", "units", "source_up_axis", "engine_up_axis",
-                   "sim_from_asset_quaternion_wxyz"}, "visual.asset")
+    _exact(asset, set(_ASSET_FIELDS), "visual.asset")
     _sha256(asset["glb_sha256"], "visual.asset.glb_sha256")
     if asset["visual_asset_id"] != f"sha256:{asset['glb_sha256']}":
         raise CatalogError("visual_asset_id must equal the GLB content hash")
