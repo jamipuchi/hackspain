@@ -715,14 +715,6 @@ function jobDetails(job) {
     list.append(term_, value_);
   }
   details.append(summary, list);
-  // The compact row replays the cache. A billable call needs paid mode and this choice.
-  if (job.action === 'resolve_provider' && itemJobsPacket()?.provider_mode === 'paid') {
-    const billable = document.createElement('button');
-    billable.type = 'button'; billable.className = 'job-action';
-    billable.textContent = 'Operator: authorize paid request';
-    billable.onclick = () => sendJobAction(job, job.action, 'new_request');
-    details.append(billable);
-  }
   return details;
 }
 
@@ -750,6 +742,7 @@ function buildJobHead({name, meta, preview = null, failed = false, action = null
 function jobRow(job) {
   const row = document.createElement('div'); row.className = 'job-row'; row.dataset.requestId = job.requestId;
   const label = jobActionLabel(job.action);
+  const routinePaidApproval = job.action === 'resolve_provider' && itemJobsPacket()?.provider_mode === 'paid';
   const activation = jobActivationLabel(job.activation);
   const replacement = jobReplacementLabel(job.replacement);
   const evidence = jobEvidenceLabel(job.evidence);
@@ -761,7 +754,9 @@ function jobRow(job) {
            jobErrorLabel(job.error) || job.progress].filter(Boolean).join(' · '),
     preview: job.preview,
     failed: Boolean(job.error) || activationFailed,
-    action: label && {label, run: () => sendJobAction(job, job.action, job.action === 'resolve_provider' ? 'use_cache' : null)},
+    action: label && !routinePaidApproval
+      ? {label, run: () => sendJobAction(job, job.action, job.action === 'resolve_provider' ? 'use_cache' : null)}
+      : null,
   });
   const facts = [activation, replacement, evidence].filter(Boolean);
   if (facts.length) {
@@ -885,7 +880,7 @@ async function sendJobAction(job, action, choice) {
   setItemAddStatus(`${jobActionLabel(action)} sent`);
   try {
     const {ok, result, status} = await postItemJob(path, choice ? {action: choice} : {});
-    if (status === 401) setItemAddStatus('Operator sign-in required. Sign in, then retry.', true);
+    if (status === 401) setItemAddStatus('Authorization is required for this recovery action.', true);
     else if (!ok) setItemAddStatus(jobErrorLabel(result.error_code) || 'The recovery action failed.', true);
     else setItemAddStatus(`${jobActionLabel(action)} accepted`);
   } catch (error) {
@@ -934,7 +929,7 @@ async function resetDefaults() {
   statusNode.classList.remove('error');
   try {
     const {ok, result, status} = await postItemJob('/reset-defaults', {});
-    if (status === 401) throw new Error('Operator sign-in required. Sign in, then retry.');
+    if (status === 401) throw new Error('Authorization is required to reset defaults.');
     if (!ok) throw new Error(resetErrorLabel(result.error_code));
     wallEntries = [];
     wallOffset = 0;
@@ -1442,7 +1437,6 @@ function initThree() {
       persp.updateProjectionMatrix();
     }
     new ResizeObserver(resize).observe(stage); resize();
-    setCamera('overview');
     // Click on the belt or table = inject a stone. A drag stays an orbit.
     const raycaster = new THREE.Raycaster(); const pointer = new THREE.Vector2(); let down = null;
     renderer.domElement.addEventListener('pointerdown', e => { down = {x: e.clientX, y: e.clientY, t: performance.now()}; });
@@ -2228,9 +2222,10 @@ for (const button of document.querySelectorAll('[data-toggle]')) {
 new ResizeObserver(resizeInset).observe($('inset'));
 document.querySelectorAll('button[data-camera]').forEach(button => button.onclick = () => setCamera(button.dataset.camera));
 document.querySelectorAll('button[data-view]').forEach(button => button.onclick = () => setView(button.dataset.view));
-setView('3d');
 initHelpTooltips();
 initThree();
+setCamera('overview');
+setView('3d');
 const cinematic = createCinematicMode({three, getView: () => currentView, setView, setLabels});
 connect();
 requestAnimationFrame(draw);

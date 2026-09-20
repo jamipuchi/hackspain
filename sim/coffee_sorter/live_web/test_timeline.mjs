@@ -183,14 +183,15 @@ test('reset errors have clear bounded labels', () => {
   assert.match(resetErrorLabel('origin_required'), /served address/);
 });
 
-test('reset and operator controls bind the protected HTTP contract', () => {
+test('reset stays available without routine operator sign-in or paid approval', () => {
   const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
   const source = readFileSync(new URL('./live.js', import.meta.url), 'utf8');
-  assert.match(html, /id="operator-login"[^>]+href="\/operator"/);
+  assert.doesNotMatch(html, /operator-login|Operator sign-in|href="\/operator"/);
   assert.match(html, /id="reset-defaults"[^>]*>Reset defaults</);
   assert.match(source, /postItemJob\('\/reset-defaults', \{\}\)/);
   assert.match(source, /status === 401/);
-  assert.match(source, /Operator: authorize paid request/);
+  assert.doesNotMatch(source, /Operator: authorize paid request|new_request/);
+  assert.match(source, /initThree\(\);\s*setCamera\('overview'\);\s*setView\('3d'\);/);
 });
 
 test('queue signature changes only with visible queue fields', () => {
@@ -452,7 +453,7 @@ test('the operator_required row says plainly that nothing was sent or billed', (
 
 test('the queue cue comes from the authoritative provider mode', () => {
   assert.equal(queueModeCue('cached'), 'Shared queue. Cached provider results only.');
-  assert.match(queueModeCue('paid'), /one operator approval permits one generation attempt/i);
+  assert.match(queueModeCue('paid'), /paid generation starts automatically/i);
   assert.match(queueModeCue('paid'), /up to two provider requests/);
   assert.match(queueModeCue('fake'), /no provider call and no activation/);
   // Before the first packet the page says nothing about providers.

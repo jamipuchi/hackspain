@@ -229,8 +229,7 @@ export function jobErrorLabel(error) {
 // The authoritative provider mode decides this copy. The page never defaults it.
 const QUEUE_MODE_CUES = {
   cached: 'Shared queue. Cached provider results only.',
-  paid: 'Shared queue. One operator approval permits one generation attempt, '
-    + 'which can send up to two provider requests.',
+  paid: 'Shared queue. Paid generation starts automatically and can send up to two provider requests.',
   fake: 'Shared queue. Test data only: no provider call and no activation can occur.',
 };
 
