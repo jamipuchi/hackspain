@@ -139,6 +139,7 @@ const JOB_ACTION_PATHS = {
   confirm_cleanup: 'confirm-cleanup',
 };
 const JOB_ERROR_LABELS = {
+  history_full: 'The item history is full. An operator must archive it.',
   invalid_description: 'Use 1 to 600 characters for the description.',
   invalid_request: 'The service does not accept those request fields.',
   invalid_action: 'That action is not supported.',
@@ -193,6 +194,19 @@ export function jobStateNote(state) {
 export function jobErrorLabel(error) {
   if (!error) return null;
   return JOB_ERROR_LABELS[error] || `Unknown error: ${error}`;
+}
+
+// The authoritative provider mode decides this copy. The page never defaults it.
+const QUEUE_MODE_CUES = {
+  cached: 'Shared queue. Cached provider results only.',
+  paid: 'Shared queue. One operator approval permits one generation attempt, '
+    + 'which can send up to two provider requests.',
+  fake: 'Shared queue. Test data only: no provider call and no activation can occur.',
+};
+
+export function queueModeCue(providerMode) {
+  if (providerMode === undefined || providerMode === null) return 'Connecting';
+  return QUEUE_MODE_CUES[providerMode] || `Shared queue. Unknown provider mode: ${providerMode}`;
 }
 
 export function jobStateLabelKeys() {

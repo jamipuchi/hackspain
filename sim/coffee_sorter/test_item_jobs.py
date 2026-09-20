@@ -5,6 +5,7 @@ the whole file runs in seconds while still exercising real process groups.
 The provider tests drive the real runner and the real command builders, so an
 argv assertion proves what the service would actually spawn.
 """
+import contextlib
 import datetime
 import hashlib
 import json
@@ -542,7 +543,14 @@ class WorkerOwnershipTest(QueueTest):
         self.scenarios({'render': {'1': 'hang', '2': 'ok'}})
         blocked = self.submit('Blocked token')
         runner = self.open_runner(lease_s=TINY_WAIT_S)
-        runner._group_gone = lambda pgid, pid=None: False
+        # Generation must settle normally. The unconfirmed exit under test is the
+        # renderer's, so only that one group refuses to confirm.
+        self.drive(runner, lambda: (self.store.get(blocked['request_id']).get('worker')
+                                    or {}).get('stage') == 'render')
+        hung = self.store.get(blocked['request_id'])['worker']['pgid']
+        confirm = runner._group_gone
+        runner._group_gone = (lambda pgid, pid=None:
+                              False if pgid == hung else confirm(pgid, pid))
 
         self.drive(runner, lambda: self.state(blocked['request_id']) == 'worker_unavailable')
 
@@ -739,6 +747,261 @@ class StagingTest(QueueTest):
         self.assertIn('shutil.rmtree(work, ignore_errors=True)', source)
 
 
+# A wrapper that starts a descendant in its own group and exits cleanly, exactly like
+# item_job_render.py starting render_suite.py, which starts Blender.
+DESCENDANT_WRAPPER = (
+    "import json, os, subprocess, sys\n"
+    "from pathlib import Path\n"
+    "child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])\n"
+    "Path(sys.argv[1]).write_text(json.dumps({'wrapper': os.getpid(), 'child': child.pid}))\n"
+    "sys.exit(0)\n"
+)
+
+
+class DescendantExitTest(QueueTest):
+    """An ordinary wrapper exit must not free a stage while a descendant lives."""
+
+    def wrapper_commands(self, marker):
+        script = self.root / 'descendant_wrapper.py'
+        script.write_text(DESCENDANT_WRAPPER)
+        return {'render': lambda job, job_dir: [sys.executable, str(script), str(marker)]}
+
+    def staged_job(self):
+        job = self.submit()
+        (self.store.job_dir(job['request_id']) / 'recipe.json').write_text('{}')
+        self.store.transition(job['request_id'], 'waiting_for_render')
+        return job['request_id']
+
+    def descendant(self, marker, timeout=10.0):
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline and not marker.is_file():
+            time.sleep(0.01)
+        self.assertTrue(marker.is_file(), 'the wrapper never started a descendant')
+        return json.loads(marker.read_text())['child']
+
+    def test_a_live_descendant_blocks_the_stage_until_the_group_is_gone(self):
+        marker = self.root / 'descendant.json'
+        runner = self.open_runner(commands=self.wrapper_commands(marker))
+        request_id = self.staged_job()
+        runner.step()
+        child_pid = self.descendant(marker)
+        self.addCleanup(self._kill, child_pid)
+
+        # Record whether the descendant was still alive at the moment the slot freed,
+        # and how many render children were in flight on every pass.
+        freed_with_live_descendant = []
+        overlap = []
+        original = runner._release
+
+        def watched(request, entry, *, free_slot):
+            if free_slot:
+                freed_with_live_descendant.append(self._alive(child_pid))
+            return original(request, entry, free_slot=free_slot)
+
+        runner._release = watched
+        deadline = time.monotonic() + 20
+        while time.monotonic() < deadline:
+            runner.step()
+            overlap.append(len(runner.children))
+            if self.state(request_id) in ('failed', 'preview_ready'):
+                break
+            time.sleep(0.01)
+
+        self.assertFalse(self._alive(child_pid), 'the descendant outlived the stage')
+        self.assertEqual(freed_with_live_descendant, [False] * len(freed_with_live_descendant))
+        self.assertTrue(freed_with_live_descendant, 'the slot was never released')
+        # One child per stage holds on every pass.
+        self.assertLessEqual(max(overlap), 1)
+        stored = self.store.get(request_id)
+        # A terminated descendant means the artifacts may be incomplete: never a success.
+        self.assertEqual(stored['state'], 'failed')
+        self.assertEqual(stored['error'], 'render_failed')
+        self.assertEqual(stored['progress'], 'a descendant outlived the stage wrapper')
+
+        # The slot bounds are unchanged by this fix.
+        self.assertEqual(item_jobs.MAX_QUEUED_JOBS, 4)
+        self.assertEqual(item_jobs.MAX_RETAINED_OPEN_JOBS, 32)
+        self.assertEqual(item_jobs.MAX_ATTEMPTS, 2)
+        # One slot per configured stage, unchanged by this fix.
+        self.assertEqual(sorted(runner.slots), sorted(runner.commands))
+
+    def test_an_unconfirmed_descendant_blocks_the_stage_and_starts_no_replacement(self):
+        marker = self.root / 'descendant.json'
+        runner = self.open_runner(commands=self.wrapper_commands(marker))
+        request_id = self.staged_job()
+        runner.step()
+        child_pid = self.descendant(marker)
+        self.addCleanup(self._kill, child_pid)
+        runner._group_gone = lambda pgid, pid=None: False
+
+        self.drive(runner, lambda: self.state(request_id) == 'worker_unavailable')
+
+        self.assertEqual(runner.slots['render'], request_id)
+        self.assertEqual(runner.unavailable.get('render'), request_id)
+        launches = len(self.store.get(request_id)['history'])
+        for _ in range(5):
+            runner.step()
+        self.assertEqual(len(self.store.get(request_id)['history']), launches)
+        self.assertEqual(self.store.get(request_id)['attempts']['render'], 1)
+
+    @staticmethod
+    def _alive(pid):
+        try:
+            os.kill(pid, 0)
+        except (ProcessLookupError, PermissionError):
+            return False
+        return True
+
+    @staticmethod
+    def _kill(pid):
+        with contextlib.suppress(ProcessLookupError, PermissionError):
+            os.kill(pid, signal.SIGKILL)
+
+
+class PreviewConfinementTest(QueueTest):
+    def test_a_parent_directory_swap_at_the_open_boundary_is_refused(self):
+        """The job directory is replaced by a symlink between the first and second open."""
+        self.scenarios({})
+        runner = self.open_runner()
+        job = self.submit()
+        request_id = job['request_id']
+        self.drive(runner, lambda: self.state(request_id) == 'preview_ready')
+        stored = self.store.get(request_id)
+        job_dir = self.store.job_dir(request_id)
+
+        outside = self.root / 'outside'
+        (outside / 'previews').mkdir(parents=True)
+        recorded = (job_dir / 'previews' / 'perspective.png').read_bytes()
+        # The decoy matches the recorded size and hash, so only confinement can refuse it.
+        (outside / 'previews' / 'perspective.png').write_bytes(recorded)
+
+        original = os.open
+        calls = []
+
+        def hook(path, flags, *arguments, **keywords):
+            calls.append(path)
+            if len(calls) == 1:
+                moved = job_dir.with_name(job_dir.name + '.moved')
+                job_dir.rename(moved)
+                job_dir.symlink_to(outside, target_is_directory=True)
+            return original(path, flags, *arguments, **keywords)
+
+        with unittest.mock.patch.object(os, 'open', hook):
+            with self.assertRaises(ItemJobError) as raised:
+                item_jobs.read_preview(stored, job_dir, 'perspective.png')
+
+        self.assertEqual(raised.exception.code, 'preview_unavailable')
+        self.assertGreaterEqual(len(calls), 2)
+        # No path-based test may remain on this route.
+        source = (HERE / 'item_jobs.py').read_text()
+        route = source.split('def read_preview(')[1].split('\ndef ')[0]
+        for banned in ('is_symlink', '.exists(', '.resolve(', '.is_dir(', '.is_file('):
+            self.assertNotIn(banned, route)
+
+
+class RetainedHistoryTest(QueueTest):
+    def fill(self, count, state='failed', error='render_failed'):
+        for index in range(count):
+            request_id = self.submit(f'Token {index}')['request_id']
+            self.store.transition(request_id, state, error=error)
+
+    def test_a_full_history_refuses_admission_without_creating_a_directory(self):
+        """Terminal jobs stop counting toward every other bound, so one total is needed."""
+        self.fill(item_jobs.MAX_RETAINED_JOBS)
+        before = sorted(path.name for path in (self.root / 'jobs').iterdir())
+
+        request_id = str(uuid.uuid4())
+        for _ in range(2):
+            with self.assertRaises(ItemJobError) as raised:
+                self.store.submit({'request_id': request_id, 'description': 'One too many',
+                                   'expected_catalog_revision': REVISION}, REVISION)
+            # The same request gets the same answer while the condition holds.
+            self.assertEqual(raised.exception.code, 'history_full')
+            self.assertIn('archive', str(raised.exception))
+        self.assertEqual(sorted(path.name for path in (self.root / 'jobs').iterdir()), before)
+        self.assertNotIn(request_id, before)
+
+    def test_an_exact_retry_of_an_admitted_job_survives_a_full_history(self):
+        payload = {'request_id': str(uuid.uuid4()), 'description': 'Admitted first',
+                   'expected_catalog_revision': REVISION}
+        admitted, created = self.store.submit(payload, REVISION)
+        self.assertTrue(created)
+        self.store.transition(admitted['request_id'], 'failed', error='render_failed')
+        self.fill(item_jobs.MAX_RETAINED_JOBS - 1)
+
+        retried, created_again = self.store.submit(dict(payload), REVISION)
+
+        self.assertFalse(created_again)
+        self.assertEqual(retried['request_id'], admitted['request_id'])
+
+    def test_terminal_history_is_durable_across_a_store_reopen(self):
+        self.fill(5)
+        open_id = self.submit('Still open')['request_id']
+        self.store.close()
+
+        self.store = self.open_store()
+
+        self.assertEqual(len(self.store.jobs()), 6)
+        self.assertEqual([job['request_id'] for job in self.store.open_jobs()], [open_id])
+
+    def test_one_scheduling_pass_reads_only_the_open_jobs(self):
+        self.fill(40)
+        open_ids = {self.submit(f'Open {index}')['request_id'] for index in range(3)}
+        runner = self.open_runner()
+        seen = []
+        original = self.store.open_jobs
+
+        def counted():
+            found = original()
+            seen.append(len(found))
+            return found
+
+        self.store.open_jobs = counted
+        with unittest.mock.patch.object(type(self.store), 'jobs',
+                                        side_effect=AssertionError('jobs() in a pass')):
+            runner._reap()
+            for job in self.store.open_jobs():
+                pass
+            runner.step()
+
+        self.assertEqual({job['request_id'] for job in original() if is_open_state(job)}, open_ids)
+        self.assertTrue(seen)
+        self.assertLessEqual(max(seen), item_jobs.MAX_RETAINED_OPEN_JOBS)
+        self.assertLess(max(seen), 43)
+
+
+def is_open_state(job):
+    return job['state'] not in item_jobs.TERMINAL
+
+
+class RunnerFaultTest(QueueTest):
+    def test_faults_stay_bounded_while_the_total_stays_monotonic(self):
+        runner = self.open_runner()
+        for index in range(1000):
+            runner._fault(f'injected_{index % 3}')
+
+        health = runner.health()
+        self.assertEqual(health['fault_total'], 1000)
+        self.assertEqual(len(health['recent_faults']), item_jobs.MAX_RECENT_FAULTS)
+        self.assertEqual(len(runner.recent_faults), 16)
+        self.assertEqual(health['last_fault'], 'injected_0')
+        self.assertTrue(all(code.startswith('injected_') for code in health['recent_faults']))
+
+    def test_a_transient_fault_clears_after_clean_passes_but_the_total_stays(self):
+        runner = self.open_runner()
+        runner._fault('injected_once')
+        self.assertEqual(runner.health()['last_fault'], 'injected_once')
+
+        for _ in range(item_jobs.FAULT_CLEAR_PASSES):
+            runner.step()
+
+        health = runner.health()
+        self.assertIsNone(health['last_fault'])
+        self.assertEqual(health['recent_faults'], [])
+        # The operator still sees that it happened.
+        self.assertEqual(health['fault_total'], 1)
+
+
 class ReleaseGateTest(QueueTest):
     def test_process_identity_reads_proc_then_falls_back_to_ps(self):
         """G3: a slim Linux image ships no ps. /proc always answers there."""
@@ -784,7 +1047,7 @@ class ReleaseGateTest(QueueTest):
         self.assertFalse(runner.stop(timeout=0.2))
         self.assertTrue(runner.unhealthy_shutdown)
         self.assertTrue(runner.health()['unhealthy_shutdown'])
-        self.assertEqual(runner.errors[-1], 'runner_thread_join_timeout')
+        self.assertEqual(runner.last_fault, 'runner_thread_join_timeout')
         self.assertEqual(runner.health()['last_fault'], 'runner_thread_join_timeout')
 
         blocked.set()
@@ -795,6 +1058,9 @@ class ReleaseGateTest(QueueTest):
         """G6: a dead runner thread must make health fail."""
         runner = self.open_runner()
         health = runner.health()
+        self.assertEqual(health['fault_total'], 0)
+        self.assertIsNone(health['last_fault'])
+        self.assertEqual(health['recent_faults'], [])
         self.assertFalse(health['runner_thread_alive'])
         self.assertEqual(health['active_children'], {'generation': 0, 'render': 0})
         self.assertEqual(health['worker_unavailable_stages'], [])

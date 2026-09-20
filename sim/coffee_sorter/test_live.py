@@ -1045,7 +1045,8 @@ class ItemJobRouteTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(packet['item_jobs']['limits'],
                          {'max_queued_jobs': 4, 'max_retained_open_jobs': 32,
-                          'max_summaries': 32, 'max_attempts': 2})
+                          'max_retained_jobs': 256, 'max_summaries': 32,
+                          'max_attempts': 2})
         self.assertEqual(packet['item_jobs']['provider_mode'], 'cached')
         self.assertEqual(packet['item_jobs']['catalog_revision'], CATALOG_REVISION)
         self.assertEqual(packet['item_jobs']['active_type_ids'], ['builtin.green_arabica.good'])

@@ -41,7 +41,7 @@ DEFAULT_PROVIDER_CACHE = (HERE.parents[1]
                           / 'thoughts/taras/research/coffee-quality/object-generation/results')
 ITEM_JOB_STATUS = {
     'invalid_request': 400, 'invalid_description': 400, 'invalid_action': 400,
-    'paid_mode_disabled': 403, 'unknown_job': 404, 'unknown_preview': 404,
+    'paid_mode_disabled': 403, 'history_full': 429, 'unknown_job': 404, 'unknown_preview': 404,
     'preview_unavailable': 404, 'unsupported_job_schema': 500, 'request_conflict': 409,
     'catalog_revision_conflict': 409, 'not_available': 409, 'worker_unavailable': 409,
     'fake_provider_not_activatable': 409, 'queue_full': 429,
@@ -518,6 +518,7 @@ class LiveService:
         return {'summaries': self.item_jobs.summaries(),
                 'limits': {'max_queued_jobs': item_jobs.MAX_QUEUED_JOBS,
                            'max_retained_open_jobs': item_jobs.MAX_RETAINED_OPEN_JOBS,
+                           'max_retained_jobs': item_jobs.MAX_RETAINED_JOBS,
                            'max_summaries': item_jobs.MAX_SUMMARIES,
                            'max_attempts': item_jobs.MAX_ATTEMPTS},
                 'provider_mode': self.item_jobs.provider_mode,
@@ -1073,7 +1074,7 @@ class LiveService:
             if not queue['runner_thread_alive'] or queue['unhealthy_shutdown']:
                 packet['status'] = status = 'failed'
                 packet['error'] = error or 'The item job runner thread stopped.'
-            elif queue['faults']:
+            elif queue['last_fault']:
                 packet['status'] = status = 'failed'
                 packet['error'] = 'The item job runner reported ' + str(queue['last_fault']) + '.'
         return web.json_response(packet, status=503 if status == 'failed' else 200)

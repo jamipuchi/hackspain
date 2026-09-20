@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {OrbitControls} from '/vendor/OrbitControls.js';
 import {RoomEnvironment} from '/vendor/RoomEnvironment.js';
 import {GLTFLoader} from '/assets/vendor/loaders/GLTFLoader.js';
-import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, freezeItemRequest, jobActionLabel, jobActionPath, jobErrorLabel, jobQueueSignature, jobStateLabel, jobStateNote, normalizedClassPreview, normalizedJobSummary, profilePreviewScale, resolvePendingRequest, samePresentationTimeline} from './timeline.mjs';
+import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, freezeItemRequest, jobActionLabel, jobActionPath, jobErrorLabel, jobQueueSignature, jobStateLabel, jobStateNote, queueModeCue, normalizedClassPreview, normalizedJobSummary, profilePreviewScale, resolvePendingRequest, samePresentationTimeline} from './timeline.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('scene');
@@ -697,8 +697,11 @@ function jobRow(job) {
 }
 
 function updateItemQueue() {
-  // Production never shows a fake successful job without saying so.
-  $('item-fake-banner').hidden = itemJobsPacket()?.provider_mode !== 'fake';
+  // Production never shows a fake successful job without saying so. The queue copy
+  // follows the authoritative provider mode, never a default in the page.
+  const packet = itemJobsPacket();
+  $('item-fake-banner').hidden = packet?.provider_mode !== 'fake';
+  $('item-mode-cue').textContent = queueModeCue(packet ? packet.provider_mode : null);
   const summaries = itemJobsPacket()?.summaries || [];
   if (pendingItemRequest) {
     // Only resolve here. A packet that does not hold the id must not restate a waiting

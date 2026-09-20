@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
 
-import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, freezeItemRequest, jobActionLabel, jobActionPath, jobErrorLabel, jobQueueSignature, jobStateLabel, jobStateNote, normalizedClassPreview, normalizedJobSummary, profilePreviewScale, resolvePendingRequest, samePresentationTimeline} from './timeline.mjs';
+import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, freezeItemRequest, jobActionLabel, jobActionPath, jobErrorLabel, jobQueueSignature, jobStateLabel, jobStateNote, normalizedClassPreview, normalizedJobSummary, profilePreviewScale, queueModeCue, resolvePendingRequest, samePresentationTimeline} from './timeline.mjs';
 
 const snapshot = {
   session_id: 'session-a',
@@ -263,4 +263,19 @@ test('the operator_required row says plainly that nothing was sent or billed', (
   assert.match(jobStateNote('operator_required'), /nothing was billed/);
   assert.match(jobErrorLabel('provider_cache_miss'), /Nothing was sent and nothing was billed/);
   assert.match(jobErrorLabel('paid_mode_disabled'), /Paid mode is disabled/);
+});
+
+test('the queue cue comes from the authoritative provider mode', () => {
+  assert.equal(queueModeCue('cached'), 'Shared queue. Cached provider results only.');
+  assert.match(queueModeCue('paid'), /one operator approval permits one generation attempt/i);
+  assert.match(queueModeCue('paid'), /up to two provider requests/);
+  assert.match(queueModeCue('fake'), /no provider call and no activation/);
+  // Before the first packet the page says nothing about providers.
+  assert.equal(queueModeCue(null), 'Connecting');
+  assert.equal(queueModeCue(undefined), 'Connecting');
+  assert.match(queueModeCue('invented'), /Unknown provider mode: invented/);
+  // The page must not carry a default that contradicts the mode.
+  const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
+  assert.equal(html.includes('paid approval'), false);
+  assert.match(html, /id="item-mode-cue" class="policy-status">Connecting</);
 });

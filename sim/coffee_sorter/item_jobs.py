@@ -15,6 +15,7 @@ and the runner thread.
 from __future__ import annotations
 
 import contextlib
+from collections import deque
 import datetime
 import fcntl
 import hashlib
@@ -51,6 +52,9 @@ MAX_QUEUED_JOBS = 4
 # Blocked jobs never become queued work, so a public deployment needs a second bound
 # over every retained open job. Without it anonymous requests grow disk without limit.
 MAX_RETAINED_OPEN_JOBS = 32
+# Terminal jobs stop counting toward every other bound, so without one finite total the
+# public queue admits new work forever. History is durable: nothing is ever evicted.
+MAX_RETAINED_JOBS = 256
 MAX_SUMMARIES = 32
 MAX_ATTEMPTS = 2
 # The app-wide request body limit stays 2048 bytes. This is the description field alone.
@@ -65,6 +69,9 @@ POLL_S = 0.02
 STEP_S = 0.25
 # Bounded backoff for a busy shared render lock. It replaces a 4 Hz relaunch spin.
 LOCK_BACKOFF_S = (1.0, 2.0, 4.0, 8.0, 15.0)
+MAX_RECENT_FAULTS = 16
+# A transient fault must not pin health red forever. It clears after this many clean passes.
+FAULT_CLEAR_PASSES = 8
 
 # One definition of the child stage exit contract. Every runner script and every
 # fake worker imports these names instead of redeclaring them.
@@ -92,6 +99,7 @@ ERRORS = frozenset({
     "worker_unavailable", "physics_unsupported", "training_failed",
     "candidate_validation_failed", "replacement_conflict", "activation_failed",
     "catalog_revision_conflict", "provider_cache_miss", "paid_mode_disabled",
+    "history_full",
 })
 TERMINAL = frozenset({"active", "failed"})
 BLOCKED = frozenset({
@@ -198,7 +206,10 @@ class ItemJobStore:
         # HTTP handler threads, so no read, modify, write sequence can interleave.
         self.lock = threading.RLock()
         # One in-memory index, loaded once. Nothing rescans the tree per scheduling pass.
+        # _open is the scheduling view: at most MAX_RETAINED_OPEN_JOBS entries, so a pass
+        # never copies the whole retained history.
         self._index: dict[str, dict[str, Any]] = {}
+        self._open: set[str] = set()
         self._lock_file = (self.root / "writer.lock").open("a")
         try:
             fcntl.flock(self._lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -216,6 +227,8 @@ class ItemJobStore:
             job = self._read(directory)
             if job is not None:
                 self._index[job["request_id"]] = job
+                if is_open(job):
+                    self._open.add(job["request_id"])
 
     def close(self) -> None:
         with contextlib.suppress(Exception):
@@ -237,6 +250,14 @@ class ItemJobStore:
         """Every retained job, oldest first. A failed job stays visible."""
         with self.lock:
             found = self._all()
+        found.sort(key=lambda job: (job["timestamps"]["created"], job["request_id"]))
+        return found
+
+    def open_jobs(self) -> list[dict[str, Any]]:
+        """The scheduling view: only jobs that still need work, oldest first."""
+        with self.lock:
+            found = [json.loads(json.dumps(self._index[request_id]))
+                     for request_id in self._open if request_id in self._index]
         found.sort(key=lambda job: (job["timestamps"]["created"], job["request_id"]))
         return found
 
@@ -283,6 +304,11 @@ class ItemJobStore:
             if normalized["expected_catalog_revision"] != current_catalog_revision:
                 raise ItemJobError("catalog_revision_conflict")
             retained = list(self._index.values())
+            # Checked before any directory is created. An already admitted request took
+            # the earlier branch, so an exact retry still returns its job.
+            if len(retained) >= MAX_RETAINED_JOBS:
+                raise ItemJobError("history_full",
+                                   "the item history is full and an operator must archive it")
             if sum(is_queued_work(job) for job in retained) >= MAX_QUEUED_JOBS:
                 raise ItemJobError("queue_full", "four jobs are already queued")
             if sum(is_open(job) for job in retained) >= MAX_RETAINED_OPEN_JOBS:
@@ -385,7 +411,12 @@ class ItemJobStore:
     def _write(self, directory: Path, job: Mapping[str, Any]) -> None:
         _write_json(directory / "job.json", job)
         # The index is authoritative for this process: it holds the writer lock.
-        self._index[job["request_id"]] = json.loads(json.dumps(job))
+        stored = json.loads(json.dumps(job))
+        self._index[job["request_id"]] = stored
+        if is_open(stored):
+            self._open.add(job["request_id"])
+        else:
+            self._open.discard(job["request_id"])
         self.revision += 1
 
 
@@ -409,8 +440,12 @@ class ItemJobRunner:
         self.blocked_children: dict[str, dict[str, Any]] = {}
         self.backoff: dict[str, float] = {}
         self.unavailable: dict[str, str] = {}
-        self.errors: list[str] = []
+        # A repeating fault appends at 4 Hz, so the record must be bounded.
+        self.recent_faults: deque[str] = deque(maxlen=MAX_RECENT_FAULTS)
+        self.fault_total = 0
+        self.last_fault: str | None = None
         self.unhealthy_shutdown = False
+        self._clean_passes = 0
         # slots, children, backoff, and unavailable are shared with the HTTP threads.
         # Every read, modify, write of them holds this guard. Child waits stay outside it.
         self._guard = threading.RLock()
@@ -438,7 +473,7 @@ class ItemJobRunner:
             if self._thread.is_alive():
                 # An unconfirmed thread may still write. Never report a clean stop.
                 self.unhealthy_shutdown = True
-                self.errors.append('runner_thread_join_timeout')
+                self._fault('runner_thread_join_timeout')
                 return False
             self._thread = None
         self.shutdown()
@@ -451,7 +486,8 @@ class ItemJobRunner:
             for entry in list(self.children.values()):
                 children[entry['stage']] = children.get(entry['stage'], 0) + 1
             blocked = sorted(self.unavailable)
-        faults = list(self.errors)
+            recent = list(self.recent_faults)
+            total, last = self.fault_total, self.last_fault
         return {
             'runner_thread_alive': bool(self._thread is not None and self._thread.is_alive()),
             'active_children': children,
@@ -459,31 +495,55 @@ class ItemJobRunner:
             'unhealthy_shutdown': self.unhealthy_shutdown,
             'provider_mode': self.provider_mode,
             # Short codes only. A fault must never publish a host path.
-            'faults': len(faults),
-            'last_fault': faults[-1] if faults else None,
+            'fault_total': total,
+            'last_fault': last,
+            'recent_faults': recent,
         }
+
+    def _fault(self, code: str) -> None:
+        """The one way a fault is recorded. The total is monotonic, the record bounded."""
+        with self._guard:
+            self.fault_total += 1
+            self.last_fault = code
+            self.recent_faults.append(code)
+            self._clean_passes = 0
+
+    def _note_clean_pass(self) -> None:
+        """A transient fault clears after FAULT_CLEAR_PASSES clean passes.
+
+        fault_total stays monotonic, so an operator still sees that it happened.
+        """
+        with self._guard:
+            if self.last_fault is None:
+                return
+            self._clean_passes += 1
+            if self._clean_passes >= FAULT_CLEAR_PASSES:
+                self.last_fault = None
+                self.recent_faults.clear()
+                self._clean_passes = 0
 
     def _loop(self) -> None:
         try:
             self.recover()
         except Exception as error:  # A recovery fault must not kill the thread silently.
-            self.errors.append(f"recover_failed_{type(error).__name__}")
+            self._fault(f"recover_failed_{type(error).__name__}")
         while not self._stop.is_set():
             try:
                 self.step()
             except Exception as error:
-                self.errors.append(f"step_failed_{type(error).__name__}")
+                self._fault(f"step_failed_{type(error).__name__}")
             self._stop.wait(STEP_S)
 
     def step(self) -> None:
         """One scheduling pass. A blocked or failed job never stops a later job."""
         self._reap()
-        for job in self.store.jobs():
+        for job in self.store.open_jobs():
             with self._guard:
                 stage = self._ready_stage(job)
                 free = stage is not None and self.slots.get(stage) is None
             if free:
                 self._launch(job, stage)
+        self._note_clean_pass()
 
     def _ready_stage(self, job: Mapping[str, Any]) -> str | None:
         """Called under the runner guard."""
@@ -528,7 +588,7 @@ class ItemJobRunner:
                                      env=_child_environment(job_dir))
         except OSError:
             log.close()
-            self.errors.append(f"{stage}_launch_failed")
+            self._fault(f"{stage}_launch_failed")
             self._stage_failure(self.store.get(request_id), stage, table["failure_error"], token)
             return
         pgid = os.getpgid(child.pid)
@@ -543,7 +603,7 @@ class ItemJobRunner:
                 **intent, "pid": child.pid, "pgid": pgid, "pid_start": _pid_start(child.pid)})
         except ItemJobError:
             # Recovery cannot confirm ownership without this record, so health must show it.
-            self.errors.append(f"{stage}_ownership_write_failed")
+            self._fault(f"{stage}_ownership_write_failed")
 
     def _reap(self) -> None:
         with self._guard:
@@ -554,8 +614,48 @@ class ItemJobRunner:
                 if time.monotonic() >= entry["deadline"]:
                     self._expire(request_id, entry)
                 continue
-            self._release(request_id, entry, free_slot=True)
-            self._settle(request_id, entry["stage"], entry["token"], code)
+            self._finish(request_id, entry, code)
+
+    def _finish(self, request_id: str, entry: Mapping[str, Any], code: int) -> None:
+        """The wrapper exited. The stage is free only once its whole group is gone.
+
+        A stage wrapper starts descendants: item_job_render.py starts render_suite.py,
+        which starts Blender. Releasing on the wrapper exit alone would let a second
+        renderer overlap a live descendant.
+        """
+        gone, terminated = self._settle_group(entry["pgid"], child=entry["child"])
+        self._release(request_id, entry, free_slot=gone)
+        if not gone:
+            self._block_stage(request_id, entry,
+                              "the owned process group did not confirm its exit")
+            return
+        if terminated:
+            # A descendant outlived the wrapper, so the artifacts may be incomplete.
+            stage = entry["stage"]
+            self._stage_failure(self.store.get(request_id), stage,
+                                STAGES[stage]["failure_error"], entry["token"],
+                                progress="a descendant outlived the stage wrapper")
+            return
+        self._settle(request_id, entry["stage"], entry["token"], code)
+
+    def _settle_group(self, pgid: int, *, child: subprocess.Popen | None = None,
+                      pid: int | None = None) -> tuple[bool, bool]:
+        """The one way any path confirms an owned process group left.
+
+        Returns (gone, terminated). terminated is True when a member had to be
+        signalled, so the attempt can never count as a success.
+        """
+        if self._group_gone(pgid, None if child is not None else pid):
+            return True, False
+        return self._terminate(pgid, child, pid), True
+
+    def _block_stage(self, request_id: str, entry: Mapping[str, Any], reason: str) -> None:
+        """Keep the slot, expose worker_unavailable, and start no replacement."""
+        with self._guard:
+            self.unavailable[entry["stage"]] = request_id
+            self.blocked_children[request_id] = entry
+        self.store.transition(request_id, "worker_unavailable", token=entry["token"],
+                              error="worker_unavailable", progress=reason)
 
     def _release(self, request_id: str, entry: Mapping[str, Any], *, free_slot: bool) -> None:
         with contextlib.suppress(Exception):
@@ -710,17 +810,13 @@ class ItemJobRunner:
         return self._group_gone(pgid, owned)
 
     def _expire(self, request_id: str, entry: Mapping[str, Any]) -> None:
-        gone = self._terminate(entry["pgid"], entry["child"])
+        gone, _ = self._settle_group(entry["pgid"], child=entry["child"])
         self._release(request_id, entry, free_slot=gone)
         job = self.store.get(request_id)
         if not gone:
             # The slot stays occupied. No replacement process starts for this stage.
-            with self._guard:
-                self.unavailable[entry["stage"]] = request_id
-                self.blocked_children[request_id] = entry
-            self.store.transition(request_id, "worker_unavailable", token=entry["token"],
-                                  error="worker_unavailable",
-                                  progress="the owned process group did not confirm its exit")
+            self._block_stage(request_id, entry,
+                              "the owned process group did not confirm its exit")
             return
         self._timed_out(job, entry["stage"], entry["token"])
 
@@ -762,13 +858,13 @@ class ItemJobRunner:
         if pid is None or pgid is None:
             # A launch intent with no confirmed process. An untracked child may exist.
             return False
+        marker = worker.get("pid_start")
         if self._group_gone(pgid, pid):
             return True
-        marker = worker.get("pid_start")
-        if marker and _pid_start(pid) == marker:
-            return self._terminate(pgid, pid=pid)
-        # The group is alive but ownership is unprovable. Never signal it.
-        return False
+        if not (marker and _pid_start(pid) == marker):
+            # The group is alive but ownership is unprovable. Never signal it.
+            return False
+        return self._settle_group(pgid, pid=pid)[0]
 
     def shutdown(self) -> None:
         """Terminate every owned process group. State recovery happens on the next start."""
@@ -982,21 +1078,21 @@ def read_preview(job: Mapping[str, Any], job_dir: Path, name: str) -> tuple[byte
     if not isinstance(size, int) or isinstance(size, bool) or not 0 <= size <= MAX_PREVIEW_BYTES:
         raise ItemJobError("preview_unavailable")
 
-    if job_dir.is_symlink():
-        raise ItemJobError("preview_unavailable")
-    # Open the directory itself without following a link, then open the file relative to
-    # that descriptor. No second path lookup can be substituted in between.
+    # Every decision comes from a descriptor chain, so no component can be substituted
+    # between a check and the open. No path-based test remains on this route.
+    directories: list[int] = []
     try:
-        previews_fd = os.open(job_dir / "previews",
-                              os.O_RDONLY | os.O_NOFOLLOW | os.O_DIRECTORY)
-    except OSError:
-        raise ItemJobError("preview_unavailable") from None
-    try:
-        descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=previews_fd)
+        directories.append(os.open(job_dir.parent,
+                                   os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW))
+        for component in (job_dir.name, "previews"):
+            directories.append(os.open(component, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                                       dir_fd=directories[-1]))
+        descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=directories[-1])
     except OSError:
         raise ItemJobError("preview_unavailable") from None
     finally:
-        os.close(previews_fd)
+        for opened in directories:
+            os.close(opened)
     try:
         status = os.fstat(descriptor)
         if not stat.S_ISREG(status.st_mode) or status.st_size != size:
