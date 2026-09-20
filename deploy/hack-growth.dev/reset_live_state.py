@@ -83,9 +83,10 @@ def _validate_layout(root: Path) -> dict:
     provider_cache = root / "provider-cache"
     writer_lock = history / "writer.lock"
     for path, name in ((active_root, "active root"), (jobs, "jobs root"),
-                       (history, "history root"),
-                       (provider_cache, "provider-cache root")):
+                       (history, "history root")):
         _directory(path, name)
+    if provider_cache.exists():
+        _directory(provider_cache, "provider-cache root")
     _regular_file(writer_lock, "writer lock")
     unknown_history = sorted(path.name for path in history.iterdir()
                              if path.name not in ALLOWED_HISTORY_NAMES)
@@ -142,7 +143,6 @@ def _validate_layout(root: Path) -> dict:
         "active_root": active_root,
         "jobs": jobs,
         "history": history,
-        "provider_cache": provider_cache,
         "writer_lock": writer_lock,
         "training_lease": lease,
         "baseline_sha": baseline_sha,

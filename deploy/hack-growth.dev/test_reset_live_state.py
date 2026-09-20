@@ -6,6 +6,7 @@ import fcntl
 import hashlib
 import json
 import os
+import shutil
 import stat
 import subprocess
 import sys
@@ -138,6 +139,13 @@ class ResetLiveStateTest(unittest.TestCase):
         (self.root / "mystery").mkdir()
         with self.assertRaisesRegex(reset_live_state.ResetError, "unknown entries"):
             reset_live_state.reset_state(self.root, apply=False)
+
+    def test_an_external_provider_cache_needs_no_internal_cache_directory(self):
+        shutil.rmtree(self.cache)
+
+        result = reset_live_state.reset_state(self.root, apply=False)
+
+        self.assertEqual("dry-run", result["mode"])
 
     def test_a_running_writer_is_refused(self):
         with (self.history / "writer.lock").open("r+") as lock:
