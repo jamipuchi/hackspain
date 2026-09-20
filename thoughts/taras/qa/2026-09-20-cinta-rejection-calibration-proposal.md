@@ -180,6 +180,33 @@ done
 
 Do not run held-out seeds when tuning selects no candidate.
 
+## Smallest remaining investigation
+
+Test one earlier pulse window at `lead_s = 0.003`.
+Keep force at 0.060 N and keep pulse duration unchanged.
+Do not edit controller code.
+
+The controller schedules `t_on = t_fire - lead_s`.
+It clamps this value only when the decision becomes available later.
+The 220 mm camera-to-ejector path provides about 73 ms at 3 m/s.
+Typical mixed-feed control paths were 8.1 to 8.5 ms at the median.
+The 4 ms latency floor therefore leaves substantial nominal headroom.
+
+The eight isolated baseline routes started 1.08 to 1.57 ms after jet-region entry.
+Their pulse windows remained open 4.54 to 5.18 ms after region exit.
+Adding 1.5 ms of lead should start between 0.42 ms early and 0.07 ms late.
+It should still leave 3.04 to 3.68 ms after exit.
+
+This shift can recover one or two useful 1 ms physics steps.
+It does not increase valve duration or commanded force.
+Earlier actuation can still hit neighboring objects.
+The mixed-feed Keep loss and spill gates therefore remain necessary.
+
+Use the same tuning seeds and reserve the same held-out seeds.
+Record `t_fire`, `t_available`, actual `t_on`, region entry, region exit, impulse, and collateral contacts.
+Compare only 1.5 ms and 3.0 ms lead settings.
+Run held-out cases only when the 3.0 ms candidate passes every tuning gate.
+
 ## Validation
 
 The diagnostic wrapper compiled with the prepared Python 3.13 environment.
@@ -218,6 +245,7 @@ The current failure occurs after correct classification, scheduling, activation,
 | `runs/tuning-sweep/force-0.06/metrics.json` | `69049726a42dcbe59dc177cea152a8200da613087d8df09f1fda71c0e79c9cd4` |
 | `runs/tuning-sweep/force-0.12/metrics.json` | `49b13f08c3b0ac82d99cc19fe878cb17004066cb2c45ad788c5aa9a1c626c331` |
 | `evidence/cinta-rejection-calibration/tuning-summary.json` | `3a2f75955c3f4a9943bb6d69bdfa21bc9984610407cf207c6a53e37112476e0b` |
+| `evidence/cinta-rejection-calibration/tuning-raw.tar.gz` | `220e21a972548a0d27f1b412686c741b28b20ebbeb27ff8c7740f0eabd470e85` |
 
 The full corrected audit supersedes the earlier reduced-pool 3 of 8 result.
 Run the screen only from the accepted two-commit physics chain.
