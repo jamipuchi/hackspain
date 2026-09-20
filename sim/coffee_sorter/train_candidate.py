@@ -467,13 +467,23 @@ def train(args, preset, preset_path: Path, layout: Layout, rate: float, capture_
     }
     manifest_path = out / "candidate.manifest.json"
     write_atomic_json(manifest_path, manifest)
-    # The bundled preset keeps a relative model path. It carries no absolute path.
-    candidate_preset = {**dict(preset), "model_path": "candidate.joblib", "model_path_root": "preset"}
+    applied_reject_classes, baseline_version, policy_source = policy
+    # The bundled preset keeps a relative model path. It carries no absolute path. Its
+    # startup policy must also name only candidate labels. In particular, the victim is
+    # absent from the candidate catalog, while the new label always starts as Keep.
+    candidate_preset = {
+        **dict(preset),
+        "model_path": "candidate.joblib",
+        "model_path_root": "preset",
+        "policy": {
+            **dict(preset["policy"]),
+            "initial_reject_classes": list(applied_reject_classes),
+        },
+    }
     preset_out = out / "candidate.preset.json"
     write_atomic_json(preset_out, candidate_preset)
 
     write_progress(out, "validate", 0.85)
-    applied_reject_classes, baseline_version, policy_source = policy
     # The anomaly gate uses the reference set the APPLIED policy activates: every model
     # label the policy keeps. That always includes the new label, because activation adds
     # it as Keep. There is only one policy here. The saved artifact stays

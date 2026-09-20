@@ -38,6 +38,7 @@ from object_catalog import (
 )
 from test_object_catalog import star_draft
 from bootstrap_model import MIN_LABEL_OBSERVATIONS, MIN_LABEL_UNIQUE_OBJECTS
+from profiles import profile_from_catalog
 from train_candidate import (
     MIN_KEEP_RESOLVED,
     anomaly_evidence,
@@ -1024,7 +1025,7 @@ class BundledArtifactTest(unittest.TestCase):
         "a build date": r"[A-Z][a-z]{2} +\d{1,2} \d{4}",
     }
 
-    def train_with_fakes(self, work):
+    def train_with_fakes(self, work, *, preset=PRESET, reject_classes=None):
         """Run the trainer write path with a fake collection, fit, and closed-loop run."""
         catalog = load_catalog()
         new_definition = type_definition_from_draft(
@@ -1049,13 +1050,20 @@ class BundledArtifactTest(unittest.TestCase):
             return real_candidate_model(profile.names, meta), {"fit_seconds": 0.0,
                                                                "confusion": []}
 
+        arguments = [
+            "--catalog-root", str(root), "--preset", str(preset), "--out", str(work / "out"),
+            "--runtime-lock", str(work / "runtime.lock")]
+        if reject_classes is not None:
+            policy_path = work / "policy.json"
+            policy_path.write_text(json.dumps({"reject_classes": reject_classes,
+                                               "policy_version": "baseline-policy"}))
+            arguments.extend(["--policy", str(policy_path)])
+
         with patch.object(train_candidate, "collect_covered", side_effect=partition), \
                 patch.object(train_candidate, "fit_model", side_effect=fit), \
                 patch.object(train_candidate, "record_keep_outcome", return_value="engine-policy"), \
                 contextlib.redirect_stdout(io.StringIO()):
-            code = train_candidate.main([
-                "--catalog-root", str(root), "--preset", str(PRESET), "--out", str(work / "out"),
-                "--runtime-lock", str(work / "runtime.lock")])
+            code = train_candidate.main(arguments)
         return code, work / "out", captured
 
     def test_the_candidate_records_the_loaded_revision_in_both_produced_artifacts(self):
@@ -1146,6 +1154,27 @@ class BundledArtifactTest(unittest.TestCase):
         self.assertNotEqual(profiles.GREEN_ARABICA.names, validation["labels"])
         # The physics here is fake, so the overall gate is not asserted.
         self.assertEqual(before, dict(profiles.PROFILES))
+
+    def test_candidate_preset_replaces_a_stale_victim_policy_before_engine_load(self):
+        """The immutable preset cannot retain the removed victim as a reject label."""
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        work = Path(folder.name)
+        preset = json.loads(PRESET.read_text())
+        preset["policy"]["initial_reject_classes"] = ["stone", "stick"]
+        preset_path = work / "stale-victim-preset.json"
+        preset_path.write_text(json.dumps(preset))
+
+        code, out, captured = self.train_with_fakes(
+            work, preset=preset_path, reject_classes=["stone"])
+
+        self.assertEqual(0, code)
+        candidate_preset = json.loads((out / "candidate.preset.json").read_text())
+        self.assertEqual(["stone"], candidate_preset["policy"]["initial_reject_classes"])
+        profile = profile_from_catalog(load_catalog(captured["catalog_root"]))
+        with train_candidate.bound_candidate_profile(profile):
+            engine = train_candidate.build_engine(out / "candidate.preset.json")
+        engine.close()
 
 
 class TrainerInputTest(unittest.TestCase):
