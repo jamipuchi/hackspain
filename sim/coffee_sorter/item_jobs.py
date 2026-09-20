@@ -325,8 +325,8 @@ def is_open(job: Mapping[str, Any]) -> bool:
 def live_permitted(job: Mapping[str, Any], provider_mode: str, stage: str) -> bool:
     """The only source of `--live`. There is no implicit fallback or fallthrough.
 
-    A grant is bound to the stage the operator saw. An approval of a PHYSICS request can
-    never authorize a GENERATION request, so one stage never spends another's grant.
+    A grant is bound to the stage that missed its cache. A PHYSICS grant can never
+    authorize a GENERATION request, so one stage never spends another's grant.
     """
     if provider_mode != "paid" or job.get("provider_permission") != "new_request":
         return False

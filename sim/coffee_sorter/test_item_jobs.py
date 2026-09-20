@@ -341,7 +341,7 @@ class AdmissionTest(QueueTest):
 
 
 class ProviderModeTest(QueueTest):
-    """The structural rule: `--live` never appears without an operator grant in paid mode."""
+    """The structural rule: cached mode never produces a paid provider call."""
 
     provider_mode = 'cached'
 
