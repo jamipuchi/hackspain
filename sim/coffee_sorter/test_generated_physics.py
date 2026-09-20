@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import dataclasses
 import fcntl
 import hashlib
 import inspect
@@ -372,6 +373,8 @@ class CandidateGateTest(unittest.TestCase):
                 "train_unique_objects": {"star_token": 38, "good": 600, "stone": 30},
                 "reference_labels": ["good", "star_token", "stone"],
             },
+            "preset_compatibility": {"loaded": True, "reason": None,
+                                     "loader": "live.load_preset"},
             "pulses": {"runs": [{"seed": 8, "commanded": 0, "activated": 0, "jet_hits": 0}]},
             "keep_outcome": {"required": True, "runs": [
                 {"seed": 8, "sim_seconds": 6.2, "resolved": 34, "accepted": 34,
@@ -683,9 +686,10 @@ class CandidatePolicyTest(unittest.TestCase):
 
         with patch.object(train_candidate, "build_engine", side_effect=build_engine), \
                 patch.object(train_candidate, "keep_outcome", return_value=run):
-            version = train_candidate.record_keep_outcome(
-                validation, {"seed": 8, "profile": "green_arabica"},
-                Path("candidate.preset.json"), profile, "star_token", ["black", "stone"])
+            with train_candidate.bound_candidate_profile(profile):
+                version = train_candidate.record_keep_outcome(
+                    validation, {"seed": 8, "profile": "green_arabica"},
+                    Path("candidate.preset.json"), "star_token", ["black", "stone"])
 
         self.assertEqual("engine-policy-9", version)
         # The engine loads the immutable candidate preset, not a temporary one.
@@ -711,7 +715,7 @@ class CandidatePolicyTest(unittest.TestCase):
 
 
 class CandidateProfileBindingTest(unittest.TestCase):
-    """The closed-loop run rebinds the profile name for the run and always restores it."""
+    """One binding covers the whole validation scope, and it is always restored."""
 
     def setUp(self):
         self.before = dict(profiles.PROFILES)
@@ -724,9 +728,10 @@ class CandidateProfileBindingTest(unittest.TestCase):
         validation, profile = {}, SimpleNamespace(name="green_arabica")
         with patch.object(train_candidate, "build_engine", side_effect=build_engine), \
                 patch.object(train_candidate, "keep_outcome", return_value=run):
-            train_candidate.record_keep_outcome(
-                validation, {"seed": 8, "profile": "green_arabica"},
-                Path("candidate.preset.json"), profile, "star_token", ["stone"])
+            with train_candidate.bound_candidate_profile(profile):
+                train_candidate.record_keep_outcome(
+                    validation, {"seed": 8, "profile": "green_arabica"},
+                    Path("candidate.preset.json"), "star_token", ["stone"])
         return validation, profile
 
     def assert_profiles_restored(self):
@@ -760,6 +765,133 @@ class CandidateProfileBindingTest(unittest.TestCase):
             self.record(build_engine)
 
         self.assert_profiles_restored()
+
+    def test_a_raising_body_still_restores_profiles(self):
+        with self.assertRaisesRegex(RuntimeError, "boom"):
+            with train_candidate.bound_candidate_profile(SimpleNamespace(name="green_arabica")):
+                raise RuntimeError("boom")
+
+        self.assert_profiles_restored()
+
+
+class _PicklableClassifier:
+    """A saved Model needs a picklable estimator. The loader never calls it."""
+
+
+class CandidateLoaderProofTest(unittest.TestCase):
+    """The REAL live.load_preset must accept the REAL candidate bundle while it is bound."""
+
+    def setUp(self):
+        from classifier import Model
+
+        self.before = dict(profiles.PROFILES)
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.out = Path(folder.name)
+        self.preset = json.loads(PRESET.read_text())
+        builtin = profiles.GREEN_ARABICA
+        # The candidate order: the new type first, the last built-in type removed.
+        survivors = [item for item in builtin.classes if item.name != builtin.classes[-1].name]
+        new_class = dataclasses.replace(survivors[0], name="star_token", prior=0.03)
+        self.profile = profiles.Profile(builtin.name, builtin.belt_rgb, [new_class, *survivors])
+        self.labels = self.profile.names
+        self.preset_path = self.write_bundle(Model)
+
+    def write_bundle(self, Model):
+        """A genuine artifact set: a saved Model, its manifest, and the bundled preset."""
+        from vision import FEATURES
+
+        layout = self.preset["layout"]
+        capture_every = self.preset["camera_every_steps"]
+        provenance = {"config": {
+            "profile": self.preset["profile"],
+            "rate": self.preset["requested_rate"],
+            "capture_every": capture_every,
+            "physical_preset": {
+                "layout": layout,
+                "requested_rate": self.preset["requested_rate"],
+                "camera_every_steps": capture_every,
+                "capture_hz": 1.0 / (float(layout["timestep"]) * capture_every),
+            },
+        }}
+        meta = {"profile": self.preset["profile"], "classes": self.labels,
+                "features": FEATURES, "provenance": provenance}
+        model = Model(list(self.labels), _PicklableClassifier(), np.zeros(4), np.eye(4), 1.0,
+                      np.ones(4), meta)
+        artifact = self.out / "candidate.joblib"
+        model.save(artifact)
+        (self.out / "candidate.manifest.json").write_text(json.dumps({
+            "version": 1, "provenance": provenance, "features": FEATURES,
+            "artifact_sha256": hashlib.sha256(artifact.read_bytes()).hexdigest()}))
+        preset_path = self.out / "candidate.preset.json"
+        preset_path.write_text(json.dumps({**self.preset, "model_path": "candidate.joblib",
+                                           "model_path_root": "preset"}))
+        return preset_path
+
+    def test_the_real_loader_accepts_the_bundle_inside_the_binding(self):
+        with train_candidate.bound_candidate_profile(self.profile):
+            result = train_candidate.preset_compatibility(self.preset_path)
+
+        self.assertTrue(result["loaded"], result["reason"])
+        self.assertIsNone(result["reason"])
+        self.assertEqual("live.load_preset", result["loader"])
+
+    def test_the_same_bundle_is_refused_against_the_original_catalog(self):
+        """Proof that the binding makes it pass, not a weakened loader check."""
+        result = train_candidate.preset_compatibility(self.preset_path)
+
+        self.assertFalse(result["loaded"])
+        self.assertIn("classes", result["reason"])
+
+    def test_the_binding_restores_profiles_exactly(self):
+        with train_candidate.bound_candidate_profile(self.profile):
+            self.assertIs(self.profile, profiles.PROFILES["green_arabica"])
+
+        self.assertEqual(set(self.before), set(profiles.PROFILES))
+        for name, value in self.before.items():
+            with self.subTest(profile=name):
+                self.assertIs(value, profiles.PROFILES[name])
+
+    def test_the_valid_bundle_passes_the_gate_end_to_end(self):
+        """The positive path: the real loader accepts it and the gate raises no failure."""
+        with train_candidate.bound_candidate_profile(self.profile):
+            proof = train_candidate.preset_compatibility(self.preset_path)
+        validation = CandidateGateTest().validation()
+        validation["preset_compatibility"] = proof
+
+        self.assertTrue(proof["loaded"], proof["reason"])
+        self.assertEqual([], gate_failures(validation))
+
+    def test_a_missing_or_unproven_compatibility_block_fails_the_gate(self):
+        """Absence of evidence is never evidence: the proof must be present and true."""
+        cases = {
+            "missing block": None,
+            "missing loaded key": {"reason": None, "loader": "live.load_preset"},
+            "loaded is not true": {"loaded": "yes", "reason": None},
+            "loaded is false": {"loaded": False, "reason": "ValueError: classes"},
+        }
+        for name, block in cases.items():
+            with self.subTest(case=name):
+                validation = CandidateGateTest().validation()
+                # Replace the block outright: a merge would keep the default proof.
+                validation["preset_compatibility"] = block
+                self.assertIn("preset_incompatible", gate_failures(validation))
+        validation = CandidateGateTest().validation()
+        del validation["preset_compatibility"]
+        self.assertIn("preset_incompatible", gate_failures(validation))
+
+    def test_the_loader_proof_runs_inside_the_binding(self):
+        """Order guard: this fails if preset_compatibility moves out of the scope."""
+        seen = {}
+
+        with patch("live.load_preset",
+                   side_effect=lambda path: seen.update(
+                       bound=profiles.PROFILES["green_arabica"].names)):
+            with train_candidate.bound_candidate_profile(self.profile):
+                train_candidate.preset_compatibility(self.preset_path)
+
+        self.assertEqual(self.labels, seen["bound"])
+        self.assertNotEqual(profiles.GREEN_ARABICA.names, seen["bound"])
 
 
 class FakeModel:
