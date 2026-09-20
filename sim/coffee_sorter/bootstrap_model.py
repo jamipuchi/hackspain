@@ -39,6 +39,11 @@ TRAIN_SEED = 7
 HOLDOUT_SEED = 9
 CAPTURE_EVERY = 2
 POOL = dict(n_ellipsoid=400, n_half=64, n_box=32, n_capsule=32)
+# Engineering minimums for one anomaly reference, not statistical guarantees. Observations
+# of one object are correlated, so both counts are gated and recorded separately.
+MIN_LABEL_OBSERVATIONS = 30
+MIN_LABEL_UNIQUE_OBJECTS = 10
+COLLECTION_SECONDS = (4.0, 8.0, 16.0)
 
 
 def sha256(path: Path) -> str:
@@ -129,6 +134,98 @@ def unique_object_counts(rows: list[tuple[int, int, str]]) -> dict[str, int]:
     return dict(Counter(label for _, _, label in set(rows)))
 
 
+def label_coverage(rows: list[tuple[int, int, str]]) -> tuple[dict[str, int], dict[str, int]]:
+    """Observations and unique objects per label, as two separate numbers.
+
+    One unique object is one (seed, uid) pair inside ONE run. Observations of one object
+    are correlated, so neither number is derived from the other.
+    """
+    return dict(Counter(label for _, _, label in rows)), unique_object_counts(rows)
+
+
+def short_labels(classes: list[str], observations: dict[str, int],
+                 unique_objects: dict[str, int]) -> list[str]:
+    """The labels that miss the reference coverage gate."""
+    return [name for name in classes
+            if observations.get(name, 0) < MIN_LABEL_OBSERVATIONS
+            or unique_objects.get(name, 0) < MIN_LABEL_UNIQUE_OBJECTS]
+
+
+def require_label_coverage(name: str, classes: list[str], observations: dict[str, int],
+                           unique_objects: dict[str, int]) -> None:
+    short = short_labels(classes, observations, unique_objects)
+    if short:
+        raise RuntimeError(
+            f"insufficient_label_coverage: {name} collection is short for {', '.join(short)}. "
+            f"Every trained label needs at least {MIN_LABEL_OBSERVATIONS} observations and "
+            f"{MIN_LABEL_UNIQUE_OBJECTS} unique objects for its anomaly reference."
+        )
+
+
+def missing_references(reference_labels, classes: list[str]) -> list[str]:
+    """The trained labels without a usable anomaly reference.
+
+    Coverage counts alone do not prove a reference: a label with enough observations can
+    still fit a degenerate cloud (zero variance gives a zero threshold), and such a
+    reference can never score. No reference is ever silently omitted. Both the canonical
+    path and the candidate path decide this here.
+    """
+    return sorted(set(classes) - set(reference_labels))
+
+
+def require_usable_references(name: str, model, classes: list[str]) -> None:
+    missing = missing_references(model.references(), classes)
+    if missing:
+        raise RuntimeError(
+            f"insufficient_label_coverage: {name} produced no usable anomaly reference for "
+            f"{', '.join(missing)}. Every trained label needs one."
+        )
+
+
+def collection_rounds(seconds: float) -> tuple[float, ...]:
+    """The bounded round durations. The default 4.0 gives the approved 4, 8, 16 seconds."""
+    return tuple(seconds * factor for factor in (1, 2, 4))
+
+
+def collect_covered(seed: int, rate: float, defect_boost: float, layout: Layout | None,
+                    capture_every: int, profile, rounds=COLLECTION_SECONDS):
+    """Collect one partition, extending the duration until every label meets the gate.
+
+    A longer run with the same seed replays the shorter run as its prefix, so each round
+    REPLACES the previous data. Rounds are never added together, and a repeated prefix is
+    never counted as new independent objects: every count comes from the single longest
+    run. Returns (features, labels, rows, collection_rounds).
+    """
+    classes = (profile or PROFILES["green_arabica"]).names
+    history: list[dict] = []
+    for seconds in rounds:
+        X, y, rows = collect_partition(seed, seconds, rate, defect_boost, layout,
+                                       capture_every, profile)
+        observations, unique_objects = label_coverage(rows)
+        history.append({"seed": seed, "seconds": seconds, "observations": observations,
+                        "unique_objects": unique_objects,
+                        "short_labels": short_labels(classes, observations, unique_objects)})
+        if not history[-1]["short_labels"]:
+            break
+    return X, y, rows, history
+
+
+def fit_label_reference(values: np.ndarray) -> dict:
+    """One anomaly reference cloud, with the exact formula of today's 'good' cloud."""
+    scale = values.std(0) + 1e-6
+    normalized = (values - values.mean(0)) / scale
+    covariance = np.cov(normalized.T) + 0.05 * np.eye(normalized.shape[1])
+    inverse_covariance = np.linalg.inv(covariance)
+    distances = np.sqrt(np.einsum("ij,jk,ik->i", normalized, inverse_covariance, normalized))
+    threshold = float(np.percentile(distances, 99.7))
+    require_finite("Train-only anomaly statistics", np.concatenate(
+        (values.mean(0), scale, covariance.ravel(), inverse_covariance.ravel(), distances)))
+    if not math.isfinite(threshold):
+        raise RuntimeError("Train-only anomaly threshold is non-finite. Check simulator output before using this model.")
+    return {"mean": values.mean(0), "icov": inverse_covariance, "scale": scale,
+            "thresh": threshold, "n": int(len(values))}
+
+
 def fit_model(profile, X_train: np.ndarray, y_train: np.ndarray, X_holdout: np.ndarray, y_holdout: np.ndarray, meta: dict) -> tuple[Model, dict]:
     classes = profile.names
     class_id = {name: index for index, name in enumerate(classes)}
@@ -148,16 +245,15 @@ def fit_model(profile, X_train: np.ndarray, y_train: np.ndarray, X_holdout: np.n
     good = X_train[y_train == "good"]
     if len(good) < 2:
         raise RuntimeError("Training collection needs at least two good observations for anomaly covariance.")
-    scale = good.std(0) + 1e-6
-    normalized_good = (good - good.mean(0)) / scale
-    covariance = np.cov(normalized_good.T) + 0.05 * np.eye(normalized_good.shape[1])
-    inverse_covariance = np.linalg.inv(covariance)
-    distances = np.sqrt(np.einsum("ij,jk,ik->i", normalized_good, inverse_covariance, normalized_good))
-    threshold = float(np.percentile(distances, 99.7))
-    require_finite("Train-only anomaly statistics", np.concatenate((good.mean(0), scale, covariance.ravel(), inverse_covariance.ravel(), distances)))
-    if not math.isfinite(threshold):
-        raise RuntimeError("Train-only anomaly threshold is non-finite. Check simulator output before using this model.")
-    model = Model(classes, clf, good.mean(0), inverse_covariance, threshold, scale, meta)
+    # One reference per trained label, from the train partition only. Policy plays no part
+    # here: truth.defect is never read and never rewritten. A label too small to fit a
+    # covariance gets no reference, and the coverage gate refuses that model.
+    references = {name: fit_label_reference(X_train[y_train == name]) for name in classes
+                  if len(X_train[y_train == name]) >= 2}
+    good_reference = references["good"]
+    threshold = good_reference["thresh"]
+    model = Model(classes, clf, good_reference["mean"], good_reference["icov"], threshold,
+                  good_reference["scale"], meta, label_references=references)
 
     started = time.perf_counter()
     probabilities, anomaly = model.predict(X_holdout)
@@ -175,6 +271,9 @@ def fit_model(profile, X_train: np.ndarray, y_train: np.ndarray, X_holdout: np.n
         "holdout_classification_scope": "argmax classifier output excludes anomaly and is not controller or physical quality",
         "holdout_predict_ms_per_40": predict_seconds / max(len(X_holdout), 1) * 40_000,
         "anomaly_threshold": threshold,
+        "anomaly_reference_labels": sorted(references),
+        "anomaly_reference_train_observations": {name: value["n"] for name, value in references.items()},
+        "anomaly_scope": "anomaly decision numbers only; separate from classifier confidence, commanded pulses, and physical outcomes",
         "holdout_anomaly_p99": float(np.percentile(anomaly, 99)),
         "confusion": confusion_matrix(y_holdout_id, predicted, labels=range(len(classes))).tolist(),
     }
@@ -245,16 +344,20 @@ def main() -> None:
         return
 
     started = time.perf_counter()
-    X_train, y_train, train_rows = collect_partition(
-        TRAIN_SEED, args.seconds, rate, 5, layout, capture_every
-    )
-    X_holdout, y_holdout, holdout_rows = collect_partition(
-        HOLDOUT_SEED, args.seconds, rate, 5, layout, capture_every
-    )
+    rounds = collection_rounds(args.seconds)
+    X_train, y_train, train_rows, train_history = collect_covered(
+        TRAIN_SEED, rate, 5, layout, capture_every, profile, rounds)
+    X_holdout, y_holdout, holdout_rows, holdout_history = collect_covered(
+        HOLDOUT_SEED, rate, 5, layout, capture_every, profile, rounds)
     require_finite("Training features", X_train)
     require_finite("Holdout features", X_holdout)
     require_classes("training", y_train, profile.names)
     require_classes("holdout", y_holdout, profile.names)
+    train_observations, train_unique = label_coverage(train_rows)
+    holdout_observations, holdout_unique = label_coverage(holdout_rows)
+    # Every trained label owns an anomaly reference, because live policy can keep any of
+    # them. A label that stays short after the last round fails here.
+    require_label_coverage("training", profile.names, train_observations, train_unique)
     meta = {
         "profile": profile.name,
         "classes": profile.names,
@@ -264,6 +367,8 @@ def main() -> None:
         "holdout_rows": len(holdout_rows),
     }
     model, report = fit_model(profile, X_train, y_train, X_holdout, y_holdout, meta)
+    # Counts alone do not prove a reference. Verify the fitted model before it is saved.
+    require_usable_references("training", model, profile.names)
     output.parent.mkdir(parents=True, exist_ok=True)
     model.save(output)
     manifest = {
@@ -272,10 +377,16 @@ def main() -> None:
         "artifact_sha256": sha256(output),
         "features": FEATURES,
         "partitions": {
-            "train": {"seed": TRAIN_SEED, "rows": [list(row) for row in train_rows],
-                      "unique_object_counts": unique_object_counts(train_rows)},
-            "holdout": {"seed": HOLDOUT_SEED, "rows": [list(row) for row in holdout_rows],
-                        "unique_object_counts": unique_object_counts(holdout_rows)},
+            "train": {"seed": TRAIN_SEED, "seconds": train_history[-1]["seconds"],
+                      "rows": [list(row) for row in train_rows],
+                      "observations": train_observations,
+                      "unique_object_counts": train_unique,
+                      "collection_rounds": train_history},
+            "holdout": {"seed": HOLDOUT_SEED, "seconds": holdout_history[-1]["seconds"],
+                        "rows": [list(row) for row in holdout_rows],
+                        "observations": holdout_observations,
+                        "unique_object_counts": holdout_unique,
+                        "collection_rounds": holdout_history},
         },
     }
     report.update({
@@ -283,8 +394,11 @@ def main() -> None:
         "artifact_sha256": manifest["artifact_sha256"],
         "training_counts": dict(Counter(y_train)),
         "holdout_counts": dict(Counter(y_holdout)),
-        "training_unique_object_counts": unique_object_counts(train_rows),
-        "holdout_unique_object_counts": unique_object_counts(holdout_rows),
+        "training_observations": train_observations,
+        "training_unique_object_counts": train_unique,
+        "holdout_observations": holdout_observations,
+        "holdout_unique_object_counts": holdout_unique,
+        "collection_rounds": {"train": train_history, "holdout": holdout_history},
         "wall_seconds": time.perf_counter() - started,
     })
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True))

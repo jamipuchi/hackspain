@@ -44,14 +44,19 @@ import numpy as np
 
 from bootstrap_model import (
     HOLDOUT_SEED,
+    MIN_LABEL_OBSERVATIONS,
+    MIN_LABEL_UNIQUE_OBJECTS,
     TRAIN_SEED,
-    collect_partition,
+    collect_covered,
+    collection_rounds,
     fit_model,
+    label_coverage,
+    missing_references,
     provenance,
     require_classes,
     require_finite,
     sha256,
-    unique_object_counts,
+    short_labels,
 )
 from object_catalog import CatalogError, load_catalog, require_label_order
 from profiles import profile_from_catalog
@@ -83,12 +88,8 @@ def write_progress(out: Path, phase: str, fraction: float) -> None:
 
 
 def coverage(rows: list[tuple[int, int, str]]) -> tuple[dict[str, int], dict[str, int]]:
-    """Observations and unique objects per label. They are separate numbers.
-
-    One unique object is one (seed, uid) pair within one collection run.
-    """
-    observations = dict(Counter(label for _, _, label in rows))
-    return observations, unique_object_counts(rows)
+    """Observations and unique objects per label, from the shared bootstrap helper."""
+    return label_coverage(rows)
 
 
 def holdout_metrics(classes: list[str], y_true: np.ndarray, probabilities: np.ndarray,
@@ -183,6 +184,14 @@ def gate_failures(validation: Mapping[str, Any]) -> list[str]:
         failures.append("holdout_accuracy")
     if classifier["new_label_recall"] < MIN_RECALL:
         failures.append("new_label_recall")
+    # Every trained label owns an anomaly reference, because live policy can keep any of
+    # them. A label that stays short after the bounded rounds blocks the model.
+    reference = validation.get("reference_coverage") or {}
+    if (short_labels(validation["labels"], reference.get("train_observations") or {},
+                     reference.get("train_unique_objects") or {})
+            or missing_references(reference.get("reference_labels") or [],
+                                  validation["labels"])):
+        failures.append("insufficient_label_coverage")
     # Keep or Reject is a policy, not physical truth. Activation always adds the new label
     # as Keep, so the anomaly path and the physical outcomes gate EVERY candidate, whatever
     # its truth.defect and truth.severity say. Label confidence alone proves nothing.
@@ -332,12 +341,13 @@ def train(args, preset, preset_path: Path, layout: Layout, rate: float, capture_
     }
     expected = provenance(config)
 
+    rounds = collection_rounds(args.seconds)
     write_progress(out, "collect_train", 0.0)
-    X_train, y_train, train_rows = collect_partition(
-        TRAIN_SEED, args.seconds, rate, DEFECT_BOOST, layout, capture_every, profile)
+    X_train, y_train, train_rows, train_history = collect_covered(
+        TRAIN_SEED, rate, DEFECT_BOOST, layout, capture_every, profile, rounds)
     write_progress(out, "collect_holdout", 0.35)
-    X_holdout, y_holdout, holdout_rows = collect_partition(
-        HOLDOUT_SEED, args.seconds, rate, DEFECT_BOOST, layout, capture_every, profile)
+    X_holdout, y_holdout, holdout_rows, holdout_history = collect_covered(
+        HOLDOUT_SEED, rate, DEFECT_BOOST, layout, capture_every, profile, rounds)
     require_finite("Training features", X_train)
     require_finite("Holdout features", X_holdout)
     require_classes("training", y_train, profile.names)
@@ -363,10 +373,16 @@ def train(args, preset, preset_path: Path, layout: Layout, rate: float, capture_
         "artifact_sha256": sha256(artifact),
         "features": FEATURES,
         "partitions": {
-            "train": {"seed": TRAIN_SEED, "rows": [list(row) for row in train_rows],
-                      "unique_object_counts": train_unique},
-            "holdout": {"seed": HOLDOUT_SEED, "rows": [list(row) for row in holdout_rows],
-                        "unique_object_counts": holdout_unique},
+            "train": {"seed": TRAIN_SEED, "seconds": train_history[-1]["seconds"],
+                      "rows": [list(row) for row in train_rows],
+                      "observations": train_observations,
+                      "unique_object_counts": train_unique,
+                      "collection_rounds": train_history},
+            "holdout": {"seed": HOLDOUT_SEED, "seconds": holdout_history[-1]["seconds"],
+                        "rows": [list(row) for row in holdout_rows],
+                        "observations": holdout_observations,
+                        "unique_object_counts": holdout_unique,
+                        "collection_rounds": holdout_history},
         },
     }
     manifest_path = out / "candidate.manifest.json"
@@ -377,9 +393,15 @@ def train(args, preset, preset_path: Path, layout: Layout, rate: float, capture_
     write_atomic_json(preset_out, candidate_preset)
 
     write_progress(out, "validate", 0.85)
+    applied_reject_classes, baseline_version, policy_source = policy
+    # The anomaly gate uses the reference set the APPLIED policy activates: every model
+    # label the policy keeps. That always includes the new label, because activation adds
+    # it as Keep. There is only one policy here. The saved artifact stays
+    # policy-independent, and the engine binds its own set at load.
+    kept_labels = [name for name in model.classes if name not in set(applied_reject_classes)]
+    active_labels = model.set_anomaly_reference(kept_labels)
     probabilities, anomaly = model.predict(X_holdout)
     metrics = holdout_metrics(profile.names, y_holdout, probabilities, new_label)
-    applied_reject_classes, baseline_version, policy_source = policy
     truth = profile.by_name(new_label)
     validation = {
         "labels": profile.names,
@@ -400,7 +422,16 @@ def train(args, preset, preset_path: Path, layout: Layout, rate: float, capture_
             "label": new_label,
             **anomaly_evidence(anomaly, model.anomaly_thresh,
                                np.asarray(y_holdout, dtype=object) == new_label),
-            "scope": "anomaly decision numbers only; the threshold and the reference are unchanged",
+            "kept_labels": kept_labels,
+            "anomaly_reference_labels": active_labels,
+            "scope": "anomaly decision numbers only; the threshold is the unchanged good threshold",
+        },
+        "reference_coverage": {
+            "train_observations": train_observations,
+            "train_unique_objects": train_unique,
+            "reference_labels": sorted(model.references()),
+            "collection_rounds": {"train": train_history, "holdout": holdout_history},
+            "scope": "train-partition coverage behind each anomaly reference; an engineering gate, not a statistical guarantee",
         },
         "pulses": None,
         "keep_outcome": None,
@@ -424,6 +455,8 @@ def train(args, preset, preset_path: Path, layout: Layout, rate: float, capture_
             "max_keep_anomaly_fraction": MAX_KEEP_ANOMALY_FRACTION,
             "min_keep_resolved": MIN_KEEP_RESOLVED,
             "min_keep_accept_fraction": MIN_KEEP_ACCEPT_FRACTION,
+            "min_label_observations": MIN_LABEL_OBSERVATIONS,
+            "min_label_unique_objects": MIN_LABEL_UNIQUE_OBJECTS,
         },
     }
     # Every candidate activates as Keep, so every candidate runs the closed-loop gate.
@@ -438,8 +471,11 @@ def train(args, preset, preset_path: Path, layout: Layout, rate: float, capture_
         "artifact_sha256": manifest["artifact_sha256"],
         "training_counts": dict(Counter(y_train)),
         "holdout_counts": dict(Counter(y_holdout)),
+        "training_observations": train_observations,
         "training_unique_object_counts": train_unique,
+        "holdout_observations": holdout_observations,
         "holdout_unique_object_counts": holdout_unique,
+        "collection_rounds": {"train": train_history, "holdout": holdout_history},
         "candidate_feed_prior": profile.classes[0].prior,
         "wall_seconds": time.perf_counter() - started,
     })

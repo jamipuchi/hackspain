@@ -155,9 +155,15 @@ class ContinuousRetentionTest(unittest.TestCase):
             1: {"injected": False},
             2: {"injected": True},
         }
+        engine.model = SimpleNamespace(
+            classes=list(engine.profile.names),
+            set_anomaly_reference=lambda labels: list(labels),
+        )
+        engine.anomaly_reference_labels = []
+        # The controller reports how many undecided tracks it reset.
         engine.controller = SimpleNamespace(set_reject_classes=lambda values: setattr(
             engine.controller, "applied", tuple(values)
-        ))
+        ) or 0)
         engine._event = lambda *args, **kwargs: None
         return engine
 

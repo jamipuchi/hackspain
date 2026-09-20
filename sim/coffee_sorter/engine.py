@@ -159,6 +159,9 @@ class Engine:
             item.name for item in self.profile.classes
             if item.defect and item.severity in self.policy.reject_severities
         )
+        # The anomaly reference follows the live policy: every label the policy keeps.
+        self.anomaly_reference_labels = self.model.set_anomaly_reference(
+            [name for name in self.model.classes if name not in self.reject_classes])
         self.controller = Controller(
             self.sim, self.inspector, self.model, self.policy,
             jet_force=float(self.preset["jet_force_n"]), continuous=self.continuous,
@@ -209,6 +212,7 @@ class Engine:
     def reject_policy(self):
         return {
             "reject_classes": list(self.reject_classes),
+            "anomaly_reference_labels": list(self.anomaly_reference_labels),
             "policy_version": self.policy_version,
             "score_epoch_id": self.score_epoch_id,
             "score_epoch_started_sim_time_s": self.score_epoch_started_sim_time_s,
@@ -247,6 +251,7 @@ class Engine:
             return {
                 **self.reject_policy(), "changed": False,
                 "in_flight_excluded": 0, "feed_score_rows_excluded": 0,
+                "undecided_tracks_reset": 0,
             }
 
         in_flight = sum(
@@ -255,7 +260,10 @@ class Engine:
         )
         score_rows = len(self._score_ledger)
         self.reject_classes = canonical
-        self.controller.set_reject_classes(canonical)
+        undecided_reset = self.controller.set_reject_classes(canonical)
+        # The new reference set applies to the next predict call. No retraining.
+        self.anomaly_reference_labels = self.model.set_anomaly_reference(
+            [name for name in self.model.classes if name not in canonical])
         self.policy_version = self._policy_version()
         self.score_epoch_id = str(uuid.uuid4())
         self.score_epoch_started_sim_time_s = float(self.sim.data.time)
@@ -267,15 +275,18 @@ class Engine:
         self._event(
             "reject_policy_changed",
             reject_classes=list(canonical),
+            anomaly_reference_labels=list(self.anomaly_reference_labels),
             policy_version=self.policy_version,
             score_epoch_id=self.score_epoch_id,
             in_flight_excluded=in_flight,
             feed_score_rows_excluded=score_rows,
+            undecided_tracks_reset=undecided_reset,
         )
         return {
             **self.reject_policy(), "changed": True,
             "in_flight_excluded": in_flight,
             "feed_score_rows_excluded": score_rows,
+            "undecided_tracks_reset": undecided_reset,
         }
 
     def start(self):

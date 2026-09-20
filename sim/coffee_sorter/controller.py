@@ -103,9 +103,19 @@ class Controller:
         self.frames = 0
 
     def set_reject_classes(self, reject_classes):
-        """Apply a validated class policy to future controller decisions."""
+        """Apply a validated class policy to future controller decisions.
+
+        An undecided track carries an anomaly maximum built under the previous reference
+        set, so that maximum is reset and later observations rebuild it. Decided tracks,
+        their decisions, their pulses, and their recorded policy version stay untouched.
+        Returns the number of tracks reset.
+        """
         selected = set(reject_classes)
         self.reject_mask = np.array([name in selected for name in self.classes])
+        undecided = [tr for tr in self.tracks if not tr.done]
+        for tr in undecided:
+            tr.anomaly = 0.0
+        return len(undecided)
 
     # -------------------------------------------------------------- per frame
     def on_frame(self, frame, t):

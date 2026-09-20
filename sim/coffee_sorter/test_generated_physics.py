@@ -36,6 +36,7 @@ from object_catalog import (
     write_catalog,
 )
 from test_object_catalog import star_draft
+from bootstrap_model import MIN_LABEL_OBSERVATIONS, MIN_LABEL_UNIQUE_OBJECTS
 from train_candidate import (
     MIN_KEEP_RESOLVED,
     anomaly_evidence,
@@ -364,7 +365,13 @@ class CandidateGateTest(unittest.TestCase):
                 "holdout_unique_objects": {"star_token": 31, "good": 210, "stone": 12},
             },
             "anomaly": {"label": "star_token", "fraction_above_threshold": 0.0,
-                        "median": 3.2, "threshold": 14.339, "observations": 77},
+                        "median": 3.2, "threshold": 14.339, "observations": 77,
+                        "anomaly_reference_labels": ["star_token", "good"]},
+            "reference_coverage": {
+                "train_observations": {"star_token": 120, "good": 2400, "stone": 90},
+                "train_unique_objects": {"star_token": 38, "good": 600, "stone": 30},
+                "reference_labels": ["good", "star_token", "stone"],
+            },
             "pulses": {"runs": [{"seed": 8, "commanded": 0, "activated": 0, "jet_hits": 0}]},
             "keep_outcome": {"required": True, "runs": [
                 {"seed": 8, "sim_seconds": 6.2, "resolved": 34, "accepted": 34,
@@ -437,6 +444,23 @@ class CandidateGateTest(unittest.TestCase):
         value = self.validation(new_label_truth={"defect": True, "severity": "foreign"})
 
         self.assertEqual([], gate_failures(value))
+
+    def test_a_label_short_on_either_coverage_count_blocks_the_model(self):
+        cases = {
+            "short observations": {"train_observations": {
+                "star_token": MIN_LABEL_OBSERVATIONS - 1, "good": 2400, "stone": 90}},
+            "short unique objects": {"train_unique_objects": {
+                "star_token": MIN_LABEL_UNIQUE_OBJECTS - 1, "good": 600, "stone": 30}},
+        }
+        for name, change in cases.items():
+            with self.subTest(case=name):
+                self.assertEqual(["insufficient_label_coverage"],
+                                 gate_failures(self.validation(reference_coverage=change)))
+
+    def test_a_trained_label_without_a_reference_blocks_the_model(self):
+        value = self.validation(reference_coverage={"reference_labels": ["good", "stone"]})
+
+        self.assertEqual(["insufficient_label_coverage"], gate_failures(value))
 
     def test_the_four_evidence_kinds_stay_separate(self):
         value = self.validation()
@@ -745,6 +769,13 @@ class FakeModel:
     def save(self, path):
         Path(path).write_bytes(b"fake candidate model")
 
+    def references(self):
+        return {name: {"thresh": 1.0} for name in self.classes}
+
+    def set_anomaly_reference(self, labels):
+        selected = set(labels)
+        return [name for name in self.classes if name in selected]
+
     def predict(self, X):
         probabilities = np.zeros((len(X), len(self.classes)))
         probabilities[:, 0] = 1.0
@@ -772,13 +803,15 @@ class BundledArtifactTest(unittest.TestCase):
 
         def partition(seed, *rest):
             rows = [(seed, index, label) for index, label in enumerate(labels)]
-            return np.zeros((len(labels), 4)), np.asarray(labels, dtype=object), rows
+            history = [{"seed": seed, "seconds": 4.0, "observations": {}, "unique_objects": {},
+                        "short_labels": []}]
+            return (np.zeros((len(labels), 4)), np.asarray(labels, dtype=object), rows, history)
 
         def fit(profile, X_train, y_train, X_holdout, y_holdout, meta):
             captured["meta"] = meta
             return FakeModel(profile.names), {"fit_seconds": 0.0, "confusion": []}
 
-        with patch.object(train_candidate, "collect_partition", side_effect=partition), \
+        with patch.object(train_candidate, "collect_covered", side_effect=partition), \
                 patch.object(train_candidate, "fit_model", side_effect=fit), \
                 patch.object(train_candidate, "record_keep_outcome", return_value="engine-policy"), \
                 contextlib.redirect_stdout(io.StringIO()):

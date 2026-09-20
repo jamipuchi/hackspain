@@ -6,7 +6,7 @@ system does, and labels each blob with the class of the nearest simulated bean u
 from __future__ import annotations
 
 import json, time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 import numpy as np
@@ -18,6 +18,13 @@ from sklearn.metrics import confusion_matrix, classification_report
 from vision import FEATURES
 
 MODELS = Path(__file__).resolve().parent / "models"
+ANOMALY_REFERENCE_FALLBACK = "good"  # the product cloud, and the reference an empty policy falls back to
+
+
+def usable_reference(reference) -> bool:
+    """A reference can score only with a finite, positive threshold of its own."""
+    thresh = reference.get("thresh") if isinstance(reference, dict) else None
+    return isinstance(thresh, (int, float)) and bool(np.isfinite(thresh)) and thresh > 0
 
 
 class _NumericForest:
@@ -98,15 +105,56 @@ class Model:
     anomaly_thresh: float
     feature_scale: np.ndarray
     meta: dict
+    # One reference cloud per trained label (mean, icov, scale, thresh, n), fitted from the
+    # train partition only. `active_reference_labels` follows the live reject policy. Both
+    # default to empty, so an old artifact and an unbound model score exactly as before.
+    label_references: dict = field(default_factory=dict)
+    active_reference_labels: list = field(default_factory=list)
+
+    def references(self) -> dict:
+        """The usable per-label references. An old artifact has none."""
+        stored = getattr(self, "label_references", None) or {}
+        return {name: value for name, value in stored.items() if usable_reference(value)}
+
+    def set_anomaly_reference(self, labels) -> list:
+        """Bind the active reference set to the labels the live policy keeps.
+
+        Returns the active labels in catalog order. A kept label without a usable
+        reference is ignored. This never retrains and never moves a threshold: the
+        next `predict` call uses the new set.
+        """
+        selected, references = set(labels), self.references()
+        self.active_reference_labels = [name for name in self.classes
+                                        if name in selected and name in references]
+        return list(self.active_reference_labels)
 
     def predict(self, X):
-        """(probs (n, C), anomaly score (n,)) — anomaly = Mahalanobis distance to the 'good' cloud."""
+        """(probs (n, C), anomaly score (n,)).
+
+        The anomaly score is the Mahalanobis distance to the 'good' cloud whenever that
+        cloud is the only reference in use. With several active references the score is
+        `min over active c of (d_c / thresh_c) * anomaly_thresh`, so `anomaly_thresh`
+        stays the unchanged 'good' threshold. An empty active set falls back to the
+        'good' cloud, so the score is always finite.
+        """
         if len(X) == 0:
             return np.zeros((0, len(self.classes))), np.zeros(0)
         P = _predict_proba(self.clf, X)
-        d = (X - self.good_mean) / self.feature_scale
-        a = np.sqrt(np.einsum("ij,jk,ik->i", d, self.good_icov, d))
-        return P, a
+        references = self.references()
+        active = [name for name in getattr(self, "active_reference_labels", None) or []
+                  if name in references]
+        if not active or active == [ANOMALY_REFERENCE_FALLBACK]:
+            # Today's expression, bit for bit: the old artifact, the unbound model, the
+            # empty active set, and a 'good'-only policy all take this path.
+            d = (X - self.good_mean) / self.feature_scale
+            return P, np.sqrt(np.einsum("ij,jk,ik->i", d, self.good_icov, d))
+        ratios = None
+        for name in active:
+            reference = references[name]
+            d = (X - reference["mean"]) / reference["scale"]
+            scaled = np.sqrt(np.einsum("ij,jk,ik->i", d, reference["icov"], d)) / reference["thresh"]
+            ratios = scaled if ratios is None else np.minimum(ratios, scaled)
+        return P, ratios * self.anomaly_thresh
 
     def save(self, path):
         joblib.dump(self, path)
