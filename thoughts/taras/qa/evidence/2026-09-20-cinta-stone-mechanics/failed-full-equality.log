@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/private/tmp/cinta-stone-mechanics/observe_routes.py", line 258, in <module>
+    main()
+    ~~~~^^
+  File "/private/tmp/cinta-stone-mechanics/observe_routes.py", line 234, in main
+    assert row['original_matches_reference'], (mode, seed, reuse)
+           ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('reject', 7, 0)

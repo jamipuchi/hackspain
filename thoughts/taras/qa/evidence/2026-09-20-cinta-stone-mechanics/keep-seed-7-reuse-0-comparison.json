@@ -1,0 +1,111 @@
+{
+  "observed": {
+    "seed": 7,
+    "reuse": 0,
+    "object_id": 0,
+    "expected_outcome": "accept",
+    "expectation_policy_version": "861b3a6e47203b6394ff2ab13479435da8e0a5f096d478a2dd6f38a3236166aa",
+    "classifier": {
+      "observed": true,
+      "predicted_class": "stone",
+      "stone_probability": 0.9999851345847699
+    },
+    "anomaly": {
+      "active_reference_labels": [
+        "good",
+        "stone"
+      ],
+      "score": 8.713588456919148,
+      "threshold": 14.96062187496633,
+      "above_threshold": false
+    },
+    "decision": {
+      "reject_probability": 6.748905396787207e-08,
+      "class_threshold_reject": false,
+      "anomaly_reject": false,
+      "reject": false,
+      "scheduled": false,
+      "late": false,
+      "pulse_s": 0.0,
+      "t_available_s": 0.3095052910465749,
+      "t_fire_s": 0.3720733237675266
+    },
+    "pulse": {
+      "commanded_tracks": [],
+      "activated_tracks": []
+    },
+    "contact": {
+      "own_pulse_events": 0,
+      "collateral_pulse_events": 0,
+      "jet_hit_steps": 0
+    },
+    "physical": {
+      "outcome": "accept",
+      "resolved_time_s": 0.45200000000000035,
+      "final_position_m": [
+        0.5004186914353582,
+        -0.09285118396329646,
+        0.4808368428619123
+      ],
+      "retired": true
+    }
+  },
+  "expected": {
+    "seed": 7,
+    "reuse": 0,
+    "object_id": 0,
+    "expected_outcome": "accept",
+    "expectation_policy_version": "861b3a6e47203b6394ff2ab13479435da8e0a5f096d478a2dd6f38a3236166aa",
+    "classifier": {
+      "observed": true,
+      "predicted_class": "stone",
+      "stone_probability": 0.9999851345847699
+    },
+    "anomaly": {
+      "active_reference_labels": [
+        "good",
+        "stone"
+      ],
+      "score": 8.713588456919148,
+      "threshold": 14.96062187496633,
+      "above_threshold": false
+    },
+    "decision": {
+      "reject_probability": 6.748905396787207e-08,
+      "class_threshold_reject": false,
+      "anomaly_reject": false,
+      "reject": false,
+      "scheduled": false,
+      "late": false,
+      "pulse_s": 0.0,
+      "t_available_s": 0.30919399996846936,
+      "t_fire_s": 0.3720733237675266
+    },
+    "pulse": {
+      "commanded_tracks": [],
+      "activated_tracks": []
+    },
+    "contact": {
+      "own_pulse_events": 0,
+      "collateral_pulse_events": 0,
+      "jet_hit_steps": 0
+    },
+    "physical": {
+      "outcome": "accept",
+      "resolved_time_s": 0.45200000000000035,
+      "final_position_m": [
+        0.5004186914353582,
+        -0.09285118396329646,
+        0.4808368428619123
+      ],
+      "retired": true
+    }
+  },
+  "differences": [
+    {
+      "path": "decision.t_available_s",
+      "observed": 0.3095052910465749,
+      "expected": 0.30919399996846936
+    }
+  ]
+}
