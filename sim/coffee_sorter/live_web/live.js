@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {OrbitControls} from '/vendor/OrbitControls.js';
 import {RoomEnvironment} from '/vendor/RoomEnvironment.js';
 import {GLTFLoader} from '/assets/vendor/loaders/GLTFLoader.js';
-import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, freezeItemRequest, jobActionLabel, jobActionPath, jobActivationLabel, jobErrorLabel, jobEvidenceLabel, jobQueueSignature, jobReplacementLabel, jobStateLabel, jobStateNote, queueModeCue, normalizedClassPreview, normalizedCollectionSurfaces, normalizedJobSummary, profilePreviewScale, resolvePendingRequest, samePresentationTimeline} from './timeline.mjs';
+import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, freezeItemRequest, jobActionLabel, jobActionPath, jobActivationLabel, jobErrorLabel, jobEvidenceLabel, jobQueueSignature, jobReplacementLabel, jobStateLabel, jobStateNote, normalizedClassPreview, normalizedCollectionSurfaces, normalizedJobSummary, normalizedWallEntry, profilePreviewScale, queueModeCue, resetErrorLabel, resolvePendingRequest, samePresentationTimeline} from './timeline.mjs';
 import {acceptedAssetRegistry, chooseObjectAsset, generatedAssetMetrics, instanceScale, mustResetGeneratedPools, parsedAssetRefusal, planAssetLoads, prepareGeometry} from './generated_assets.mjs';
 
 const $ = id => document.getElementById(id);
@@ -36,6 +36,7 @@ let wallEntries = [];
 let wallOffset = 0;
 let wallTotal = null;
 let wallLoading = false;
+let resetPending = false;
 let shownSession = null;
 let frames = 0;
 let fpsStart = performance.now();
@@ -717,7 +718,7 @@ function jobDetails(job) {
   if (job.action === 'resolve_provider' && itemJobsPacket()?.provider_mode === 'paid') {
     const billable = document.createElement('button');
     billable.type = 'button'; billable.className = 'job-action';
-    billable.textContent = 'New paid request';
+    billable.textContent = 'Operator: authorize paid request';
     billable.onclick = () => sendJobAction(job, job.action, 'new_request');
     details.append(billable);
   }
@@ -816,7 +817,7 @@ async function postItemJob(path, body) {
     method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body),
   });
   const result = await response.json().catch(() => ({}));
-  return {ok: response.ok, result};
+  return {ok: response.ok, result, status: response.status};
 }
 
 function applyPendingOutcome(outcome) {
@@ -882,8 +883,9 @@ async function sendJobAction(job, action, choice) {
   if (!path) return;
   setItemAddStatus(`${jobActionLabel(action)} sent`);
   try {
-    const {ok, result} = await postItemJob(path, choice ? {action: choice} : {});
-    if (!ok) setItemAddStatus(jobErrorLabel(result.error_code) || 'The recovery action failed.', true);
+    const {ok, result, status} = await postItemJob(path, choice ? {action: choice} : {});
+    if (status === 401) setItemAddStatus('Operator sign-in required. Sign in, then retry.', true);
+    else if (!ok) setItemAddStatus(jobErrorLabel(result.error_code) || 'The recovery action failed.', true);
     else setItemAddStatus(`${jobActionLabel(action)} accepted`);
   } catch (error) {
     setItemAddStatus('The service did not answer.', true);
@@ -891,32 +893,76 @@ async function sendJobAction(job, action, choice) {
 }
 
 function wallRow(entry) {
+  const source = entry;
+  entry = normalizedWallEntry(entry);
+  if (!entry) return document.createElement('div');
   const row = document.createElement('div'); row.className = 'job-row';
   // The one shared preview renderer stays the single WebGL context. No card holds one.
   row.append(buildJobHead({
-    name: String(entry?.display_name || entry?.object_type_id || 'Archived item'),
-    meta: [`Retired ${entry?.retired_at || 'at an unknown time'}`,
-           entry?.classifier_label, entry?.provenance?.kind].filter(Boolean).join(' · '),
+    name: entry.displayName,
+    meta: entry.entryKind === 'needs_review'
+      ? ['Needs review', entry.failureReason || 'Reason unavailable'].join(' · ')
+      : [`Retired ${entry.retiredAt || 'at an unknown time'}`,
+         entry.classifierLabel, entry.provenanceKind].filter(Boolean).join(' · '),
+    preview: entry.preview,
+    failed: entry.entryKind === 'needs_review',
   }));
-  row.onclick = () => selectWallEntry(entry);
+  row.onclick = () => selectWallEntry(source);
   return row;
 }
 
 function selectWallEntry(entry) {
-  $('items-preview-name').textContent = String(entry?.display_name || entry?.object_type_id || 'Archived item');
-  $('items-preview-meta').textContent = `Archived ${entry?.retired_at || 'at an unknown time'}. `
-    + `Label ${entry?.classifier_label || 'unknown'}. Definition ${String(entry?.definition_sha256 || '').slice(0, 12)}. `
-    + 'An archived definition stays read-only and never re-enters the active catalog.';
+  entry = normalizedWallEntry(entry);
+  if (!entry) return;
+  $('items-preview-name').textContent = entry.displayName;
+  $('items-preview-meta').textContent = entry.entryKind === 'needs_review'
+    ? `Needs review. ${entry.failureReason || 'No failure reason was recorded'}. This submission is not active.`
+    : `Archived ${entry.retiredAt || 'at an unknown time'}. Label ${entry.classifierLabel || 'unknown'}. `
+      + `Definition ${String(entry.definitionSha256 || '').slice(0, 12)}. `
+      + 'An archived definition stays read-only and never re-enters the active catalog.';
+}
+
+async function resetDefaults() {
+  if (resetPending || !confirm('Reset active items to defaults? Wall of Fame history stays available.')) return;
+  resetPending = true;
+  const button = $('reset-defaults');
+  const statusNode = $('reset-status');
+  button.disabled = true;
+  button.textContent = 'Resetting';
+  statusNode.textContent = 'Resetting active items';
+  statusNode.classList.remove('error');
+  try {
+    const {ok, result, status} = await postItemJob('/reset-defaults', {});
+    if (status === 401) throw new Error('Operator sign-in required. Sign in, then retry.');
+    if (!ok) throw new Error(resetErrorLabel(result.error_code));
+    wallEntries = [];
+    wallOffset = 0;
+    wallTotal = null;
+    renderWallPage();
+    await loadWallPage();
+    const retained = result.result?.retained_job_count;
+    statusNode.textContent = Number.isInteger(retained)
+      ? `Defaults restored. ${retained} history records kept.`
+      : 'Defaults restored. Wall of Fame history kept.';
+    socket?.close(4001, 'reload after defaults reset');
+  } catch (error) {
+    statusNode.textContent = error.message || 'The reset failed.';
+    statusNode.classList.add('error');
+  } finally {
+    resetPending = false;
+    button.disabled = false;
+    button.textContent = 'Reset defaults';
+  }
 }
 
 function renderWallPage(unreadable) {
   $('wall-rows').replaceChildren(...(wallEntries.length ? wallEntries.map(wallRow) : [(() => {
     const empty = document.createElement('p');
-    empty.textContent = 'No replaced types are archived yet.';
+    empty.textContent = 'No archived or review items yet.';
     return empty;
   })()]));
   const total = wallTotal === null ? wallEntries.length : wallTotal;
-  $('wall-status').textContent = `${wallEntries.length} of ${total} archived`
+  $('wall-status').textContent = `${wallEntries.length} of ${total} records`
     + (unreadable ? ` · ${unreadable} unreadable` : '');
 }
 
@@ -949,6 +995,7 @@ for (const view of ITEM_VIEWS) $(`items-tab-${view}`).onclick = () => setItemsVi
 $('item-add').onsubmit = submitItemJob;
 $('item-retry').onclick = sendPendingItemRequest;
 $('wall-more').onclick = loadWallPage;
+$('reset-defaults').onclick = resetDefaults;
 $('items-close').onclick = closeItems;
 $('items-dialog').addEventListener('cancel', event => { event.preventDefault(); closeItems(); });
 $('keep-all').onclick = () => queuePolicySet(false);

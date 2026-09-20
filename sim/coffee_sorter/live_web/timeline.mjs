@@ -291,6 +291,34 @@ export function jobActionPath(requestId, action) {
   return suffix && requestId ? `/item-jobs/${encodeURIComponent(requestId)}/${suffix}` : null;
 }
 
+const RESET_ERROR_LABELS = {
+  reset_in_progress: 'Another reset is in progress. Try again shortly.',
+  reset_failed: 'The reset failed. The service kept its last confirmed state.',
+  origin_required: 'Open the CINTA page from its served address.',
+};
+
+export function resetErrorLabel(error) {
+  return RESET_ERROR_LABELS[error] || (error ? `Reset failed: ${error}` : 'The reset failed.');
+}
+
+export function normalizedWallEntry(value) {
+  if (!value || typeof value !== 'object') return null;
+  const text = (item, limit) => typeof item === 'string' && item.trim()
+    ? item.trim().slice(0, limit) : null;
+  const preview = text(value.preview_url, 500);
+  return {
+    entryKind: value.entry_kind === 'needs_review' ? 'needs_review' : 'archived',
+    displayName: text(value.display_name, 120) || text(value.object_type_id, 200) || 'Archived item',
+    objectTypeId: text(value.object_type_id, 200),
+    classifierLabel: text(value.classifier_label, 120),
+    provenanceKind: text(value.provenance?.kind, 40),
+    retiredAt: text(value.retired_at, 40),
+    definitionSha256: text(value.definition_sha256, 64),
+    failureReason: text(value.failure_reason, 240),
+    preview: preview?.startsWith('/') && !preview.startsWith('//') ? preview : null,
+  };
+}
+
 const ACTIVATION_PHASES = new Set(['draining', 'activating', 'active', 'failed']);
 const ACTIVATION_RESULTS = new Set([
   'active', 'replacement_conflict', 'activation_conflict', 'activation_failed',

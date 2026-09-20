@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
 
-import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, freezeItemRequest, jobActionLabel, jobActionPath, jobActivationLabel, jobErrorLabel, jobEvidenceLabel, jobQueueSignature, jobReplacementLabel, jobStateLabel, jobStateNote, normalizedClassPreview, normalizedCollectionSurfaces, normalizedJobSummary, profilePreviewScale, queueModeCue, resolvePendingRequest, samePresentationTimeline} from './timeline.mjs';
+import {PolicyIntentBuffer, compareExpectedOutcome, emptyMetricState, formatEngineRate, freezeItemRequest, jobActionLabel, jobActionPath, jobActivationLabel, jobErrorLabel, jobEvidenceLabel, jobQueueSignature, jobReplacementLabel, jobStateLabel, jobStateNote, normalizedClassPreview, normalizedCollectionSurfaces, normalizedJobSummary, normalizedWallEntry, profilePreviewScale, queueModeCue, resetErrorLabel, resolvePendingRequest, samePresentationTimeline} from './timeline.mjs';
 
 const snapshot = {
   session_id: 'session-a',
@@ -161,6 +161,36 @@ test('queue summaries normalize text and reject foreign preview URLs', () => {
   assert.equal(normalizedJobSummary({...summary, state: ''}), null);
   assert.equal(normalizedJobSummary({...summary, request_id: 7}), null);
   assert.equal(normalizedJobSummary(null), null);
+});
+
+test('Wall of Fame keeps failed submissions separate from active items', () => {
+  const entry = normalizedWallEntry({
+    entry_kind: 'needs_review', display_name: ' Brass star ',
+    object_type_id: 'generated.brass_star', failure_reason: 'Training quality gate failed.',
+    preview_url: '/item-jobs/id/previews/perspective.png',
+  });
+  assert.equal(entry.entryKind, 'needs_review');
+  assert.equal(entry.displayName, 'Brass star');
+  assert.equal(entry.failureReason, 'Training quality gate failed.');
+  assert.equal(entry.preview, '/item-jobs/id/previews/perspective.png');
+  assert.equal(normalizedWallEntry({...entry, preview_url: 'https://elsewhere/p.png'}).preview, null);
+  assert.equal(normalizedWallEntry(null), null);
+});
+
+test('reset errors have clear bounded labels', () => {
+  assert.match(resetErrorLabel('reset_in_progress'), /in progress/);
+  assert.match(resetErrorLabel('reset_failed'), /last confirmed state/);
+  assert.match(resetErrorLabel('origin_required'), /served address/);
+});
+
+test('reset and operator controls bind the protected HTTP contract', () => {
+  const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('./live.js', import.meta.url), 'utf8');
+  assert.match(html, /id="operator-login"[^>]+href="\/operator"/);
+  assert.match(html, /id="reset-defaults"[^>]*>Reset defaults</);
+  assert.match(source, /postItemJob\('\/reset-defaults', \{\}\)/);
+  assert.match(source, /status === 401/);
+  assert.match(source, /Operator: authorize paid request/);
 });
 
 test('queue signature changes only with visible queue fields', () => {
