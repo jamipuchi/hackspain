@@ -928,8 +928,10 @@ class BundledArtifactTest(unittest.TestCase):
             star_draft(), rgb=[0.82, 0.68, 0.21], prior=0.03, source_sha256="c" * 64)
         root = work / "candidate"
         write_catalog(root, candidate_catalog(catalog, new_definition, select_victim(catalog, [])))
-        labels = [value["classifier_label"] for value in load_catalog(root)["definitions"]]
-        captured = {}
+        loaded = load_catalog(root)
+        labels = [value["classifier_label"] for value in loaded["definitions"]]
+        # The revision the trainer loads, so a test compares produced files with it.
+        captured = {"catalog_revision": loaded["catalog_revision"], "catalog_root": root}
 
         def partition(seed, *rest):
             rows = [(seed, index, label) for index, label in enumerate(labels)]
@@ -952,6 +954,44 @@ class BundledArtifactTest(unittest.TestCase):
                 "--catalog-root", str(root), "--preset", str(PRESET), "--out", str(work / "out"),
                 "--runtime-lock", str(work / "runtime.lock")])
         return code, work / "out", captured
+
+    def test_the_candidate_records_the_loaded_revision_in_both_produced_artifacts(self):
+        """A model and its manifest must name the same catalog, read back from disk."""
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        work = Path(folder.name)
+
+        code, out, captured = self.train_with_fakes(work)
+
+        self.assertEqual(0, code)
+        revision = captured["catalog_revision"]
+        self.assertRegex(revision, r"^[0-9a-f]{64}$")
+        from classifier import Model
+        model = Model.load(out / "candidate.joblib")
+        manifest = json.loads((out / "candidate.manifest.json").read_text())
+        self.assertEqual(revision, model.meta["provenance"]["config"]["catalog_revision"])
+        self.assertEqual(revision, manifest["provenance"]["config"]["catalog_revision"])
+        # The two artifacts agree, so an activation can never pair mismatched halves.
+        self.assertEqual(model.meta["provenance"], manifest["provenance"])
+
+    def test_the_report_records_the_manifest_hash_and_the_manifest_does_not(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        work = Path(folder.name)
+
+        code, out, captured = self.train_with_fakes(work)
+
+        self.assertEqual(0, code)
+        manifest_path = out / "candidate.manifest.json"
+        digest = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+        # validation.json is the candidate's external report: it never enters a bundle.
+        report = json.loads((out / "validation.json").read_text())
+
+        self.assertEqual(digest, report["manifest_sha256"])
+        self.assertEqual(captured["catalog_revision"], report["catalog_revision"])
+        # A manifest can never hash itself, so the value lives only in the report.
+        self.assertNotIn(digest, manifest_path.read_text())
+        self.assertNotIn("manifest_sha256", json.loads(manifest_path.read_text()))
 
     def test_the_manifest_and_preset_carry_no_path_host_or_timestamp(self):
         folder = tempfile.TemporaryDirectory()

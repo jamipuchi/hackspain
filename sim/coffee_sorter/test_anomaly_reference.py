@@ -10,6 +10,10 @@ import copy
 import json
 import joblib
 import tempfile
+import contextlib
+import hashlib
+import io
+import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -580,29 +584,107 @@ class CatalogProvenanceTest(unittest.TestCase):
         self.assertTrue(bootstrap_model.reusable(
             model, manifest, self.expected_for(self.original["catalog_revision"]), labels))
 
-    def test_both_trainers_record_the_catalog_revision_in_provenance(self):
-        source = (HERE / "bootstrap_model.py").read_text()
-        self.assertIn('"catalog_revision": catalog["catalog_revision"]', source)
-        self.assertIn("catalog = load_catalog()", source)
-        candidate = (HERE / "train_candidate.py").read_text()
-        self.assertIn('"catalog_revision": catalog["catalog_revision"]', candidate)
 
-    def test_the_report_carries_the_revision_and_the_manifest_never_hashes_itself(self):
-        source = (HERE / "bootstrap_model.py").read_text()
-        body = source.split("def main(")[1]
-        manifest_write = body.index("manifest_path.write_text")
-        report_write = body.index("report_path.write_text")
-        manifest_sha = body.index('report["manifest_sha256"]')
-        revision = body.index('report["catalog_revision"]')
+class BootstrapMainProvenanceTest(unittest.TestCase):
+    """The real main() binds the model to the catalog it actually loaded.
 
-        # Both external fields are added AFTER the manifest exists and BEFORE the report.
-        self.assertLess(manifest_write, manifest_sha)
-        self.assertLess(manifest_sha, report_write)
-        self.assertLess(manifest_write, revision)
-        self.assertLess(revision, report_write)
-        # The manifest block itself must never name its own hash.
-        manifest_block = body[body.index("    manifest = {"):manifest_write]
-        self.assertNotIn("manifest_sha256", manifest_block)
+    Nothing here reads source text: every assertion comes from what main() passed to
+    reusable() or from the files it produced. Collection and fitting stay mocked.
+    """
+
+    def setUp(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.work = Path(folder.name)
+        self.output = self.work / "live_green_arabica.joblib"
+        self.manifest, self.report = bootstrap_model.artifact_paths(self.output)
+        self.catalog = load_catalog()
+        self.labels = [value["classifier_label"] for value in self.catalog["definitions"]]
+
+    def other_revision(self):
+        """The same labels, one different revision, as a changed definition would give."""
+        return {**self.catalog, "catalog_revision": "e" * 64}
+
+    def run_main(self, catalog):
+        """Run main() with the heavy work mocked, capturing what it compares and writes."""
+        seen: dict = {}
+        profile = bootstrap_model.PROFILES["green_arabica"]
+        rows = [(7, uid, label) for label in profile.names for uid in range(10) for _ in range(3)]
+        labels = np.asarray([row[2] for row in rows], dtype=object)
+        features = np.zeros((len(rows), len(bootstrap_model.FEATURES)))
+        history = [{"seed": 7, "seconds": 16.0, "observations": {}, "unique_objects": {},
+                    "short_labels": []}]
+
+        # Bound before the patch, so the wrapper calls the REAL reuse decision.
+        real_reusable = bootstrap_model.reusable
+
+        def reusable(output, manifest_path, expected, classes):
+            seen["expected"] = copy.deepcopy(expected)
+            seen["classes"] = list(classes)
+            return real_reusable(output, manifest_path, expected, classes)
+
+        def collect(seed, *rest):
+            return features, labels, rows, history
+
+        def fit(fit_profile, X_train, y_train, X_holdout, y_holdout, meta):
+            seen["meta"] = copy.deepcopy(meta)
+            classes = list(fit_profile.names)
+            # A real joblib artifact, so the reuse check can load it back on a later run.
+            saved = SimpleNamespace(classes=classes, meta=copy.deepcopy(meta))
+            return (SimpleNamespace(classes=classes,
+                                    save=lambda path: joblib.dump(saved, path)),
+                    {"fit_seconds": 0.0})
+
+        stdout = io.StringIO()
+        with patch.object(bootstrap_model, "load_catalog", return_value=catalog), \
+                patch.object(bootstrap_model, "reusable", side_effect=reusable), \
+                patch.object(bootstrap_model, "collect_covered", side_effect=collect), \
+                patch.object(bootstrap_model, "fit_model", side_effect=fit), \
+                patch.object(bootstrap_model, "require_usable_references"), \
+                patch.object(sys, "argv", ["bootstrap_model.py", "--output", str(self.output),
+                                           "--preset", str(HERE / "configs" / "default_demo.json")]), \
+                contextlib.redirect_stdout(stdout):
+            bootstrap_model.main()
+        seen["status"] = json.loads(stdout.getvalue().splitlines()[-1])["status"]
+        return seen
+
+    def test_main_binds_the_model_to_the_catalog_it_loaded(self):
+        seen = self.run_main(self.catalog)
+
+        self.assertEqual(seen["status"], "trained")
+        # The value main() compared came from the catalog it loaded, not from the source.
+        self.assertEqual(seen["expected"]["config"]["catalog_revision"],
+                         self.catalog["catalog_revision"])
+        self.assertEqual(seen["classes"], self.labels)
+        self.assertEqual(seen["meta"]["provenance"], seen["expected"])
+        written = json.loads(self.manifest.read_text())
+        self.assertEqual(written["provenance"]["config"]["catalog_revision"],
+                         self.catalog["catalog_revision"])
+
+    def test_an_unchanged_catalog_reuses_and_a_changed_one_trains_again(self):
+        self.assertEqual(self.run_main(self.catalog)["status"], "trained")
+
+        self.assertEqual(self.run_main(self.catalog)["status"], "reused")
+
+        changed = self.other_revision()
+        self.assertEqual([value["classifier_label"] for value in changed["definitions"]],
+                         self.labels)
+        seen = self.run_main(changed)
+        # Same labels, same artifact bytes, other catalog: the stale model is refused.
+        self.assertEqual(seen["status"], "trained")
+        self.assertEqual(seen["expected"]["config"]["catalog_revision"], "e" * 64)
+
+    def test_the_report_records_the_manifest_hash_and_the_manifest_does_not(self):
+        self.run_main(self.catalog)
+
+        digest = hashlib.sha256(self.manifest.read_bytes()).hexdigest()
+        report = json.loads(self.report.read_text())
+
+        self.assertEqual(report["manifest_sha256"], digest)
+        self.assertEqual(report["catalog_revision"], self.catalog["catalog_revision"])
+        # A manifest can never hash itself, so the value lives only in the report.
+        self.assertNotIn(digest, self.manifest.read_text())
+        self.assertNotIn("manifest_sha256", json.loads(self.manifest.read_text()))
 
 
 if __name__ == "__main__":
