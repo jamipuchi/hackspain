@@ -37,6 +37,7 @@ let reconnectTimer = null;
 let heartbeatSeq = null;
 let heartbeatSeenAt = null;
 let staleConnection = false;
+let telemetryFresh = false;
 const selectedEvents = new Map();
 const measurements = {fps: null, frame_ms_p50: null, frame_ms_p95: null, frame_ms_max: null, acknowledgment_ms: null, outcome_wall_s: null, pose_hz: null, click_dispatch_ms: null, buffer_delay_ms: 240, buffer_waiting: true, webgl: null};
 window.coffeeMeasurements = measurements;
@@ -47,9 +48,6 @@ const DISPLAY_DELAY_MS = 240;
 const SNAPSHOT_LIMIT = 32;
 const SNAPSHOT_MAX_AGE_MS = 1500;
 const POLICY_COALESCE_MS = 60;
-const localHost = ['localhost', '127.0.0.1', '::1'].includes(location.hostname);
-document.body.classList.toggle('localhost', localHost);
-
 const continuousMode = () => state?.mode === 'continuous';
 const liveContinuousMode = () => liveState?.mode === 'continuous';
 const latestRequest = () => latestCommandId ? requests.get(latestCommandId) : null;
@@ -82,6 +80,7 @@ function retryPending() {
 }
 
 function connect() {
+  telemetryFresh = false;
   heartbeatSeq = heartbeatSeenAt = null;
   const scheme = location.protocol === 'https:' ? 'wss:' : 'ws:';
   const ws = new WebSocket(`${scheme}//${location.host}/ws`);
@@ -93,6 +92,7 @@ function connect() {
   };
   ws.onclose = () => {
     if (socket !== ws) return;
+    telemetryFresh = false;
     for (const request of pendingRequests()) request.retryPending = true;
     $('status').textContent = 'Disconnected';
     $('inject').disabled = true;
@@ -125,6 +125,7 @@ function connect() {
         measurements.pose_hz = (packetArrivals.length - 1) * 1000 / (arrivedAt - packetArrivals[0]);
       }
       liveState = packet;
+      telemetryFresh = true;
       window.cintaLiveState = liveState;
       syncPolicyTransport(packet.reject_policy);
       pendingPolicyIntents.setCatalog((packet.class_catalog || []).map(item => item.name));
@@ -720,6 +721,9 @@ function updateScoreboard() {
   const settling = Number(scores.settling_seconds || 0);
   const start = Number(scores.window_start_exclusive_s || 0);
   const end = Number(scores.window_end_inclusive_s || 0);
+  const windowLabel = Number.isInteger(window) ? String(window) : window.toFixed(1);
+  const settlingLabel = Number.isInteger(settling) ? String(settling) : settling.toFixed(1);
+  $('score-help').dataset.help = `The window covers ${windowLabel} simulated seconds and excludes the newest ${settlingLabel} seconds for settling. Manual drops are excluded. Policy changes start a new window.`;
   $('score-status').textContent = `${asOf.toFixed(1)} s · ${scores.warming_up ? 'warming' : 'ready'}`;
   $('score-context').textContent = `Window (${start.toFixed(1)}, ${end.toFixed(1)}] simulated seconds. Available ${available.toFixed(1)} / ${window.toFixed(1)} simulated seconds. ${scores.settling_objects ?? 0} settling object${scores.settling_objects === 1 ? '' : 's'}. Manual injections ${scores.manual_injections_excluded ? 'excluded' : 'not excluded'}. Settling delay ${settling.toFixed(1)} simulated seconds.`;
   const versions = scores.versions || {};
@@ -876,9 +880,68 @@ function advanceDisplayTimeline(now) {
     waiting,
   };
   measurements.buffer_waiting = waiting;
-  const output = $('local-fps');
-  output.dataset.buffering = String(waiting || !state);
-  output.textContent = waiting || !state ? 'Buffering' : measurements.fps === null ? 'Measuring' : `${measurements.fps.toFixed(0)} FPS`;
+  updatePerformanceBadge(waiting);
+}
+
+function updatePerformanceBadge(waiting) {
+  const output = $('performance-badge');
+  const fpsLabel = Number.isFinite(measurements.fps) ? `${measurements.fps.toFixed(0)} FPS` : 'Measuring FPS';
+  const connected = socket?.readyState === WebSocket.OPEN && !staleConnection;
+  const connecting = !socket || socket.readyState === WebSocket.CONNECTING;
+  const engineRate = Number(liveState?.engine_rate);
+  const hasEngineRate = connected && telemetryFresh && Number.isFinite(engineRate) && engineRate > 0;
+  const simLabel = !connected
+    ? connecting ? 'Sim connecting' : 'Sim disconnected'
+    : hasEngineRate ? `Sim ${engineRate.toFixed(2)}×` : 'Sim measuring';
+  const viewWaiting = connected && telemetryFresh && waiting;
+  const label = `${fpsLabel} · ${simLabel}${viewWaiting ? ' · View waiting' : ''}`;
+  const badgeState = !connected && !connecting ? 'disconnected' : viewWaiting || !telemetryFresh ? 'waiting' : 'live';
+  if (output.textContent !== label) output.textContent = label;
+  if (output.dataset.state !== badgeState) output.dataset.state = badgeState;
+}
+
+function initHelpTooltips() {
+  const tooltip = $('help-tooltip');
+  let target = null;
+
+  const position = () => {
+    if (!target || tooltip.hidden) return;
+    const anchor = target.getBoundingClientRect();
+    const box = tooltip.getBoundingClientRect();
+    const margin = 8;
+    const left = Math.min(window.innerWidth - box.width - margin, Math.max(margin, anchor.left + (anchor.width - box.width) / 2));
+    const below = anchor.bottom + margin;
+    const top = below + box.height <= window.innerHeight - margin ? below : anchor.top - box.height - margin;
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${Math.max(margin, top)}px`;
+  };
+  const show = element => {
+    if (!element?.dataset.help) return;
+    if (target && target !== element) target.removeAttribute('aria-describedby');
+    target = element;
+    tooltip.textContent = element.dataset.help;
+    tooltip.hidden = false;
+    element.setAttribute('aria-describedby', tooltip.id);
+    position();
+  };
+  const hide = element => {
+    if (element && element !== target) return;
+    target?.removeAttribute('aria-describedby');
+    target = null;
+    tooltip.hidden = true;
+  };
+
+  for (const element of document.querySelectorAll('[data-help]')) {
+    element.addEventListener('pointerenter', event => { if (event.pointerType !== 'touch') show(element); });
+    element.addEventListener('pointerleave', event => { if (event.pointerType !== 'touch' && document.activeElement !== element) hide(element); });
+    element.addEventListener('focus', () => show(element));
+    element.addEventListener('blur', () => hide(element));
+    element.addEventListener('pointerup', event => { if (event.pointerType === 'touch') show(element); });
+  }
+  document.addEventListener('pointerdown', event => { if (!event.target.closest?.('[data-help]')) hide(); });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape') hide(); });
+  window.addEventListener('resize', position);
+  document.addEventListener('scroll', position, true);
 }
 
 function displayedPose(object, outPos, outQuat) {
@@ -1463,6 +1526,7 @@ new ResizeObserver(resizeInset).observe($('inset'));
 document.querySelectorAll('button[data-camera]').forEach(button => button.onclick = () => setCamera(button.dataset.camera));
 document.querySelectorAll('button[data-view]').forEach(button => button.onclick = () => setView(button.dataset.view));
 setView('3d');
+initHelpTooltips();
 initThree();
 connect();
 requestAnimationFrame(draw);
