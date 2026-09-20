@@ -44,18 +44,33 @@ def catalog_manifest(definitions, bundle_sha256=None):
             "active_bundle_sha256": bundle_sha256}
 
 
-def bundle_files(labels=("good", "stone"), model_classes=None, reject_classes=("stone",)):
-    """One complete, valid bundle content mapping."""
+def bundle_files(labels=("good", "stone"), model_classes=None, reject_classes=("stone",),
+                 model_revision=True, manifest_revision=True):
+    """One complete, valid bundle content mapping.
+
+    The model records the revision of the catalog it was trained for, in both its meta
+    and its manifest, exactly as the two trainers now write it.
+    """
     definitions = [builtin_definition(label) for label in labels]
-    files = {BUNDLE_CATALOG: pretty(catalog_manifest(definitions))}
+    manifest = catalog_manifest(definitions)
+    files = {BUNDLE_CATALOG: pretty(manifest)}
     for definition in definitions:
         files[f"catalog/definitions/{definition['object_type_id']}.json"] = pretty(definition)
+    revision = manifest["catalog_revision"]
+    meta = {"classes": list(model_classes or labels)}
+    if model_revision is not False:
+        meta["provenance"] = {"config": {"catalog_revision":
+                                         revision if model_revision is True else model_revision}}
     model = tempfile.NamedTemporaryFile(suffix=".joblib", delete=False)
     model.close()
-    joblib.dump(types.SimpleNamespace(classes=list(model_classes or labels)), model.name)
+    joblib.dump(types.SimpleNamespace(classes=meta["classes"], meta=meta), model.name)
     files["model/candidate.joblib"] = Path(model.name).read_bytes()
     Path(model.name).unlink()
-    files["model/candidate.manifest.json"] = pretty({"artifact_sha256": "a" * 64})
+    model_manifest = {"artifact_sha256": "a" * 64}
+    if manifest_revision is not False:
+        model_manifest["provenance"] = {"config": {
+            "catalog_revision": revision if manifest_revision is True else manifest_revision}}
+    files["model/candidate.manifest.json"] = pretty(model_manifest)
     files[BUNDLE_PRESET] = pretty({"name": "bundle-test", "model_path": "model/candidate.joblib",
                                    "model_path_root": "preset"})
     files["policy.json"] = pretty({"reject_classes": list(reject_classes)})
@@ -547,6 +562,23 @@ class ValidateBundleCommandTest(BundleFixture, unittest.TestCase):
         for text in (output, json.dumps(payload)):
             self.assertNotIn(str(self.root), text)
             self.assertNotIn(str(HERE), text)
+
+    def test_a_model_trained_for_another_catalog_is_refused(self):
+        """Label order cannot see a changed definition: the same labels, other physics."""
+        other = "d" * 64
+        for kwargs, code in (({"model_revision": other}, "model_catalog_mismatch"),
+                             ({"manifest_revision": other}, "model_catalog_mismatch"),
+                             ({"model_revision": False}, "model_catalog_unrecorded"),
+                             ({"manifest_revision": False}, "model_catalog_unrecorded")):
+            root = Path(tempfile.mkdtemp(dir=self.root))
+            _, directory = self.publish(bundle_files(**kwargs), bundles=root)
+            exit_code, payload, output = self.run_cli(directory)
+
+            self.assertEqual(exit_code, 1, kwargs)
+            self.assertFalse(payload["ok"])
+            self.assertTrue(any(failure.startswith(code) for failure in payload["failures"]),
+                            f"{kwargs}: {payload['failures']}")
+            self.assertNotIn(str(self.root), output)
 
     def test_a_usage_error_exits_two(self):
         result = subprocess.run([sys.executable, str(HERE / "validate_bundle.py")],

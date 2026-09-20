@@ -368,6 +368,9 @@ def train(args, preset, preset_path: Path, layout: Layout, rate: float, capture_
     started = time.perf_counter()
     config = {
         "profile": profile.name,
+        # The candidate is bound to the catalog it was trained for, exactly like the
+        # canonical model, so an activation can never pair a model with another revision.
+        "catalog_revision": catalog["catalog_revision"],
         "train_seed": TRAIN_SEED,
         "holdout_seed": HOLDOUT_SEED,
         "seconds_per_partition": args.seconds,

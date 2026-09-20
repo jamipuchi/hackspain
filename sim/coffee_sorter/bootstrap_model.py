@@ -27,6 +27,7 @@ from sklearn.metrics import confusion_matrix
 
 from assets import ASSETS, FAMILIES, N_VARIANTS
 from classifier import MODELS, Model
+from object_catalog import load_catalog
 from profiles import PROFILES
 from scene import Layout
 from sim import SorterSim
@@ -317,8 +318,12 @@ def main() -> None:
     if isinstance(capture_every, bool) or not isinstance(capture_every, int) or capture_every <= 0:
         parser.error("preset camera_every_steps must be a positive integer")
 
+    # The class values live in the catalog, so the model is bound to that revision.
+    # Hashing profiles.py alone would accept a model trained for a different catalog.
+    catalog = load_catalog()
     config = {
         "profile": "green_arabica",
+        "catalog_revision": catalog["catalog_revision"],
         "train_seed": TRAIN_SEED,
         "holdout_seed": HOLDOUT_SEED,
         "seconds_per_partition": args.seconds,
@@ -402,6 +407,9 @@ def main() -> None:
         "wall_seconds": time.perf_counter() - started,
     })
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True))
+    # The manifest never carries its own hash. Only the external report records it.
+    report["catalog_revision"] = config["catalog_revision"]
+    report["manifest_sha256"] = sha256(manifest_path)
     report_path.write_text(json.dumps(report, indent=2, sort_keys=True))
     print(json.dumps({"status": "trained", "model": str(output), **report}, sort_keys=True))
 

@@ -8,7 +8,10 @@ from __future__ import annotations
 
 import copy
 import json
+import joblib
+import tempfile
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -30,7 +33,8 @@ from bootstrap_model import (
 from classifier import MODELS, Model, usable_reference
 from controller import Controller, Policy
 from engine import Engine
-from object_catalog import load_catalog
+from object_catalog import (catalog_revision, definition_sha256, load_catalog,
+                            write_catalog)
 from profiles import GREEN_ARABICA
 from test_controller import FakeInspector, FakeSim, blob
 
@@ -41,6 +45,8 @@ CENTRES = {"good": (0.0, 0.0, 0.0, 0.0), "stone": (8.0, 8.0, 0.0, 0.0),
 # An explicit index per label. Two labels of equal length must not share a noise stream.
 LABEL_INDEX = {name: index for index, name in enumerate(CENTRES)}
 
+
+HERE = Path(__file__).resolve().parent
 
 class FakeClassifier:
     """Stand-in for the fitted classifier. The anomaly path never consults it."""
@@ -490,6 +496,86 @@ class StoneTruthTest(unittest.TestCase):
 
         self.assertEqual(["good", "stone"], model.active_reference_labels)
         self.assertTrue(GREEN_ARABICA.by_name("stone").defect)
+
+
+class CatalogProvenanceTest(unittest.TestCase):
+    """The class values live in the catalog, so a model is bound to its revision.
+
+    Label order cannot see a changed definition: the same labels can describe different
+    physics. No mujoco and no training runs here.
+    """
+
+    def setUp(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.work = Path(folder.name)
+        self.original = load_catalog()
+
+    def changed_catalog(self, density_step=1):
+        """The same labels with one different definition value."""
+        changed = copy.deepcopy(self.original)
+        stone = next(value for value in changed["definitions"]
+                     if value["classifier_label"] == "stone")
+        stone["physics"]["density_kg_m3"] += density_step
+        changed["definition_sha256"][stone["object_type_id"]] = definition_sha256(stone)
+        changed["catalog_revision"] = catalog_revision(
+            changed["active_type_ids"], changed["definition_sha256"])
+        root = self.work / f"catalog-{density_step}"
+        write_catalog(root, changed)
+        return load_catalog(root)
+
+    def artifact(self, classes):
+        path = self.work / "model.joblib"
+        joblib.dump(SimpleNamespace(classes=list(classes)), path)
+        return path
+
+    def expected_for(self, revision):
+        return bootstrap_model.provenance({"profile": "green_arabica",
+                                           "catalog_revision": revision})
+
+    def test_a_changed_definition_refuses_a_stale_model(self):
+        changed = self.changed_catalog()
+        labels = [value["classifier_label"] for value in self.original["definitions"]]
+
+        self.assertNotEqual(changed["catalog_revision"], self.original["catalog_revision"])
+        self.assertEqual([value["classifier_label"] for value in changed["definitions"]], labels)
+
+        model = self.artifact(labels)
+        manifest = self.work / "model.manifest.json"
+        manifest.write_text(json.dumps({
+            "provenance": self.expected_for(self.original["catalog_revision"]),
+            "artifact_sha256": bootstrap_model.sha256(model)}))
+
+        # The same labels and the same artifact, but a different catalog.
+        self.assertFalse(bootstrap_model.reusable(
+            model, manifest, self.expected_for(changed["catalog_revision"]), labels))
+        # An unchanged catalog still reuses the model.
+        self.assertTrue(bootstrap_model.reusable(
+            model, manifest, self.expected_for(self.original["catalog_revision"]), labels))
+
+    def test_both_trainers_record_the_catalog_revision_in_provenance(self):
+        source = (HERE / "bootstrap_model.py").read_text()
+        self.assertIn('"catalog_revision": catalog["catalog_revision"]', source)
+        self.assertIn("catalog = load_catalog()", source)
+        candidate = (HERE / "train_candidate.py").read_text()
+        self.assertIn('"catalog_revision": catalog["catalog_revision"]', candidate)
+
+    def test_the_report_carries_the_revision_and_the_manifest_never_hashes_itself(self):
+        source = (HERE / "bootstrap_model.py").read_text()
+        body = source.split("def main(")[1]
+        manifest_write = body.index("manifest_path.write_text")
+        report_write = body.index("report_path.write_text")
+        manifest_sha = body.index('report["manifest_sha256"]')
+        revision = body.index('report["catalog_revision"]')
+
+        # Both external fields are added AFTER the manifest exists and BEFORE the report.
+        self.assertLess(manifest_write, manifest_sha)
+        self.assertLess(manifest_sha, report_write)
+        self.assertLess(manifest_write, revision)
+        self.assertLess(revision, report_write)
+        # The manifest block itself must never name its own hash.
+        manifest_block = body[body.index("    manifest = {"):manifest_write]
+        self.assertNotIn("manifest_sha256", manifest_block)
 
 
 if __name__ == "__main__":

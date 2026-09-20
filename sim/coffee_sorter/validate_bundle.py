@@ -43,6 +43,9 @@ def validate(bundle_dir: Path) -> dict:
         preset = json.loads((bundle / BUNDLE_PRESET).read_text())
         model = _load_model(bundle / preset["model_path"])
         object_catalog.require_label_order(catalog, list(model.classes))
+        result["failures"].extend(
+            _revision_failures(bundle, model, preset["model_path"],
+                               catalog["catalog_revision"]))
     except (OSError, ValueError, KeyError, TypeError) as error:
         result["failures"].append(f"model: {_sanitized(error, bundle)}")
 
@@ -57,6 +60,36 @@ def validate(bundle_dir: Path) -> dict:
 
     result["ok"] = not result["failures"]
     return result
+
+
+def _revision_failures(bundle: Path, model, model_path: str, revision: str) -> list[str]:
+    """An activated model must be bound to the catalog it was trained for.
+
+    Label order alone cannot see a changed definition: the same labels can describe
+    different physics. Both the model meta and its manifest must record the revision.
+    """
+    manifest_path = bundle / Path(model_path).with_suffix(".manifest.json")
+    try:
+        manifest = json.loads(manifest_path.read_text())
+    except (OSError, ValueError):
+        return ["model_catalog_unrecorded: the bundled model manifest cannot be read"]
+    recorded = [_catalog_revision(getattr(model, "meta", None)),
+                _catalog_revision(manifest.get("provenance"))]
+    if any(value is None for value in recorded):
+        # An unbound model must never activate.
+        return ["model_catalog_unrecorded: the bundled model records no catalog revision"]
+    if any(value != revision for value in recorded):
+        return ["model_catalog_mismatch: the bundled model was trained for another catalog"]
+    return []
+
+
+def _catalog_revision(source) -> str | None:
+    """Read the revision out of a model meta block or a manifest provenance block."""
+    if isinstance(source, dict) and "provenance" in source:
+        source = source["provenance"]
+    config = source.get("config") if isinstance(source, dict) else None
+    value = config.get("catalog_revision") if isinstance(config, dict) else None
+    return value if isinstance(value, str) and value else None
 
 
 def _load_model(path: Path):
