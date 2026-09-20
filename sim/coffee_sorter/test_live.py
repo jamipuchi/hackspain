@@ -2544,7 +2544,8 @@ class ActiveBundleStartupTest(unittest.TestCase):
         bundle = value.active_bundle
         self.assertEqual(bundle.parent, self.root / 'active' / 'bundles')
         self.assertEqual(value.preset, bundle / 'preset.json')
-        self.assertFalse((self.root / 'active' / object_catalog.SEED_MARKER).exists())
+        marker = self.root / 'active' / object_catalog.SEED_MARKER
+        self.assertEqual(json.loads(marker.read_text()), {'bundle_sha256': bundle.name})
         catalog = object_catalog.read_active(self.root / 'active')
         self.assertEqual(catalog['active_bundle_sha256'], bundle.name)
         self.assertEqual(catalog['catalog_revision'], self.packaged['catalog_revision'])
